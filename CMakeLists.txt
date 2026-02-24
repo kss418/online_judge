@@ -8,7 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 add_library(code_runner STATIC
-    src/judge/code_runner.cpp
+    src/judge/cpp_runner.cpp
 )
 
 target_include_directories(code_runner
