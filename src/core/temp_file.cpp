@@ -38,6 +38,10 @@ std::expected<temp_file, error_code> temp_file::create(std::string_view pattern)
     return temp_file(unique_fd(fd), std::filesystem::path(temp.data()));
 }
 
+void temp_file::close_fd() noexcept{
+    fd_.close();
+}
+
 int temp_file::get_fd() const noexcept{
     return fd_.get();
 }

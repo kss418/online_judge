@@ -11,6 +11,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 add_library(lib STATIC
     src/judge/code_runner.cpp
     src/judge/compile_runner.cpp
+    src/judge/judge_utility.cpp
+    src/judge/judge.cpp
+    src/judge/checker.cpp
     src/core/error_code.cpp
     src/core/unique_fd.cpp
     src/core/temp_file.cpp

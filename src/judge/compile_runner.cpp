@@ -11,14 +11,14 @@ std::expected <compile_runner::compile_result, error_code> compile_runner::compi
 ){
     int stderr_pipe[2];
     if(pipe(stderr_pipe) < 0){
-        return std::unexpected(error_code::create(pipe_failed));
+        return std::unexpected(error_code::create(syscall_error::pipe_failed));
     }
 
     unique_fd read_fd = unique_fd(stderr_pipe[0]), write_fd = unique_fd(stderr_pipe[1]);
     pid_t pid = fork();
 
     if(pid < 0){
-        return std::unexpected(error_code::create(fork_failed));
+        return std::unexpected(error_code::create(syscall_error::fork_failed));
     }
     
     // child process
@@ -68,7 +68,7 @@ std::expected <compile_runner::compile_result, error_code> compile_runner::compi
         if(waitpid(pid, &status, 0) == pid) break;
         int ec = errno;
         if(ec == EINTR) continue;
-        return std::unexpected(error_code::create(waitpid_failed));
+        return std::unexpected(error_code::create(syscall_error::waitpid_failed));
     }
 
     if(WIFEXITED(status)){
@@ -77,9 +77,9 @@ std::expected <compile_runner::compile_result, error_code> compile_runner::compi
     }
     
     if(WIFSIGNALED(status)){
-        int sig = WTERMSIG(status);
-        return std::unexpected(error_code::create(compile_error));
+        int signal_number = WTERMSIG(status);
+        return std::unexpected(error_code::create(error_code::map_signal(signal_number)));
     }
 
-    return std::unexpected(error_code::create(waitpid_failed));
+    return std::unexpected(error_code::create(syscall_error::waitpid_failed));
 }

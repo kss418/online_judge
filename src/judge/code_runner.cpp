@@ -1,6 +1,7 @@
 #include "judge/code_runner.hpp"
 #include "core/temp_file.hpp"
 #include "net/blocking_io.hpp"
+#include "judge/judge_utility.hpp"
 
 #include <cerrno>
 #include <fcntl.h>
@@ -8,40 +9,15 @@
 #include <unistd.h>
 #include <vector>
 
-std::vector <std::string> code_runner::normalize_output(const std::string& output){
-    std::vector <std::string> ret;
-    std::string tmp;
-    for(char i : output){
-        if(i == '\n'){
-            while(!tmp.empty() && is_blank(tmp.back())) tmp.pop_back();
-            ret.push_back(tmp);
-            tmp.clear();
-        }
-        else{
-            tmp.push_back(i);
-        }
+std::expected<code_runner::run_result, error_code> code_runner::run_cpp(path binary_path, path input_path){
+    auto stdout_temp = temp_file::create("/tmp/oj_stdout_XXXXXX");
+    if(!stdout_temp){
+        return std::unexpected(stdout_temp.error());
     }
 
-    if(!output.empty() && output.back() != '\n'){
-        while(!tmp.empty() && is_blank(tmp.back())) tmp.pop_back();
-        ret.push_back(tmp);
-    }
-
-    while(!ret.empty() && ret.back().empty()){
-        ret.pop_back();
-    }
-
-    return ret;
-}
-
-bool code_runner::is_blank(char c){
-    return (c == ' ' || c == '\t' || c == '\r');
-}
-
-std::expected <std::vector <std::string>, error_code> code_runner::run_cpp(path binary_path, path input_path){
-    auto output_temp = temp_file::create("/tmp/oj_output_XXXXXX");
-    if(!output_temp){
-        return std::unexpected(output_temp.error());
+    auto stderr_temp = temp_file::create("/tmp/oj_stderr_XXXXXX");
+    if(!stderr_temp){
+        return std::unexpected(stderr_temp.error());
     }
 
     unique_fd input_fd = unique_fd(open(input_path.c_str(), O_RDONLY));
@@ -51,15 +27,18 @@ std::expected <std::vector <std::string>, error_code> code_runner::run_cpp(path 
 
     pid_t pid = fork();
     if(pid < 0){
-        return std::unexpected(error_code::create(fork_failed));
+        return std::unexpected(error_code::create(syscall_error::fork_failed));
     }
     
     // child process
     if(pid == 0){
-        dup2(input_fd.get(), STDIN_FILENO);
-        dup2(output_temp->get_fd(), STDERR_FILENO);
-        dup2(output_temp->get_fd(), STDOUT_FILENO);
+        if(dup2(input_fd.get(), STDIN_FILENO) < 0) _exit(127);
+        if(dup2(stdout_temp->get_fd(), STDOUT_FILENO) < 0) _exit(127);
+        if(dup2(stderr_temp->get_fd(), STDERR_FILENO) < 0) _exit(127);
+
         input_fd.close();
+        stdout_temp->close_fd();
+        stderr_temp->close_fd();
 
         std::vector <char*> argv = {
             const_cast<char*>(binary_path.c_str()),
@@ -78,27 +57,41 @@ std::expected <std::vector <std::string>, error_code> code_runner::run_cpp(path 
         if(waitpid(pid, &status, 0) == pid) break;
         int ec = errno;
         if(ec == EINTR) continue;
-        return std::unexpected(error_code::create(waitpid_failed));
+        return std::unexpected(error_code::create(syscall_error::waitpid_failed));
     }
 
-    if(lseek(output_temp->get_fd(), 0, SEEK_SET) < 0){
+    if(lseek(stdout_temp->get_fd(), 0, SEEK_SET) < 0){
         return std::unexpected(error_code::create(error_code::map_errno(errno)));
     }
 
-    auto output_result = blocking_io::read_all(output_temp->get_fd());
-    if(!output_result){
-        return std::unexpected(output_result.error());
+    if(lseek(stderr_temp->get_fd(), 0, SEEK_SET) < 0){
+        return std::unexpected(error_code::create(error_code::map_errno(errno)));
     }
 
+    auto stdout_text_exp = blocking_io::read_all(stdout_temp->get_fd());
+    if(!stdout_text_exp){
+        return std::unexpected(stdout_text_exp.error());
+    }
+
+    auto stderr_text_exp = blocking_io::read_all(stderr_temp->get_fd());
+    if(!stderr_text_exp){
+        return std::unexpected(stderr_text_exp.error());
+    }
+
+    run_result result;
+    result.output_lines_ = judge_utility::normalize_output(*stdout_text_exp);
+    result.stderr_text_ = std::move(*stderr_text_exp);
+
     if(WIFEXITED(status)){
-        int exit_code = WEXITSTATUS(status);
-        if(exit_code == 0) return normalize_output(*output_result);
-        return std::unexpected(error_code::create(runtime_error));
+        result.exit_code_ = WEXITSTATUS(status);
+        return result;
     }
     
     if(WIFSIGNALED(status)){
-        return std::unexpected(error_code::create(runtime_error));
+        int signal_number = WTERMSIG(status);
+        result.exit_code_ = 128 + signal_number;
+        return result;
     }
 
-    return std::unexpected(error_code::create(waitpid_failed));
+    return std::unexpected(error_code::create(syscall_error::waitpid_failed));
 }
