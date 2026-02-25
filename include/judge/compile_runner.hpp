@@ -12,6 +12,6 @@ namespace compile_runner{
     };
 
     std::expected <compile_result, error_code> compile_cpp(
-        path source_path, path output_path, path compiler_path
+        const path& source_path, const path& output_path, const path& compiler_path
     );
 };

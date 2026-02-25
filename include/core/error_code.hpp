@@ -60,11 +60,16 @@ enum class signal_error{
     unknown_signal
 };
 
+enum class limit_error{
+    invalid_time_limit,
+    invalid_memory_limit
+};
+
 enum class error_type{
     syscall_type,
-    judge_type,
     errno_type,
-    signal_type
+    signal_type,
+    limit_type
 };
 
 struct error_code{
@@ -74,6 +79,7 @@ struct error_code{
     static error_code create(syscall_error code);
     static error_code create(errno_error code);
     static error_code create(signal_error code);
+    static error_code create(limit_error code);
 
     static errno_error map_errno(int code);
     static signal_error map_signal(int signal_number);

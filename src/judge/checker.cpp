@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-std::expected <judge_result, error_code> checker::check(std::vector <std::string> output, path answer_path){
+std::expected <judge_result, error_code> checker::check(std::vector <std::string> output, const path& answer_path){
     unique_fd answer_fd = unique_fd(open(answer_path.c_str(), O_RDONLY));
     if(!answer_fd){
         return std::unexpected(error_code::create(error_code::map_errno(errno)));

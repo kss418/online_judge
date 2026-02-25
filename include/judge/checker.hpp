@@ -8,5 +8,5 @@
 
 namespace checker{
     using path = std::filesystem::path;
-    std::expected <judge_result, error_code> check(std::vector <std::string> output, path answer_path);
+    std::expected <judge_result, error_code> check(std::vector <std::string> output, const path& answer_path);
 }

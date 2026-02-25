@@ -35,3 +35,10 @@ std::expected<std::string, error_code> blocking_io::read_all(int fd){
 
     return output;
 }
+
+std::expected<std::string, error_code> blocking_io::read_all_from_start(int fd){
+    if(::lseek(fd, 0, SEEK_SET) < 0){
+        return std::unexpected(error_code::create(error_code::map_errno(errno)));
+    }
+    return blocking_io::read_all(fd);
+}

@@ -7,7 +7,7 @@
 #include <sys/wait.h>
 
 std::expected <compile_runner::compile_result, error_code> compile_runner::compile_cpp(
-    path source_path, path output_path, path compiler_path
+    const path& source_path, const path& output_path, const path& compiler_path
 ){
     int stderr_pipe[2];
     if(pipe(stderr_pipe) < 0){
