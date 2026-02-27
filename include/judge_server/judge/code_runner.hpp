@@ -1,5 +1,5 @@
 #pragma once
-#include "core/error_code.hpp"
+#include "judge_server/core/error_code.hpp"
 
 #include <vector>
 #include <string>

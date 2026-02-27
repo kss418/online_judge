@@ -1,6 +1,6 @@
 #pragma once
-#include "judge/judge_utility.hpp"
-#include "core/error_code.hpp"
+#include "judge_server/judge/judge_utility.hpp"
+#include "judge_server/core/error_code.hpp"
 
 #include <filesystem>
 #include <cstddef>

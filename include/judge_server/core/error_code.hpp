@@ -1,4 +1,6 @@
 #pragma once
+#include <boost/system/error_code.hpp>
+
 #include <expected>
 #include <string>
 
@@ -65,11 +67,28 @@ enum class limit_error{
     invalid_memory_limit
 };
 
+enum class boost_error{
+    operation_aborted,
+    timed_out,
+    would_block,
+    try_again,
+    bad_descriptor,
+    already_open,
+    not_connected,
+    connection_refused,
+    connection_reset,
+    connection_aborted,
+    eof,
+    end_of_stream,
+    unknown_boost_error
+};
+
 enum class error_type{
     syscall_type,
     errno_type,
     signal_type,
-    limit_type
+    limit_type,
+    boost_type
 };
 
 struct error_code{
@@ -80,9 +99,13 @@ struct error_code{
     static error_code create(errno_error code);
     static error_code create(signal_error code);
     static error_code create(limit_error code);
+    static error_code create(boost_error code);
 
     static errno_error map_errno(int code);
+    static boost_error map_boost_error(const boost::system::error_code& ec);
+    static error_code map_boost_error_code(const boost::system::error_code& ec);
     static signal_error map_signal(int signal_number);
 };
 
 std::string to_string(error_code ec);
+std::string to_string(boost_error ec);

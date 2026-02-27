@@ -1,5 +1,5 @@
-#include "judge/compile_runner.hpp"
-#include "core/unique_fd.hpp"
+#include "judge_server/judge/compile_runner.hpp"
+#include "judge_server/core/unique_fd.hpp"
 
 #include <cerrno>
 #include <unistd.h>
@@ -47,7 +47,7 @@ std::expected <compile_runner::compile_result, error_code> compile_runner::compi
     std::string stderr_text;
     char buf[4096];
 
-    while (true) {
+    while (true){
         ssize_t n = read(read_fd.get(), buf, sizeof(buf));
         if(n > 0){
             stderr_text.append(buf, static_cast<size_t>(n));

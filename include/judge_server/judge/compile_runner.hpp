@@ -1,5 +1,5 @@
 #pragma once
-#include "core/error_code.hpp"
+#include "judge_server/core/error_code.hpp"
 
 #include <filesystem>
 
@@ -8,7 +8,7 @@ namespace compile_runner{
     struct compile_result{
         int exit_code_;
         std::string stderr_text_;
-        bool is_success() const { return exit_code_ == 0; }
+        bool is_success() const{ return exit_code_ == 0; }
     };
 
     std::expected <compile_result, error_code> compile_cpp(

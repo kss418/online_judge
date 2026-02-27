@@ -1,7 +1,7 @@
-#include "judge/code_runner.hpp"
-#include "core/temp_file.hpp"
-#include "net/blocking_io.hpp"
-#include "judge/judge_utility.hpp"
+#include "judge_server/judge/code_runner.hpp"
+#include "judge_server/core/temp_file.hpp"
+#include "judge_server/net/blocking_io.hpp"
+#include "judge_server/judge/judge_utility.hpp"
 
 #include <algorithm>
 #include <cerrno>

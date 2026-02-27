@@ -1,5 +1,5 @@
 #pragma once
-#include "core/error_code.hpp"
+#include "judge_server/core/error_code.hpp"
 
 namespace blocking_io{
     std::expected <size_t, error_code> write_all(int fd, const std::string& text);

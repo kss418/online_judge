@@ -1,4 +1,7 @@
-#include "core/error_code.hpp"
+#include "judge_server/core/error_code.hpp"
+
+#include <boost/asio/error.hpp>
+#include <boost/beast/http/error.hpp>
 
 #include <cerrno>
 #include <csignal>
@@ -129,11 +132,44 @@ std::string to_string(limit_error ec){
     return "unknown limit error";
 }
 
+std::string to_string(boost_error ec){
+    switch(ec){
+        case boost_error::operation_aborted:
+            return "boost operation aborted";
+        case boost_error::timed_out:
+            return "boost timed out";
+        case boost_error::would_block:
+            return "boost operation would block";
+        case boost_error::try_again:
+            return "boost try again";
+        case boost_error::bad_descriptor:
+            return "boost bad descriptor";
+        case boost_error::already_open:
+            return "boost already open";
+        case boost_error::not_connected:
+            return "boost not connected";
+        case boost_error::connection_refused:
+            return "boost connection refused";
+        case boost_error::connection_reset:
+            return "boost connection reset";
+        case boost_error::connection_aborted:
+            return "boost connection aborted";
+        case boost_error::eof:
+            return "boost eof";
+        case boost_error::end_of_stream:
+            return "boost end of stream";
+        case boost_error::unknown_boost_error:
+            return "unknown boost error";
+    }
+    return "unknown boost error";
+}
+
 std::string to_string(error_code ec){
     if(ec.type_ == error_type::syscall_type) return to_string(static_cast<syscall_error>(ec.code_));
     else if(ec.type_ == error_type::errno_type) return to_string(static_cast<errno_error>(ec.code_));
     else if(ec.type_ == error_type::signal_type) return to_string(static_cast<signal_error>(ec.code_));
     else if(ec.type_ == error_type::limit_type) return to_string(static_cast<limit_error>(ec.code_));
+    else if(ec.type_ == error_type::boost_type) return to_string(static_cast<boost_error>(ec.code_));
     return "unknown error code";
 }
 
@@ -151,6 +187,10 @@ error_code error_code::create(signal_error code){
 
 error_code error_code::create(limit_error code){
     return error_code{error_type::limit_type, static_cast<int>(code)};
+}
+
+error_code error_code::create(boost_error code){
+    return error_code{error_type::boost_type, static_cast<int>(code)};
 }
 
 errno_error error_code::map_errno(int code){
@@ -235,6 +275,50 @@ errno_error error_code::map_errno(int code){
 #endif
     }
     return errno_error::unknown_error;
+}
+
+boost_error error_code::map_boost_error(const boost::system::error_code& ec){
+    if(ec == boost::asio::error::operation_aborted){
+        return boost_error::operation_aborted;
+    }
+    if(ec == boost::asio::error::timed_out){
+        return boost_error::timed_out;
+    }
+    if(ec == boost::asio::error::would_block){
+        return boost_error::would_block;
+    }
+    if(ec == boost::asio::error::try_again){
+        return boost_error::try_again;
+    }
+    if(ec == boost::asio::error::bad_descriptor){
+        return boost_error::bad_descriptor;
+    }
+    if(ec == boost::asio::error::already_open){
+        return boost_error::already_open;
+    }
+    if(ec == boost::asio::error::not_connected){
+        return boost_error::not_connected;
+    }
+    if(ec == boost::asio::error::connection_refused){
+        return boost_error::connection_refused;
+    }
+    if(ec == boost::asio::error::connection_reset){
+        return boost_error::connection_reset;
+    }
+    if(ec == boost::asio::error::connection_aborted){
+        return boost_error::connection_aborted;
+    }
+    if(ec == boost::asio::error::eof){
+        return boost_error::eof;
+    }
+    if(ec == boost::beast::http::error::end_of_stream){
+        return boost_error::end_of_stream;
+    }
+    return boost_error::unknown_boost_error;
+}
+
+error_code error_code::map_boost_error_code(const boost::system::error_code& ec){
+    return error_code::create(error_code::map_boost_error(ec));
 }
 
 signal_error error_code::map_signal(int signal_number){
