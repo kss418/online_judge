@@ -34,11 +34,11 @@ target_link_libraries(lib
         Boost::beast
 )
 
-add_executable(runner_main
-    src/main/runner_main.cpp
+add_executable(http_server
+    main/http_server.cpp
 )
 
-target_link_libraries(runner_main
+target_link_libraries(http_server
     PRIVATE
         lib
 )
