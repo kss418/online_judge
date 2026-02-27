@@ -1,4 +1,4 @@
-#include "judge_server/core/temp_file.hpp"
+#include "common/temp_file.hpp"
 
 #include <cstdlib>
 #include <utility>

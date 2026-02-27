@@ -1,5 +1,5 @@
-#include "http_server/net/acceptor.hpp"
-#include "http_server/net/http_session.hpp"
+#include "http_server/acceptor.hpp"
+#include "http_server/http_session.hpp"
 
 #include <boost/asio/strand.hpp>
 #include <iostream>

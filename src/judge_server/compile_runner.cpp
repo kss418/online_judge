@@ -1,5 +1,5 @@
-#include "judge_server/judge/compile_runner.hpp"
-#include "judge_server/core/unique_fd.hpp"
+#include "judge_server/compile_runner.hpp"
+#include "common/unique_fd.hpp"
 
 #include <cerrno>
 #include <unistd.h>

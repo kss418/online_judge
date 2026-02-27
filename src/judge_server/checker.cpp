@@ -1,7 +1,7 @@
-#include "judge_server/judge/checker.hpp"
-#include "judge_server/core/unique_fd.hpp"
-#include "judge_server/net/blocking_io.hpp"
-#include "judge_server/judge/judge_utility.hpp"
+#include "judge_server/checker.hpp"
+#include "common/unique_fd.hpp"
+#include "common/blocking_io.hpp"
+#include "judge_server/judge_utility.hpp"
 
 #include <cerrno>
 #include <unistd.h>

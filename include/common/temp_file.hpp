@@ -1,7 +1,7 @@
 #pragma once
 
-#include "judge_server/core/error_code.hpp"
-#include "judge_server/core/unique_fd.hpp"
+#include "common/error_code.hpp"
+#include "common/unique_fd.hpp"
 
 #include <expected>
 #include <filesystem>

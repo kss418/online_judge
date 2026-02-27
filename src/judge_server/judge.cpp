@@ -1,8 +1,8 @@
-#include "judge_server/judge/judge.hpp"
-#include "judge_server/judge/checker.hpp"
-#include "judge_server/judge/code_runner.hpp"
-#include "judge_server/judge/compile_runner.hpp"
-#include "judge_server/core/temp_file.hpp"
+#include "judge_server/judge.hpp"
+#include "judge_server/checker.hpp"
+#include "judge_server/code_runner.hpp"
+#include "judge_server/compile_runner.hpp"
+#include "common/temp_file.hpp"
 
 #include <string>
 

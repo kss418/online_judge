@@ -1,16 +1,12 @@
-#include "http_server/net/http_session.hpp"
+#include "http_server/http_session.hpp"
+#include "http_server/http_handler.hpp"
 
 #include <boost/asio/error.hpp>
-#include <boost/beast/http/field.hpp>
 #include <boost/beast/http/read.hpp>
-#include <boost/beast/http/status.hpp>
-#include <boost/beast/http/verb.hpp>
 #include <boost/beast/http/write.hpp>
-#include <boost/beast/version.hpp>
 
 #include <iostream>
 #include <memory>
-#include <string>
 #include <utility>
 
 std::expected<std::shared_ptr<http_session>, error_code> http_session::create(tcp::socket socket){
@@ -109,7 +105,5 @@ std::expected<void, error_code> http_session::close(){
 }
 
 http_session::response_type http_session::create_response() const{
-    response_type response{boost::beast::http::status::ok, request_.version()};
-
-    return response;
+    return http_handler::handle(request_);
 }
