@@ -1,5 +1,4 @@
 .git
-vcpkg
 vcpkg_installed
 build
 out

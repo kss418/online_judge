@@ -3,6 +3,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <charconv>
+#include <cstdlib>
 #include <cstdint>
 #include <iostream>
 #include <string_view>
@@ -20,19 +21,21 @@ std::expected<std::uint16_t, error_code> parse_port(std::string_view text){
     return port;
 }
 
-int main(int argc, char** argv){
-    std::uint16_t port = 8080;
-    if(argc >= 2){
-        auto port_exp = parse_port(argv[1]);
-        if(!port_exp){
-            std::cerr << "invalid port: " << argv[1] << '\n';
-            return 1;
-        }
-        port = *port_exp;
+int main(){
+    const char* http_port_text = std::getenv("HTTP_PORT");
+    if(http_port_text == nullptr || std::string_view{http_port_text}.empty()){
+        std::cerr << "HTTP_PORT environment variable is missing\n";
+        return 1;
     }
 
-    boost::asio::io_context io_context{1};
+    auto port_exp = parse_port(http_port_text);
+    if(!port_exp){
+        std::cerr << "invalid HTTP_PORT: " << http_port_text << '\n';
+        return 1;
+    }
+    std::uint16_t port = *port_exp;
 
+    boost::asio::io_context io_context{1};
     auto acceptor_exp = acceptor::create(
         io_context,
         acceptor::tcp::endpoint{acceptor::tcp::v4(), port}

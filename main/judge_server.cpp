@@ -4,6 +4,7 @@
 #include <charconv>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <expected>
 #include <filesystem>
 #include <iostream>
@@ -49,35 +50,63 @@ std::string judge_result_to_string(judge_result result){
     return "unknown_result";
 }
 
-int main(int argc, char** argv){
-    if(argc < 4 || argc > 7){
-        std::cerr
-            << "usage: judge_server <source_path> <input_path> <answer_path> "
-            << "[compiler_path] [time_limit_ms] [memory_limit_mb]\n";
+std::expected<std::string, error_code> get_required_env(const char* key){
+    const char* value = std::getenv(key);
+    if(value == nullptr || std::string_view{value}.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return std::string{value};
+}
+
+int main(){
+    auto source_path_text_exp = get_required_env("JUDGE_SOURCE_PATH");
+    if(!source_path_text_exp){
+        std::cerr << "JUDGE_SOURCE_PATH environment variable is missing\n";
         return 1;
     }
 
-    const std::filesystem::path source_path{argv[1]};
-    const std::filesystem::path input_path{argv[2]};
-    const std::filesystem::path answer_path{argv[3]};
-    const std::filesystem::path compiler_path{argc >= 5 ? argv[4] : "/usr/bin/g++"};
+    auto input_path_text_exp = get_required_env("JUDGE_INPUT_PATH");
+    if(!input_path_text_exp){
+        std::cerr << "JUDGE_INPUT_PATH environment variable is missing\n";
+        return 1;
+    }
+
+    auto answer_path_text_exp = get_required_env("JUDGE_ANSWER_PATH");
+    if(!answer_path_text_exp){
+        std::cerr << "JUDGE_ANSWER_PATH environment variable is missing\n";
+        return 1;
+    }
+
+    const std::filesystem::path source_path{*source_path_text_exp};
+    const std::filesystem::path input_path{*input_path_text_exp};
+    const std::filesystem::path answer_path{*answer_path_text_exp};
+
+    const char* compiler_path_text = std::getenv("JUDGE_COMPILER_PATH");
+    const std::filesystem::path compiler_path{
+        compiler_path_text != nullptr && !std::string_view{compiler_path_text}.empty()
+            ? compiler_path_text
+            : "/usr/bin/g++"
+    };
 
     std::chrono::milliseconds time_limit{2000};
     std::int64_t memory_limit_mb = 256;
 
-    if(argc >= 6){
-        auto time_limit_exp = parse_positive_int64(argv[5]);
+    const char* time_limit_text = std::getenv("JUDGE_TIME_LIMIT_MS");
+    if(time_limit_text != nullptr && !std::string_view{time_limit_text}.empty()){
+        auto time_limit_exp = parse_positive_int64(time_limit_text);
         if(!time_limit_exp){
-            std::cerr << "invalid time_limit_ms: " << argv[5] << '\n';
+            std::cerr << "invalid JUDGE_TIME_LIMIT_MS: " << time_limit_text << '\n';
             return 1;
         }
         time_limit = std::chrono::milliseconds{*time_limit_exp};
     }
 
-    if(argc >= 7){
-        auto memory_limit_exp = parse_positive_int64(argv[6]);
+    const char* memory_limit_text = std::getenv("JUDGE_MEMORY_LIMIT_MB");
+    if(memory_limit_text != nullptr && !std::string_view{memory_limit_text}.empty()){
+        auto memory_limit_exp = parse_positive_int64(memory_limit_text);
         if(!memory_limit_exp){
-            std::cerr << "invalid memory_limit_mb: " << argv[6] << '\n';
+            std::cerr << "invalid JUDGE_MEMORY_LIMIT_MB: " << memory_limit_text << '\n';
             return 1;
         }
         memory_limit_mb = *memory_limit_exp;

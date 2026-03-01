@@ -10,6 +10,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 find_package(boost_beast CONFIG REQUIRED)
 find_package(boost_json CONFIG REQUIRED)
+find_package(libpqxx CONFIG REQUIRED)
 
 add_library(lib STATIC
     src/http_server/http_handler.cpp
@@ -53,4 +54,14 @@ add_executable(judge_server
 target_link_libraries(judge_server
     PRIVATE
         lib
+)
+
+add_executable(db_server
+    main/db_server.cpp
+)
+
+target_link_libraries(db_server
+    PRIVATE
+        lib
+        libpqxx::pqxx
 )
