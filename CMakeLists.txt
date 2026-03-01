@@ -9,6 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 find_package(boost_beast CONFIG REQUIRED)
+find_package(boost_json CONFIG REQUIRED)
 
 add_library(lib STATIC
     src/http_server/http_handler.cpp
@@ -33,6 +34,7 @@ target_include_directories(lib
 target_link_libraries(lib
     PUBLIC
         Boost::beast
+        Boost::json
 )
 
 add_executable(http_server

@@ -25,9 +25,11 @@ namespace http_handler{
     );
 
     response_type handle_health_get(const request_type& request);
+    response_type handle_submission(const request_type& request);
 
     inline const std::array routes{
-        route{boost::beast::http::verb::get, "/health", &handle_health_get},
+        route{boost::beast::http::verb::get, "/api/health", &handle_health_get},
+        route{boost::beast::http::verb::post, "/api/submissions", &handle_submission},
     };
 
     response_type handle(const request_type& request);
