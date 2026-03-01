@@ -24,7 +24,7 @@ COPY . .
 RUN cmake -S . -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_TOOLCHAIN_FILE=/workspace/vcpkg/scripts/buildsystems/vcpkg.cmake \
-    && cmake --build build -j --target http_server judge_server db_server
+    && cmake --build build -j --target http_server judge_server
 
 FROM ubuntu:24.04 AS runtime_base
 
@@ -47,7 +47,3 @@ CMD ["./http_server"]
 FROM runtime_base AS judge_runtime
 COPY --from=build /workspace/judge_server /app/judge_server
 CMD ["./judge_server"]
-
-FROM runtime_base AS db_runtime
-COPY --from=build /workspace/db_server /app/db_server
-CMD ["./db_server"]

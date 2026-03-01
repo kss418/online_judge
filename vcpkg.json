@@ -6,7 +6,6 @@
     "boost-core",
     "boost-asio",
     "boost-beast",
-    "boost-json",
-    "libpqxx"
+    "boost-json"
   ]
 }

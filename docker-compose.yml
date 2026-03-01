@@ -9,14 +9,6 @@ services:
       - "${HTTP_PORT:-8080}:${HTTP_PORT:-8080}"
     command: ["./http_server"]
 
-  db_server:
-    build:
-      context: .
-      target: db_runtime
-    env_file:
-      - .env
-    command: ["./db_server"]
-
   judge_server:
     build:
       context: .
