@@ -43,3 +43,12 @@ target_link_libraries(http_server
     PRIVATE
         lib
 )
+
+add_executable(judge_server
+    main/judge_server.cpp
+)
+
+target_link_libraries(judge_server
+    PRIVATE
+        lib
+)
