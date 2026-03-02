@@ -31,6 +31,8 @@ struct submission_create_request{
 class submission_service{
 public:
     static std::expected<submission_service, error_code> create();
+    pqxx::connection& connection();
+    const pqxx::connection& connection() const;
 
     std::expected<std::int64_t, error_code> create_submission(const submission_create_request& request);
     std::expected<void, error_code> update_submission_status(

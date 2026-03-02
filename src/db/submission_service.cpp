@@ -16,13 +16,21 @@ std::expected<submission_service, error_code> submission_service::create(){
 submission_service::submission_service(db_connection connection) :
     db_connection_(std::move(connection)){}
 
+pqxx::connection& submission_service::connection(){
+    return db_connection_.connection();
+}
+
+const pqxx::connection& submission_service::connection() const{
+    return db_connection_.connection();
+}
+
 std::expected<std::int64_t, error_code> submission_service::create_submission(const submission_create_request& request){
     if(!db_connection_.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
 
     try{
-        pqxx::work transaction(db_connection_.connection());
+        pqxx::work transaction(connection());
         const auto result = transaction.exec_params(
             "INSERT INTO submissions(user_id, problem_id, language, source_code) "
             "VALUES($1, $2, $3, $4) "
@@ -62,7 +70,7 @@ std::expected<void, error_code> submission_service::update_submission_status(
     }
 
     try{
-        pqxx::work transaction(db_connection_.connection());
+        pqxx::work transaction(connection());
         const auto current_status_result = transaction.exec_params(
             "SELECT status::text FROM submissions WHERE submission_id = $1 FOR UPDATE",
             submission_id
