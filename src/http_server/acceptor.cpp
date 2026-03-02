@@ -16,15 +16,16 @@ std::expected<std::shared_ptr<acceptor>, error_code> acceptor::create(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    auto created_acceptor = std::shared_ptr<acceptor>(
+    auto acceptor_ptr = std::shared_ptr<acceptor>(
         new acceptor(io_context, std::move(http_server))
     );
-    auto initialize_exp = created_acceptor->initialize(endpoint);
+
+    auto initialize_exp = acceptor_ptr->initialize(endpoint);
     if(!initialize_exp){
         return std::unexpected(initialize_exp.error());
     }
 
-    return created_acceptor;
+    return acceptor_ptr;
 }
 
 acceptor::acceptor(boost::asio::io_context& io_context, std::shared_ptr<http_server> http_server) :
@@ -34,7 +35,6 @@ acceptor::acceptor(boost::asio::io_context& io_context, std::shared_ptr<http_ser
 
 std::expected<void, error_code> acceptor::initialize(const tcp::endpoint& endpoint){
     boost::system::error_code ec;
-
     acceptor_.open(endpoint.protocol(), ec);
     if(ec){
         return std::unexpected(error_code::map_boost_error_code(ec));
@@ -62,6 +62,10 @@ std::expected<void, error_code> acceptor::run(){
     if(!acceptor_.is_open()){
         return std::unexpected(error_code::create(boost_error::bad_descriptor));
     }
+    
+    if(!http_server_){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
 
     accept();
     return {};
@@ -83,15 +87,18 @@ void acceptor::accept(){
 
 void acceptor::on_accept(boost::system::error_code ec, tcp::socket socket){
     if(ec){
+        if(ec == boost::asio::error::operation_aborted){
+            return;
+        }
+
         handle_error(error_code::map_boost_error_code(ec));
     } 
     else{
-        auto http_server = http_server_.lock();
-        if(!http_server){
-            handle_error(error_code::create(errno_error::invalid_file_descriptor));
+        if(!http_server_){
+            handle_error(error_code::create(errno_error::invalid_argument));
         }
         else{
-            auto session_exp = http_session::create(std::move(socket), std::move(http_server));
+            auto session_exp = http_session::create(std::move(socket), http_server_);
             if(!session_exp){
                 handle_error(session_exp.error());
             } 
@@ -102,6 +109,10 @@ void acceptor::on_accept(boost::system::error_code ec, tcp::socket socket){
                 }
             }
         }
+    }
+
+    if(!acceptor_.is_open()){
+        return;
     }
 
     accept();

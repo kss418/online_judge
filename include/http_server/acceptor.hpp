@@ -9,7 +9,7 @@
 
 class http_server;
 
-class acceptor : public std::enable_shared_from_this<acceptor> {
+class acceptor : public std::enable_shared_from_this<acceptor>{
 public:
     using tcp = boost::asio::ip::tcp;
     static std::expected<std::shared_ptr<acceptor>, error_code> create(
@@ -29,5 +29,5 @@ private:
 
     boost::asio::io_context& io_context_;
     tcp::acceptor acceptor_;
-    std::weak_ptr<http_server> http_server_;
+    std::shared_ptr <http_server> http_server_;
 };

@@ -24,7 +24,6 @@ public:
     );
 
     std::expected<void, error_code> run();
-
 private:
     explicit http_session(tcp::socket socket, std::shared_ptr<http_server> http_server);
 
