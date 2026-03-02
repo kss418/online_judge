@@ -14,6 +14,7 @@ find_package(libpqxx CONFIG REQUIRED)
 
 add_library(lib STATIC
     src/db/db_connection.cpp
+    src/db/problem_service.cpp
     src/db/submission_service.cpp
     src/http_server/http_handler.cpp
     src/http_server/http_server.cpp
