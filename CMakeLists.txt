@@ -10,8 +10,18 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 find_package(boost_beast CONFIG REQUIRED)
 find_package(boost_json CONFIG REQUIRED)
+find_package(libpqxx CONFIG REQUIRED)
+
+if(TARGET libpqxx::pqxx)
+    set(LIBPQXX_TARGET libpqxx::pqxx)
+elseif(TARGET pqxx::pqxx)
+    set(LIBPQXX_TARGET pqxx::pqxx)
+else()
+    message(FATAL_ERROR "libpqxx CMake target not found")
+endif()
 
 add_library(lib STATIC
+    src/db/db_connection.cpp
     src/http_server/http_handler.cpp
     src/http_server/acceptor.cpp
     src/http_server/http_session.cpp
@@ -20,6 +30,7 @@ add_library(lib STATIC
     src/judge_server/judge_utility.cpp
     src/judge_server/judge.cpp
     src/judge_server/checker.cpp
+    src/common/env_utility.cpp
     src/common/error_code.cpp
     src/common/unique_fd.cpp
     src/common/temp_file.cpp
@@ -35,6 +46,7 @@ target_link_libraries(lib
     PUBLIC
         Boost::beast
         Boost::json
+        ${LIBPQXX_TARGET}
 )
 
 add_executable(http_server
