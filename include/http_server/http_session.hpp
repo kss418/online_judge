@@ -11,18 +11,22 @@
 #include <expected>
 #include <memory>
 
+class http_server;
+
 class http_session : public std::enable_shared_from_this<http_session> {
 public:
     using tcp = boost::asio::ip::tcp;
     using request_type = boost::beast::http::request<boost::beast::http::string_body>;
     using response_type = boost::beast::http::response<boost::beast::http::string_body>;
 
-    static std::expected<std::shared_ptr<http_session>, error_code> create(tcp::socket socket);
+    static std::expected<std::shared_ptr<http_session>, error_code> create(
+        tcp::socket socket, std::shared_ptr<http_server> http_server
+    );
 
     std::expected<void, error_code> run();
 
 private:
-    explicit http_session(tcp::socket socket);
+    explicit http_session(tcp::socket socket, std::shared_ptr<http_server> http_server);
 
     void handle_error(error_code code) const;
     void read();
@@ -35,4 +39,5 @@ private:
     tcp::socket socket_;
     boost::beast::flat_buffer buffer_;
     request_type request_;
+    std::shared_ptr<http_server> http_server_;
 };

@@ -1,5 +1,5 @@
 #include "http_server/http_session.hpp"
-#include "http_server/http_handler.hpp"
+#include "http_server/http_server.hpp"
 
 #include <boost/asio/error.hpp>
 #include <boost/beast/http/read.hpp>
@@ -9,16 +9,25 @@
 #include <memory>
 #include <utility>
 
-std::expected<std::shared_ptr<http_session>, error_code> http_session::create(tcp::socket socket){
+std::expected<std::shared_ptr<http_session>, error_code> http_session::create(
+    tcp::socket socket, std::shared_ptr<http_server> http_server
+){
     if(!socket.is_open()){
         return std::unexpected(error_code::create(boost_error::bad_descriptor));
     }
+    if(!http_server){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
 
-    auto created_session = std::shared_ptr<http_session>(new http_session(std::move(socket)));
+    auto created_session = std::shared_ptr<http_session>(
+        new http_session(std::move(socket), std::move(http_server))
+    );
     return created_session;
 }
 
-http_session::http_session(tcp::socket socket) : socket_(std::move(socket)){}
+http_session::http_session(tcp::socket socket, std::shared_ptr<http_server> http_server) :
+    socket_(std::move(socket)),
+    http_server_(std::move(http_server)){}
 
 std::expected<void, error_code> http_session::run(){
     if(!socket_.is_open()){
@@ -105,5 +114,5 @@ std::expected<void, error_code> http_session::close(){
 }
 
 http_session::response_type http_session::create_response() const{
-    return http_handler::handle(request_);
+    return http_server_->handle(request_);
 }

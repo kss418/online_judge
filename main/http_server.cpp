@@ -1,4 +1,4 @@
-#include "http_server/acceptor.hpp"
+#include "http_server/http_server.hpp"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -36,19 +36,19 @@ int main(){
     std::uint16_t port = *port_exp;
 
     boost::asio::io_context io_context{1};
-    auto acceptor_exp = acceptor::create(
+    auto http_server_exp = http_server::create(
         io_context,
-        acceptor::tcp::endpoint{acceptor::tcp::v4(), port}
+        http_server::tcp::endpoint{http_server::tcp::v4(), port}
     );
     
-    if(!acceptor_exp){
-        std::cerr << "acceptor create failed: " << to_string(acceptor_exp.error()) << '\n';
+    if(!http_server_exp){
+        std::cerr << "http_server create failed: " << to_string(http_server_exp.error()) << '\n';
         return 1;
     }
 
-    auto run_exp = (*acceptor_exp)->run();
+    auto run_exp = (*http_server_exp)->run();
     if(!run_exp){
-        std::cerr << "acceptor run failed: " << to_string(run_exp.error()) << '\n';
+        std::cerr << "http_server run failed: " << to_string(run_exp.error()) << '\n';
         return 1;
     }
 

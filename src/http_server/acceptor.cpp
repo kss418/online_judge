@@ -1,4 +1,5 @@
 #include "http_server/acceptor.hpp"
+#include "http_server/http_server.hpp"
 #include "http_server/http_session.hpp"
 
 #include <boost/asio/strand.hpp>
@@ -7,9 +8,17 @@
 #include <utility>
 
 std::expected<std::shared_ptr<acceptor>, error_code> acceptor::create(
-    boost::asio::io_context& io_context, const tcp::endpoint& endpoint
+    boost::asio::io_context& io_context,
+    const tcp::endpoint& endpoint,
+    std::shared_ptr<http_server> http_server
 ){
-    auto created_acceptor = std::shared_ptr<acceptor>(new acceptor(io_context));
+    if(!http_server){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    auto created_acceptor = std::shared_ptr<acceptor>(
+        new acceptor(io_context, std::move(http_server))
+    );
     auto initialize_exp = created_acceptor->initialize(endpoint);
     if(!initialize_exp){
         return std::unexpected(initialize_exp.error());
@@ -18,9 +27,10 @@ std::expected<std::shared_ptr<acceptor>, error_code> acceptor::create(
     return created_acceptor;
 }
 
-acceptor::acceptor(boost::asio::io_context& io_context) :
+acceptor::acceptor(boost::asio::io_context& io_context, std::shared_ptr<http_server> http_server) :
     io_context_(io_context),
-    acceptor_(boost::asio::make_strand(io_context_)){}
+    acceptor_(boost::asio::make_strand(io_context_)),
+    http_server_(std::move(http_server)){}
 
 std::expected<void, error_code> acceptor::initialize(const tcp::endpoint& endpoint){
     boost::system::error_code ec;
@@ -76,14 +86,20 @@ void acceptor::on_accept(boost::system::error_code ec, tcp::socket socket){
         handle_error(error_code::map_boost_error_code(ec));
     } 
     else{
-        auto session_exp = http_session::create(std::move(socket));
-        if(!session_exp){
-            handle_error(session_exp.error());
-        } 
+        auto http_server = http_server_.lock();
+        if(!http_server){
+            handle_error(error_code::create(errno_error::invalid_file_descriptor));
+        }
         else{
-            auto run_exp = (*session_exp)->run();
-            if(!run_exp){
-                handle_error(run_exp.error());
+            auto session_exp = http_session::create(std::move(socket), std::move(http_server));
+            if(!session_exp){
+                handle_error(session_exp.error());
+            } 
+            else{
+                auto run_exp = (*session_exp)->run();
+                if(!run_exp){
+                    handle_error(run_exp.error());
+                }
             }
         }
     }

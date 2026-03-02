@@ -4,13 +4,12 @@
 
 #include <utility>
 
-std::expected<submission_service, error_code> submission_service::create(){
-    auto connection_exp = db_connection::create();
-    if(!connection_exp){
-        return std::unexpected(connection_exp.error());
+std::expected<submission_service, error_code> submission_service::create(db_connection db_connection){
+    if(!db_connection.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
 
-    return submission_service(std::move(*connection_exp));
+    return submission_service(std::move(db_connection));
 }
 
 submission_service::submission_service(db_connection connection) :

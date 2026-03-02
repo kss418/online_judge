@@ -30,7 +30,7 @@ struct submission_create_request{
 
 class submission_service{
 public:
-    static std::expected<submission_service, error_code> create();
+    static std::expected<submission_service, error_code> create(db_connection db_connection);
     pqxx::connection& connection();
     const pqxx::connection& connection() const;
 

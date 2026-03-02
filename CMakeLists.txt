@@ -24,6 +24,7 @@ add_library(lib STATIC
     src/db/db_connection.cpp
     src/db/submission_service.cpp
     src/http_server/http_handler.cpp
+    src/http_server/http_server.cpp
     src/http_server/acceptor.cpp
     src/http_server/http_session.cpp
     src/judge_server/code_runner.cpp
