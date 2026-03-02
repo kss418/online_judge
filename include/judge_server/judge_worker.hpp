@@ -10,6 +10,7 @@ class judge_worker{
 public:
     static std::expected<judge_worker, error_code> create(submission_service submission_service);
 
+    std::expected<void, error_code> run();
     std::expected<bool, error_code> save_source_code();
 
 private:

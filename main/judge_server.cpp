@@ -35,18 +35,11 @@ int main(){
         return 1;
     }
 
-    auto save_source_code_exp = judge_worker_exp->save_source_code();
-    if(!save_source_code_exp){
-        std::cerr << "failed to save submission source code: "
-                  << to_string(save_source_code_exp.error()) << '\n';
+    auto run_exp = judge_worker_exp->run();
+    if(!run_exp){
+        std::cerr << "judge_worker run failed: " << to_string(run_exp.error()) << '\n';
         return 1;
     }
 
-    if(!*save_source_code_exp){
-        std::cout << "no queued submission\n";
-        return 0;
-    }
-
-    std::cout << "saved one submission source code\n";
     return 0;
 }

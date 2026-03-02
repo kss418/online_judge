@@ -2,8 +2,13 @@
 #include "common/file_utility.hpp"
 #include "common/env_utility.hpp"
 
+#include <chrono>
 #include <system_error>
 #include <utility>
+
+namespace{
+constexpr std::chrono::milliseconds notification_wait_timeout{30000};
+}
 
 std::expected<judge_worker, error_code> judge_worker::create(submission_service submission_service){
     auto source_root_exp = env_utility::require_env("JUDGE_SOURCE_ROOT");
@@ -22,6 +27,11 @@ std::expected<judge_worker, error_code> judge_worker::create(submission_service 
         return std::unexpected(error_code::create(error_code::map_errno(create_directory_ec.value())));
     }
 
+    auto listen_submission_queue_exp = submission_service.listen_submission_queue();
+    if(!listen_submission_queue_exp){
+        return std::unexpected(listen_submission_queue_exp.error());
+    }
+
     return judge_worker(std::move(submission_service), std::move(source_root_path));
 }
 
@@ -36,7 +46,27 @@ bool judge_worker::is_queue_empty_error(const error_code& code){
         code.code_ == static_cast<int>(errno_error::resource_temporarily_unavailable);
 }
 
-std::expected <bool, error_code> judge_worker::save_source_code(){
+std::expected<void, error_code> judge_worker::run(){
+    while(true){
+        auto save_source_code_exp = save_source_code();
+        if(!save_source_code_exp){
+            return std::unexpected(save_source_code_exp.error());
+        }
+
+        if(*save_source_code_exp){
+            continue;
+        }
+
+        auto wait_submission_notification_exp = submission_service_.wait_submission_notification(
+            notification_wait_timeout
+        );
+        if(!wait_submission_notification_exp){
+            return std::unexpected(wait_submission_notification_exp.error());
+        }
+    }
+}
+
+std::expected<bool, error_code> judge_worker::save_source_code(){
     auto pop_submission_exp = submission_service_.pop_submission();
     if(!pop_submission_exp){
         if(is_queue_empty_error(pop_submission_exp.error())){

@@ -1,8 +1,14 @@
 #include "db/submission_service.hpp"
 
 #include <pqxx/pqxx>
+
 #include <chrono>
+#include <string_view>
 #include <utility>
+
+namespace{
+constexpr std::string_view submission_queue_channel = "submission_queue";
+}
 
 std::expected<submission_service, error_code> submission_service::create(db_connection db_connection){
     if(!db_connection.is_connected()){
@@ -56,6 +62,11 @@ std::expected<std::int64_t, error_code> submission_service::create_submission(co
             "INSERT INTO submission_queue(submission_id) VALUES($1)",
             submission_id
         );
+        transaction.exec_params(
+            "SELECT pg_notify($1, $2)",
+            submission_queue_channel,
+            std::to_string(submission_id)
+        );
 
         transaction.commit();
         return submission_id;
@@ -105,6 +116,50 @@ std::expected<void, error_code> submission_service::update_submission_status(
 
         transaction.commit();
         return {};
+    }
+    catch(const std::exception& exception){
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
+}
+
+std::expected<void, error_code> submission_service::listen_submission_queue(){
+    if(!db_connection_.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+
+    try{
+        connection().listen(
+            submission_queue_channel,
+            [](const pqxx::notification&){/* no-op callback */}
+        );
+        return {};
+    }
+    catch(const std::exception& exception){
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
+}
+
+std::expected<bool, error_code> submission_service::wait_submission_notification(
+    std::chrono::milliseconds timeout
+){
+    if(!db_connection_.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+    if(timeout < std::chrono::milliseconds::zero()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    try{
+        const auto timeout_seconds = std::chrono::duration_cast<std::chrono::seconds>(timeout);
+        const auto remain = timeout - timeout_seconds;
+        const auto timeout_microseconds =
+            std::chrono::duration_cast<std::chrono::microseconds>(remain).count();
+
+        const int notification_count = connection().await_notification(
+            timeout_seconds.count(),
+            static_cast<long>(timeout_microseconds)
+        );
+        return notification_count > 0;
     }
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
