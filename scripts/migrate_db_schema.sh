@@ -113,6 +113,17 @@ CREATE TABLE IF NOT EXISTS submission_status_history(
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS submission_queue(
+    queue_id BIGSERIAL PRIMARY KEY,
+    submission_id BIGINT NOT NULL UNIQUE REFERENCES submissions(submission_id) ON DELETE CASCADE,
+    priority SMALLINT NOT NULL DEFAULT 0,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    available_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    leased_until TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT submission_queue_attempt_count_check CHECK(attempt_count >= 0)
+);
+
 CREATE INDEX IF NOT EXISTS submissions_user_created_idx
     ON submissions(user_id, created_at DESC);
 
@@ -121,6 +132,12 @@ CREATE INDEX IF NOT EXISTS submissions_problem_created_idx
 
 CREATE INDEX IF NOT EXISTS submission_status_history_submission_created_idx
     ON submission_status_history(submission_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS submission_queue_available_priority_created_idx
+    ON submission_queue(available_at, priority DESC, created_at ASC);
+
+CREATE INDEX IF NOT EXISTS submission_queue_leased_until_idx
+    ON submission_queue(leased_until);
 
 COMMIT;
 SQL

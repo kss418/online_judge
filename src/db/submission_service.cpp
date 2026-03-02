@@ -52,6 +52,12 @@ std::expected<std::int64_t, error_code> submission_service::create_submission(co
             submission_id,
             to_string(submission_status::queued)
         );
+
+        transaction.exec_params(
+            "INSERT INTO submission_queue(submission_id) VALUES($1)",
+            submission_id
+        );
+
         transaction.commit();
         return submission_id;
     }
