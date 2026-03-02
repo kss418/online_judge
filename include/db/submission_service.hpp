@@ -2,6 +2,7 @@
 #include "common/error_code.hpp"
 #include "db/db_connection.hpp"
 
+#include <chrono>
 #include <cstdint>
 #include <expected>
 #include <optional>
@@ -28,6 +29,22 @@ struct submission_create_request{
     std::string source_code;
 };
 
+struct queued_submission{
+    std::int64_t submission_id = 0;
+    std::int64_t problem_id = 0;
+    std::string language;
+    std::string source_code;
+};
+
+struct submission_finalize_request{
+    std::int64_t submission_id = 0;
+    submission_status to_status = submission_status::runtime_error;
+    std::optional<std::int16_t> score = std::nullopt;
+    std::optional<std::string> compile_output = std::nullopt;
+    std::optional<std::string> judge_output = std::nullopt;
+    std::optional<std::string> reason = std::nullopt;
+};
+
 class submission_service{
 public:
     static std::expected<submission_service, error_code> create(db_connection db_connection);
@@ -40,6 +57,9 @@ public:
         submission_status to_status,
         const std::optional<std::string>& reason = std::nullopt
     );
+    std::expected<queued_submission, error_code> pop_submission();
+    std::expected<queued_submission, error_code> lease_submission(std::chrono::seconds lease_duration);
+    std::expected<void, error_code> finalize_submission(const submission_finalize_request& request);
 
 private:
     explicit submission_service(db_connection connection);

@@ -1,7 +1,7 @@
 #include "db/submission_service.hpp"
 
 #include <pqxx/pqxx>
-
+#include <chrono>
 #include <utility>
 
 std::expected<submission_service, error_code> submission_service::create(db_connection db_connection){
@@ -101,6 +101,172 @@ std::expected<void, error_code> submission_service::update_submission_status(
             from_status,
             to_string(to_status),
             reason
+        );
+
+        transaction.commit();
+        return {};
+    }
+    catch(const std::exception& exception){
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
+}
+
+std::expected<queued_submission, error_code> submission_service::pop_submission(){
+    if(!db_connection_.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+
+    try{
+        pqxx::work transaction(connection());
+        const auto pop_candidate_result = transaction.exec(
+            "SELECT "
+            "queue_table.submission_id, "
+            "submission_table.problem_id, "
+            "submission_table.language, "
+            "submission_table.source_code "
+            "FROM submission_queue queue_table "
+            "JOIN submissions submission_table "
+            "ON submission_table.submission_id = queue_table.submission_id "
+            "WHERE "
+            "queue_table.available_at <= NOW() AND "
+            "(queue_table.leased_until IS NULL OR queue_table.leased_until <= NOW()) "
+            "ORDER BY queue_table.priority DESC, queue_table.created_at ASC "
+            "FOR UPDATE SKIP LOCKED "
+            "LIMIT 1"
+        );
+
+        if(pop_candidate_result.empty()){
+            return std::unexpected(error_code::create(errno_error::resource_temporarily_unavailable));
+        }
+
+        queued_submission queued_submission_value;
+        queued_submission_value.submission_id = pop_candidate_result[0][0].as<std::int64_t>();
+        queued_submission_value.problem_id = pop_candidate_result[0][1].as<std::int64_t>();
+        queued_submission_value.language = pop_candidate_result[0][2].as<std::string>();
+        queued_submission_value.source_code = pop_candidate_result[0][3].as<std::string>();
+
+        transaction.exec_params(
+            "DELETE FROM submission_queue WHERE submission_id = $1",
+            queued_submission_value.submission_id
+        );
+
+        transaction.commit();
+        return queued_submission_value;
+    }
+    catch(const std::exception& exception){
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
+}
+
+std::expected<queued_submission, error_code> submission_service::lease_submission(
+    std::chrono::seconds lease_duration
+){
+    if(!db_connection_.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+    
+    if(lease_duration <= std::chrono::seconds::zero()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    try{
+        pqxx::work transaction(connection());
+        const auto lease_candidate_result = transaction.exec(
+            "SELECT "
+            "queue_table.submission_id, "
+            "submission_table.problem_id, "
+            "submission_table.language, "
+            "submission_table.source_code "
+            "FROM submission_queue queue_table "
+            "JOIN submissions submission_table "
+            "ON submission_table.submission_id = queue_table.submission_id "
+            "WHERE "
+            "queue_table.available_at <= NOW() AND "
+            "(queue_table.leased_until IS NULL OR queue_table.leased_until <= NOW()) "
+            "ORDER BY queue_table.priority DESC, queue_table.created_at ASC "
+            "FOR UPDATE SKIP LOCKED "
+            "LIMIT 1"
+        );
+
+        if(lease_candidate_result.empty()){
+            return std::unexpected(error_code::create(errno_error::resource_temporarily_unavailable));
+        }
+
+        queued_submission queued_submission_value;
+        queued_submission_value.submission_id = lease_candidate_result[0][0].as<std::int64_t>();
+        queued_submission_value.problem_id = lease_candidate_result[0][1].as<std::int64_t>();
+        queued_submission_value.language = lease_candidate_result[0][2].as<std::string>();
+        queued_submission_value.source_code = lease_candidate_result[0][3].as<std::string>();
+
+        const std::int64_t lease_seconds = lease_duration.count();
+        transaction.exec_params(
+            "UPDATE submission_queue "
+            "SET "
+            "leased_until = NOW() + ($2 * INTERVAL '1 second'), "
+            "attempt_count = attempt_count + 1 "
+            "WHERE submission_id = $1",
+            queued_submission_value.submission_id,
+            lease_seconds
+        );
+
+        transaction.commit();
+        return queued_submission_value;
+    }
+    catch(const std::exception& exception){
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
+}
+
+std::expected<void, error_code> submission_service::finalize_submission(
+    const submission_finalize_request& request
+){
+    if(!db_connection_.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+    if(request.submission_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    try{
+        pqxx::work transaction(connection());
+        const auto current_status_result = transaction.exec_params(
+            "SELECT status::text FROM submissions WHERE submission_id = $1 FOR UPDATE",
+            request.submission_id
+        );
+
+        if(current_status_result.empty()){
+            return std::unexpected(error_code::create(errno_error::invalid_argument));
+        }
+
+        const std::string from_status = current_status_result[0][0].as<std::string>();
+        transaction.exec_params(
+            "UPDATE submissions "
+            "SET "
+            "status = $2::submission_status, "
+            "score = $3, "
+            "compile_output = $4, "
+            "judge_output = $5, "
+            "updated_at = NOW() "
+            "WHERE submission_id = $1",
+            request.submission_id,
+            to_string(request.to_status),
+            request.score,
+            request.compile_output,
+            request.judge_output
+        );
+
+        transaction.exec_params(
+            "INSERT INTO submission_status_history(submission_id, from_status, to_status, reason) "
+            "VALUES($1, $2::submission_status, $3::submission_status, $4)",
+            request.submission_id,
+            from_status,
+            to_string(request.to_status),
+            request.reason
+        );
+
+        transaction.exec_params(
+            "DELETE FROM submission_queue WHERE submission_id = $1",
+            request.submission_id
         );
 
         transaction.commit();
