@@ -12,14 +12,6 @@ find_package(boost_beast CONFIG REQUIRED)
 find_package(boost_json CONFIG REQUIRED)
 find_package(libpqxx CONFIG REQUIRED)
 
-if(TARGET libpqxx::pqxx)
-    set(LIBPQXX_TARGET libpqxx::pqxx)
-elseif(TARGET pqxx::pqxx)
-    set(LIBPQXX_TARGET pqxx::pqxx)
-else()
-    message(FATAL_ERROR "libpqxx CMake target not found")
-endif()
-
 add_library(lib STATIC
     src/db/db_connection.cpp
     src/db/submission_service.cpp
@@ -48,7 +40,7 @@ target_link_libraries(lib
     PUBLIC
         Boost::beast
         Boost::json
-        ${LIBPQXX_TARGET}
+        libpqxx::pqxx
 )
 
 add_executable(http_server
