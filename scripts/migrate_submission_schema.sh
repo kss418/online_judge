@@ -35,10 +35,15 @@ if [[ -z "${database_url}" ]]; then
     database_url="postgresql://${db_user}:${db_password}@${db_host}:${db_port}/${db_name}"
 fi
 
-echo "apply submission_history"
+echo "apply submission_schema"
 psql "${database_url}" \
     -v ON_ERROR_STOP=1 <<'SQL'
 BEGIN;
+
+CREATE TABLE IF NOT EXISTS schema_migrations(
+    version TEXT PRIMARY KEY,
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 DO $do$
 BEGIN
