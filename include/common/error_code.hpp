@@ -1,6 +1,7 @@
 #pragma once
 #include <boost/system/error_code.hpp>
 
+#include <exception>
 #include <expected>
 #include <string>
 
@@ -83,12 +84,30 @@ enum class boost_error{
     unknown_boost_error
 };
 
+enum class psql_error{
+    protocol_violation,
+    in_doubt_error,
+    serialization_failure,
+    deadlock_detected,
+    statement_completion_unknown,
+    unique_violation,
+    foreign_key_violation,
+    not_null_violation,
+    check_violation,
+    feature_not_supported,
+    data_exception,
+    sql_error,
+    broken_connection,
+    unknown_psql_error
+};
+
 enum class error_type{
     syscall_type,
     errno_type,
     signal_type,
     limit_type,
-    boost_type
+    boost_type,
+    psql_type
 };
 
 struct error_code{
@@ -100,12 +119,16 @@ struct error_code{
     static error_code create(signal_error code);
     static error_code create(limit_error code);
     static error_code create(boost_error code);
+    static error_code create(psql_error code);
 
     static errno_error map_errno(int code);
     static boost_error map_boost_error(const boost::system::error_code& ec);
     static error_code map_boost_error_code(const boost::system::error_code& ec);
+    static psql_error map_psql_error(const std::exception& exception);
+    static error_code map_psql_error_code(const std::exception& exception);
     static signal_error map_signal(int signal_number);
 };
 
 std::string to_string(error_code ec);
 std::string to_string(boost_error ec);
+std::string to_string(psql_error ec);

@@ -22,6 +22,7 @@ endif()
 
 add_library(lib STATIC
     src/db/db_connection.cpp
+    src/db/submission_service.cpp
     src/http_server/http_handler.cpp
     src/http_server/acceptor.cpp
     src/http_server/http_session.cpp

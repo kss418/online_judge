@@ -15,4 +15,6 @@ public:
     void disconnect();
     bool is_connected() const;
     const std::string& connection_string() const;
+    pqxx::connection& connection();
+    const pqxx::connection& connection() const;
 };

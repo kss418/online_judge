@@ -2,6 +2,7 @@
 
 #include <boost/asio/error.hpp>
 #include <boost/beast/http/error.hpp>
+#include <pqxx/pqxx>
 
 #include <cerrno>
 #include <csignal>
@@ -164,12 +165,47 @@ std::string to_string(boost_error ec){
     return "unknown boost error";
 }
 
+std::string to_string(psql_error ec){
+    switch(ec){
+        case psql_error::protocol_violation:
+            return "psql protocol violation";
+        case psql_error::in_doubt_error:
+            return "psql in doubt error";
+        case psql_error::serialization_failure:
+            return "psql serialization failure";
+        case psql_error::deadlock_detected:
+            return "psql deadlock detected";
+        case psql_error::statement_completion_unknown:
+            return "psql statement completion unknown";
+        case psql_error::unique_violation:
+            return "psql unique violation";
+        case psql_error::foreign_key_violation:
+            return "psql foreign key violation";
+        case psql_error::not_null_violation:
+            return "psql not null violation";
+        case psql_error::check_violation:
+            return "psql check violation";
+        case psql_error::feature_not_supported:
+            return "psql feature not supported";
+        case psql_error::data_exception:
+            return "psql data exception";
+        case psql_error::sql_error:
+            return "psql sql error";
+        case psql_error::broken_connection:
+            return "psql broken connection";
+        case psql_error::unknown_psql_error:
+            return "unknown psql error";
+    }
+    return "unknown psql error";
+}
+
 std::string to_string(error_code ec){
     if(ec.type_ == error_type::syscall_type) return to_string(static_cast<syscall_error>(ec.code_));
     else if(ec.type_ == error_type::errno_type) return to_string(static_cast<errno_error>(ec.code_));
     else if(ec.type_ == error_type::signal_type) return to_string(static_cast<signal_error>(ec.code_));
     else if(ec.type_ == error_type::limit_type) return to_string(static_cast<limit_error>(ec.code_));
     else if(ec.type_ == error_type::boost_type) return to_string(static_cast<boost_error>(ec.code_));
+    else if(ec.type_ == error_type::psql_type) return to_string(static_cast<psql_error>(ec.code_));
     return "unknown error code";
 }
 
@@ -191,6 +227,10 @@ error_code error_code::create(limit_error code){
 
 error_code error_code::create(boost_error code){
     return error_code{error_type::boost_type, static_cast<int>(code)};
+}
+
+error_code error_code::create(psql_error code){
+    return error_code{error_type::psql_type, static_cast<int>(code)};
 }
 
 errno_error error_code::map_errno(int code){
@@ -319,6 +359,53 @@ boost_error error_code::map_boost_error(const boost::system::error_code& ec){
 
 error_code error_code::map_boost_error_code(const boost::system::error_code& ec){
     return error_code::create(error_code::map_boost_error(ec));
+}
+
+psql_error error_code::map_psql_error(const std::exception& exception){
+    if(dynamic_cast<const pqxx::protocol_violation*>(&exception) != nullptr){
+        return psql_error::protocol_violation;
+    }
+    if(dynamic_cast<const pqxx::in_doubt_error*>(&exception) != nullptr){
+        return psql_error::in_doubt_error;
+    }
+    if(dynamic_cast<const pqxx::serialization_failure*>(&exception) != nullptr){
+        return psql_error::serialization_failure;
+    }
+    if(dynamic_cast<const pqxx::deadlock_detected*>(&exception) != nullptr){
+        return psql_error::deadlock_detected;
+    }
+    if(dynamic_cast<const pqxx::statement_completion_unknown*>(&exception) != nullptr){
+        return psql_error::statement_completion_unknown;
+    }
+    if(dynamic_cast<const pqxx::unique_violation*>(&exception) != nullptr){
+        return psql_error::unique_violation;
+    }
+    if(dynamic_cast<const pqxx::foreign_key_violation*>(&exception) != nullptr){
+        return psql_error::foreign_key_violation;
+    }
+    if(dynamic_cast<const pqxx::not_null_violation*>(&exception) != nullptr){
+        return psql_error::not_null_violation;
+    }
+    if(dynamic_cast<const pqxx::check_violation*>(&exception) != nullptr){
+        return psql_error::check_violation;
+    }
+    if(dynamic_cast<const pqxx::feature_not_supported*>(&exception) != nullptr){
+        return psql_error::feature_not_supported;
+    }
+    if(dynamic_cast<const pqxx::data_exception*>(&exception) != nullptr){
+        return psql_error::data_exception;
+    }
+    if(dynamic_cast<const pqxx::sql_error*>(&exception) != nullptr){
+        return psql_error::sql_error;
+    }
+    if(dynamic_cast<const pqxx::broken_connection*>(&exception) != nullptr){
+        return psql_error::broken_connection;
+    }
+    return psql_error::unknown_psql_error;
+}
+
+error_code error_code::map_psql_error_code(const std::exception& exception){
+    return error_code::create(error_code::map_psql_error(exception));
 }
 
 signal_error error_code::map_signal(int signal_number){
