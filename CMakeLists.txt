@@ -22,7 +22,7 @@ add_library(lib STATIC
     src/judge_server/code_runner.cpp
     src/judge_server/compile_runner.cpp
     src/judge_server/judge_utility.cpp
-    src/judge_server/judge.cpp
+    src/judge_server/judge_executor.cpp
     src/judge_server/checker.cpp
     src/common/env_utility.cpp
     src/common/error_code.cpp

@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <chrono>
 
-namespace judge{
+namespace judge_executor{
     using path = std::filesystem::path;
 
     std::expected <std::pair<judge_result, std::string>, error_code> judge_cpp(

@@ -1,4 +1,4 @@
-#include "judge_server/judge.hpp"
+#include "judge_server/judge_executor.hpp"
 #include "judge_server/checker.hpp"
 #include "judge_server/code_runner.hpp"
 #include "judge_server/compile_runner.hpp"
@@ -6,7 +6,7 @@
 
 #include <string>
 
-std::expected <std::pair<judge_result, std::string>, error_code> judge::judge_cpp(
+std::expected <std::pair<judge_result, std::string>, error_code> judge_executor::judge_cpp(
     const path& source_path, const path& input_path, const path& answer_path, const path& compiler_path,
     std::chrono::milliseconds time_limit, std::int64_t memory_limit_mb
 ){
