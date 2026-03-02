@@ -19,6 +19,5 @@ services:
       - manual
     command:
       - ./judge_server
-      - ${JUDGE_SOURCE_PATH:-/data/main.cpp}
       - ${JUDGE_INPUT_PATH:-/data/input.txt}
       - ${JUDGE_ANSWER_PATH:-/data/answer.txt}

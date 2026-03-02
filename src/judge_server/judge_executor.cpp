@@ -5,6 +5,7 @@
 #include "common/temp_file.hpp"
 
 #include <string>
+#include <vector>
 
 std::expected <std::pair<judge_result, std::string>, error_code> judge_executor::judge_cpp(
     const path& source_path, const path& input_path, const path& answer_path, const path& compiler_path,
@@ -25,7 +26,8 @@ std::expected <std::pair<judge_result, std::string>, error_code> judge_executor:
     }
 
     binary_temp->close_fd();
-    auto run_exp = code_runner::run_cpp(binary_temp->get_path(), input_path, time_limit, memory_limit_mb);
+    const std::vector<std::string> command_args = {binary_temp->get_path().string()};
+    auto run_exp = code_runner::run(command_args, input_path, time_limit, memory_limit_mb);
     if(!run_exp){
         return std::unexpected(run_exp.error());
     }

@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 void code_runner::exec_child(
-    const path& binary_path, int input_fd, int output_fd, int error_fd,
+    const std::vector<std::string>& command_args, int input_fd, int output_fd, int error_fd,
     std::chrono::milliseconds time_limit, std::int64_t memory_limit_mb
 ){
     const auto cpu_limit_seconds_value = (time_limit.count() + 999) / 1000;
@@ -33,12 +33,14 @@ void code_runner::exec_child(
     ::close(output_fd);
     ::close(error_fd);
 
-    std::vector<char*> argv = {
-        const_cast<char*>(binary_path.c_str()),
-        nullptr
-    };
+    std::vector<char*> argv;
+    argv.reserve(command_args.size() + 1);
+    for(const auto& command_arg : command_args){
+        argv.push_back(const_cast<char*>(command_arg.c_str()));
+    }
+    argv.push_back(nullptr);
 
-    execv(binary_path.c_str(), argv.data());
+    execv(command_args[0].c_str(), argv.data());
     _exit(127);
 }
 
@@ -80,9 +82,19 @@ std::expected <code_runner::wait_result, error_code> code_runner::wait_wall_cloc
     return out;
 }
 
-std::expected<code_runner::run_result, error_code> code_runner::run_cpp(
-    const path& binary_path, const path& input_path, std::chrono::milliseconds time_limit, std::int64_t memory_limit_mb
+std::expected<code_runner::run_result, error_code> code_runner::run(
+    const std::vector<std::string>& command_args,
+    const path& input_path,
+    std::chrono::milliseconds time_limit,
+    std::int64_t memory_limit_mb
 ){
+    if(command_args.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+    if(!std::filesystem::exists(command_args[0])){
+        return std::unexpected(error_code::create(errno_error::file_not_found));
+    }
+
     if(time_limit <= std::chrono::milliseconds::zero()){
         return std::unexpected(error_code::create(limit_error::invalid_time_limit));
     }
@@ -113,7 +125,7 @@ std::expected<code_runner::run_result, error_code> code_runner::run_cpp(
 
     if(pid == 0){
         exec_child(
-            binary_path, input_fd.get(), stdout_temp->get_fd(), stderr_temp->get_fd(), 
+            command_args, input_fd.get(), stdout_temp->get_fd(), stderr_temp->get_fd(), 
             time_limit, memory_limit_mb
         );
     }

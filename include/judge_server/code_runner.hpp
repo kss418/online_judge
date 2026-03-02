@@ -33,13 +33,16 @@ namespace code_runner{
     };
 
     void exec_child(
-        const path& binary_path, int input_fd, int output_fd, int error_fd,
+        const std::vector<std::string>& command_args, int input_fd, int output_fd, int error_fd,
         std::chrono::milliseconds time_limit, std::int64_t memory_limit_mb
     );
 
     std::expected <wait_result, error_code> wait_wall_clock(pid_t pid, std::chrono::milliseconds time_limit);
 
-    std::expected<run_result, error_code> run_cpp(
-        const path& binary_path, const path& input_path, std::chrono::milliseconds time_limit, std::int64_t memory_limit_mb
+    std::expected<run_result, error_code> run(
+        const std::vector<std::string>& command_args,
+        const path& input_path,
+        std::chrono::milliseconds time_limit,
+        std::int64_t memory_limit_mb
     );
 };
