@@ -3,12 +3,7 @@
 #include <pqxx/pqxx>
 
 #include <chrono>
-#include <string_view>
 #include <utility>
-
-namespace{
-constexpr std::string_view submission_queue_channel = "submission_queue";
-}
 
 std::expected<submission_service, error_code> submission_service::create(db_connection db_connection){
     if(!db_connection.is_connected()){
@@ -64,7 +59,7 @@ std::expected<std::int64_t, error_code> submission_service::create_submission(co
         );
         transaction.exec_params(
             "SELECT pg_notify($1, $2)",
-            submission_queue_channel,
+            submission_queue_channel_,
             std::to_string(submission_id)
         );
 
@@ -129,8 +124,8 @@ std::expected<void, error_code> submission_service::listen_submission_queue(){
 
     try{
         connection().listen(
-            submission_queue_channel,
-            [](const pqxx::notification&){/* no-op callback */}
+            submission_queue_channel_,
+            [](const pqxx::notification&){}
         );
         return {};
     }

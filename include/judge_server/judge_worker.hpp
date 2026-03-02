@@ -3,6 +3,7 @@
 #include "common/error_code.hpp"
 #include "db/submission_service.hpp"
 
+#include <chrono>
 #include <expected>
 #include <filesystem>
 
@@ -20,6 +21,7 @@ private:
     );
 
     static bool is_queue_empty_error(const error_code& code);
+    static constexpr std::chrono::milliseconds notification_wait_timeout_{30000};
 
     submission_service submission_service_;
     std::filesystem::path source_root_path_;

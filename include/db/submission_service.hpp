@@ -7,6 +7,7 @@
 #include <expected>
 #include <optional>
 #include <string>
+#include <string_view>
 
 enum class submission_status{
     queued,
@@ -65,5 +66,8 @@ public:
 
 private:
     explicit submission_service(db_connection connection);
+
+    static constexpr std::string_view submission_queue_channel_ = "submission_queue";
+
     db_connection db_connection_;
 };

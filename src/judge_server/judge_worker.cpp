@@ -2,13 +2,8 @@
 #include "common/file_utility.hpp"
 #include "common/env_utility.hpp"
 
-#include <chrono>
 #include <system_error>
 #include <utility>
-
-namespace{
-constexpr std::chrono::milliseconds notification_wait_timeout{30000};
-}
 
 std::expected<judge_worker, error_code> judge_worker::create(submission_service submission_service){
     auto source_root_exp = env_utility::require_env("JUDGE_SOURCE_ROOT");
@@ -58,8 +53,9 @@ std::expected<void, error_code> judge_worker::run(){
         }
 
         auto wait_submission_notification_exp = submission_service_.wait_submission_notification(
-            notification_wait_timeout
+            notification_wait_timeout_
         );
+        
         if(!wait_submission_notification_exp){
             return std::unexpected(wait_submission_notification_exp.error());
         }
