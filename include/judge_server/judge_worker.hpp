@@ -5,7 +5,6 @@
 
 #include <expected>
 #include <filesystem>
-#include <string_view>
 
 class judge_worker{
 public:
@@ -20,14 +19,6 @@ private:
     );
 
     static bool is_queue_empty_error(const error_code& code);
-    std::expected<void, error_code> write_source_code(
-        const std::filesystem::path& source_path,
-        std::string_view source_code
-    ) const;
-    std::filesystem::path make_source_file_path(
-        std::int64_t submission_id,
-        std::string_view language
-    ) const;
 
     submission_service submission_service_;
     std::filesystem::path source_root_path_;
