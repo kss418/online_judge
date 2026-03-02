@@ -129,6 +129,29 @@ CREATE TABLE IF NOT EXISTS submission_queue(
     CONSTRAINT submission_queue_attempt_count_check CHECK(attempt_count >= 0)
 );
 
+DO $do$
+BEGIN
+    IF EXISTS(
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'problems'
+    ) THEN
+        IF NOT EXISTS(
+            SELECT 1
+            FROM pg_constraint
+            WHERE
+                conrelid = 'submissions'::regclass AND
+                conname = 'submissions_problem_id_fkey'
+        ) THEN
+            ALTER TABLE submissions
+                ADD CONSTRAINT submissions_problem_id_fkey
+                FOREIGN KEY(problem_id)
+                REFERENCES problems(problem_id);
+        END IF;
+    END IF;
+END
+$do$;
+
 CREATE INDEX IF NOT EXISTS submissions_user_created_idx
     ON submissions(user_id, created_at DESC);
 
