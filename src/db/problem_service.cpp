@@ -134,13 +134,13 @@ std::expected<void, error_code> problem_service::set_problem_statement(
         transaction.exec_params(
             "INSERT INTO problem_statements("
             "problem_id, description, input_format, output_format, note, created_at, updated_at"
-            ") VALUES($1, $2, $3, $4, $5, NOW(), NOW()) "
+            ") VALUES($1, $2, $3, $4, NULLIF($5, ''), NOW(), NOW()) "
             "ON CONFLICT(problem_id) DO UPDATE "
             "SET "
             "description = EXCLUDED.description, "
             "input_format = EXCLUDED.input_format, "
             "output_format = EXCLUDED.output_format, "
-            "note = EXCLUDED.note, "
+            "note = NULLIF(EXCLUDED.note, ''), "
             "updated_at = NOW()",
             problem_id,
             description,
