@@ -23,7 +23,7 @@ const pqxx::connection& problem_service::connection() const{
     return db_connection_.connection();
 }
 
-std::expected<problem_create_response, error_code> problem_service::create_problem(){
+std::expected<std::int64_t, error_code> problem_service::create_problem(){
     if(!db_connection_.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
@@ -33,7 +33,7 @@ std::expected<problem_create_response, error_code> problem_service::create_probl
         const auto create_problem_result = transaction.exec_params(
             "INSERT INTO problems(version) "
             "VALUES($1) "
-            "RETURNING problem_id, version",
+            "RETURNING problem_id",
             1
         );
 
@@ -41,12 +41,10 @@ std::expected<problem_create_response, error_code> problem_service::create_probl
             return std::unexpected(error_code::create(errno_error::unknown_error));
         }
 
-        problem_create_response create_response;
-        create_response.problem_id = create_problem_result[0][0].as<std::int64_t>();
-        create_response.version = create_problem_result[0][1].as<std::int32_t>();
+        const std::int64_t problem_id = create_problem_result[0][0].as<std::int64_t>();
 
         transaction.commit();
-        return create_response;
+        return problem_id;
     }
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
