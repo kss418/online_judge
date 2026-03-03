@@ -81,9 +81,11 @@ CREATE TABLE IF NOT EXISTS problem_statements(
     description TEXT NOT NULL,
     input_format TEXT NOT NULL,
     output_format TEXT NOT NULL,
+    sample_count INTEGER NOT NULL DEFAULT 0,
     note TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT problem_statements_sample_count_check CHECK(sample_count >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS problem_samples(
@@ -197,6 +199,38 @@ ALTER TABLE problems
 ALTER TABLE problem_statements
     ADD COLUMN IF NOT EXISTS note TEXT;
 
+ALTER TABLE problem_statements
+    ADD COLUMN IF NOT EXISTS sample_count INTEGER NOT NULL DEFAULT 0;
+
+DO $do$
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM pg_constraint
+        WHERE
+            conrelid = 'problem_statements'::regclass AND
+            conname = 'problem_statements_sample_count_check'
+    ) THEN
+        ALTER TABLE problem_statements
+            ADD CONSTRAINT problem_statements_sample_count_check CHECK(sample_count >= 0);
+    END IF;
+END
+$do$;
+
+WITH sample_order_aggregate AS(
+    SELECT
+        problem_id,
+        MAX(sample_order)::INTEGER AS max_sample_order
+    FROM problem_samples
+    GROUP BY problem_id
+)
+UPDATE problem_statements statement_table
+SET
+    sample_count = GREATEST(statement_table.sample_count, sample_order_aggregate.max_sample_order),
+    updated_at = NOW()
+FROM sample_order_aggregate
+WHERE statement_table.problem_id = sample_order_aggregate.problem_id;
+
 DO $do$
 BEGIN
     IF EXISTS(
@@ -249,6 +283,10 @@ ON CONFLICT(version) DO NOTHING;
 
 INSERT INTO schema_migrations(version)
 VALUES('problem_schema_v7')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('problem_schema_v8')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

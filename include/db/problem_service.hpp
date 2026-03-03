@@ -29,6 +29,12 @@ public:
         const std::string& output_format,
         const std::string& note
     );
+    
+    std::expected<std::int64_t, error_code> create_problem_sample(
+        std::int64_t problem_id,
+        const std::string& sample_input,
+        const std::string& sample_output
+    );
 private:
     explicit problem_service(db_connection connection);
     db_connection db_connection_;

@@ -218,3 +218,53 @@ std::expected<void, error_code> problem_service::set_problem_statement(
         return std::unexpected(error_code::map_psql_error_code(exception));
     }
 }
+
+std::expected<std::int64_t, error_code> problem_service::create_problem_sample(
+    std::int64_t problem_id,
+    const std::string& sample_input,
+    const std::string& sample_output
+){
+    if(!db_connection_.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    try{
+        pqxx::work transaction(connection());
+        const auto next_order_result = transaction.exec_params(
+            "UPDATE problem_statements "
+            "SET sample_count = sample_count + 1, updated_at = NOW() "
+            "WHERE problem_id = $1 "
+            "RETURNING sample_count",
+            problem_id
+        );
+
+        if(next_order_result.empty()){
+            return std::unexpected(error_code::create(errno_error::invalid_argument));
+        }
+
+        const std::int32_t sample_order = next_order_result[0][0].as<std::int32_t>();
+        const auto create_sample_result = transaction.exec_params(
+            "INSERT INTO problem_samples(problem_id, sample_order, sample_input, sample_output) "
+            "VALUES($1, $2, $3, $4) "
+            "RETURNING sample_id",
+            problem_id,
+            sample_order,
+            sample_input,
+            sample_output
+        );
+
+        if(create_sample_result.empty()){
+            return std::unexpected(error_code::create(errno_error::unknown_error));
+        }
+
+        const std::int64_t sample_id = create_sample_result[0][0].as<std::int64_t>();
+        transaction.commit();
+        return sample_id;
+    }
+    catch(const std::exception& exception){
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
+}

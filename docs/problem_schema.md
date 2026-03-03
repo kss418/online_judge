@@ -54,6 +54,7 @@ Indexes:
 | `description` | `text` | no | |  |
 | `input_format` | `text` | no | |  |
 | `output_format` | `text` | no | |  |
+| `sample_count` | `integer` | no | `0` | `>= 0` check |
 | `note` | `text` | yes | | optional note for problem statement |
 | `created_at` | `timestamptz` | no | `now()` |  |
 | `updated_at` | `timestamptz` | no | `now()` |  |
