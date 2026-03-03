@@ -16,6 +16,7 @@ public:
     pqxx::connection& connection();
     const pqxx::connection& connection() const;
     std::expected<problem_create_response, error_code> create_problem();
+    std::expected<void, error_code> set_problem_version(std::int64_t problem_id, std::int32_t version);
 
 private:
     explicit problem_service(db_connection connection);

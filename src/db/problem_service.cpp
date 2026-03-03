@@ -52,3 +52,35 @@ std::expected<problem_create_response, error_code> problem_service::create_probl
         return std::unexpected(error_code::map_psql_error_code(exception));
     }
 }
+
+std::expected<void, error_code> problem_service::set_problem_version(
+    std::int64_t problem_id, std::int32_t version
+){
+    if(!db_connection_.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+    if(problem_id <= 0 || version <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    try{
+        pqxx::work transaction(connection());
+        const auto update_result = transaction.exec_params(
+            "UPDATE problems "
+            "SET version = $2 "
+            "WHERE problem_id = $1",
+            problem_id,
+            version
+        );
+
+        if(update_result.affected_rows() == 0){
+            return std::unexpected(error_code::create(errno_error::invalid_argument));
+        }
+
+        transaction.commit();
+        return {};
+    }
+    catch(const std::exception& exception){
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
+}
