@@ -81,3 +81,38 @@ std::expected<void, error_code> problem_service::increase_problem_version(std::i
         return std::unexpected(error_code::map_psql_error_code(exception));
     }
 }
+
+std::expected<void, error_code> problem_service::set_problem_limits(
+    std::int64_t problem_id,
+    std::int32_t memory_limit_mb,
+    std::int32_t time_limit_ms
+){
+    if(!db_connection_.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+    if(problem_id <= 0 || memory_limit_mb <= 0 || time_limit_ms <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    try{
+        pqxx::work transaction(connection());
+        transaction.exec_params(
+            "INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms, updated_at) "
+            "VALUES($1, $2, $3, NOW()) "
+            "ON CONFLICT(problem_id) DO UPDATE "
+            "SET "
+            "memory_limit_mb = EXCLUDED.memory_limit_mb, "
+            "time_limit_ms = EXCLUDED.time_limit_ms, "
+            "updated_at = NOW()",
+            problem_id,
+            memory_limit_mb,
+            time_limit_ms
+        );
+
+        transaction.commit();
+        return {};
+    }
+    catch(const std::exception& exception){
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
+}
