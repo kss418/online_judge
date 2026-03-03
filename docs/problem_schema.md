@@ -67,7 +67,6 @@ Indexes:
 | `sample_order` | `integer` | no | | `> 0` check |
 | `sample_input` | `text` | no | |  |
 | `sample_output` | `text` | no | |  |
-| `explanation` | `text` | yes | |  |
 | `created_at` | `timestamptz` | no | `now()` |  |
 
 Constraints:

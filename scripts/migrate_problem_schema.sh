@@ -92,7 +92,6 @@ CREATE TABLE IF NOT EXISTS problem_samples(
     sample_order INTEGER NOT NULL,
     sample_input TEXT NOT NULL,
     sample_output TEXT NOT NULL,
-    explanation TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT problem_samples_sample_order_check CHECK(sample_order > 0),
     CONSTRAINT problem_samples_problem_id_sample_order_unique UNIQUE(problem_id, sample_order)
@@ -229,6 +228,9 @@ ALTER TABLE problem_statements
     ALTER COLUMN input_format SET NOT NULL,
     ALTER COLUMN output_format SET NOT NULL;
 
+ALTER TABLE problem_samples
+    DROP COLUMN IF EXISTS explanation;
+
 INSERT INTO schema_migrations(version)
 VALUES('problem_schema_v3')
 ON CONFLICT(version) DO NOTHING;
@@ -243,6 +245,10 @@ ON CONFLICT(version) DO NOTHING;
 
 INSERT INTO schema_migrations(version)
 VALUES('problem_schema_v6')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('problem_schema_v7')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;
