@@ -114,3 +114,45 @@ std::expected<void, error_code> problem_service::set_problem_limits(
         return std::unexpected(error_code::map_psql_error_code(exception));
     }
 }
+
+std::expected<void, error_code> problem_service::set_problem_statement(
+    std::int64_t problem_id,
+    const std::string& description,
+    const std::string& input_format,
+    const std::string& output_format,
+    const std::string& note
+){
+    if(!db_connection_.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    try{
+        pqxx::work transaction(connection());
+        transaction.exec_params(
+            "INSERT INTO problem_statements("
+            "problem_id, description, input_format, output_format, note, created_at, updated_at"
+            ") VALUES($1, $2, $3, $4, $5, NOW(), NOW()) "
+            "ON CONFLICT(problem_id) DO UPDATE "
+            "SET "
+            "description = EXCLUDED.description, "
+            "input_format = EXCLUDED.input_format, "
+            "output_format = EXCLUDED.output_format, "
+            "note = EXCLUDED.note, "
+            "updated_at = NOW()",
+            problem_id,
+            description,
+            input_format,
+            output_format,
+            note
+        );
+
+        transaction.commit();
+        return {};
+    }
+    catch(const std::exception& exception){
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
+}

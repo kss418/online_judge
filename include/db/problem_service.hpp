@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <expected>
+#include <string>
 
 class problem_service{
 public:
@@ -17,6 +18,14 @@ public:
         std::int64_t problem_id,
         std::int32_t memory_limit_mb,
         std::int32_t time_limit_ms
+    );
+    
+    std::expected<void, error_code> set_problem_statement(
+        std::int64_t problem_id,
+        const std::string& description,
+        const std::string& input_format,
+        const std::string& output_format,
+        const std::string& note
     );
 private:
     explicit problem_service(db_connection connection);

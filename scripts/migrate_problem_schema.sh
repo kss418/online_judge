@@ -64,7 +64,6 @@ CREATE TABLE IF NOT EXISTS problem_statistics(
     problem_id BIGINT PRIMARY KEY REFERENCES problems(problem_id) ON DELETE CASCADE,
     submission_count BIGINT NOT NULL DEFAULT 0,
     accepted_count BIGINT NOT NULL DEFAULT 0,
-    note TEXT,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT problem_statistics_submission_count_check CHECK(submission_count >= 0),
     CONSTRAINT problem_statistics_accepted_count_check CHECK(accepted_count >= 0),
@@ -82,6 +81,7 @@ CREATE TABLE IF NOT EXISTS problem_statements(
     description TEXT NOT NULL,
     input_format TEXT NOT NULL,
     output_format TEXT NOT NULL,
+    note TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -195,8 +195,34 @@ ALTER TABLE problems
     DROP COLUMN IF EXISTS submission_count,
     DROP COLUMN IF EXISTS accepted_count;
 
-ALTER TABLE problem_statistics
+ALTER TABLE problem_statements
     ADD COLUMN IF NOT EXISTS note TEXT;
+
+DO $do$
+BEGIN
+    IF EXISTS(
+        SELECT 1
+        FROM information_schema.columns
+        WHERE
+            table_schema = 'public' AND
+            table_name = 'problem_statistics' AND
+            column_name = 'note'
+    ) THEN
+        UPDATE problem_statements statement_table
+        SET
+            note = statistics_table.note,
+            updated_at = NOW()
+        FROM problem_statistics statistics_table
+        WHERE
+            statistics_table.problem_id = statement_table.problem_id AND
+            statistics_table.note IS NOT NULL AND
+            statement_table.note IS DISTINCT FROM statistics_table.note;
+
+        ALTER TABLE problem_statistics
+            DROP COLUMN note;
+    END IF;
+END
+$do$;
 
 ALTER TABLE problem_statements
     ALTER COLUMN description SET NOT NULL,
@@ -213,6 +239,10 @@ ON CONFLICT(version) DO NOTHING;
 
 INSERT INTO schema_migrations(version)
 VALUES('problem_schema_v5')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('problem_schema_v6')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;
