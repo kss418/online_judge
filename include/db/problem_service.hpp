@@ -19,6 +19,8 @@ public:
         std::int32_t memory_limit_mb,
         std::int32_t time_limit_ms
     );
+    std::expected<void, error_code> increase_submission_count(std::int64_t problem_id);
+    std::expected<void, error_code> increase_accepted_count(std::int64_t problem_id);
     
     std::expected<void, error_code> set_problem_statement(
         std::int64_t problem_id,
