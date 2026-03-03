@@ -39,6 +39,7 @@ Constraints:
 | `problem_id` | `bigint` | no | | pk, fk -> `problems(problem_id)` on delete cascade |
 | `submission_count` | `bigint` | no | `0` | `>= 0` check |
 | `accepted_count` | `bigint` | no | `0` | `>= 0`, `accepted_count <= submission_count` |
+| `note` | `text` | yes | | optional note for problem status |
 | `updated_at` | `timestamptz` | no | `now()` |  |
 
 Indexes:

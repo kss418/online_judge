@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS problem_statistics(
     problem_id BIGINT PRIMARY KEY REFERENCES problems(problem_id) ON DELETE CASCADE,
     submission_count BIGINT NOT NULL DEFAULT 0,
     accepted_count BIGINT NOT NULL DEFAULT 0,
+    note TEXT,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT problem_statistics_submission_count_check CHECK(submission_count >= 0),
     CONSTRAINT problem_statistics_accepted_count_check CHECK(accepted_count >= 0),
@@ -194,8 +195,24 @@ ALTER TABLE problems
     DROP COLUMN IF EXISTS submission_count,
     DROP COLUMN IF EXISTS accepted_count;
 
+ALTER TABLE problem_statistics
+    ADD COLUMN IF NOT EXISTS note TEXT;
+
+ALTER TABLE problem_statements
+    ALTER COLUMN description SET NOT NULL,
+    ALTER COLUMN input_format SET NOT NULL,
+    ALTER COLUMN output_format SET NOT NULL;
+
 INSERT INTO schema_migrations(version)
 VALUES('problem_schema_v3')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('problem_schema_v4')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('problem_schema_v5')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;
