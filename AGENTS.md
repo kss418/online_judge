@@ -21,6 +21,7 @@
 
 ## Command Permission Policy
 - Database and network-related commands must be executed with elevated permission requests.
+- All `psql` commands must be executed with `sandbox_permissions: "require_escalated"`.
 - Use `sandbox_permissions: "require_escalated"` for those commands.
 - Always submit the command for user approval first (with a short justification question), then run only after approval.
 
