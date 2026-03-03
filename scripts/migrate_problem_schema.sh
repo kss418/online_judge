@@ -47,22 +47,58 @@ CREATE TABLE IF NOT EXISTS schema_migrations(
 
 CREATE TABLE IF NOT EXISTS problems(
     problem_id BIGSERIAL PRIMARY KEY,
-    memory_limit_mb INTEGER NOT NULL,
-    time_limit_ms INTEGER NOT NULL,
-    submission_count BIGINT NOT NULL DEFAULT 0,
-    accepted_count BIGINT NOT NULL DEFAULT 0,
-    CONSTRAINT problems_memory_limit_check CHECK(memory_limit_mb > 0),
-    CONSTRAINT problems_time_limit_check CHECK(time_limit_ms > 0),
-    CONSTRAINT problems_submission_count_check CHECK(submission_count >= 0),
-    CONSTRAINT problems_accepted_count_check CHECK(accepted_count >= 0),
-    CONSTRAINT problems_accepted_not_over_submission_check CHECK(accepted_count <= submission_count)
+    version INTEGER NOT NULL DEFAULT 1,
+    CONSTRAINT problems_version_check CHECK(version > 0)
 );
 
-CREATE INDEX IF NOT EXISTS problems_submission_count_idx
-    ON problems(submission_count DESC);
+CREATE TABLE IF NOT EXISTS problem_limits(
+    problem_id BIGINT PRIMARY KEY REFERENCES problems(problem_id) ON DELETE CASCADE,
+    memory_limit_mb INTEGER NOT NULL,
+    time_limit_ms INTEGER NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT problem_limits_memory_limit_check CHECK(memory_limit_mb > 0),
+    CONSTRAINT problem_limits_time_limit_check CHECK(time_limit_ms > 0)
+);
 
-CREATE INDEX IF NOT EXISTS problems_accepted_count_idx
-    ON problems(accepted_count DESC);
+CREATE TABLE IF NOT EXISTS problem_statistics(
+    problem_id BIGINT PRIMARY KEY REFERENCES problems(problem_id) ON DELETE CASCADE,
+    submission_count BIGINT NOT NULL DEFAULT 0,
+    accepted_count BIGINT NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT problem_statistics_submission_count_check CHECK(submission_count >= 0),
+    CONSTRAINT problem_statistics_accepted_count_check CHECK(accepted_count >= 0),
+    CONSTRAINT problem_statistics_accepted_not_over_submission_check CHECK(accepted_count <= submission_count)
+);
+
+CREATE INDEX IF NOT EXISTS problem_statistics_submission_count_idx
+    ON problem_statistics(submission_count DESC);
+
+CREATE INDEX IF NOT EXISTS problem_statistics_accepted_count_idx
+    ON problem_statistics(accepted_count DESC);
+
+CREATE TABLE IF NOT EXISTS problem_statements(
+    problem_id BIGINT PRIMARY KEY REFERENCES problems(problem_id) ON DELETE CASCADE,
+    description TEXT NOT NULL,
+    input_format TEXT NOT NULL,
+    output_format TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS problem_samples(
+    sample_id BIGSERIAL PRIMARY KEY,
+    problem_id BIGINT NOT NULL REFERENCES problems(problem_id) ON DELETE CASCADE,
+    sample_order INTEGER NOT NULL,
+    sample_input TEXT NOT NULL,
+    sample_output TEXT NOT NULL,
+    explanation TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT problem_samples_sample_order_check CHECK(sample_order > 0),
+    CONSTRAINT problem_samples_problem_id_sample_order_unique UNIQUE(problem_id, sample_order)
+);
+
+CREATE INDEX IF NOT EXISTS problem_samples_problem_id_sample_order_idx
+    ON problem_samples(problem_id, sample_order ASC);
 
 DO $do$
 BEGIN
@@ -89,6 +125,77 @@ $do$;
 
 INSERT INTO schema_migrations(version)
 VALUES('problem_schema_v1')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('problem_schema_v2')
+ON CONFLICT(version) DO NOTHING;
+
+DO $do$
+BEGIN
+    IF EXISTS(
+        SELECT 1
+        FROM information_schema.columns
+        WHERE
+            table_schema = 'public' AND
+            table_name = 'problems' AND
+            column_name = 'memory_limit_mb'
+    ) THEN
+        INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms)
+        SELECT problem_id, memory_limit_mb, time_limit_ms
+        FROM problems
+        ON CONFLICT(problem_id) DO NOTHING;
+    END IF;
+END
+$do$;
+
+DO $do$
+BEGIN
+    IF EXISTS(
+        SELECT 1
+        FROM information_schema.columns
+        WHERE
+            table_schema = 'public' AND
+            table_name = 'problems' AND
+            column_name = 'submission_count'
+    ) THEN
+        INSERT INTO problem_statistics(problem_id, submission_count, accepted_count)
+        SELECT problem_id, submission_count, accepted_count
+        FROM problems
+        ON CONFLICT(problem_id) DO NOTHING;
+    END IF;
+END
+$do$;
+
+ALTER TABLE problems
+    ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;
+
+DO $do$
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM pg_constraint
+        WHERE
+            conrelid = 'problems'::regclass AND
+            conname = 'problems_version_check'
+    ) THEN
+        ALTER TABLE problems
+            ADD CONSTRAINT problems_version_check CHECK(version > 0);
+    END IF;
+END
+$do$;
+
+DROP INDEX IF EXISTS problems_submission_count_idx;
+DROP INDEX IF EXISTS problems_accepted_count_idx;
+
+ALTER TABLE problems
+    DROP COLUMN IF EXISTS memory_limit_mb,
+    DROP COLUMN IF EXISTS time_limit_ms,
+    DROP COLUMN IF EXISTS submission_count,
+    DROP COLUMN IF EXISTS accepted_count;
+
+INSERT INTO schema_migrations(version)
+VALUES('problem_schema_v3')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;
