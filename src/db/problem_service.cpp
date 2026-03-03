@@ -1,5 +1,7 @@
 #include "db/problem_service.hpp"
 
+#include <pqxx/pqxx>
+
 #include <utility>
 
 std::expected<problem_service, error_code> problem_service::create(db_connection db_connection){
@@ -19,4 +21,34 @@ pqxx::connection& problem_service::connection(){
 
 const pqxx::connection& problem_service::connection() const{
     return db_connection_.connection();
+}
+
+std::expected<problem_create_response, error_code> problem_service::create_problem(){
+    if(!db_connection_.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+
+    try{
+        pqxx::work transaction(connection());
+        const auto create_problem_result = transaction.exec_params(
+            "INSERT INTO problems(version) "
+            "VALUES($1) "
+            "RETURNING problem_id, version",
+            1
+        );
+
+        if(create_problem_result.empty()){
+            return std::unexpected(error_code::create(errno_error::unknown_error));
+        }
+
+        problem_create_response create_response;
+        create_response.problem_id = create_problem_result[0][0].as<std::int64_t>();
+        create_response.version = create_problem_result[0][1].as<std::int32_t>();
+
+        transaction.commit();
+        return create_response;
+    }
+    catch(const std::exception& exception){
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
 }
