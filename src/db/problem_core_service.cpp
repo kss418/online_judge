@@ -1,4 +1,5 @@
 #include "db/problem_core_service.hpp"
+#include "db/problem_service_utility.hpp"
 
 #include <pqxx/pqxx>
 
@@ -91,6 +92,11 @@ std::expected<void, error_code> problem_core_service::set_limits(
             memory_limit_mb,
             time_limit_ms
         );
+
+        const auto version_exp = problem_service_utility::increase_version(transaction, problem_id);
+        if(!version_exp){
+            return std::unexpected(version_exp.error());
+        }
 
         transaction.commit();
         return {};

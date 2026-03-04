@@ -17,6 +17,7 @@ add_library(lib STATIC
     src/db/problem_core_service.cpp
     src/db/problem_content_service.cpp
     src/db/problem_statistics_service.cpp
+    src/db/problem_service_utility.cpp
     src/db/submission_service.cpp
     src/http_server/http_handler.cpp
     src/http_server/http_server.cpp

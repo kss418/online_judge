@@ -35,11 +35,6 @@ public:
     );
 
 private:
-    std::expected<void, error_code> increase_version(
-        pqxx::work& transaction,
-        std::int64_t problem_id
-    );
-
     std::expected<std::int32_t, error_code> increase_sample_count(
         pqxx::work& transaction,
         std::int64_t problem_id
