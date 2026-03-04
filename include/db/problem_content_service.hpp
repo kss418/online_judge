@@ -1,37 +1,36 @@
 #pragma once
 #include "common/error_code.hpp"
 #include "db/db_service_base.hpp"
+#include "dto/problem_dto.hpp"
 
-#include <cstdint>
 #include <expected>
 #include <string>
+#include <vector>
 
 class problem_content_service : public db_service_base<problem_content_service>{
 public:
+    std::expected<problem_statement, error_code> get_statement(std::int64_t problem_id);
+
     std::expected<void, error_code> set_statement(
         std::int64_t problem_id,
-        const std::string& description,
-        const std::string& input_format,
-        const std::string& output_format,
-        const std::string& note
+        const problem_statement& statement
     );
+
+    std::expected<std::vector<sample>, error_code> list_samples(std::int64_t problem_id);
 
     std::expected<std::int64_t, error_code> create_sample(
         std::int64_t problem_id,
-        const std::string& sample_input,
-        const std::string& sample_output
+        const sample& sample_value
     );
 
     std::expected<void, error_code> set_sample(
         std::int64_t problem_id,
-        std::int32_t sample_order,
-        const std::string& sample_input,
-        const std::string& sample_output
+        const sample& sample_value
     );
 
     std::expected<void, error_code> delete_sample(
         std::int64_t problem_id,
-        std::int32_t sample_order
+        const sample& sample_value
     );
 
 private:

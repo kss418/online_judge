@@ -1,22 +1,11 @@
 #pragma once
 #include "common/error_code.hpp"
 #include "db/db_service_base.hpp"
+#include "dto/problem_dto.hpp"
 
-#include <cstdint>
 #include <expected>
 #include <string>
-
-struct limits{
-    std::int32_t memory_limit_mb = 0;
-    std::int32_t time_limit_ms = 0;
-};
-
-struct testcase{
-    std::int64_t testcase_id = 0;
-    std::int32_t testcase_order = 0;
-    std::string testcase_input;
-    std::string testcase_output;
-};
+#include <vector>
 
 class problem_core_service : public db_service_base<problem_core_service>{
 public:
@@ -24,14 +13,12 @@ public:
     std::expected<limits, error_code> get_limits(std::int64_t problem_id);
     std::expected<void, error_code> set_limits(
         std::int64_t problem_id,
-        std::int32_t memory_limit_mb,
-        std::int32_t time_limit_ms
+        const limits& limits_value
     );
 
     std::expected<std::int64_t, error_code> create_testcase(
         std::int64_t problem_id,
-        const std::string& testcase_input,
-        const std::string& testcase_output
+        const testcase& testcase_value
     );
 
     std::expected<testcase, error_code> get_testcase(
@@ -39,11 +26,11 @@ public:
         std::int32_t testcase_order
     );
 
+    std::expected<std::vector<testcase>, error_code> list_testcases(std::int64_t problem_id);
+
     std::expected<void, error_code> set_testcase(
         std::int64_t problem_id,
-        std::int32_t testcase_order,
-        const std::string& testcase_input,
-        const std::string& testcase_output
+        const testcase& testcase_value
     );
 
     std::expected<void, error_code> delete_testcase(std::int64_t problem_id);

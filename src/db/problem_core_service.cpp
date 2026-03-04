@@ -68,13 +68,12 @@ std::expected<limits, error_code> problem_core_service::get_limits(std::int64_t 
 
 std::expected<void, error_code> problem_core_service::set_limits(
     std::int64_t problem_id,
-    std::int32_t memory_limit_mb,
-    std::int32_t time_limit_ms
+    const limits& limits_value
 ){
     if(!is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
-    if(problem_id <= 0 || memory_limit_mb <= 0 || time_limit_ms <= 0){
+    if(problem_id <= 0 || limits_value.memory_limit_mb <= 0 || limits_value.time_limit_ms <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -89,8 +88,8 @@ std::expected<void, error_code> problem_core_service::set_limits(
             "time_limit_ms = EXCLUDED.time_limit_ms, "
             "updated_at = NOW()",
             problem_id,
-            memory_limit_mb,
-            time_limit_ms
+            limits_value.memory_limit_mb,
+            limits_value.time_limit_ms
         );
 
         const auto version_exp = problem_service_utility::increase_version(transaction, problem_id);
@@ -108,8 +107,7 @@ std::expected<void, error_code> problem_core_service::set_limits(
 
 std::expected<std::int64_t, error_code> problem_core_service::create_testcase(
     std::int64_t problem_id,
-    const std::string& testcase_input,
-    const std::string& testcase_output
+    const testcase& testcase_value
 ){
     if(!is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
@@ -132,8 +130,8 @@ std::expected<std::int64_t, error_code> problem_core_service::create_testcase(
             "RETURNING testcase_id",
             problem_id,
             testcase_order,
-            testcase_input,
-            testcase_output
+            testcase_value.testcase_input,
+            testcase_value.testcase_output
         );
 
         if(create_testcase_result.empty()){
@@ -191,16 +189,50 @@ std::expected<testcase, error_code> problem_core_service::get_testcase(
     }
 }
 
+std::expected<std::vector<testcase>, error_code> problem_core_service::list_testcases(std::int64_t problem_id){
+    if(!is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    try{
+        pqxx::work transaction(connection());
+        const auto testcases_query_result = transaction.exec_params(
+            "SELECT testcase_id, testcase_order, testcase_input, testcase_output "
+            "FROM problem_testcases "
+            "WHERE problem_id = $1 "
+            "ORDER BY testcase_order ASC",
+            problem_id
+        );
+
+        std::vector<testcase> testcase_values;
+        testcase_values.reserve(testcases_query_result.size());
+        for(const auto& row : testcases_query_result){
+            testcase testcase_value;
+            testcase_value.testcase_id = row[0].as<std::int64_t>();
+            testcase_value.testcase_order = row[1].as<std::int32_t>();
+            testcase_value.testcase_input = row[2].as<std::string>();
+            testcase_value.testcase_output = row[3].as<std::string>();
+            testcase_values.push_back(std::move(testcase_value));
+        }
+
+        return testcase_values;
+    }
+    catch(const std::exception& exception){
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
+}
+
 std::expected<void, error_code> problem_core_service::set_testcase(
     std::int64_t problem_id,
-    std::int32_t testcase_order,
-    const std::string& testcase_input,
-    const std::string& testcase_output
+    const testcase& testcase_value
 ){
     if(!is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
-    if(problem_id <= 0 || testcase_order <= 0){
+    if(problem_id <= 0 || testcase_value.testcase_order <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -213,9 +245,9 @@ std::expected<void, error_code> problem_core_service::set_testcase(
             "testcase_output = $4 "
             "WHERE problem_id = $1 AND testcase_order = $2",
             problem_id,
-            testcase_order,
-            testcase_input,
-            testcase_output
+            testcase_value.testcase_order,
+            testcase_value.testcase_input,
+            testcase_value.testcase_output
         );
 
         if(update_result.affected_rows() == 0){
