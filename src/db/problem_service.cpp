@@ -51,6 +51,37 @@ std::expected<std::int64_t, error_code> problem_service::create(){
     }
 }
 
+std::expected<limits, error_code> problem_service::get_limits(std::int64_t problem_id){
+    if(!db_connection_.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    try{
+        pqxx::work transaction(connection());
+        const auto limits_query_result = transaction.exec_params(
+            "SELECT memory_limit_mb, time_limit_ms "
+            "FROM problem_limits "
+            "WHERE problem_id = $1",
+            problem_id
+        );
+
+        if(limits_query_result.empty()){
+            return std::unexpected(error_code::create(errno_error::invalid_argument));
+        }
+
+        limits limits_value;
+        limits_value.memory_limit_mb = limits_query_result[0][0].as<std::int32_t>();
+        limits_value.time_limit_ms = limits_query_result[0][1].as<std::int32_t>();
+        return limits_value;
+    }
+    catch(const std::exception& exception){
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
+}
+
 std::expected<void, error_code> problem_service::set_limits(
     std::int64_t problem_id,
     std::int32_t memory_limit_mb,

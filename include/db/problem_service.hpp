@@ -6,13 +6,19 @@
 #include <expected>
 #include <string>
 
+struct limits{
+    std::int32_t memory_limit_mb = 0;
+    std::int32_t time_limit_ms = 0;
+};
+
 class problem_service{
 public:
     static std::expected<problem_service, error_code> create(db_connection db_connection);
     pqxx::connection& connection();
     const pqxx::connection& connection() const;
-    
     std::expected<std::int64_t, error_code> create();
+
+    std::expected<limits, error_code> get_limits(std::int64_t problem_id);
     std::expected<void, error_code> set_limits(
         std::int64_t problem_id,
         std::int32_t memory_limit_mb,
