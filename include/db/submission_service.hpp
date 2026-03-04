@@ -1,6 +1,6 @@
 #pragma once
 #include "common/error_code.hpp"
-#include "db/db_connection.hpp"
+#include "db/db_service_base.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -23,13 +23,6 @@ enum class submission_status{
 
 std::string to_string(submission_status status);
 
-struct submission_create_request{
-    std::int64_t user_id;
-    std::int64_t problem_id;
-    std::string language;
-    std::string source_code;
-};
-
 struct queued_submission{
     std::int64_t submission_id = 0;
     std::int64_t problem_id = 0;
@@ -37,37 +30,37 @@ struct queued_submission{
     std::string source_code;
 };
 
-struct submission_finalize_request{
-    std::int64_t submission_id = 0;
-    submission_status to_status = submission_status::runtime_error;
-    std::optional<std::int16_t> score = std::nullopt;
-    std::optional<std::string> compile_output = std::nullopt;
-    std::optional<std::string> judge_output = std::nullopt;
-    std::optional<std::string> reason = std::nullopt;
-};
-
-class submission_service{
+class submission_service : public db_service_base<submission_service>{
 public:
-    static std::expected<submission_service, error_code> create(db_connection db_connection);
-    pqxx::connection& connection();
-    const pqxx::connection& connection() const;
+    std::expected<std::int64_t, error_code> create_submission(
+        std::int64_t user_id,
+        std::int64_t problem_id,
+        const std::string& language,
+        const std::string& source_code
+    );
 
-    std::expected<std::int64_t, error_code> create_submission(const submission_create_request& request);
     std::expected<void, error_code> update_submission_status(
         std::int64_t submission_id,
         submission_status to_status,
         const std::optional<std::string>& reason = std::nullopt
     );
+
     std::expected<void, error_code> listen_submission_queue();
     std::expected<bool, error_code> wait_submission_notification(std::chrono::milliseconds timeout);
     std::expected<queued_submission, error_code> pop_submission();
     std::expected<queued_submission, error_code> lease_submission(std::chrono::seconds lease_duration);
-    std::expected<void, error_code> finalize_submission(const submission_finalize_request& request);
-
+    std::expected<void, error_code> finalize_submission(
+        std::int64_t submission_id,
+        submission_status to_status,
+        std::optional<std::int16_t> score,
+        std::optional<std::string> compile_output,
+        std::optional<std::string> judge_output,
+        std::optional<std::string> reason
+    );
 private:
+    friend class db_service_base<submission_service>;
+
     explicit submission_service(db_connection connection);
 
     static constexpr std::string_view submission_queue_channel_ = "submission_queue";
-
-    db_connection db_connection_;
 };

@@ -77,14 +77,12 @@ http_handler::response_type http_handler::handle_submission(const request_type& 
         );
     }
 
-    submission_create_request create_request{
-        .user_id = user_id_value->as_int64(),
-        .problem_id = problem_id_value->as_int64(),
-        .language = std::string(language_value->as_string()),
-        .source_code = std::string(source_code_value->as_string())
-    };
-
-    auto submission_id_exp = submission_service_.create_submission(create_request);
+    auto submission_id_exp = submission_service_.create_submission(
+        user_id_value->as_int64(),
+        problem_id_value->as_int64(),
+        std::string(language_value->as_string()),
+        std::string(source_code_value->as_string())
+    );
     if(!submission_id_exp){
         const auto code = submission_id_exp.error();
         const auto status = code.type_ == error_type::errno_type &&

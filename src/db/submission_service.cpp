@@ -5,27 +5,16 @@
 #include <chrono>
 #include <utility>
 
-std::expected<submission_service, error_code> submission_service::create(db_connection db_connection){
-    if(!db_connection.is_connected()){
-        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
-    }
-
-    return submission_service(std::move(db_connection));
-}
-
 submission_service::submission_service(db_connection connection) :
-    db_connection_(std::move(connection)){}
+    db_service_base<submission_service>(std::move(connection)){}
 
-pqxx::connection& submission_service::connection(){
-    return db_connection_.connection();
-}
-
-const pqxx::connection& submission_service::connection() const{
-    return db_connection_.connection();
-}
-
-std::expected<std::int64_t, error_code> submission_service::create_submission(const submission_create_request& request){
-    if(!db_connection_.is_connected()){
+std::expected<std::int64_t, error_code> submission_service::create_submission(
+    std::int64_t user_id,
+    std::int64_t problem_id,
+    const std::string& language,
+    const std::string& source_code
+){
+    if(!is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
 
@@ -35,10 +24,10 @@ std::expected<std::int64_t, error_code> submission_service::create_submission(co
             "INSERT INTO submissions(user_id, problem_id, language, source_code) "
             "VALUES($1, $2, $3, $4) "
             "RETURNING submission_id",
-            request.user_id,
-            request.problem_id,
-            request.language,
-            request.source_code
+            user_id,
+            problem_id,
+            language,
+            source_code
         );
 
         if(result.empty()){
@@ -76,7 +65,7 @@ std::expected<void, error_code> submission_service::update_submission_status(
     submission_status to_status,
     const std::optional<std::string>& reason
 ){
-    if(!db_connection_.is_connected()){
+    if(!is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
 
@@ -118,7 +107,7 @@ std::expected<void, error_code> submission_service::update_submission_status(
 }
 
 std::expected<void, error_code> submission_service::listen_submission_queue(){
-    if(!db_connection_.is_connected()){
+    if(!is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
 
@@ -137,7 +126,7 @@ std::expected<void, error_code> submission_service::listen_submission_queue(){
 std::expected<bool, error_code> submission_service::wait_submission_notification(
     std::chrono::milliseconds timeout
 ){
-    if(!db_connection_.is_connected()){
+    if(!is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(timeout < std::chrono::milliseconds::zero()){
@@ -162,7 +151,7 @@ std::expected<bool, error_code> submission_service::wait_submission_notification
 }
 
 std::expected<queued_submission, error_code> submission_service::pop_submission(){
-    if(!db_connection_.is_connected()){
+    if(!is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
 
@@ -211,7 +200,7 @@ std::expected<queued_submission, error_code> submission_service::pop_submission(
 std::expected<queued_submission, error_code> submission_service::lease_submission(
     std::chrono::seconds lease_duration
 ){
-    if(!db_connection_.is_connected()){
+    if(!is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     
@@ -268,12 +257,17 @@ std::expected<queued_submission, error_code> submission_service::lease_submissio
 }
 
 std::expected<void, error_code> submission_service::finalize_submission(
-    const submission_finalize_request& request
+    std::int64_t submission_id,
+    submission_status to_status,
+    std::optional<std::int16_t> score,
+    std::optional<std::string> compile_output,
+    std::optional<std::string> judge_output,
+    std::optional<std::string> reason
 ){
-    if(!db_connection_.is_connected()){
+    if(!is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
-    if(request.submission_id <= 0){
+    if(submission_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -281,7 +275,7 @@ std::expected<void, error_code> submission_service::finalize_submission(
         pqxx::work transaction(connection());
         const auto current_status_result = transaction.exec_params(
             "SELECT status::text FROM submissions WHERE submission_id = $1 FOR UPDATE",
-            request.submission_id
+            submission_id
         );
 
         if(current_status_result.empty()){
@@ -298,25 +292,25 @@ std::expected<void, error_code> submission_service::finalize_submission(
             "judge_output = $5, "
             "updated_at = NOW() "
             "WHERE submission_id = $1",
-            request.submission_id,
-            to_string(request.to_status),
-            request.score,
-            request.compile_output,
-            request.judge_output
+            submission_id,
+            to_string(to_status),
+            score,
+            compile_output,
+            judge_output
         );
 
         transaction.exec_params(
             "INSERT INTO submission_status_history(submission_id, from_status, to_status, reason) "
             "VALUES($1, $2::submission_status, $3::submission_status, $4)",
-            request.submission_id,
+            submission_id,
             from_status,
-            to_string(request.to_status),
-            request.reason
+            to_string(to_status),
+            reason
         );
 
         transaction.exec_params(
             "DELETE FROM submission_queue WHERE submission_id = $1",
-            request.submission_id
+            submission_id
         );
 
         transaction.commit();
