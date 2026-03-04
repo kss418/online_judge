@@ -19,8 +19,10 @@ public:
         std::int32_t memory_limit_mb,
         std::int32_t time_limit_ms
     );
+
     std::expected<void, error_code> increase_submission_count(std::int64_t problem_id);
     std::expected<void, error_code> increase_accepted_count(std::int64_t problem_id);
+    std::expected<std::int32_t, error_code> increase_sample_count(std::int64_t problem_id);
     
     std::expected<void, error_code> set_problem_statement(
         std::int64_t problem_id,
@@ -35,7 +37,18 @@ public:
         const std::string& sample_input,
         const std::string& sample_output
     );
+    
+    std::expected<void, error_code> set_problem_sample(
+        std::int64_t problem_id,
+        std::int32_t sample_order,
+        const std::string& sample_input,
+        const std::string& sample_output
+    );
 private:
+    std::expected<std::int32_t, error_code> increase_sample_count(
+        pqxx::work& transaction,
+        std::int64_t problem_id
+    );
     explicit problem_service(db_connection connection);
     db_connection db_connection_;
 };
