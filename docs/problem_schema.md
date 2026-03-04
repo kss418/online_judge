@@ -81,6 +81,28 @@ Indexes:
 
 - `problem_samples_problem_id_sample_order_idx (problem_id, sample_order asc)`
 
+### `problem_testcases`
+
+| column | type | nullable | default | note |
+|---|---|---|---|---|
+| `testcase_id` | `bigserial` | no | | pk |
+| `problem_id` | `bigint` | no | | fk -> `problems(problem_id)` on delete cascade |
+| `testcase_order` | `integer` | no | | `> 0` check |
+| `testcase_input` | `text` | no | |  |
+| `testcase_output` | `text` | no | |  |
+| `created_at` | `timestamptz` | no | `now()` |  |
+
+Constraints:
+
+- `problem_testcases_pkey`
+- `problem_testcases_problem_id_fkey`
+- `problem_testcases_testcase_order_check`
+- `problem_testcases_problem_id_testcase_order_unique (problem_id, testcase_order)`
+
+Indexes:
+
+- `problem_testcases_problem_id_testcase_order_idx (problem_id, testcase_order asc)`
+
 ## cross-schema relation
 
 - `submissions.problem_id -> problems.problem_id`

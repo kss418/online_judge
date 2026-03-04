@@ -102,6 +102,20 @@ CREATE TABLE IF NOT EXISTS problem_samples(
 CREATE INDEX IF NOT EXISTS problem_samples_problem_id_sample_order_idx
     ON problem_samples(problem_id, sample_order ASC);
 
+CREATE TABLE IF NOT EXISTS problem_testcases(
+    testcase_id BIGSERIAL PRIMARY KEY,
+    problem_id BIGINT NOT NULL REFERENCES problems(problem_id) ON DELETE CASCADE,
+    testcase_order INTEGER NOT NULL,
+    testcase_input TEXT NOT NULL,
+    testcase_output TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT problem_testcases_testcase_order_check CHECK(testcase_order > 0),
+    CONSTRAINT problem_testcases_problem_id_testcase_order_unique UNIQUE(problem_id, testcase_order)
+);
+
+CREATE INDEX IF NOT EXISTS problem_testcases_problem_id_testcase_order_idx
+    ON problem_testcases(problem_id, testcase_order ASC);
+
 DO $do$
 BEGIN
     IF EXISTS(
@@ -287,6 +301,10 @@ ON CONFLICT(version) DO NOTHING;
 
 INSERT INTO schema_migrations(version)
 VALUES('problem_schema_v8')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('problem_schema_v9')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

@@ -16,7 +16,7 @@ public:
     static std::expected<problem_service, error_code> create(db_connection db_connection);
     pqxx::connection& connection();
     const pqxx::connection& connection() const;
-    std::expected<std::int64_t, error_code> create();
+    std::expected<std::int64_t, error_code> create_problem();
 
     std::expected<limits, error_code> get_limits(std::int64_t problem_id);
     std::expected<void, error_code> set_limits(
@@ -48,6 +48,7 @@ public:
         const std::string& sample_input,
         const std::string& sample_output
     );
+
     std::expected<void, error_code> delete_sample(
         std::int64_t problem_id,
         std::int32_t sample_order
@@ -62,6 +63,7 @@ private:
         pqxx::work& transaction,
         std::int64_t problem_id
     );
+    
     std::expected<std::int32_t, error_code> decrease_sample_count(
         pqxx::work& transaction,
         std::int64_t problem_id

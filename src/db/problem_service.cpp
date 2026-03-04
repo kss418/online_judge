@@ -23,7 +23,7 @@ const pqxx::connection& problem_service::connection() const{
     return db_connection_.connection();
 }
 
-std::expected<std::int64_t, error_code> problem_service::create(){
+std::expected<std::int64_t, error_code> problem_service::create_problem(){
     if(!db_connection_.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
