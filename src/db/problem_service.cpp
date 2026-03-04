@@ -51,35 +51,6 @@ std::expected<std::int64_t, error_code> problem_service::create_problem(){
     }
 }
 
-std::expected<void, error_code> problem_service::increase_problem_version(std::int64_t problem_id){
-    if(!db_connection_.is_connected()){
-        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
-    }
-    if(problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    try{
-        pqxx::work transaction(connection());
-        const auto update_result = transaction.exec_params(
-            "UPDATE problems "
-            "SET version = version + 1 "
-            "WHERE problem_id = $1",
-            problem_id
-        );
-
-        if(update_result.affected_rows() == 0){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
-        }
-
-        transaction.commit();
-        return {};
-    }
-    catch(const std::exception& exception){
-        return std::unexpected(error_code::map_psql_error_code(exception));
-    }
-}
-
 std::expected<void, error_code> problem_service::set_problem_limits(
     std::int64_t problem_id,
     std::int32_t memory_limit_mb,
@@ -177,29 +148,6 @@ std::expected<void, error_code> problem_service::increase_accepted_count(std::in
     }
 }
 
-std::expected<std::int32_t, error_code> problem_service::increase_sample_count(std::int64_t problem_id){
-    if(!db_connection_.is_connected()){
-        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
-    }
-    if(problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    try{
-        pqxx::work transaction(connection());
-        const auto sample_order_exp = increase_sample_count(transaction, problem_id);
-        if(!sample_order_exp){
-            return std::unexpected(sample_order_exp.error());
-        }
-
-        transaction.commit();
-        return sample_order_exp.value();
-    }
-    catch(const std::exception& exception){
-        return std::unexpected(error_code::map_psql_error_code(exception));
-    }
-}
-
 std::expected<void, error_code> problem_service::set_problem_statement(
     std::int64_t problem_id,
     const std::string& description,
@@ -233,6 +181,11 @@ std::expected<void, error_code> problem_service::set_problem_statement(
             output_format,
             note
         );
+
+        const auto version_exp = increase_problem_version(transaction, problem_id);
+        if(!version_exp){
+            return std::unexpected(version_exp.error());
+        }
 
         transaction.commit();
         return {};
@@ -276,6 +229,11 @@ std::expected<std::int64_t, error_code> problem_service::create_problem_sample(
             return std::unexpected(error_code::create(errno_error::unknown_error));
         }
 
+        const auto version_exp = increase_problem_version(transaction, problem_id);
+        if(!version_exp){
+            return std::unexpected(version_exp.error());
+        }
+
         const std::int64_t sample_id = create_sample_result[0][0].as<std::int64_t>();
         transaction.commit();
         return sample_id;
@@ -313,12 +271,35 @@ std::expected<void, error_code> problem_service::set_problem_sample(
             sample_output
         );
 
+        const auto version_exp = increase_problem_version(transaction, problem_id);
+        if(!version_exp){
+            return std::unexpected(version_exp.error());
+        }
+
         transaction.commit();
         return {};
     }
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
     }
+}
+
+std::expected<void, error_code> problem_service::increase_problem_version(
+    pqxx::work& transaction,
+    std::int64_t problem_id
+){
+    const auto update_result = transaction.exec_params(
+        "UPDATE problems "
+        "SET version = version + 1 "
+        "WHERE problem_id = $1",
+        problem_id
+    );
+
+    if(update_result.affected_rows() == 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return {};
 }
 
 std::expected<std::int32_t, error_code> problem_service::increase_sample_count(
