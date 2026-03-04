@@ -23,7 +23,7 @@ const pqxx::connection& problem_service::connection() const{
     return db_connection_.connection();
 }
 
-std::expected<std::int64_t, error_code> problem_service::create_problem(){
+std::expected<std::int64_t, error_code> problem_service::create(){
     if(!db_connection_.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
@@ -51,7 +51,7 @@ std::expected<std::int64_t, error_code> problem_service::create_problem(){
     }
 }
 
-std::expected<void, error_code> problem_service::set_problem_limits(
+std::expected<void, error_code> problem_service::set_limits(
     std::int64_t problem_id,
     std::int32_t memory_limit_mb,
     std::int32_t time_limit_ms
@@ -148,7 +148,7 @@ std::expected<void, error_code> problem_service::increase_accepted_count(std::in
     }
 }
 
-std::expected<void, error_code> problem_service::set_problem_statement(
+std::expected<void, error_code> problem_service::set_statement(
     std::int64_t problem_id,
     const std::string& description,
     const std::string& input_format,
@@ -182,7 +182,7 @@ std::expected<void, error_code> problem_service::set_problem_statement(
             note
         );
 
-        const auto version_exp = increase_problem_version(transaction, problem_id);
+        const auto version_exp = increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -195,7 +195,7 @@ std::expected<void, error_code> problem_service::set_problem_statement(
     }
 }
 
-std::expected<std::int64_t, error_code> problem_service::create_problem_sample(
+std::expected<std::int64_t, error_code> problem_service::create_sample(
     std::int64_t problem_id,
     const std::string& sample_input,
     const std::string& sample_output
@@ -229,7 +229,7 @@ std::expected<std::int64_t, error_code> problem_service::create_problem_sample(
             return std::unexpected(error_code::create(errno_error::unknown_error));
         }
 
-        const auto version_exp = increase_problem_version(transaction, problem_id);
+        const auto version_exp = increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -243,7 +243,7 @@ std::expected<std::int64_t, error_code> problem_service::create_problem_sample(
     }
 }
 
-std::expected<void, error_code> problem_service::set_problem_sample(
+std::expected<void, error_code> problem_service::set_sample(
     std::int64_t problem_id,
     std::int32_t sample_order,
     const std::string& sample_input,
@@ -271,7 +271,7 @@ std::expected<void, error_code> problem_service::set_problem_sample(
             sample_output
         );
 
-        const auto version_exp = increase_problem_version(transaction, problem_id);
+        const auto version_exp = increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -284,7 +284,7 @@ std::expected<void, error_code> problem_service::set_problem_sample(
     }
 }
 
-std::expected<void, error_code> problem_service::delete_problem_sample(
+std::expected<void, error_code> problem_service::delete_sample(
     std::int64_t problem_id,
     std::int32_t sample_order
 ){
@@ -320,7 +320,7 @@ std::expected<void, error_code> problem_service::delete_problem_sample(
             return std::unexpected(sample_count_exp.error());
         }
 
-        const auto version_exp = increase_problem_version(transaction, problem_id);
+        const auto version_exp = increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -333,7 +333,7 @@ std::expected<void, error_code> problem_service::delete_problem_sample(
     }
 }
 
-std::expected<void, error_code> problem_service::increase_problem_version(
+std::expected<void, error_code> problem_service::increase_version(
     pqxx::work& transaction,
     std::int64_t problem_id
 ){
