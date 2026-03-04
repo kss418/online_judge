@@ -284,6 +284,55 @@ std::expected<void, error_code> problem_service::set_problem_sample(
     }
 }
 
+std::expected<void, error_code> problem_service::delete_problem_sample(
+    std::int64_t problem_id,
+    std::int32_t sample_order
+){
+    if(!db_connection_.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+    if(problem_id <= 0 || sample_order <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    try{
+        pqxx::work transaction(connection());
+        const auto delete_result = transaction.exec_params(
+            "DELETE FROM problem_samples "
+            "WHERE "
+            "problem_id = $1 AND "
+            "sample_order = $2 AND "
+            "sample_order = ("
+            "SELECT MAX(sample_order) "
+            "FROM problem_samples "
+            "WHERE problem_id = $1"
+            ")",
+            problem_id,
+            sample_order
+        );
+
+        if(delete_result.affected_rows() == 0){
+            return std::unexpected(error_code::create(errno_error::invalid_argument));
+        }
+
+        const auto sample_count_exp = decrease_sample_count(transaction, problem_id);
+        if(!sample_count_exp){
+            return std::unexpected(sample_count_exp.error());
+        }
+
+        const auto version_exp = increase_problem_version(transaction, problem_id);
+        if(!version_exp){
+            return std::unexpected(version_exp.error());
+        }
+
+        transaction.commit();
+        return {};
+    }
+    catch(const std::exception& exception){
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
+}
+
 std::expected<void, error_code> problem_service::increase_problem_version(
     pqxx::work& transaction,
     std::int64_t problem_id
@@ -320,4 +369,24 @@ std::expected<std::int32_t, error_code> problem_service::increase_sample_count(
 
     const std::int32_t sample_order = increase_result[0][0].as<std::int32_t>();
     return sample_order;
+}
+
+std::expected<std::int32_t, error_code> problem_service::decrease_sample_count(
+    pqxx::work& transaction,
+    std::int64_t problem_id
+){
+    const auto decrease_result = transaction.exec_params(
+        "UPDATE problem_statements "
+        "SET sample_count = sample_count - 1, updated_at = NOW() "
+        "WHERE problem_id = $1 AND sample_count > 0 "
+        "RETURNING sample_count",
+        problem_id
+    );
+
+    if(decrease_result.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const std::int32_t sample_count = decrease_result[0][0].as<std::int32_t>();
+    return sample_count;
 }

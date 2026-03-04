@@ -42,6 +42,10 @@ public:
         const std::string& sample_input,
         const std::string& sample_output
     );
+    std::expected<void, error_code> delete_problem_sample(
+        std::int64_t problem_id,
+        std::int32_t sample_order
+    );
 private:
     std::expected<void, error_code> increase_problem_version(
         pqxx::work& transaction,
@@ -49,6 +53,10 @@ private:
     );
 
     std::expected<std::int32_t, error_code> increase_sample_count(
+        pqxx::work& transaction,
+        std::int64_t problem_id
+    );
+    std::expected<std::int32_t, error_code> decrease_sample_count(
         pqxx::work& transaction,
         std::int64_t problem_id
     );
