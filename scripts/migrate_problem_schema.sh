@@ -82,10 +82,12 @@ CREATE TABLE IF NOT EXISTS problem_statements(
     input_format TEXT NOT NULL,
     output_format TEXT NOT NULL,
     sample_count INTEGER NOT NULL DEFAULT 0,
+    testcase_count INTEGER NOT NULL DEFAULT 0,
     note TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT problem_statements_sample_count_check CHECK(sample_count >= 0)
+    CONSTRAINT problem_statements_sample_count_check CHECK(sample_count >= 0),
+    CONSTRAINT problem_statements_testcase_count_check CHECK(testcase_count >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS problem_samples(
@@ -216,6 +218,9 @@ ALTER TABLE problem_statements
 ALTER TABLE problem_statements
     ADD COLUMN IF NOT EXISTS sample_count INTEGER NOT NULL DEFAULT 0;
 
+ALTER TABLE problem_statements
+    ADD COLUMN IF NOT EXISTS testcase_count INTEGER NOT NULL DEFAULT 0;
+
 DO $do$
 BEGIN
     IF NOT EXISTS(
@@ -227,6 +232,21 @@ BEGIN
     ) THEN
         ALTER TABLE problem_statements
             ADD CONSTRAINT problem_statements_sample_count_check CHECK(sample_count >= 0);
+    END IF;
+END
+$do$;
+
+DO $do$
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM pg_constraint
+        WHERE
+            conrelid = 'problem_statements'::regclass AND
+            conname = 'problem_statements_testcase_count_check'
+    ) THEN
+        ALTER TABLE problem_statements
+            ADD CONSTRAINT problem_statements_testcase_count_check CHECK(testcase_count >= 0);
     END IF;
 END
 $do$;
@@ -244,6 +264,20 @@ SET
     updated_at = NOW()
 FROM sample_order_aggregate
 WHERE statement_table.problem_id = sample_order_aggregate.problem_id;
+
+WITH testcase_count_aggregate AS(
+    SELECT
+        problem_id,
+        COUNT(*)::INTEGER AS testcase_count
+    FROM problem_testcases
+    GROUP BY problem_id
+)
+UPDATE problem_statements statement_table
+SET
+    testcase_count = GREATEST(statement_table.testcase_count, testcase_count_aggregate.testcase_count),
+    updated_at = NOW()
+FROM testcase_count_aggregate
+WHERE statement_table.problem_id = testcase_count_aggregate.problem_id;
 
 DO $do$
 BEGIN
@@ -305,6 +339,10 @@ ON CONFLICT(version) DO NOTHING;
 
 INSERT INTO schema_migrations(version)
 VALUES('problem_schema_v9')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('problem_schema_v10')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

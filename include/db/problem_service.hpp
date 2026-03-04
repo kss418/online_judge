@@ -68,6 +68,16 @@ private:
         pqxx::work& transaction,
         std::int64_t problem_id
     );
+
+    std::expected<std::int32_t, error_code> increase_testcase_count(
+        pqxx::work& transaction,
+        std::int64_t problem_id
+    );
+    
+    std::expected<std::int32_t, error_code> decrease_testcase_count(
+        pqxx::work& transaction,
+        std::int64_t problem_id
+    );
     
     explicit problem_service(db_connection connection);
     db_connection db_connection_;
