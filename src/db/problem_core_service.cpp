@@ -105,3 +105,43 @@ std::expected<void, error_code> problem_core_service::set_limits(
         return std::unexpected(error_code::map_psql_error_code(exception));
     }
 }
+
+std::expected<std::int32_t, error_code> problem_core_service::increase_testcase_count(
+    pqxx::work& transaction,
+    std::int64_t problem_id
+){
+    const auto increase_result = transaction.exec_params(
+        "UPDATE problem_statements "
+        "SET testcase_count = testcase_count + 1, updated_at = NOW() "
+        "WHERE problem_id = $1 "
+        "RETURNING testcase_count",
+        problem_id
+    );
+
+    if(increase_result.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const std::int32_t testcase_count = increase_result[0][0].as<std::int32_t>();
+    return testcase_count;
+}
+
+std::expected<std::int32_t, error_code> problem_core_service::decrease_testcase_count(
+    pqxx::work& transaction,
+    std::int64_t problem_id
+){
+    const auto decrease_result = transaction.exec_params(
+        "UPDATE problem_statements "
+        "SET testcase_count = testcase_count - 1, updated_at = NOW() "
+        "WHERE problem_id = $1 AND testcase_count > 0 "
+        "RETURNING testcase_count",
+        problem_id
+    );
+
+    if(decrease_result.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const std::int32_t testcase_count = decrease_result[0][0].as<std::int32_t>();
+    return testcase_count;
+}

@@ -21,6 +21,16 @@ public:
     );
 
 private:
+    std::expected<std::int32_t, error_code> increase_testcase_count(
+        pqxx::work& transaction,
+        std::int64_t problem_id
+    );
+
+    std::expected<std::int32_t, error_code> decrease_testcase_count(
+        pqxx::work& transaction,
+        std::int64_t problem_id
+    );
+
     friend class db_service_base<problem_core_service>;
 
     explicit problem_core_service(db_connection connection);
