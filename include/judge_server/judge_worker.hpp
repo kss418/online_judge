@@ -26,6 +26,8 @@ private:
     explicit judge_worker(
         submission_service submission_service,
         std::filesystem::path source_root_path,
+        std::filesystem::path input_path,
+        std::filesystem::path answer_path,
         std::string cpp_compiler_path,
         std::string python_path,
         std::string java_runtime_path
@@ -38,10 +40,11 @@ private:
     static constexpr std::chrono::milliseconds notification_wait_timeout_{30000};
     static constexpr std::chrono::milliseconds source_run_time_limit_{2000};
     static constexpr std::int64_t source_run_memory_limit_mb_{256};
-    static constexpr const char* default_input_path_ = "/dev/null";
 
     submission_service submission_service_;
     std::filesystem::path source_root_path_;
+    std::filesystem::path input_path_;
+    std::filesystem::path answer_path_;
     std::string cpp_compiler_path_;
     std::string python_path_;
     std::string java_runtime_path_;

@@ -15,6 +15,14 @@ std::expected<judge_worker, error_code> judge_worker::create(submission_service 
     if(!source_root_exp){
         return std::unexpected(source_root_exp.error());
     }
+    auto input_path_exp = env_utility::require_env("JUDGE_INPUT_PATH");
+    if(!input_path_exp){
+        return std::unexpected(input_path_exp.error());
+    }
+    auto answer_path_exp = env_utility::require_env("JUDGE_ANSWER_PATH");
+    if(!answer_path_exp){
+        return std::unexpected(answer_path_exp.error());
+    }
     auto cpp_compiler_path_exp = env_utility::require_env("JUDGE_CPP_COMPILER_PATH");
     if(!cpp_compiler_path_exp){
         return std::unexpected(cpp_compiler_path_exp.error());
@@ -29,7 +37,12 @@ std::expected<judge_worker, error_code> judge_worker::create(submission_service 
     }
 
     std::filesystem::path source_root_path = *source_root_exp;
+    std::filesystem::path input_path = *input_path_exp;
+    std::filesystem::path answer_path = *answer_path_exp;
     if(source_root_path.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+    if(input_path.empty() || answer_path.empty()){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -47,6 +60,8 @@ std::expected<judge_worker, error_code> judge_worker::create(submission_service 
     return judge_worker(
         std::move(submission_service),
         std::move(source_root_path),
+        std::move(input_path),
+        std::move(answer_path),
         std::move(*cpp_compiler_path_exp),
         std::move(*python_path_exp),
         std::move(*java_runtime_path_exp)
@@ -56,12 +71,16 @@ std::expected<judge_worker, error_code> judge_worker::create(submission_service 
 judge_worker::judge_worker(
     submission_service submission_service,
     std::filesystem::path source_root_path,
+    std::filesystem::path input_path,
+    std::filesystem::path answer_path,
     std::string cpp_compiler_path,
     std::string python_path,
     std::string java_runtime_path
 ) :
     submission_service_(std::move(submission_service)),
     source_root_path_(std::move(source_root_path)),
+    input_path_(std::move(input_path)),
+    answer_path_(std::move(answer_path)),
     cpp_compiler_path_(std::move(cpp_compiler_path)),
     python_path_(std::move(python_path)),
     java_runtime_path_(std::move(java_runtime_path)){}
@@ -171,7 +190,7 @@ std::expected<code_runner::run_result, error_code> judge_worker::run_cpp(
     std::vector<std::string> command_args = {binary_temp_exp->get_path().string()};
     auto run_exp = code_runner::run(
         command_args,
-        default_input_path_,
+        input_path_,
         source_run_time_limit_,
         source_run_memory_limit_mb_
     );
@@ -185,7 +204,7 @@ std::expected<code_runner::run_result, error_code> judge_worker::run_python(
     std::vector<std::string> command_args = {python_path_, source_file_path.string()};
     return code_runner::run(
         command_args,
-        default_input_path_,
+        input_path_,
         source_run_time_limit_,
         source_run_memory_limit_mb_
     );
@@ -197,7 +216,7 @@ std::expected<code_runner::run_result, error_code> judge_worker::run_java(
     std::vector<std::string> command_args = {java_runtime_path_, source_file_path.string()};
     return code_runner::run(
         command_args,
-        default_input_path_,
+        input_path_,
         source_run_time_limit_,
         source_run_memory_limit_mb_
     );

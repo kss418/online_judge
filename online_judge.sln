@@ -1,0 +1,54 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "vcpkg", "vcpkg", "{971278D9-0533-69C2-40C4-8C6728AABA6D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "buildtrees", "buildtrees", "{B2D7C94B-8922-1C6A-B8D0-901AF32C1F4E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "zlib", "zlib", "{D9B91270-3035-CE54-A098-59536468D155}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{885FB867-3CD9-3E8B-2477-2CE430EE7CD1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "v1.3.1-2e5db616bf.clean", "v1.3.1-2e5db616bf.clean", "{E812F6ED-C9FC-2010-5CEE-28C04D3BA823}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "contrib", "contrib", "{F30F5E91-6202-0F30-3DE7-3B7C6632BC9E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nuget", "vcpkg\buildtrees\zlib\src\v1.3.1-2e5db616bf.clean\contrib\nuget\nuget.csproj", "{F117271D-E2C2-CB7A-4657-99F13971F685}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dotzlib", "dotzlib", "{B7D5EEDB-572D-5AA1-1107-3D137B116472}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotZLib", "vcpkg\buildtrees\zlib\src\v1.3.1-2e5db616bf.clean\contrib\dotzlib\DotZLib\DotZLib.csproj", "{5DDAEA5E-E674-AE72-CFEA-DD68AAB0981B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F117271D-E2C2-CB7A-4657-99F13971F685}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F117271D-E2C2-CB7A-4657-99F13971F685}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F117271D-E2C2-CB7A-4657-99F13971F685}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F117271D-E2C2-CB7A-4657-99F13971F685}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5DDAEA5E-E674-AE72-CFEA-DD68AAB0981B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5DDAEA5E-E674-AE72-CFEA-DD68AAB0981B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5DDAEA5E-E674-AE72-CFEA-DD68AAB0981B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5DDAEA5E-E674-AE72-CFEA-DD68AAB0981B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B2D7C94B-8922-1C6A-B8D0-901AF32C1F4E} = {971278D9-0533-69C2-40C4-8C6728AABA6D}
+		{D9B91270-3035-CE54-A098-59536468D155} = {B2D7C94B-8922-1C6A-B8D0-901AF32C1F4E}
+		{885FB867-3CD9-3E8B-2477-2CE430EE7CD1} = {D9B91270-3035-CE54-A098-59536468D155}
+		{E812F6ED-C9FC-2010-5CEE-28C04D3BA823} = {885FB867-3CD9-3E8B-2477-2CE430EE7CD1}
+		{F30F5E91-6202-0F30-3DE7-3B7C6632BC9E} = {E812F6ED-C9FC-2010-5CEE-28C04D3BA823}
+		{F117271D-E2C2-CB7A-4657-99F13971F685} = {F30F5E91-6202-0F30-3DE7-3B7C6632BC9E}
+		{B7D5EEDB-572D-5AA1-1107-3D137B116472} = {F30F5E91-6202-0F30-3DE7-3B7C6632BC9E}
+		{5DDAEA5E-E674-AE72-CFEA-DD68AAB0981B} = {B7D5EEDB-572D-5AA1-1107-3D137B116472}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1D9A01C0-3760-419B-A690-D1B4F012C8B3}
+	EndGlobalSection
+EndGlobal
