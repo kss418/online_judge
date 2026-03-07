@@ -4,16 +4,16 @@
 #include <string>
 
 std::expected<void, error_code> file_utility::create_file(
-    const std::filesystem::path& source_path,
-    std::string_view source_code
+    const std::filesystem::path& file_path,
+    std::string_view file_content
 ){
-    std::ofstream source_file(source_path, std::ios::out | std::ios::trunc | std::ios::binary);
-    if(!source_file.is_open()){
+    std::ofstream file_stream(file_path, std::ios::out | std::ios::trunc | std::ios::binary);
+    if(!file_stream.is_open()){
         return std::unexpected(error_code::create(errno_error::io_error));
     }
 
-    source_file.write(source_code.data(), static_cast<std::streamsize>(source_code.size()));
-    if(!source_file.good()){
+    file_stream.write(file_content.data(), static_cast<std::streamsize>(file_content.size()));
+    if(!file_stream.good()){
         return std::unexpected(error_code::create(errno_error::io_error));
     }
 

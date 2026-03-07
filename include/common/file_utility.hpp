@@ -9,8 +9,8 @@
 
 namespace file_utility{
     std::expected<void, error_code> create_file(
-        const std::filesystem::path& source_path,
-        std::string_view source_code
+        const std::filesystem::path& file_path,
+        std::string_view file_content
     );
 
     std::filesystem::path make_source_file_path(
