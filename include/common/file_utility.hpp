@@ -17,27 +17,23 @@ namespace file_utility{
         std::string_view file_content
     );
 
-    std::filesystem::path make_source_file_path(
-        const std::filesystem::path& source_root_path,
+    std::expected<std::filesystem::path, error_code> make_source_directory_path();
+    std::expected<std::filesystem::path, error_code> make_source_file_path(
         std::int64_t submission_id,
         std::string_view language
     );
-    std::filesystem::path make_testcase_problem_directory_path(
-        const std::filesystem::path& testcase_root_path,
+    std::expected<std::filesystem::path, error_code> make_testcase_problem_directory_path(
         std::int64_t problem_id
     );
-    std::filesystem::path make_testcase_input_path(
-        const std::filesystem::path& testcase_root_path,
+    std::expected<std::filesystem::path, error_code> make_testcase_input_path(
         std::int64_t problem_id,
         std::int32_t order
     );
-    std::filesystem::path make_testcase_output_path(
-        const std::filesystem::path& testcase_root_path,
+    std::expected<std::filesystem::path, error_code> make_testcase_output_path(
         std::int64_t problem_id,
         std::int32_t order
     );
-    std::filesystem::path make_testcase_version_file_path(
-        const std::filesystem::path& testcase_root_path,
+    std::expected<std::filesystem::path, error_code> make_testcase_version_file_path(
         std::int64_t problem_id
     );
 }

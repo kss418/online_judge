@@ -25,15 +25,13 @@ public:
 private:
     explicit judge_worker(
         submission_service submission_service,
-        std::filesystem::path source_root_path,
-        std::filesystem::path testcase_root_path,
         std::string cpp_compiler_path,
         std::string python_path,
         std::string java_runtime_path
     );
 
     static bool is_queue_empty_error(const error_code& code);
-    void set_testcase_paths(std::int64_t problem_id);
+    std::expected<void, error_code> set_testcase_paths(std::int64_t problem_id);
     std::expected<code_runner::run_result, error_code> run_cpp(const std::filesystem::path& source_file_path);
     std::expected<code_runner::run_result, error_code> run_python(const std::filesystem::path& source_file_path);
     std::expected<code_runner::run_result, error_code> run_java(const std::filesystem::path& source_file_path);
@@ -42,8 +40,6 @@ private:
     static constexpr std::int64_t source_run_memory_limit_mb_{256};
 
     submission_service submission_service_;
-    std::filesystem::path source_root_path_;
-    std::filesystem::path testcase_root_path_;
     std::filesystem::path input_path_;
     std::filesystem::path output_path_;
     std::string cpp_compiler_path_;

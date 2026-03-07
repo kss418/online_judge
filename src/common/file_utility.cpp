@@ -1,8 +1,25 @@
 #include "common/file_utility.hpp"
+#include "common/env_utility.hpp"
 
 #include <fstream>
 #include <string>
 #include <system_error>
+
+namespace{
+std::expected<std::filesystem::path, error_code> require_root_path(const char* key){
+    const auto root_path_exp = env_utility::require_env(key);
+    if(!root_path_exp){
+        return std::unexpected(root_path_exp.error());
+    }
+
+    std::filesystem::path root_path = *root_path_exp;
+    if(root_path.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return root_path;
+}
+}
 
 std::expected<bool, error_code> file_utility::exists(const std::filesystem::path& file_path){
     std::error_code exists_ec;
@@ -55,11 +72,19 @@ std::expected<void, error_code> file_utility::create_file(
     return {};
 }
 
-std::filesystem::path file_utility::make_source_file_path(
-    const std::filesystem::path& source_root_path,
+std::expected<std::filesystem::path, error_code> file_utility::make_source_directory_path(){
+    return require_root_path("JUDGE_SOURCE_ROOT");
+}
+
+std::expected<std::filesystem::path, error_code> file_utility::make_source_file_path(
     std::int64_t submission_id,
     std::string_view language
 ){
+    const auto source_root_path_exp = make_source_directory_path();
+    if(!source_root_path_exp){
+        return std::unexpected(source_root_path_exp.error());
+    }
+
     std::string_view extension = ".txt";
     if(language == "cpp"){
         extension = ".cpp";
@@ -71,37 +96,51 @@ std::filesystem::path file_utility::make_source_file_path(
         extension = ".java";
     }
 
-    return source_root_path / (std::to_string(submission_id) + std::string(extension));
+    return *source_root_path_exp / (std::to_string(submission_id) + std::string(extension));
 }
 
-std::filesystem::path file_utility::make_testcase_problem_directory_path(
-    const std::filesystem::path& testcase_root_path,
+std::expected<std::filesystem::path, error_code> file_utility::make_testcase_problem_directory_path(
     std::int64_t problem_id
 ){
-    return testcase_root_path / std::to_string(problem_id);
+    const auto testcase_root_path_exp = require_root_path("TESTCASE_PATH");
+    if(!testcase_root_path_exp){
+        return std::unexpected(testcase_root_path_exp.error());
+    }
+
+    return *testcase_root_path_exp / std::to_string(problem_id);
 }
 
-std::filesystem::path file_utility::make_testcase_input_path(
-    const std::filesystem::path& testcase_root_path,
+std::expected<std::filesystem::path, error_code> file_utility::make_testcase_input_path(
     std::int64_t problem_id,
     std::int32_t order
 ){
-    return make_testcase_problem_directory_path(testcase_root_path, problem_id) /
-        (std::to_string(order) + ".in");
+    const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
+    if(!problem_directory_path_exp){
+        return std::unexpected(problem_directory_path_exp.error());
+    }
+
+    return *problem_directory_path_exp / (std::to_string(order) + ".in");
 }
 
-std::filesystem::path file_utility::make_testcase_output_path(
-    const std::filesystem::path& testcase_root_path,
+std::expected<std::filesystem::path, error_code> file_utility::make_testcase_output_path(
     std::int64_t problem_id,
     std::int32_t order
 ){
-    return make_testcase_problem_directory_path(testcase_root_path, problem_id) /
-        (std::to_string(order) + ".out");
+    const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
+    if(!problem_directory_path_exp){
+        return std::unexpected(problem_directory_path_exp.error());
+    }
+
+    return *problem_directory_path_exp / (std::to_string(order) + ".out");
 }
 
-std::filesystem::path file_utility::make_testcase_version_file_path(
-    const std::filesystem::path& testcase_root_path,
+std::expected<std::filesystem::path, error_code> file_utility::make_testcase_version_file_path(
     std::int64_t problem_id
 ){
-    return make_testcase_problem_directory_path(testcase_root_path, problem_id) / "version";
+    const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
+    if(!problem_directory_path_exp){
+        return std::unexpected(problem_directory_path_exp.error());
+    }
+
+    return *problem_directory_path_exp / "version";
 }

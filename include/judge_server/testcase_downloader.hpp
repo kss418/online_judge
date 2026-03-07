@@ -28,12 +28,8 @@ private:
         std::int32_t order
     );
     
-    explicit testcase_downloader(
-        db_connection connection,
-        std::filesystem::path root_path
-    );
+    explicit testcase_downloader(db_connection connection);
     std::expected<std::int32_t, error_code> read_version_file(std::int64_t problem_id) const;
 
     db_connection connection_;
-    std::filesystem::path root_path_;
 };

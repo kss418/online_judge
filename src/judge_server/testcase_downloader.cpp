@@ -13,10 +13,9 @@
 #include <utility>
 
 testcase_downloader::testcase_downloader(
-    db_connection connection, std::filesystem::path root_path
+    db_connection connection
 ) :
-    connection_(std::move(connection)),
-    root_path_(std::move(root_path)){}
+    connection_(std::move(connection)){}
 
 std::expected<testcase_downloader, error_code> testcase_downloader::create(db_connection connection){
     if(!connection.is_connected()){
@@ -33,14 +32,15 @@ std::expected<testcase_downloader, error_code> testcase_downloader::create(db_co
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return testcase_downloader(std::move(connection), std::move(root_path));
+    return testcase_downloader(std::move(connection));
 }
 
 std::expected<std::int32_t, error_code> testcase_downloader::read_version_file(std::int64_t problem_id) const{
-    const std::filesystem::path version_file_path = file_utility::make_testcase_version_file_path(
-        root_path_,
-        problem_id
-    );
+    const auto version_file_path_exp = file_utility::make_testcase_version_file_path(problem_id);
+    if(!version_file_path_exp){
+        return std::unexpected(version_file_path_exp.error());
+    }
+    const std::filesystem::path version_file_path = *version_file_path_exp;
     const auto version_file_exists_exp = file_utility::exists(version_file_path);
     if(!version_file_exists_exp){
         return std::unexpected(version_file_exists_exp.error());
@@ -123,10 +123,11 @@ std::expected<void, error_code> testcase_downloader::sync_version_file(std::int6
         }
     }
 
-    const std::filesystem::path version_file_path = file_utility::make_testcase_version_file_path(
-        root_path_,
-        problem_id
-    );
+    const auto version_file_path_exp = file_utility::make_testcase_version_file_path(problem_id);
+    if(!version_file_path_exp){
+        return std::unexpected(version_file_path_exp.error());
+    }
+    const std::filesystem::path version_file_path = *version_file_path_exp;
     const auto create_directories_exp = file_utility::create_directories(
         version_file_path.parent_path()
     );
@@ -196,10 +197,11 @@ std::expected<void, error_code> testcase_downloader::delete_outdated(std::int64_
         return std::unexpected(testcase_count_exp.error());
     }
 
-    const std::filesystem::path problem_directory_path = file_utility::make_testcase_problem_directory_path(
-        root_path_,
-        problem_id
-    );
+    const auto problem_directory_path_exp = file_utility::make_testcase_problem_directory_path(problem_id);
+    if(!problem_directory_path_exp){
+        return std::unexpected(problem_directory_path_exp.error());
+    }
+    const std::filesystem::path problem_directory_path = *problem_directory_path_exp;
     const auto problem_directory_exists_exp = file_utility::exists(problem_directory_path);
     if(!problem_directory_exists_exp){
         return std::unexpected(problem_directory_exists_exp.error());
@@ -272,23 +274,29 @@ std::expected<void, error_code> testcase_downloader::delete_outdated(std::int64_
 std::expected<void, error_code> testcase_downloader::delete_one(
     std::int64_t problem_id, std::int32_t order
 ){
-    const auto remove_input_exp = file_utility::remove_file(
-        file_utility::make_testcase_input_path(root_path_, problem_id, order)
-    );
+    const auto input_path_exp = file_utility::make_testcase_input_path(problem_id, order);
+    if(!input_path_exp){
+        return std::unexpected(input_path_exp.error());
+    }
+    const auto remove_input_exp = file_utility::remove_file(*input_path_exp);
     if(!remove_input_exp){
         return std::unexpected(remove_input_exp.error());
     }
 
-    const auto remove_output_exp = file_utility::remove_file(
-        file_utility::make_testcase_output_path(root_path_, problem_id, order)
-    );
+    const auto output_path_exp = file_utility::make_testcase_output_path(problem_id, order);
+    if(!output_path_exp){
+        return std::unexpected(output_path_exp.error());
+    }
+    const auto remove_output_exp = file_utility::remove_file(*output_path_exp);
     if(!remove_output_exp){
         return std::unexpected(remove_output_exp.error());
     }
 
-    const auto remove_version_exp = file_utility::remove_file(
-        file_utility::make_testcase_version_file_path(root_path_, problem_id)
-    );
+    const auto version_file_path_exp = file_utility::make_testcase_version_file_path(problem_id);
+    if(!version_file_path_exp){
+        return std::unexpected(version_file_path_exp.error());
+    }
+    const auto remove_version_exp = file_utility::remove_file(*version_file_path_exp);
     if(!remove_version_exp){
         return std::unexpected(remove_version_exp.error());
     }
@@ -304,16 +312,16 @@ std::expected<void, error_code> testcase_downloader::download_one(
         return std::unexpected(testcase_exp.error());
     }
 
-    const std::filesystem::path input_path = file_utility::make_testcase_input_path(
-        root_path_,
-        problem_id,
-        order
-    );
-    const std::filesystem::path output_path = file_utility::make_testcase_output_path(
-        root_path_,
-        problem_id,
-        order
-    );
+    const auto input_path_exp = file_utility::make_testcase_input_path(problem_id, order);
+    if(!input_path_exp){
+        return std::unexpected(input_path_exp.error());
+    }
+    const auto output_path_exp = file_utility::make_testcase_output_path(problem_id, order);
+    if(!output_path_exp){
+        return std::unexpected(output_path_exp.error());
+    }
+    const std::filesystem::path input_path = *input_path_exp;
+    const std::filesystem::path output_path = *output_path_exp;
     const auto create_directories_exp = file_utility::create_directories(input_path.parent_path());
     if(!create_directories_exp){
         return std::unexpected(create_directories_exp.error());
