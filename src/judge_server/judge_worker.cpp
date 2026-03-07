@@ -10,6 +10,13 @@
 #include <vector>
 
 std::expected<judge_worker, error_code> judge_worker::create(submission_service submission_service){
+    const auto require_envs_exp = env_utility::require_envs(
+        {"JUDGE_CPP_COMPILER_PATH", "JUDGE_PYTHON_PATH", "JUDGE_JAVA_RUNTIME_PATH"}
+    );
+    if(!require_envs_exp){
+        return std::unexpected(require_envs_exp.error());
+    }
+
     auto cpp_compiler_path_exp = env_utility::require_env("JUDGE_CPP_COMPILER_PATH");
     if(!cpp_compiler_path_exp){
         return std::unexpected(cpp_compiler_path_exp.error());

@@ -1,3 +1,4 @@
+#include "common/env_utility.hpp"
 #include "common/error_code.hpp"
 #include "db/db_connection.hpp"
 #include "db/submission_service.hpp"
@@ -22,6 +23,12 @@ std::expected<submission_service, error_code> create_submission_service(){
 }
 
 int main(){
+    const auto require_all_envs_exp = env_utility::require_all_envs();
+    if(!require_all_envs_exp){
+        std::cerr << "required environment variables are missing\n";
+        return 1;
+    }
+
     auto submission_service_exp = create_submission_service();
     if(!submission_service_exp){
         std::cerr << "failed to initialize submission_service: "

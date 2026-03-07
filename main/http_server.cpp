@@ -1,5 +1,6 @@
 #include "http_server/acceptor.hpp"
 #include "http_server/http_server.hpp"
+#include "common/env_utility.hpp"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -23,6 +24,12 @@ std::expected<std::uint16_t, error_code> parse_port(std::string_view text){
 }
 
 int main(){
+    const auto require_all_envs_exp = env_utility::require_all_envs();
+    if(!require_all_envs_exp){
+        std::cerr << "required environment variables are missing\n";
+        return 1;
+    }
+
     const char* http_port_text = std::getenv("HTTP_PORT");
     if(http_port_text == nullptr || std::string_view{http_port_text}.empty()){
         std::cerr << "HTTP_PORT environment variable is missing\n";
