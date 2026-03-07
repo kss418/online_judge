@@ -32,19 +32,6 @@ private:
         db_connection connection,
         std::filesystem::path root_path
     );
-
-    std::filesystem::path make_problem_directory_path(std::int64_t problem_id) const;
-    std::filesystem::path make_input_path(
-        std::int64_t problem_id,
-        std::int32_t order
-    ) const;
-
-    std::filesystem::path make_output_path(
-        std::int64_t problem_id,
-        std::int32_t order
-    ) const;
-    
-    std::filesystem::path make_version_file_path(std::int64_t problem_id) const;
     std::expected<std::int32_t, error_code> read_version_file(std::int64_t problem_id) const;
 
     db_connection connection_;

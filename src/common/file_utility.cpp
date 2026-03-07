@@ -73,3 +73,35 @@ std::filesystem::path file_utility::make_source_file_path(
 
     return source_root_path / (std::to_string(submission_id) + std::string(extension));
 }
+
+std::filesystem::path file_utility::make_testcase_problem_directory_path(
+    const std::filesystem::path& testcase_root_path,
+    std::int64_t problem_id
+){
+    return testcase_root_path / std::to_string(problem_id);
+}
+
+std::filesystem::path file_utility::make_testcase_input_path(
+    const std::filesystem::path& testcase_root_path,
+    std::int64_t problem_id,
+    std::int32_t order
+){
+    return make_testcase_problem_directory_path(testcase_root_path, problem_id) /
+        (std::to_string(order) + ".in");
+}
+
+std::filesystem::path file_utility::make_testcase_output_path(
+    const std::filesystem::path& testcase_root_path,
+    std::int64_t problem_id,
+    std::int32_t order
+){
+    return make_testcase_problem_directory_path(testcase_root_path, problem_id) /
+        (std::to_string(order) + ".out");
+}
+
+std::filesystem::path file_utility::make_testcase_version_file_path(
+    const std::filesystem::path& testcase_root_path,
+    std::int64_t problem_id
+){
+    return make_testcase_problem_directory_path(testcase_root_path, problem_id) / "version";
+}

@@ -17,7 +17,7 @@ public:
     static std::expected<judge_worker, error_code> create(submission_service submission_service);
 
     std::expected<void, error_code> run();
-    std::expected<std::optional<std::filesystem::path>, error_code> save_source_code();
+    std::expected<std::optional<queued_submission>, error_code> save_source_code();
     std::expected<code_runner::run_result, error_code> run_source_code(
         const std::filesystem::path& source_file_path
     );
@@ -26,14 +26,14 @@ private:
     explicit judge_worker(
         submission_service submission_service,
         std::filesystem::path source_root_path,
-        std::filesystem::path input_path,
-        std::filesystem::path answer_path,
+        std::filesystem::path testcase_root_path,
         std::string cpp_compiler_path,
         std::string python_path,
         std::string java_runtime_path
     );
 
     static bool is_queue_empty_error(const error_code& code);
+    void set_testcase_paths(std::int64_t problem_id);
     std::expected<code_runner::run_result, error_code> run_cpp(const std::filesystem::path& source_file_path);
     std::expected<code_runner::run_result, error_code> run_python(const std::filesystem::path& source_file_path);
     std::expected<code_runner::run_result, error_code> run_java(const std::filesystem::path& source_file_path);
@@ -43,8 +43,9 @@ private:
 
     submission_service submission_service_;
     std::filesystem::path source_root_path_;
+    std::filesystem::path testcase_root_path_;
     std::filesystem::path input_path_;
-    std::filesystem::path answer_path_;
+    std::filesystem::path output_path_;
     std::string cpp_compiler_path_;
     std::string python_path_;
     std::string java_runtime_path_;
