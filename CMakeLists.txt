@@ -30,6 +30,7 @@ add_library(lib STATIC
     src/judge_server/judge_utility.cpp
     src/judge_server/judge_executor.cpp
     src/judge_server/checker.cpp
+    src/judge_server/testcase_downloader.cpp
     src/common/env_utility.cpp
     src/common/error_code.cpp
     src/common/unique_fd.cpp
