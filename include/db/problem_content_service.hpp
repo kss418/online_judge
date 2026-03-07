@@ -9,16 +9,6 @@
 #include <vector>
 
 namespace problem_content_service{
-    std::expected<std::int32_t, error_code> increase_sample_count(
-        pqxx::transaction_base& transaction,
-        std::int64_t problem_id
-    );
-
-    std::expected<std::int32_t, error_code> decrease_sample_count(
-        pqxx::transaction_base& transaction,
-        std::int64_t problem_id
-    );
-
     std::expected<problem_statement, error_code> get_statement(
         db_connection& connection,
         std::int64_t problem_id

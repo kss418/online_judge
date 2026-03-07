@@ -6,16 +6,15 @@
 
 #include <cstdint>
 #include <expected>
-#include <vector>
 
 namespace problem_core_service{
-    std::expected<std::int32_t, error_code> increase_testcase_count(
-        pqxx::transaction_base& transaction,
+    std::expected<bool, error_code> exists_problem(
+        db_connection& connection,
         std::int64_t problem_id
     );
 
-    std::expected<std::int32_t, error_code> decrease_testcase_count(
-        pqxx::transaction_base& transaction,
+    std::expected<void, error_code> increase_version(
+        db_connection& connection,
         std::int64_t problem_id
     );
 
@@ -29,33 +28,5 @@ namespace problem_core_service{
         db_connection& connection,
         std::int64_t problem_id,
         const limits& limits_value
-    );
-
-    std::expected<std::int64_t, error_code> create_testcase(
-        db_connection& connection,
-        std::int64_t problem_id,
-        const testcase& testcase_value
-    );
-
-    std::expected<testcase, error_code> get_testcase(
-        db_connection& connection,
-        std::int64_t problem_id,
-        std::int32_t testcase_order
-    );
-
-    std::expected<std::vector<testcase>, error_code> list_testcases(
-        db_connection& connection,
-        std::int64_t problem_id
-    );
-
-    std::expected<void, error_code> set_testcase(
-        db_connection& connection,
-        std::int64_t problem_id,
-        const testcase& testcase_value
-    );
-
-    std::expected<void, error_code> delete_testcase(
-        db_connection& connection,
-        std::int64_t problem_id
     );
 }

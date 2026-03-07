@@ -29,6 +29,10 @@
 - Use `){` with no space between `)` and `{` (for function definitions, conditionals, loops, and lambdas).
 - Use `const{` with no space between `const` and `{` in function definitions.
 
+## C++ Namespace Implementation Style
+- In `.cpp` files, do not implement functions inside a `namespace ... { ... }` block.
+- Define namespace functions with the `namespace_name::function_name(...)` form instead.
+
 ## Expected Variable Naming
 - When receiving `std::expected`, name variables with the `_exp` suffix (for example, `run_exp`).
 - Do not use the `_result` suffix for `std::expected` variables.

@@ -5,44 +5,6 @@
 
 #include <utility>
 
-std::expected<std::int32_t, error_code> problem_content_service::increase_sample_count(
-    pqxx::transaction_base& transaction,
-    std::int64_t problem_id
-){
-    const auto increase_result = transaction.exec(
-        "UPDATE problem_statements "
-        "SET sample_count = sample_count + 1, updated_at = NOW() "
-        "WHERE problem_id = $1 "
-        "RETURNING sample_count",
-        pqxx::params{problem_id}
-    );
-
-    if(increase_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    return increase_result[0][0].as<std::int32_t>();
-}
-
-std::expected<std::int32_t, error_code> problem_content_service::decrease_sample_count(
-    pqxx::transaction_base& transaction,
-    std::int64_t problem_id
-){
-    const auto decrease_result = transaction.exec(
-        "UPDATE problem_statements "
-        "SET sample_count = sample_count - 1, updated_at = NOW() "
-        "WHERE problem_id = $1 AND sample_count > 0 "
-        "RETURNING sample_count",
-        pqxx::params{problem_id}
-    );
-
-    if(decrease_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    return decrease_result[0][0].as<std::int32_t>();
-}
-
 std::expected<problem_statement, error_code> problem_content_service::get_statement(
     db_connection& connection,
     std::int64_t problem_id
@@ -182,7 +144,10 @@ std::expected<std::int64_t, error_code> problem_content_service::create_sample(
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto sample_order_exp = increase_sample_count(transaction, problem_id);
+        const auto sample_order_exp = problem_service_utility::increase_sample_count(
+            transaction,
+            problem_id
+        );
         if(!sample_order_exp){
             return std::unexpected(sample_order_exp.error());
         }
@@ -291,7 +256,10 @@ std::expected<void, error_code> problem_content_service::delete_sample(
             return std::unexpected(error_code::create(errno_error::invalid_argument));
         }
 
-        const auto sample_count_exp = decrease_sample_count(transaction, problem_id);
+        const auto sample_count_exp = problem_service_utility::decrease_sample_count(
+            transaction,
+            problem_id
+        );
         if(!sample_count_exp){
             return std::unexpected(sample_count_exp.error());
         }
