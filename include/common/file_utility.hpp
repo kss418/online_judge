@@ -10,6 +10,7 @@
 namespace file_utility{
     std::expected<bool, error_code> exists(const std::filesystem::path& file_path);
     std::expected<void, error_code> create_directories(const std::filesystem::path& directory_path);
+    std::expected<void, error_code> remove_file(const std::filesystem::path& file_path);
 
     std::expected<void, error_code> create_file(
         const std::filesystem::path& file_path,

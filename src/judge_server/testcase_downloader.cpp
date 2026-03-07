@@ -5,9 +5,11 @@
 #include "db/problem_core_service.hpp"
 #include "db/testcase_service.hpp"
 
+#include <charconv>
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <system_error>
 #include <utility>
 
 testcase_downloader::testcase_downloader(
@@ -173,6 +175,11 @@ std::expected<void, error_code> testcase_downloader::sync_testcase(std::int64_t 
         return std::unexpected(download_all_exp.error());
     }
 
+    const auto delete_outdated_exp = delete_outdated(problem_id);
+    if(!delete_outdated_exp){
+        return std::unexpected(delete_outdated_exp.error());
+    }
+
     const auto sync_version_file_exp = sync_version_file(problem_id);
     if(!sync_version_file_exp){
         return std::unexpected(sync_version_file_exp.error());
@@ -192,6 +199,103 @@ std::expected<void, error_code> testcase_downloader::download_all(std::int64_t p
         if(!download_one_exp){
             return std::unexpected(download_one_exp.error());
         }
+    }
+
+    return {};
+}
+
+std::expected<void, error_code> testcase_downloader::delete_outdated(std::int64_t problem_id){
+    const auto testcase_count_exp = testcase_service::get_testcase_count(connection_, problem_id);
+    if(!testcase_count_exp){
+        return std::unexpected(testcase_count_exp.error());
+    }
+
+    const std::filesystem::path problem_directory_path = make_problem_directory_path(problem_id);
+    const auto problem_directory_exists_exp = file_utility::exists(problem_directory_path);
+    if(!problem_directory_exists_exp){
+        return std::unexpected(problem_directory_exists_exp.error());
+    }
+    if(!problem_directory_exists_exp.value()){
+        return {};
+    }
+
+    std::error_code iterator_ec;
+    std::filesystem::directory_iterator directory_iterator(problem_directory_path, iterator_ec);
+    if(iterator_ec){
+        return std::unexpected(error_code::create(error_code::map_errno(iterator_ec.value())));
+    }
+
+    for(std::filesystem::directory_iterator end; directory_iterator != end;){
+        const std::filesystem::path entry_path = directory_iterator->path();
+        const std::string extension = entry_path.extension().string();
+        if(extension != ".in" && extension != ".out"){
+            directory_iterator.increment(iterator_ec);
+            if(iterator_ec){
+                return std::unexpected(
+                    error_code::create(error_code::map_errno(iterator_ec.value()))
+                );
+            }
+            continue;
+        }
+
+        const std::string stem = entry_path.stem().string();
+        std::int32_t order = 0;
+        const auto [parse_end, parse_ec] = std::from_chars(
+            stem.data(),
+            stem.data() + stem.size(),
+            order
+        );
+
+        if(parse_ec != std::errc{} || parse_end != stem.data() + stem.size()){
+            directory_iterator.increment(iterator_ec);
+            if(iterator_ec){
+                return std::unexpected(
+                    error_code::create(error_code::map_errno(iterator_ec.value()))
+                );
+            }
+            continue;
+        }
+        
+        if(order <= testcase_count_exp.value()){
+            directory_iterator.increment(iterator_ec);
+            if(iterator_ec){
+                return std::unexpected(
+                    error_code::create(error_code::map_errno(iterator_ec.value()))
+                );
+            }
+            continue;
+        }
+
+        const auto remove_file_exp = file_utility::remove_file(entry_path);
+        if(!remove_file_exp){
+            return std::unexpected(remove_file_exp.error());
+        }
+
+        directory_iterator.increment(iterator_ec);
+        if(iterator_ec){
+            return std::unexpected(error_code::create(error_code::map_errno(iterator_ec.value())));
+        }
+    }
+
+    return {};
+}
+
+std::expected<void, error_code> testcase_downloader::delete_one(
+    std::int64_t problem_id, std::int32_t order
+){
+    const auto remove_input_exp = file_utility::remove_file(make_input_path(problem_id, order));
+    if(!remove_input_exp){
+        return std::unexpected(remove_input_exp.error());
+    }
+
+    const auto remove_output_exp = file_utility::remove_file(make_output_path(problem_id, order));
+    if(!remove_output_exp){
+        return std::unexpected(remove_output_exp.error());
+    }
+
+    const auto remove_version_exp = file_utility::remove_file(make_version_file_path(problem_id));
+    if(!remove_version_exp){
+        return std::unexpected(remove_version_exp.error());
     }
 
     return {};

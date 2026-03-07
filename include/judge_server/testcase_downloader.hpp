@@ -10,17 +10,24 @@
 class testcase_downloader{
 public:
     static std::expected<testcase_downloader, error_code> create(db_connection connection);
-    
-    std::expected<bool, error_code> is_latest(std::int64_t problem_id);
     std::expected<void, error_code> sync_testcase(std::int64_t problem_id);
+
+private:
+    std::expected<bool, error_code> is_latest(std::int64_t problem_id);
     std::expected<void, error_code> sync_version_file(std::int64_t problem_id);
+
+    std::expected<void, error_code> delete_outdated(std::int64_t problem_id);
+    std::expected<void, error_code> delete_one(
+        std::int64_t problem_id,
+        std::int32_t order
+    );
 
     std::expected<void, error_code> download_all(std::int64_t problem_id);
     std::expected<void, error_code> download_one(
         std::int64_t problem_id,
         std::int32_t order
     );
-private:
+    
     explicit testcase_downloader(
         db_connection connection,
         std::filesystem::path root_path

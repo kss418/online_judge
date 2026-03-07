@@ -28,6 +28,16 @@ std::expected<void, error_code> file_utility::create_directories(
     return {};
 }
 
+std::expected<void, error_code> file_utility::remove_file(const std::filesystem::path& file_path){
+    std::error_code remove_ec;
+    std::filesystem::remove(file_path, remove_ec);
+    if(remove_ec){
+        return std::unexpected(error_code::create(error_code::map_errno(remove_ec.value())));
+    }
+
+    return {};
+}
+
 std::expected<void, error_code> file_utility::create_file(
     const std::filesystem::path& file_path,
     std::string_view file_content
