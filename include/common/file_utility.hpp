@@ -5,9 +5,14 @@
 #include <cstdint>
 #include <expected>
 #include <filesystem>
+#include <mutex>
+#include <optional>
 #include <string_view>
 
-namespace file_utility{
+class file_utility{
+public:
+    static file_utility& instance();
+
     std::expected<bool, error_code> exists(const std::filesystem::path& file_path);
     std::expected<void, error_code> create_directories(const std::filesystem::path& directory_path);
     std::expected<void, error_code> remove_file(const std::filesystem::path& file_path);
@@ -36,4 +41,12 @@ namespace file_utility{
     std::expected<std::filesystem::path, error_code> make_testcase_version_file_path(
         std::int64_t problem_id
     );
-}
+
+private:
+    file_utility() = default;
+    void initialize_if_needed();
+
+    std::mutex initialize_mutex_;
+    std::optional<std::filesystem::path> source_directory_path_;
+    std::optional<std::filesystem::path> testcase_root_path_;
+};

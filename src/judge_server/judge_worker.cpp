@@ -10,10 +10,6 @@
 #include <vector>
 
 std::expected<judge_worker, error_code> judge_worker::create(submission_service submission_service){
-    auto testcase_root_exp = env_utility::require_env("TESTCASE_PATH");
-    if(!testcase_root_exp){
-        return std::unexpected(testcase_root_exp.error());
-    }
     auto cpp_compiler_path_exp = env_utility::require_env("JUDGE_CPP_COMPILER_PATH");
     if(!cpp_compiler_path_exp){
         return std::unexpected(cpp_compiler_path_exp.error());
@@ -27,17 +23,14 @@ std::expected<judge_worker, error_code> judge_worker::create(submission_service 
         return std::unexpected(java_runtime_path_exp.error());
     }
 
-    const auto source_root_path_exp = file_utility::make_source_directory_path();
-    if(!source_root_path_exp){
-        return std::unexpected(source_root_path_exp.error());
-    }
-    std::filesystem::path source_root_path = *source_root_path_exp;
-    std::filesystem::path testcase_root_path = *testcase_root_exp;
-    if(testcase_root_path.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    const auto source_directory_path_exp = file_utility::instance().make_source_directory_path();
+    if(!source_directory_path_exp){
+        return std::unexpected(source_directory_path_exp.error());
     }
 
-    const auto create_directories_exp = file_utility::create_directories(source_root_path);
+    const auto create_directories_exp = file_utility::instance().create_directories(
+        *source_directory_path_exp
+    );
     if(!create_directories_exp){
         return std::unexpected(create_directories_exp.error());
     }
@@ -84,7 +77,7 @@ std::expected<void, error_code> judge_worker::run(){
             if(!set_testcase_paths_exp){
                 return std::unexpected(set_testcase_paths_exp.error());
             }
-            const auto source_file_path_exp = file_utility::make_source_file_path(
+            const auto source_file_path_exp = file_utility::instance().make_source_file_path(
                 queued_submission_value.submission_id,
                 queued_submission_value.language
             );
@@ -120,7 +113,7 @@ std::expected<std::optional<queued_submission>, error_code> judge_worker::save_s
         return std::unexpected(pop_submission_exp.error());
     }
 
-    const auto source_file_path_exp = file_utility::make_source_file_path(
+    const auto source_file_path_exp = file_utility::instance().make_source_file_path(
         pop_submission_exp->submission_id,
         pop_submission_exp->language
     );
@@ -129,7 +122,7 @@ std::expected<std::optional<queued_submission>, error_code> judge_worker::save_s
     }
     const auto source_file_path = *source_file_path_exp;
     
-    auto create_file_exp = file_utility::create_file(
+    auto create_file_exp = file_utility::instance().create_file(
         source_file_path,
         pop_submission_exp->source_code
     );
@@ -142,13 +135,13 @@ std::expected<std::optional<queued_submission>, error_code> judge_worker::save_s
 }
 
 std::expected<void, error_code> judge_worker::set_testcase_paths(std::int64_t problem_id){
-    const auto input_path_exp = file_utility::make_testcase_input_path(problem_id, 1);
+    const auto input_path_exp = file_utility::instance().make_testcase_input_path(problem_id, 1);
     if(!input_path_exp){
         return std::unexpected(input_path_exp.error());
     }
     input_path_ = std::move(*input_path_exp);
 
-    const auto output_path_exp = file_utility::make_testcase_output_path(problem_id, 1);
+    const auto output_path_exp = file_utility::instance().make_testcase_output_path(problem_id, 1);
     if(!output_path_exp){
         return std::unexpected(output_path_exp.error());
     }

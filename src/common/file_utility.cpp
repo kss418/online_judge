@@ -1,24 +1,31 @@
 #include "common/file_utility.hpp"
-#include "common/env_utility.hpp"
 
+#include <cstdlib>
 #include <fstream>
-#include <string>
+#include <mutex>
 #include <system_error>
 
-namespace{
-std::expected<std::filesystem::path, error_code> require_root_path(const char* key){
-    const auto root_path_exp = env_utility::require_env(key);
-    if(!root_path_exp){
-        return std::unexpected(root_path_exp.error());
-    }
-
-    std::filesystem::path root_path = *root_path_exp;
-    if(root_path.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    return root_path;
+file_utility& file_utility::instance(){
+    static file_utility file_utility_value;
+    file_utility_value.initialize_if_needed();
+    return file_utility_value;
 }
+
+void file_utility::initialize_if_needed(){
+    std::scoped_lock lock(initialize_mutex_);
+    if(source_directory_path_.has_value() && testcase_root_path_.has_value()){
+        return;
+    }
+
+    const char* source_directory_path = std::getenv("JUDGE_SOURCE_ROOT");
+    if(source_directory_path != nullptr && *source_directory_path != '\0'){
+        source_directory_path_ = std::filesystem::path(source_directory_path);
+    }
+
+    const char* testcase_root_path = std::getenv("TESTCASE_PATH");
+    if(testcase_root_path != nullptr && *testcase_root_path != '\0'){
+        testcase_root_path_ = std::filesystem::path(testcase_root_path);
+    }
 }
 
 std::expected<bool, error_code> file_utility::exists(const std::filesystem::path& file_path){
@@ -73,7 +80,11 @@ std::expected<void, error_code> file_utility::create_file(
 }
 
 std::expected<std::filesystem::path, error_code> file_utility::make_source_directory_path(){
-    return require_root_path("JUDGE_SOURCE_ROOT");
+    if(!source_directory_path_.has_value() || source_directory_path_->empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return *source_directory_path_;
 }
 
 std::expected<std::filesystem::path, error_code> file_utility::make_source_file_path(
@@ -102,12 +113,11 @@ std::expected<std::filesystem::path, error_code> file_utility::make_source_file_
 std::expected<std::filesystem::path, error_code> file_utility::make_testcase_problem_directory_path(
     std::int64_t problem_id
 ){
-    const auto testcase_root_path_exp = require_root_path("TESTCASE_PATH");
-    if(!testcase_root_path_exp){
-        return std::unexpected(testcase_root_path_exp.error());
+    if(!testcase_root_path_.has_value() || testcase_root_path_->empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return *testcase_root_path_exp / std::to_string(problem_id);
+    return *testcase_root_path_ / std::to_string(problem_id);
 }
 
 std::expected<std::filesystem::path, error_code> file_utility::make_testcase_input_path(

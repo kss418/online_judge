@@ -93,7 +93,7 @@ std::expected<code_runner::run_result, error_code> code_runner::run(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    const auto command_exists_exp = file_utility::exists(command_args[0]);
+    const auto command_exists_exp = file_utility::instance().exists(command_args[0]);
     if(!command_exists_exp){
         return std::unexpected(command_exists_exp.error());
     }
