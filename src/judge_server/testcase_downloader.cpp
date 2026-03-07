@@ -88,6 +88,31 @@ std::expected<std::int32_t, error_code> testcase_downloader::read_version_file(s
     return local_version;
 }
 
+std::expected<bool, error_code> testcase_downloader::is_latest(std::int64_t problem_id){
+    const auto version_exp = problem_core_service::get_version(connection_, problem_id);
+    if(!version_exp){
+        return std::unexpected(version_exp.error());
+    }
+
+    const auto local_version_exp = read_version_file(problem_id);
+    if(!local_version_exp){
+        const error_code local_version_error = local_version_exp.error();
+        if(
+            local_version_error.type_ == error_type::errno_type &&
+            (
+                local_version_error.code_ == static_cast<int>(errno_error::file_not_found) ||
+                local_version_error.code_ == static_cast<int>(errno_error::invalid_argument)
+            )
+        ){
+            return false;
+        }
+
+        return std::unexpected(local_version_error);
+    }
+
+    return local_version_exp.value() == version_exp.value();
+}
+
 std::expected<void, error_code> testcase_downloader::sync_version_file(std::int64_t problem_id){
     const auto version_exp = problem_core_service::get_version(connection_, problem_id);
     if(!version_exp){
@@ -173,6 +198,7 @@ std::expected<void, error_code> testcase_downloader::download_one(
         input_path,
         testcase_exp->testcase_input
     );
+    
     if(!create_input_exp){
         return std::unexpected(create_input_exp.error());
     }

@@ -10,6 +10,7 @@
 class testcase_downloader{
 public:
     static std::expected<testcase_downloader, error_code> create(db_connection connection);
+    std::expected<bool, error_code> is_latest(std::int64_t problem_id);
     std::expected<void, error_code> sync_version_file(std::int64_t problem_id);
     std::expected<void, error_code> download_all(std::int64_t problem_id);
     std::expected<void, error_code> download_one(
