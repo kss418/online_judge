@@ -158,6 +158,29 @@ std::expected<void, error_code> testcase_downloader::sync_version_file(std::int6
     return {};
 }
 
+std::expected<void, error_code> testcase_downloader::sync_testcase(std::int64_t problem_id){
+    const auto is_latest_exp = is_latest(problem_id);
+    if(!is_latest_exp){
+        return std::unexpected(is_latest_exp.error());
+    }
+
+    if(is_latest_exp.value()){
+        return {};
+    }
+
+    const auto download_all_exp = download_all(problem_id);
+    if(!download_all_exp){
+        return std::unexpected(download_all_exp.error());
+    }
+
+    const auto sync_version_file_exp = sync_version_file(problem_id);
+    if(!sync_version_file_exp){
+        return std::unexpected(sync_version_file_exp.error());
+    }
+
+    return {};
+}
+
 std::expected<void, error_code> testcase_downloader::download_all(std::int64_t problem_id){
     const auto testcase_count_exp = testcase_service::get_testcase_count(connection_, problem_id);
     if(!testcase_count_exp){
@@ -169,11 +192,6 @@ std::expected<void, error_code> testcase_downloader::download_all(std::int64_t p
         if(!download_one_exp){
             return std::unexpected(download_one_exp.error());
         }
-    }
-
-    const auto sync_version_file_exp = sync_version_file(problem_id);
-    if(!sync_version_file_exp){
-        return std::unexpected(sync_version_file_exp.error());
     }
 
     return {};
