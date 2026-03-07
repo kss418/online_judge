@@ -26,7 +26,6 @@ add_library(lib STATIC
     src/common/file_utility.cpp
     src/judge_server/code_runner.cpp
     src/judge_server/compile_runner.cpp
-    src/judge_server/testcase_loader.cpp
     src/judge_server/judge_worker.cpp
     src/judge_server/judge_utility.cpp
     src/judge_server/judge_executor.cpp

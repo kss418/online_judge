@@ -5,21 +5,56 @@
 
 #include <utility>
 
-problem_core_service::problem_core_service(db_connection connection) :
-    db_service_base<problem_core_service>(std::move(connection)){}
+std::expected<std::int32_t, error_code> problem_core_service::increase_testcase_count(
+    pqxx::transaction_base& transaction,
+    std::int64_t problem_id
+){
+    const auto increase_result = transaction.exec(
+        "UPDATE problem_statements "
+        "SET testcase_count = testcase_count + 1, updated_at = NOW() "
+        "WHERE problem_id = $1 "
+        "RETURNING testcase_count",
+        pqxx::params{problem_id}
+    );
 
-std::expected<std::int64_t, error_code> problem_core_service::create_problem(){
-    if(!is_connected()){
+    if(increase_result.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return increase_result[0][0].as<std::int32_t>();
+}
+
+std::expected<std::int32_t, error_code> problem_core_service::decrease_testcase_count(
+    pqxx::transaction_base& transaction,
+    std::int64_t problem_id
+){
+    const auto decrease_result = transaction.exec(
+        "UPDATE problem_statements "
+        "SET testcase_count = testcase_count - 1, updated_at = NOW() "
+        "WHERE problem_id = $1 AND testcase_count > 0 "
+        "RETURNING testcase_count",
+        pqxx::params{problem_id}
+    );
+
+    if(decrease_result.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return decrease_result[0][0].as<std::int32_t>();
+}
+
+std::expected<std::int64_t, error_code> problem_core_service::create_problem(db_connection& connection){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
 
     try{
-        pqxx::work transaction(connection());
-        const auto create_problem_result = transaction.exec_params(
+        pqxx::work transaction(connection.connection());
+        const auto create_problem_result = transaction.exec(
             "INSERT INTO problems(version) "
             "VALUES($1) "
             "RETURNING problem_id",
-            1
+            pqxx::params{1}
         );
 
         if(create_problem_result.empty()){
@@ -35,8 +70,11 @@ std::expected<std::int64_t, error_code> problem_core_service::create_problem(){
     }
 }
 
-std::expected<limits, error_code> problem_core_service::get_limits(std::int64_t problem_id){
-    if(!is_connected()){
+std::expected<limits, error_code> problem_core_service::get_limits(
+    db_connection& connection,
+    std::int64_t problem_id
+){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0){
@@ -44,12 +82,12 @@ std::expected<limits, error_code> problem_core_service::get_limits(std::int64_t 
     }
 
     try{
-        pqxx::work transaction(connection());
-        const auto limits_query_result = transaction.exec_params(
+        pqxx::work transaction(connection.connection());
+        const auto limits_query_result = transaction.exec(
             "SELECT memory_limit_mb, time_limit_ms "
             "FROM problem_limits "
             "WHERE problem_id = $1",
-            problem_id
+            pqxx::params{problem_id}
         );
 
         if(limits_query_result.empty()){
@@ -67,10 +105,11 @@ std::expected<limits, error_code> problem_core_service::get_limits(std::int64_t 
 }
 
 std::expected<void, error_code> problem_core_service::set_limits(
+    db_connection& connection,
     std::int64_t problem_id,
     const limits& limits_value
 ){
-    if(!is_connected()){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0 || limits_value.memory_limit_mb <= 0 || limits_value.time_limit_ms <= 0){
@@ -78,8 +117,8 @@ std::expected<void, error_code> problem_core_service::set_limits(
     }
 
     try{
-        pqxx::work transaction(connection());
-        transaction.exec_params(
+        pqxx::work transaction(connection.connection());
+        transaction.exec(
             "INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms, updated_at) "
             "VALUES($1, $2, $3, NOW()) "
             "ON CONFLICT(problem_id) DO UPDATE "
@@ -87,9 +126,11 @@ std::expected<void, error_code> problem_core_service::set_limits(
             "memory_limit_mb = EXCLUDED.memory_limit_mb, "
             "time_limit_ms = EXCLUDED.time_limit_ms, "
             "updated_at = NOW()",
-            problem_id,
-            limits_value.memory_limit_mb,
-            limits_value.time_limit_ms
+            pqxx::params{
+                problem_id,
+                limits_value.memory_limit_mb,
+                limits_value.time_limit_ms
+            }
         );
 
         const auto version_exp = problem_service_utility::increase_version(transaction, problem_id);
@@ -106,10 +147,11 @@ std::expected<void, error_code> problem_core_service::set_limits(
 }
 
 std::expected<std::int64_t, error_code> problem_core_service::create_testcase(
+    db_connection& connection,
     std::int64_t problem_id,
     const testcase& testcase_value
 ){
-    if(!is_connected()){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0){
@@ -117,21 +159,23 @@ std::expected<std::int64_t, error_code> problem_core_service::create_testcase(
     }
 
     try{
-        pqxx::work transaction(connection());
+        pqxx::work transaction(connection.connection());
         const auto testcase_order_exp = increase_testcase_count(transaction, problem_id);
         if(!testcase_order_exp){
             return std::unexpected(testcase_order_exp.error());
         }
 
         const std::int32_t testcase_order = testcase_order_exp.value();
-        const auto create_testcase_result = transaction.exec_params(
+        const auto create_testcase_result = transaction.exec(
             "INSERT INTO problem_testcases(problem_id, testcase_order, testcase_input, testcase_output) "
             "VALUES($1, $2, $3, $4) "
             "RETURNING testcase_id",
-            problem_id,
-            testcase_order,
-            testcase_value.testcase_input,
-            testcase_value.testcase_output
+            pqxx::params{
+                problem_id,
+                testcase_order,
+                testcase_value.testcase_input,
+                testcase_value.testcase_output
+            }
         );
 
         if(create_testcase_result.empty()){
@@ -153,10 +197,11 @@ std::expected<std::int64_t, error_code> problem_core_service::create_testcase(
 }
 
 std::expected<testcase, error_code> problem_core_service::get_testcase(
+    db_connection& connection,
     std::int64_t problem_id,
     std::int32_t testcase_order
 ){
-    if(!is_connected()){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0 || testcase_order <= 0){
@@ -164,13 +209,12 @@ std::expected<testcase, error_code> problem_core_service::get_testcase(
     }
 
     try{
-        pqxx::work transaction(connection());
-        const auto testcase_query_result = transaction.exec_params(
+        pqxx::work transaction(connection.connection());
+        const auto testcase_query_result = transaction.exec(
             "SELECT testcase_id, testcase_order, testcase_input, testcase_output "
             "FROM problem_testcases "
             "WHERE problem_id = $1 AND testcase_order = $2",
-            problem_id,
-            testcase_order
+            pqxx::params{problem_id, testcase_order}
         );
 
         if(testcase_query_result.empty()){
@@ -189,8 +233,11 @@ std::expected<testcase, error_code> problem_core_service::get_testcase(
     }
 }
 
-std::expected<std::vector<testcase>, error_code> problem_core_service::list_testcases(std::int64_t problem_id){
-    if(!is_connected()){
+std::expected<std::vector<testcase>, error_code> problem_core_service::list_testcases(
+    db_connection& connection,
+    std::int64_t problem_id
+){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0){
@@ -198,13 +245,13 @@ std::expected<std::vector<testcase>, error_code> problem_core_service::list_test
     }
 
     try{
-        pqxx::work transaction(connection());
-        const auto testcases_query_result = transaction.exec_params(
+        pqxx::work transaction(connection.connection());
+        const auto testcases_query_result = transaction.exec(
             "SELECT testcase_id, testcase_order, testcase_input, testcase_output "
             "FROM problem_testcases "
             "WHERE problem_id = $1 "
             "ORDER BY testcase_order ASC",
-            problem_id
+            pqxx::params{problem_id}
         );
 
         std::vector<testcase> testcase_values;
@@ -226,10 +273,11 @@ std::expected<std::vector<testcase>, error_code> problem_core_service::list_test
 }
 
 std::expected<void, error_code> problem_core_service::set_testcase(
+    db_connection& connection,
     std::int64_t problem_id,
     const testcase& testcase_value
 ){
-    if(!is_connected()){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0 || testcase_value.testcase_order <= 0){
@@ -237,17 +285,19 @@ std::expected<void, error_code> problem_core_service::set_testcase(
     }
 
     try{
-        pqxx::work transaction(connection());
-        const auto update_result = transaction.exec_params(
+        pqxx::work transaction(connection.connection());
+        const auto update_result = transaction.exec(
             "UPDATE problem_testcases "
             "SET "
             "testcase_input = $3, "
             "testcase_output = $4 "
             "WHERE problem_id = $1 AND testcase_order = $2",
-            problem_id,
-            testcase_value.testcase_order,
-            testcase_value.testcase_input,
-            testcase_value.testcase_output
+            pqxx::params{
+                problem_id,
+                testcase_value.testcase_order,
+                testcase_value.testcase_input,
+                testcase_value.testcase_output
+            }
         );
 
         if(update_result.affected_rows() == 0){
@@ -267,8 +317,11 @@ std::expected<void, error_code> problem_core_service::set_testcase(
     }
 }
 
-std::expected<void, error_code> problem_core_service::delete_testcase(std::int64_t problem_id){
-    if(!is_connected()){
+std::expected<void, error_code> problem_core_service::delete_testcase(
+    db_connection& connection,
+    std::int64_t problem_id
+){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0){
@@ -276,8 +329,8 @@ std::expected<void, error_code> problem_core_service::delete_testcase(std::int64
     }
 
     try{
-        pqxx::work transaction(connection());
-        const auto delete_result = transaction.exec_params(
+        pqxx::work transaction(connection.connection());
+        const auto delete_result = transaction.exec(
             "DELETE FROM problem_testcases "
             "WHERE "
             "problem_id = $1 AND "
@@ -286,7 +339,7 @@ std::expected<void, error_code> problem_core_service::delete_testcase(std::int64
             "FROM problem_testcases "
             "WHERE problem_id = $1"
             ")",
-            problem_id
+            pqxx::params{problem_id}
         );
 
         if(delete_result.affected_rows() == 0){
@@ -309,44 +362,4 @@ std::expected<void, error_code> problem_core_service::delete_testcase(std::int64
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
     }
-}
-
-std::expected<std::int32_t, error_code> problem_core_service::increase_testcase_count(
-    pqxx::work& transaction,
-    std::int64_t problem_id
-){
-    const auto increase_result = transaction.exec_params(
-        "UPDATE problem_statements "
-        "SET testcase_count = testcase_count + 1, updated_at = NOW() "
-        "WHERE problem_id = $1 "
-        "RETURNING testcase_count",
-        problem_id
-    );
-
-    if(increase_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    const std::int32_t testcase_count = increase_result[0][0].as<std::int32_t>();
-    return testcase_count;
-}
-
-std::expected<std::int32_t, error_code> problem_core_service::decrease_testcase_count(
-    pqxx::work& transaction,
-    std::int64_t problem_id
-){
-    const auto decrease_result = transaction.exec_params(
-        "UPDATE problem_statements "
-        "SET testcase_count = testcase_count - 1, updated_at = NOW() "
-        "WHERE problem_id = $1 AND testcase_count > 0 "
-        "RETURNING testcase_count",
-        problem_id
-    );
-
-    if(decrease_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    const std::int32_t testcase_count = decrease_result[0][0].as<std::int32_t>();
-    return testcase_count;
 }

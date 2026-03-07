@@ -5,11 +5,49 @@
 
 #include <utility>
 
-problem_content_service::problem_content_service(db_connection connection) :
-    db_service_base<problem_content_service>(std::move(connection)){}
+std::expected<std::int32_t, error_code> problem_content_service::increase_sample_count(
+    pqxx::transaction_base& transaction,
+    std::int64_t problem_id
+){
+    const auto increase_result = transaction.exec(
+        "UPDATE problem_statements "
+        "SET sample_count = sample_count + 1, updated_at = NOW() "
+        "WHERE problem_id = $1 "
+        "RETURNING sample_count",
+        pqxx::params{problem_id}
+    );
 
-std::expected<problem_statement, error_code> problem_content_service::get_statement(std::int64_t problem_id){
-    if(!is_connected()){
+    if(increase_result.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return increase_result[0][0].as<std::int32_t>();
+}
+
+std::expected<std::int32_t, error_code> problem_content_service::decrease_sample_count(
+    pqxx::transaction_base& transaction,
+    std::int64_t problem_id
+){
+    const auto decrease_result = transaction.exec(
+        "UPDATE problem_statements "
+        "SET sample_count = sample_count - 1, updated_at = NOW() "
+        "WHERE problem_id = $1 AND sample_count > 0 "
+        "RETURNING sample_count",
+        pqxx::params{problem_id}
+    );
+
+    if(decrease_result.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return decrease_result[0][0].as<std::int32_t>();
+}
+
+std::expected<problem_statement, error_code> problem_content_service::get_statement(
+    db_connection& connection,
+    std::int64_t problem_id
+){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0){
@@ -17,12 +55,12 @@ std::expected<problem_statement, error_code> problem_content_service::get_statem
     }
 
     try{
-        pqxx::work transaction(connection());
-        const auto statement_query_result = transaction.exec_params(
+        pqxx::work transaction(connection.connection());
+        const auto statement_query_result = transaction.exec(
             "SELECT description, input_format, output_format, note "
             "FROM problem_statements "
             "WHERE problem_id = $1",
-            problem_id
+            pqxx::params{problem_id}
         );
 
         if(statement_query_result.empty()){
@@ -44,10 +82,11 @@ std::expected<problem_statement, error_code> problem_content_service::get_statem
 }
 
 std::expected<void, error_code> problem_content_service::set_statement(
+    db_connection& connection,
     std::int64_t problem_id,
     const problem_statement& statement
 ){
-    if(!is_connected()){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0){
@@ -56,8 +95,8 @@ std::expected<void, error_code> problem_content_service::set_statement(
 
     try{
         const std::string note_value = statement.note.value_or("");
-        pqxx::work transaction(connection());
-        transaction.exec_params(
+        pqxx::work transaction(connection.connection());
+        transaction.exec(
             "INSERT INTO problem_statements("
             "problem_id, description, input_format, output_format, note, created_at, updated_at"
             ") VALUES($1, $2, $3, $4, NULLIF($5, ''), NOW(), NOW()) "
@@ -68,11 +107,13 @@ std::expected<void, error_code> problem_content_service::set_statement(
             "output_format = EXCLUDED.output_format, "
             "note = NULLIF(EXCLUDED.note, ''), "
             "updated_at = NOW()",
-            problem_id,
-            statement.description,
-            statement.input_format,
-            statement.output_format,
-            note_value
+            pqxx::params{
+                problem_id,
+                statement.description,
+                statement.input_format,
+                statement.output_format,
+                note_value
+            }
         );
 
         const auto version_exp = problem_service_utility::increase_version(transaction, problem_id);
@@ -88,8 +129,11 @@ std::expected<void, error_code> problem_content_service::set_statement(
     }
 }
 
-std::expected<std::vector<sample>, error_code> problem_content_service::list_samples(std::int64_t problem_id){
-    if(!is_connected()){
+std::expected<std::vector<sample>, error_code> problem_content_service::list_samples(
+    db_connection& connection,
+    std::int64_t problem_id
+){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0){
@@ -97,13 +141,13 @@ std::expected<std::vector<sample>, error_code> problem_content_service::list_sam
     }
 
     try{
-        pqxx::work transaction(connection());
-        const auto samples_query_result = transaction.exec_params(
+        pqxx::work transaction(connection.connection());
+        const auto samples_query_result = transaction.exec(
             "SELECT sample_id, sample_order, sample_input, sample_output "
             "FROM problem_samples "
             "WHERE problem_id = $1 "
             "ORDER BY sample_order ASC",
-            problem_id
+            pqxx::params{problem_id}
         );
 
         std::vector<sample> sample_values;
@@ -125,10 +169,11 @@ std::expected<std::vector<sample>, error_code> problem_content_service::list_sam
 }
 
 std::expected<std::int64_t, error_code> problem_content_service::create_sample(
+    db_connection& connection,
     std::int64_t problem_id,
     const sample& sample_value
 ){
-    if(!is_connected()){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0){
@@ -136,21 +181,23 @@ std::expected<std::int64_t, error_code> problem_content_service::create_sample(
     }
 
     try{
-        pqxx::work transaction(connection());
+        pqxx::work transaction(connection.connection());
         const auto sample_order_exp = increase_sample_count(transaction, problem_id);
         if(!sample_order_exp){
             return std::unexpected(sample_order_exp.error());
         }
 
         const std::int32_t sample_order = sample_order_exp.value();
-        const auto create_sample_result = transaction.exec_params(
+        const auto create_sample_result = transaction.exec(
             "INSERT INTO problem_samples(problem_id, sample_order, sample_input, sample_output) "
             "VALUES($1, $2, $3, $4) "
             "RETURNING sample_id",
-            problem_id,
-            sample_order,
-            sample_value.sample_input,
-            sample_value.sample_output
+            pqxx::params{
+                problem_id,
+                sample_order,
+                sample_value.sample_input,
+                sample_value.sample_output
+            }
         );
 
         if(create_sample_result.empty()){
@@ -172,10 +219,11 @@ std::expected<std::int64_t, error_code> problem_content_service::create_sample(
 }
 
 std::expected<void, error_code> problem_content_service::set_sample(
+    db_connection& connection,
     std::int64_t problem_id,
     const sample& sample_value
 ){
-    if(!is_connected()){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0 || sample_value.sample_order <= 0){
@@ -183,18 +231,20 @@ std::expected<void, error_code> problem_content_service::set_sample(
     }
 
     try{
-        pqxx::work transaction(connection());
-        transaction.exec_params(
+        pqxx::work transaction(connection.connection());
+        transaction.exec(
             "INSERT INTO problem_samples(problem_id, sample_order, sample_input, sample_output) "
             "VALUES($1, $2, $3, $4) "
             "ON CONFLICT(problem_id, sample_order) DO UPDATE "
             "SET "
             "sample_input = EXCLUDED.sample_input, "
             "sample_output = EXCLUDED.sample_output",
-            problem_id,
-            sample_value.sample_order,
-            sample_value.sample_input,
-            sample_value.sample_output
+            pqxx::params{
+                problem_id,
+                sample_value.sample_order,
+                sample_value.sample_input,
+                sample_value.sample_output
+            }
         );
 
         const auto version_exp = problem_service_utility::increase_version(transaction, problem_id);
@@ -211,10 +261,11 @@ std::expected<void, error_code> problem_content_service::set_sample(
 }
 
 std::expected<void, error_code> problem_content_service::delete_sample(
+    db_connection& connection,
     std::int64_t problem_id,
     const sample& sample_value
 ){
-    if(!is_connected()){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0 || sample_value.sample_order <= 0){
@@ -222,8 +273,8 @@ std::expected<void, error_code> problem_content_service::delete_sample(
     }
 
     try{
-        pqxx::work transaction(connection());
-        const auto delete_result = transaction.exec_params(
+        pqxx::work transaction(connection.connection());
+        const auto delete_result = transaction.exec(
             "DELETE FROM problem_samples "
             "WHERE "
             "problem_id = $1 AND "
@@ -233,8 +284,7 @@ std::expected<void, error_code> problem_content_service::delete_sample(
             "FROM problem_samples "
             "WHERE problem_id = $1"
             ")",
-            problem_id,
-            sample_value.sample_order
+            pqxx::params{problem_id, sample_value.sample_order}
         );
 
         if(delete_result.affected_rows() == 0){
@@ -257,44 +307,4 @@ std::expected<void, error_code> problem_content_service::delete_sample(
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
     }
-}
-
-std::expected<std::int32_t, error_code> problem_content_service::increase_sample_count(
-    pqxx::work& transaction,
-    std::int64_t problem_id
-){
-    const auto increase_result = transaction.exec_params(
-        "UPDATE problem_statements "
-        "SET sample_count = sample_count + 1, updated_at = NOW() "
-        "WHERE problem_id = $1 "
-        "RETURNING sample_count",
-        problem_id
-    );
-
-    if(increase_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    const std::int32_t sample_count = increase_result[0][0].as<std::int32_t>();
-    return sample_count;
-}
-
-std::expected<std::int32_t, error_code> problem_content_service::decrease_sample_count(
-    pqxx::work& transaction,
-    std::int64_t problem_id
-){
-    const auto decrease_result = transaction.exec_params(
-        "UPDATE problem_statements "
-        "SET sample_count = sample_count - 1, updated_at = NOW() "
-        "WHERE problem_id = $1 AND sample_count > 0 "
-        "RETURNING sample_count",
-        problem_id
-    );
-
-    if(decrease_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    const std::int32_t sample_count = decrease_result[0][0].as<std::int32_t>();
-    return sample_count;
 }

@@ -2,13 +2,11 @@
 
 #include <pqxx/pqxx>
 
-#include <utility>
-
-problem_statistics_service::problem_statistics_service(db_connection connection) :
-    db_service_base<problem_statistics_service>(std::move(connection)){}
-
-std::expected<void, error_code> problem_statistics_service::increase_submission_count(std::int64_t problem_id){
-    if(!is_connected()){
+std::expected<void, error_code> problem_statistics_service::increase_submission_count(
+    db_connection& connection,
+    std::int64_t problem_id
+){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0){
@@ -16,14 +14,14 @@ std::expected<void, error_code> problem_statistics_service::increase_submission_
     }
 
     try{
-        pqxx::work transaction(connection());
-        const auto update_result = transaction.exec_params(
+        pqxx::work transaction(connection.connection());
+        const auto update_result = transaction.exec(
             "UPDATE problem_statistics "
             "SET "
             "submission_count = submission_count + 1, "
             "updated_at = NOW() "
             "WHERE problem_id = $1",
-            problem_id
+            pqxx::params{problem_id}
         );
 
         if(update_result.affected_rows() == 0){
@@ -38,8 +36,11 @@ std::expected<void, error_code> problem_statistics_service::increase_submission_
     }
 }
 
-std::expected<void, error_code> problem_statistics_service::increase_accepted_count(std::int64_t problem_id){
-    if(!is_connected()){
+std::expected<void, error_code> problem_statistics_service::increase_accepted_count(
+    db_connection& connection,
+    std::int64_t problem_id
+){
+    if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(problem_id <= 0){
@@ -47,14 +48,14 @@ std::expected<void, error_code> problem_statistics_service::increase_accepted_co
     }
 
     try{
-        pqxx::work transaction(connection());
-        const auto update_result = transaction.exec_params(
+        pqxx::work transaction(connection.connection());
+        const auto update_result = transaction.exec(
             "UPDATE problem_statistics "
             "SET "
             "accepted_count = accepted_count + 1, "
             "updated_at = NOW() "
             "WHERE problem_id = $1",
-            problem_id
+            pqxx::params{problem_id}
         );
 
         if(update_result.affected_rows() == 0){
