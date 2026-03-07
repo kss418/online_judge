@@ -2,6 +2,31 @@
 
 #include <fstream>
 #include <string>
+#include <system_error>
+
+std::expected<bool, error_code> file_utility::exists(const std::filesystem::path& file_path){
+    std::error_code exists_ec;
+    const bool exists_value = std::filesystem::exists(file_path, exists_ec);
+    if(exists_ec){
+        return std::unexpected(error_code::create(error_code::map_errno(exists_ec.value())));
+    }
+
+    return exists_value;
+}
+
+std::expected<void, error_code> file_utility::create_directories(
+    const std::filesystem::path& directory_path
+){
+    std::error_code create_directories_ec;
+    std::filesystem::create_directories(directory_path, create_directories_ec);
+    if(create_directories_ec){
+        return std::unexpected(
+            error_code::create(error_code::map_errno(create_directories_ec.value()))
+        );
+    }
+
+    return {};
+}
 
 std::expected<void, error_code> file_utility::create_file(
     const std::filesystem::path& file_path,

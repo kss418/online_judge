@@ -28,6 +28,37 @@ std::expected<bool, error_code> problem_core_service::exists_problem(
     }
 }
 
+std::expected<std::int32_t, error_code> problem_core_service::get_version(
+    db_connection& connection,
+    std::int64_t problem_id
+){
+    if(!connection.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    try{
+        pqxx::work transaction(connection.connection());
+        const auto version_query_result = transaction.exec(
+            "SELECT version "
+            "FROM problems "
+            "WHERE problem_id = $1",
+            pqxx::params{problem_id}
+        );
+
+        if(version_query_result.empty()){
+            return std::unexpected(error_code::create(errno_error::invalid_argument));
+        }
+
+        return version_query_result[0][0].as<std::int32_t>();
+    }
+    catch(const std::exception& exception){
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
+}
+
 std::expected<void, error_code> problem_core_service::increase_version(
     db_connection& connection,
     std::int64_t problem_id

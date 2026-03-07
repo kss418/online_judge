@@ -1,4 +1,5 @@
 #include "judge_server/code_runner.hpp"
+#include "common/file_utility.hpp"
 #include "common/temp_file.hpp"
 #include "common/blocking_io.hpp"
 #include "judge_server/judge_utility.hpp"
@@ -91,7 +92,12 @@ std::expected<code_runner::run_result, error_code> code_runner::run(
     if(command_args.empty()){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
-    if(!std::filesystem::exists(command_args[0])){
+
+    const auto command_exists_exp = file_utility::exists(command_args[0]);
+    if(!command_exists_exp){
+        return std::unexpected(command_exists_exp.error());
+    }
+    if(!command_exists_exp.value()){
         return std::unexpected(error_code::create(errno_error::file_not_found));
     }
 

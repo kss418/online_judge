@@ -10,6 +10,8 @@
 class testcase_downloader{
 public:
     static std::expected<testcase_downloader, error_code> create(db_connection connection);
+    std::expected<void, error_code> sync_version_file(std::int64_t problem_id);
+    std::expected<void, error_code> download_all(std::int64_t problem_id);
     std::expected<void, error_code> download_one(
         std::int64_t problem_id,
         std::int32_t order
@@ -20,14 +22,20 @@ private:
         db_connection connection,
         std::filesystem::path root_path
     );
+
+    std::filesystem::path make_problem_directory_path(std::int64_t problem_id) const;
     std::filesystem::path make_input_path(
         std::int64_t problem_id,
         std::int32_t order
     ) const;
+
     std::filesystem::path make_output_path(
         std::int64_t problem_id,
         std::int32_t order
     ) const;
+    
+    std::filesystem::path make_version_file_path(std::int64_t problem_id) const;
+    std::expected<std::int32_t, error_code> read_version_file(std::int64_t problem_id) const;
 
     db_connection connection_;
     std::filesystem::path root_path_;

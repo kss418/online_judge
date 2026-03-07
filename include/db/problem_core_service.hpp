@@ -12,6 +12,11 @@ namespace problem_core_service{
         db_connection& connection,
         std::int64_t problem_id
     );
+    
+    std::expected<std::int32_t, error_code> get_version(
+        db_connection& connection,
+        std::int64_t problem_id
+    );
 
     std::expected<void, error_code> increase_version(
         db_connection& connection,

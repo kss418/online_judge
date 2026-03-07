@@ -6,7 +6,6 @@
 #include "judge_server/compile_runner.hpp"
 
 #include <string>
-#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -46,10 +45,9 @@ std::expected<judge_worker, error_code> judge_worker::create(submission_service 
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    std::error_code create_directory_ec;
-    std::filesystem::create_directories(source_root_path, create_directory_ec);
-    if(create_directory_ec){
-        return std::unexpected(error_code::create(error_code::map_errno(create_directory_ec.value())));
+    const auto create_directories_exp = file_utility::create_directories(source_root_path);
+    if(!create_directories_exp){
+        return std::unexpected(create_directories_exp.error());
     }
 
     auto listen_submission_queue_exp = submission_service.listen_submission_queue();

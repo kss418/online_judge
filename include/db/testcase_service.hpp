@@ -20,6 +20,10 @@ namespace testcase_service{
         std::int64_t problem_id,
         std::int32_t testcase_order
     );
+    std::expected<std::int32_t, error_code> get_testcase_count(
+        db_connection& connection,
+        std::int64_t problem_id
+    );
 
     std::expected<std::vector<testcase>, error_code> list_testcases(
         db_connection& connection,
