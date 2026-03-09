@@ -1,13 +1,18 @@
 #include "judge_server/checker.hpp"
+
 #include "common/unique_fd.hpp"
 #include "common/blocking_io.hpp"
+#include "common/file_utility.hpp"
 #include "judge_server/judge_utility.hpp"
 
 #include <cerrno>
-#include <unistd.h>
 #include <fcntl.h>
+#include <unistd.h>
 
-std::expected <judge_result, error_code> checker::check(std::vector <std::string> output, const path& answer_path){
+std::expected<bool, error_code> checker::check(
+    const std::vector<std::string>& output,
+    const path& answer_path
+){
     unique_fd answer_fd = unique_fd(open(answer_path.c_str(), O_RDONLY));
     if(!answer_fd){
         return std::unexpected(error_code::create(error_code::map_errno(errno)));
@@ -19,7 +24,48 @@ std::expected <judge_result, error_code> checker::check(std::vector <std::string
     }
 
     auto answer_text = std::move(*answer_text_exp);
-    return output == judge_utility::normalize_output(answer_text)
-        ? judge_result::accepted
-        : judge_result::wrong_answer;
-};
+    return output == judge_utility::normalize_output(answer_text);
+}
+
+std::expected<judge_result, error_code> checker::check_all(
+    const std::vector<std::vector<std::string>>& output, std::int64_t problem_id
+){
+    const auto testcase_count_exp = file_utility::instance().count_testcase_output(problem_id);
+    if(!testcase_count_exp){
+        return std::unexpected(testcase_count_exp.error());
+    }
+
+    if(output.size() != static_cast<std::size_t>(testcase_count_exp.value())){
+        return judge_result::wrong_answer;
+    }
+
+    const auto validated_testcase_count_exp = file_utility::instance().validate_testcase_output(
+        problem_id,
+        testcase_count_exp.value()
+    );
+    
+    if(!validated_testcase_count_exp){
+        return std::unexpected(validated_testcase_count_exp.error());
+    }
+
+    for(std::int32_t order = 1; order <= validated_testcase_count_exp.value(); ++order){
+        const auto answer_path_exp = file_utility::instance().make_testcase_output_path(
+            problem_id, order
+        );
+
+        if(!answer_path_exp){
+            return std::unexpected(answer_path_exp.error());
+        }
+
+        const auto check_exp = check(output[static_cast<std::size_t>(order - 1)], *answer_path_exp);
+        if(!check_exp){
+            return std::unexpected(check_exp.error());
+        }
+
+        if(!check_exp.value()){
+            return judge_result::wrong_answer;
+        }
+    }
+
+    return judge_result::accepted;
+}

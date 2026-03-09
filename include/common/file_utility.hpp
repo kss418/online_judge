@@ -8,6 +8,7 @@
 #include <mutex>
 #include <optional>
 #include <string_view>
+#include <vector>
 
 class file_utility{
 public:
@@ -40,6 +41,11 @@ public:
     );
     std::expected<std::filesystem::path, error_code> make_testcase_version_file_path(
         std::int64_t problem_id
+    );
+    std::expected<std::int32_t, error_code> count_testcase_output(std::int64_t problem_id);
+    std::expected<std::int32_t, error_code> validate_testcase_output(
+        std::int64_t problem_id,
+        std::int32_t testcase_count
     );
 
 private:
