@@ -58,10 +58,6 @@ std::expected<void, error_code> judge_worker::run(){
 
         if(save_source_code_exp->has_value()){
             const queued_submission& queued_submission_value = save_source_code_exp->value();
-            const auto set_testcase_paths_exp = set_testcase_paths(queued_submission_value.problem_id);
-            if(!set_testcase_paths_exp){
-                return std::unexpected(set_testcase_paths_exp.error());
-            }
             const auto source_file_path_exp = file_utility::instance().make_source_file_path(
                 queued_submission_value.submission_id,
                 queued_submission_value.language
@@ -70,9 +66,12 @@ std::expected<void, error_code> judge_worker::run(){
                 return std::unexpected(source_file_path_exp.error());
             }
             const std::filesystem::path source_file_path = *source_file_path_exp;
-            auto run_source_code_exp = run_source_code(source_file_path);
-            if(!run_source_code_exp){
-                return std::unexpected(run_source_code_exp.error());
+            auto run_all_testcases_exp = run_all_testcases(
+                source_file_path,
+                queued_submission_value.problem_id
+            );
+            if(!run_all_testcases_exp){
+                return std::unexpected(run_all_testcases_exp.error());
             }
 
             continue;
@@ -119,41 +118,81 @@ std::expected<std::optional<queued_submission>, error_code> judge_worker::save_s
     return std::move(*pop_submission_exp);
 }
 
-std::expected<void, error_code> judge_worker::set_testcase_paths(std::int64_t problem_id){
-    const auto input_path_exp = file_utility::instance().make_testcase_input_path(problem_id, 1);
-    if(!input_path_exp){
-        return std::unexpected(input_path_exp.error());
-    }
-    input_path_ = std::move(*input_path_exp);
-
-    const auto output_path_exp = file_utility::instance().make_testcase_output_path(problem_id, 1);
-    if(!output_path_exp){
-        return std::unexpected(output_path_exp.error());
-    }
-    output_path_ = std::move(*output_path_exp);
-
-    return {};
+std::expected<std::filesystem::path, error_code> judge_worker::make_input_path(
+    std::int64_t problem_id, std::int32_t order
+){
+    return file_utility::instance().make_testcase_input_path(problem_id, order);
 }
 
-std::expected<code_runner::run_result, error_code> judge_worker::run_source_code(
-    const std::filesystem::path& source_file_path
+std::expected<std::filesystem::path, error_code> judge_worker::make_output_path(
+    std::int64_t problem_id, std::int32_t order
+){
+    return file_utility::instance().make_testcase_output_path(problem_id, order);
+}
+
+std::expected<code_runner::run_result, error_code> judge_worker::run_one_testcase(
+    const std::filesystem::path& source_file_path,
+    const std::filesystem::path& input_path
 ){
     const std::string extension = source_file_path.extension().string();
     if(extension == ".cpp"){
-        return run_cpp(source_file_path);
+        return run_cpp(source_file_path, input_path);
     }
     if(extension == ".py"){
-        return run_python(source_file_path);
+        return run_python(source_file_path, input_path);
     }
     if(extension == ".java"){
-        return run_java(source_file_path);
+        return run_java(source_file_path, input_path);
     }
 
     return std::unexpected(error_code::create(errno_error::invalid_argument));
 }
 
+std::expected<std::vector<code_runner::run_result>, error_code> judge_worker::run_all_testcases(
+    const std::filesystem::path& source_file_path,
+    std::int64_t problem_id
+){
+    const auto testcase_count_exp = file_utility::instance().count_testcase_output(problem_id);
+    if(!testcase_count_exp){
+        return std::unexpected(testcase_count_exp.error());
+    }
+
+    const auto validated_testcase_count_exp = file_utility::instance().validate_testcase_output(
+        problem_id, testcase_count_exp.value()
+    );
+
+    if(!validated_testcase_count_exp){
+        return std::unexpected(validated_testcase_count_exp.error());
+    }
+
+    std::vector<code_runner::run_result> run_results;
+    run_results.reserve(static_cast<std::size_t>(validated_testcase_count_exp.value()));
+
+    for(std::int32_t order = 1; order <= validated_testcase_count_exp.value(); ++order){
+        const auto input_path_exp = make_input_path(problem_id, order);
+        if(!input_path_exp){
+            return std::unexpected(input_path_exp.error());
+        }
+
+        const auto output_path_exp = make_output_path(problem_id, order);
+        if(!output_path_exp){
+            return std::unexpected(output_path_exp.error());
+        }
+
+        const auto run_one_testcase_exp = run_one_testcase(source_file_path, *input_path_exp);
+        if(!run_one_testcase_exp){
+            return std::unexpected(run_one_testcase_exp.error());
+        }
+
+        run_results.push_back(std::move(*run_one_testcase_exp));
+    }
+
+    return run_results;
+}
+
 std::expected<code_runner::run_result, error_code> judge_worker::run_cpp(
-    const std::filesystem::path& source_file_path
+    const std::filesystem::path& source_file_path,
+    const std::filesystem::path& input_path
 ){
     auto binary_temp_exp = temp_file::create("/tmp/oj_binary_XXXXXX");
     if(!binary_temp_exp){
@@ -181,7 +220,7 @@ std::expected<code_runner::run_result, error_code> judge_worker::run_cpp(
     std::vector<std::string> command_args = {binary_temp_exp->get_path().string()};
     auto run_exp = code_runner::run(
         command_args,
-        input_path_,
+        input_path,
         source_run_time_limit_,
         source_run_memory_limit_mb_
     );
@@ -190,24 +229,26 @@ std::expected<code_runner::run_result, error_code> judge_worker::run_cpp(
 }
 
 std::expected<code_runner::run_result, error_code> judge_worker::run_python(
-    const std::filesystem::path& source_file_path
+    const std::filesystem::path& source_file_path,
+    const std::filesystem::path& input_path
 ){
     std::vector<std::string> command_args = {python_path_, source_file_path.string()};
     return code_runner::run(
         command_args,
-        input_path_,
+        input_path,
         source_run_time_limit_,
         source_run_memory_limit_mb_
     );
 }
 
 std::expected<code_runner::run_result, error_code> judge_worker::run_java(
-    const std::filesystem::path& source_file_path
+    const std::filesystem::path& source_file_path,
+    const std::filesystem::path& input_path
 ){
     std::vector<std::string> command_args = {java_runtime_path_, source_file_path.string()};
     return code_runner::run(
         command_args,
-        input_path_,
+        input_path,
         source_run_time_limit_,
         source_run_memory_limit_mb_
     );
