@@ -23,12 +23,7 @@ public:
     );
 
 private:
-    explicit judge_worker(
-        submission_service submission_service,
-        std::string cpp_compiler_path,
-        std::string python_path,
-        std::string java_runtime_path
-    );
+    explicit judge_worker(submission_service submission_service);
 
     static bool is_queue_empty_error(const error_code& code);
     std::expected<void, error_code> set_testcase_paths(std::int64_t problem_id);

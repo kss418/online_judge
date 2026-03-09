@@ -47,24 +47,15 @@ std::expected<judge_worker, error_code> judge_worker::create(submission_service 
         return std::unexpected(listen_submission_queue_exp.error());
     }
 
-    return judge_worker(
-        std::move(submission_service),
-        std::move(*cpp_compiler_path_exp),
-        std::move(*python_path_exp),
-        std::move(*java_runtime_path_exp)
-    );
+    judge_worker judge_worker_value(std::move(submission_service));
+    judge_worker_value.cpp_compiler_path_ = std::move(*cpp_compiler_path_exp);
+    judge_worker_value.python_path_ = std::move(*python_path_exp);
+    judge_worker_value.java_runtime_path_ = std::move(*java_runtime_path_exp);
+    return judge_worker_value;
 }
 
-judge_worker::judge_worker(
-    submission_service submission_service,
-    std::string cpp_compiler_path,
-    std::string python_path,
-    std::string java_runtime_path
-) :
-    submission_service_(std::move(submission_service)),
-    cpp_compiler_path_(std::move(cpp_compiler_path)),
-    python_path_(std::move(python_path)),
-    java_runtime_path_(std::move(java_runtime_path)){}
+judge_worker::judge_worker(submission_service submission_service) :
+    submission_service_(std::move(submission_service)){}
 
 bool judge_worker::is_queue_empty_error(const error_code& code){
     return code.type_ == error_type::errno_type &&
