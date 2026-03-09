@@ -69,6 +69,7 @@ std::expected<std::string, error_code> db_connection::initialize(){
     auto port_exp = env_utility::require_env("DB_PORT");
 
     const std::string port_string(*port_exp);
+
     unsigned int port = 0;
     const auto [parse_end, parse_error] = std::from_chars(
         port_string.data(), port_string.data() + port_string.size(), port

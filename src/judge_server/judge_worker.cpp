@@ -10,24 +10,11 @@
 #include <vector>
 
 std::expected<judge_worker, error_code> judge_worker::create(submission_service submission_service){
-    const auto require_envs_exp = env_utility::require_envs(
+    const auto env_values_exp = env_utility::require_envs(
         {"JUDGE_CPP_COMPILER_PATH", "JUDGE_PYTHON_PATH", "JUDGE_JAVA_RUNTIME_PATH"}
     );
-    if(!require_envs_exp){
-        return std::unexpected(require_envs_exp.error());
-    }
-
-    auto cpp_compiler_path_exp = env_utility::require_env("JUDGE_CPP_COMPILER_PATH");
-    if(!cpp_compiler_path_exp){
-        return std::unexpected(cpp_compiler_path_exp.error());
-    }
-    auto python_path_exp = env_utility::require_env("JUDGE_PYTHON_PATH");
-    if(!python_path_exp){
-        return std::unexpected(python_path_exp.error());
-    }
-    auto java_runtime_path_exp = env_utility::require_env("JUDGE_JAVA_RUNTIME_PATH");
-    if(!java_runtime_path_exp){
-        return std::unexpected(java_runtime_path_exp.error());
+    if(!env_values_exp){
+        return std::unexpected(env_values_exp.error());
     }
 
     const auto source_directory_path_exp = file_utility::instance().make_source_directory_path();
@@ -48,9 +35,9 @@ std::expected<judge_worker, error_code> judge_worker::create(submission_service 
     }
 
     judge_worker judge_worker_value(std::move(submission_service));
-    judge_worker_value.cpp_compiler_path_ = std::move(*cpp_compiler_path_exp);
-    judge_worker_value.python_path_ = std::move(*python_path_exp);
-    judge_worker_value.java_runtime_path_ = std::move(*java_runtime_path_exp);
+    judge_worker_value.cpp_compiler_path_ = std::move(env_values_exp->at(0));
+    judge_worker_value.python_path_ = std::move(env_values_exp->at(1));
+    judge_worker_value.java_runtime_path_ = std::move(env_values_exp->at(2));
     return judge_worker_value;
 }
 

@@ -12,7 +12,7 @@ std::expected<std::string, error_code> env_utility::require_env(const char* key)
 }
 
 std::expected<void, error_code> env_utility::require_all_envs(){
-    return require_envs(
+    const auto env_values_exp = require_envs(
         {
             "HTTP_PORT",
             "DB_USER",
@@ -31,15 +31,27 @@ std::expected<void, error_code> env_utility::require_all_envs(){
             "JUDGE_JAVA_RUNTIME_PATH"
         }
     );
+    if(!env_values_exp){
+        return std::unexpected(env_values_exp.error());
+    }
+
+    return {};
 }
 
-std::expected<void, error_code> env_utility::require_envs(std::initializer_list<const char*> keys){
+std::expected<std::vector<std::string>, error_code> env_utility::require_envs(
+    std::initializer_list<const char*> keys
+){
+    std::vector<std::string> env_values;
+    env_values.reserve(keys.size());
+
     for(const char* key : keys){
         const auto env_value_exp = require_env(key);
         if(!env_value_exp){
             return std::unexpected(env_value_exp.error());
         }
+
+        env_values.push_back(std::move(*env_value_exp));
     }
 
-    return {};
+    return env_values;
 }
