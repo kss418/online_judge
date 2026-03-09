@@ -10,7 +10,7 @@
 #include <chrono>
 #include <sys/resource.h>
 
-namespace code_runner{
+namespace sandbox_runner{
     using path = std::filesystem::path;
 
     struct run_result{
@@ -45,4 +45,4 @@ namespace code_runner{
         std::chrono::milliseconds time_limit,
         std::int64_t memory_limit_mb
     );
-};
+}

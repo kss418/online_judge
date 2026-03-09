@@ -2,7 +2,6 @@
 #include "common/file_utility.hpp"
 #include "common/env_utility.hpp"
 #include "common/temp_file.hpp"
-#include "judge_server/code_runner.hpp"
 #include "judge_server/compile_runner.hpp"
 
 #include <string>
@@ -130,7 +129,7 @@ std::expected<std::filesystem::path, error_code> judge_worker::make_output_path(
     return file_utility::instance().make_testcase_output_path(problem_id, order);
 }
 
-std::expected<code_runner::run_result, error_code> judge_worker::run_one_testcase(
+std::expected<sandbox_runner::run_result, error_code> judge_worker::run_one_testcase(
     const std::filesystem::path& source_file_path,
     const std::filesystem::path& input_path
 ){
@@ -148,7 +147,7 @@ std::expected<code_runner::run_result, error_code> judge_worker::run_one_testcas
     return std::unexpected(error_code::create(errno_error::invalid_argument));
 }
 
-std::expected<std::vector<code_runner::run_result>, error_code> judge_worker::run_all_testcases(
+std::expected<std::vector<sandbox_runner::run_result>, error_code> judge_worker::run_all_testcases(
     const std::filesystem::path& source_file_path,
     std::int64_t problem_id
 ){
@@ -165,7 +164,7 @@ std::expected<std::vector<code_runner::run_result>, error_code> judge_worker::ru
         return std::unexpected(validated_testcase_count_exp.error());
     }
 
-    std::vector<code_runner::run_result> run_results;
+    std::vector<sandbox_runner::run_result> run_results;
     run_results.reserve(static_cast<std::size_t>(validated_testcase_count_exp.value()));
 
     for(std::int32_t order = 1; order <= validated_testcase_count_exp.value(); ++order){
@@ -190,7 +189,7 @@ std::expected<std::vector<code_runner::run_result>, error_code> judge_worker::ru
     return run_results;
 }
 
-std::expected<code_runner::run_result, error_code> judge_worker::run_cpp(
+std::expected<sandbox_runner::run_result, error_code> judge_worker::run_cpp(
     const std::filesystem::path& source_file_path,
     const std::filesystem::path& input_path
 ){
@@ -210,7 +209,7 @@ std::expected<code_runner::run_result, error_code> judge_worker::run_cpp(
     }
 
     if(compile_exp->exit_code_ != 0){
-        code_runner::run_result run_result_value;
+        sandbox_runner::run_result run_result_value;
         run_result_value.exit_code_ = compile_exp->exit_code_;
         run_result_value.stderr_text_ = std::move(compile_exp->stderr_text_);
         return run_result_value;
@@ -218,7 +217,7 @@ std::expected<code_runner::run_result, error_code> judge_worker::run_cpp(
 
     binary_temp_exp->close_fd();
     std::vector<std::string> command_args = {binary_temp_exp->get_path().string()};
-    auto run_exp = code_runner::run(
+    auto run_exp = sandbox_runner::run(
         command_args,
         input_path,
         source_run_time_limit_,
@@ -228,12 +227,12 @@ std::expected<code_runner::run_result, error_code> judge_worker::run_cpp(
     return run_exp;
 }
 
-std::expected<code_runner::run_result, error_code> judge_worker::run_python(
+std::expected<sandbox_runner::run_result, error_code> judge_worker::run_python(
     const std::filesystem::path& source_file_path,
     const std::filesystem::path& input_path
 ){
     std::vector<std::string> command_args = {python_path_, source_file_path.string()};
-    return code_runner::run(
+    return sandbox_runner::run(
         command_args,
         input_path,
         source_run_time_limit_,
@@ -241,12 +240,12 @@ std::expected<code_runner::run_result, error_code> judge_worker::run_python(
     );
 }
 
-std::expected<code_runner::run_result, error_code> judge_worker::run_java(
+std::expected<sandbox_runner::run_result, error_code> judge_worker::run_java(
     const std::filesystem::path& source_file_path,
     const std::filesystem::path& input_path
 ){
     std::vector<std::string> command_args = {java_runtime_path_, source_file_path.string()};
-    return code_runner::run(
+    return sandbox_runner::run(
         command_args,
         input_path,
         source_run_time_limit_,

@@ -1,4 +1,4 @@
-#include "judge_server/code_runner.hpp"
+#include "judge_server/sandbox_runner.hpp"
 #include "common/file_utility.hpp"
 #include "common/temp_file.hpp"
 #include "common/blocking_io.hpp"
@@ -11,7 +11,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-void code_runner::exec_child(
+void sandbox_runner::exec_child(
     const std::vector<std::string>& command_args, int input_fd, int output_fd, int error_fd,
     std::chrono::milliseconds time_limit, std::int64_t memory_limit_mb
 ){
@@ -45,7 +45,7 @@ void code_runner::exec_child(
     _exit(127);
 }
 
-std::expected <code_runner::wait_result, error_code> code_runner::wait_wall_clock(
+std::expected<sandbox_runner::wait_result, error_code> sandbox_runner::wait_wall_clock(
     pid_t pid, std::chrono::milliseconds time_limit
 ){
     wait_result out{};
@@ -83,7 +83,7 @@ std::expected <code_runner::wait_result, error_code> code_runner::wait_wall_cloc
     return out;
 }
 
-std::expected<code_runner::run_result, error_code> code_runner::run(
+std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
     const std::vector<std::string>& command_args,
     const path& input_path,
     std::chrono::milliseconds time_limit,

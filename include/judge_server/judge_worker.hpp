@@ -2,7 +2,7 @@
 
 #include "common/error_code.hpp"
 #include "db/submission_service.hpp"
-#include "judge_server/code_runner.hpp"
+#include "judge_server/sandbox_runner.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -18,11 +18,11 @@ public:
 
     std::expected<void, error_code> run();
     std::expected<std::optional<queued_submission>, error_code> save_source_code();
-    std::expected<code_runner::run_result, error_code> run_one_testcase(
+    std::expected<sandbox_runner::run_result, error_code> run_one_testcase(
         const std::filesystem::path& source_file_path,
         const std::filesystem::path& input_path
     );
-    std::expected<std::vector<code_runner::run_result>, error_code> run_all_testcases(
+    std::expected<std::vector<sandbox_runner::run_result>, error_code> run_all_testcases(
         const std::filesystem::path& source_file_path,
         std::int64_t problem_id
     );
@@ -39,15 +39,15 @@ private:
         std::int64_t problem_id,
         std::int32_t order
     );
-    std::expected<code_runner::run_result, error_code> run_cpp(
+    std::expected<sandbox_runner::run_result, error_code> run_cpp(
         const std::filesystem::path& source_file_path,
         const std::filesystem::path& input_path
     );
-    std::expected<code_runner::run_result, error_code> run_python(
+    std::expected<sandbox_runner::run_result, error_code> run_python(
         const std::filesystem::path& source_file_path,
         const std::filesystem::path& input_path
     );
-    std::expected<code_runner::run_result, error_code> run_java(
+    std::expected<sandbox_runner::run_result, error_code> run_java(
         const std::filesystem::path& source_file_path,
         const std::filesystem::path& input_path
     );
