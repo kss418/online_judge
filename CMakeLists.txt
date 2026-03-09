@@ -26,6 +26,7 @@ add_library(lib STATIC
     src/http_server/acceptor.cpp
     src/http_server/http_session.cpp
     src/common/file_utility.cpp
+    src/judge_server/code_runner.cpp
     src/judge_server/sandbox_runner.cpp
     src/judge_server/compile_runner.cpp
     src/judge_server/judge_worker.cpp
