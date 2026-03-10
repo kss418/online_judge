@@ -1,4 +1,4 @@
-#include "judge_server/pl_runner/cpp_runner.hpp"
+#include "pl_runner/cpp_runner.hpp"
 
 #include "common/unique_fd.hpp"
 

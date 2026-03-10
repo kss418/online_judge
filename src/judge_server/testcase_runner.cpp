@@ -2,9 +2,9 @@
 
 #include "common/env_utility.hpp"
 #include "common/file_utility.hpp"
-#include "judge_server/pl_runner/cpp_runner.hpp"
-#include "judge_server/pl_runner/java_runner.hpp"
-#include "judge_server/pl_runner/python_runner.hpp"
+#include "pl_runner/cpp_runner.hpp"
+#include "pl_runner/java_runner.hpp"
+#include "pl_runner/python_runner.hpp"
 
 #include <string>
 #include <utility>
