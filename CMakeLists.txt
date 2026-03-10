@@ -30,6 +30,7 @@ add_library(lib STATIC
     src/pl_runner/cpp_runner.cpp
     src/pl_runner/python_runner.cpp
     src/pl_runner/java_runner.cpp
+    src/pl_runner/pl_runner_utility.cpp
     src/judge_server/sandbox_runner.cpp
     src/judge_server/judge_worker.cpp
     src/judge_server/judge_utility.cpp

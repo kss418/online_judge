@@ -2,7 +2,7 @@
 
 #include "common/error_code.hpp"
 #include "judge_server/sandbox_runner.hpp"
-#include "pl_runner/prepared_source.hpp"
+#include "pl_runner/pl_runner_utility.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -32,12 +32,8 @@ private:
         std::int32_t order
     );
 
-    std::expected<pl_runner::prepared_source, error_code> prepare_source(
-        const std::filesystem::path& source_file_path
-    );
-
     std::expected<sandbox_runner::run_result, error_code> run_one_testcase(
-        const pl_runner::prepared_source& prepared_source_value,
+        const pl_runner_utility::prepared_source& prepared_source_value,
         const std::filesystem::path& input_path
     );
 

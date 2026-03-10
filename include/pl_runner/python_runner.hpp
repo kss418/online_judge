@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/error_code.hpp"
-#include "pl_runner/prepared_source.hpp"
+#include "pl_runner/pl_runner_utility.hpp"
 
 #include <expected>
 #include <filesystem>
@@ -26,7 +26,7 @@ namespace python_runner{
         const path& python_path
     );
 
-    std::expected<pl_runner::prepared_source, error_code> prepare(
+    std::expected<pl_runner_utility::prepared_source, error_code> prepare(
         const path& source_file_path,
         const path& python_path
     );

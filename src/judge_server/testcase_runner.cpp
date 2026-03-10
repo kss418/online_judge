@@ -2,11 +2,7 @@
 
 #include "common/env_utility.hpp"
 #include "common/file_utility.hpp"
-#include "pl_runner/cpp_runner.hpp"
-#include "pl_runner/java_runner.hpp"
-#include "pl_runner/python_runner.hpp"
 
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -41,27 +37,8 @@ std::expected<std::filesystem::path, error_code> testcase_runner::make_input_pat
     return file_utility::instance().make_testcase_input_path(problem_id, order);
 }
 
-std::expected<pl_runner::prepared_source, error_code> testcase_runner::prepare_source(
-    const std::filesystem::path& source_file_path
-){
-    const std::string extension = source_file_path.extension().string();
-    if(extension == ".cpp"){
-        return cpp_runner::prepare(source_file_path, cpp_compiler_path_);
-    }
-
-    if(extension == ".py"){
-        return python_runner::prepare(source_file_path, python_path_);
-    }
-
-    if(extension == ".java"){
-        return java_runner::prepare(source_file_path, java_runtime_path_);
-    }
-
-    return std::unexpected(error_code::create(errno_error::invalid_argument));
-}
-
 std::expected<sandbox_runner::run_result, error_code> testcase_runner::run_one_testcase(
-    const pl_runner::prepared_source& prepared_source_value,
+    const pl_runner_utility::prepared_source& prepared_source_value,
     const std::filesystem::path& input_path
 ){
     if(!prepared_source_value.is_runnable()){
@@ -93,7 +70,13 @@ std::expected<std::vector<sandbox_runner::run_result>, error_code> testcase_runn
         return std::unexpected(validated_testcase_count_exp.error());
     }
 
-    const auto prepare_source_exp = prepare_source(source_file_path);
+    const auto prepare_source_exp = pl_runner_utility::prepare_source(
+        source_file_path,
+        cpp_compiler_path_,
+        python_path_,
+        java_runtime_path_
+    );
+    
     if(!prepare_source_exp){
         return std::unexpected(prepare_source_exp.error());
     }

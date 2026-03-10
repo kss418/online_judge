@@ -2,7 +2,7 @@
 
 #include "common/error_code.hpp"
 #include "common/temp_file.hpp"
-#include "pl_runner/prepared_source.hpp"
+#include "pl_runner/pl_runner_utility.hpp"
 
 #include <expected>
 #include <filesystem>
@@ -28,7 +28,7 @@ namespace cpp_runner{
         const path& compiler_path
     );
 
-    std::expected<pl_runner::prepared_source, error_code> prepare(
+    std::expected<pl_runner_utility::prepared_source, error_code> prepare(
         const path& source_file_path,
         const path& compiler_path
     );
