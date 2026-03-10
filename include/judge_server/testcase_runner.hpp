@@ -40,6 +40,35 @@ private:
         std::int32_t order
     );
 
+    std::expected<sandbox_runner::run_result, error_code> run_cpp(
+        const std::filesystem::path& source_file_path,
+        const std::filesystem::path& input_path
+    );
+    std::expected<sandbox_runner::run_result, error_code> run_python(
+        const std::filesystem::path& source_file_path,
+        const std::filesystem::path& input_path
+    );
+    std::expected<sandbox_runner::run_result, error_code> run_java(
+        const std::filesystem::path& source_file_path,
+        const std::filesystem::path& input_path
+    );
+
+    std::expected<std::vector<sandbox_runner::run_result>, error_code> run_cpp(
+        const std::filesystem::path& source_file_path,
+        std::int64_t problem_id,
+        std::int32_t testcase_count
+    );
+    std::expected<std::vector<sandbox_runner::run_result>, error_code> run_python(
+        const std::filesystem::path& source_file_path,
+        std::int64_t problem_id,
+        std::int32_t testcase_count
+    );
+    std::expected<std::vector<sandbox_runner::run_result>, error_code> run_java(
+        const std::filesystem::path& source_file_path,
+        std::int64_t problem_id,
+        std::int32_t testcase_count
+    );
+
     static constexpr std::chrono::milliseconds source_run_time_limit_{2000};
     static constexpr std::int64_t source_run_memory_limit_mb_{256};
 
