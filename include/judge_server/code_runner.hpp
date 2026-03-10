@@ -1,14 +1,12 @@
 #pragma once
 
 #include "common/error_code.hpp"
-#include "common/temp_file.hpp"
 #include "judge_server/sandbox_runner.hpp"
 
 #include <chrono>
 #include <cstdint>
 #include <expected>
 #include <filesystem>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -26,17 +24,6 @@ public:
     );
 
 private:
-    struct compile_result{
-        std::optional<temp_file> artifact_file_ = std::nullopt;
-        std::vector<std::string> run_command_args_;
-        int exit_code_ = 0;
-        std::string stderr_text_;
-
-        bool is_success() const noexcept{
-            return exit_code_ == 0;
-        }
-    };
-
     code_runner(
         std::string cpp_compiler_path,
         std::string python_path,
@@ -51,25 +38,6 @@ private:
     std::expected<std::filesystem::path, error_code> make_output_path(
         std::int64_t problem_id,
         std::int32_t order
-    );
-
-    std::expected<compile_result, error_code> compile_cpp(
-        const std::filesystem::path& source_file_path
-    );
-
-    std::expected<sandbox_runner::run_result, error_code> run_cpp(
-        const std::filesystem::path& binary_file_path,
-        const std::filesystem::path& input_path
-    );
-
-    std::expected<sandbox_runner::run_result, error_code> run_python(
-        const std::filesystem::path& source_file_path,
-        const std::filesystem::path& input_path
-    );
-
-    std::expected<sandbox_runner::run_result, error_code> run_java(
-        const std::filesystem::path& source_file_path,
-        const std::filesystem::path& input_path
     );
 
     static constexpr std::chrono::milliseconds source_run_time_limit_{2000};
