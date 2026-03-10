@@ -26,7 +26,7 @@ add_library(lib STATIC
     src/http_server/acceptor.cpp
     src/http_server/http_session.cpp
     src/common/file_utility.cpp
-    src/judge_server/code_runner.cpp
+    src/judge_server/testcase_runner.cpp
     src/judge_server/pl_runner/cpp_runner.cpp
     src/judge_server/pl_runner/python_runner.cpp
     src/judge_server/pl_runner/java_runner.cpp

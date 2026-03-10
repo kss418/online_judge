@@ -2,7 +2,7 @@
 
 #include "common/error_code.hpp"
 #include "db/submission_service.hpp"
-#include "judge_server/code_runner.hpp"
+#include "judge_server/testcase_runner.hpp"
 #include "judge_server/judge_utility.hpp"
 
 #include <chrono>
@@ -27,7 +27,7 @@ private:
         std::optional<std::string> judge_output = std::nullopt;
     };
 
-    judge_worker(submission_service submission_service, code_runner runner);
+    judge_worker(submission_service submission_service, testcase_runner runner);
 
     static bool is_queue_empty_error(const error_code& code);
     static submission_status to_submission_status(judge_result result);
@@ -42,5 +42,5 @@ private:
     static constexpr std::chrono::milliseconds notification_wait_timeout_{30000};
 
     submission_service submission_service_;
-    code_runner code_runner_;
+    testcase_runner testcase_runner_;
 };

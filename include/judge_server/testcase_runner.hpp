@@ -10,9 +10,9 @@
 #include <string>
 #include <vector>
 
-class code_runner{
+class testcase_runner{
 public:
-    static std::expected<code_runner, error_code> create();
+    static std::expected<testcase_runner, error_code> create();
 
     std::expected<sandbox_runner::run_result, error_code> run_one_testcase(
         const std::filesystem::path& source_file_path,
@@ -24,7 +24,7 @@ public:
     );
 
 private:
-    code_runner(
+    testcase_runner(
         std::string cpp_compiler_path,
         std::string python_path,
         std::string java_runtime_path

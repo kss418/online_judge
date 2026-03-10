@@ -26,17 +26,20 @@ std::expected<judge_worker, error_code> judge_worker::create(submission_service 
         return std::unexpected(listen_submission_queue_exp.error());
     }
 
-    auto code_runner_exp = code_runner::create();
-    if(!code_runner_exp){
-        return std::unexpected(code_runner_exp.error());
+    auto testcase_runner_exp = testcase_runner::create();
+    if(!testcase_runner_exp){
+        return std::unexpected(testcase_runner_exp.error());
     }
 
-    return judge_worker(std::move(submission_service), std::move(*code_runner_exp));
+    return judge_worker(std::move(submission_service), std::move(*testcase_runner_exp));
 }
 
-judge_worker::judge_worker(submission_service submission_service, code_runner code_runner) :
+judge_worker::judge_worker(
+    submission_service submission_service,
+    testcase_runner testcase_runner
+) :
     submission_service_(std::move(submission_service)),
-    code_runner_(std::move(code_runner)){}
+    testcase_runner_(std::move(testcase_runner)){}
 
 bool judge_worker::is_queue_empty_error(const error_code& code){
     return code.type_ == error_type::errno_type &&
@@ -154,7 +157,7 @@ std::expected<void, error_code> judge_worker::run(){
             }
 
             const std::filesystem::path source_file_path = *source_file_path_exp;
-            auto run_all_testcases_exp = code_runner_.run_all_testcases(
+            auto run_all_testcases_exp = testcase_runner_.run_all_testcases(
                 source_file_path,
                 queued_submission_value.problem_id
             );

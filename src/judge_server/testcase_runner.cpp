@@ -1,4 +1,4 @@
-#include "judge_server/code_runner.hpp"
+#include "judge_server/testcase_runner.hpp"
 
 #include "common/env_utility.hpp"
 #include "common/file_utility.hpp"
@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-std::expected<code_runner, error_code> code_runner::create(){
+std::expected<testcase_runner, error_code> testcase_runner::create(){
     const auto env_values_exp = env_utility::require_envs(
         {"JUDGE_CPP_COMPILER_PATH", "JUDGE_PYTHON_PATH", "JUDGE_JAVA_RUNTIME_PATH"}
     );
@@ -18,14 +18,14 @@ std::expected<code_runner, error_code> code_runner::create(){
         return std::unexpected(env_values_exp.error());
     }
 
-    return code_runner(
+    return testcase_runner(
         std::move(env_values_exp->at(0)),
         std::move(env_values_exp->at(1)),
         std::move(env_values_exp->at(2))
     );
 }
 
-code_runner::code_runner(
+testcase_runner::testcase_runner(
     std::string cpp_compiler_path,
     std::string python_path,
     std::string java_runtime_path
@@ -34,21 +34,21 @@ code_runner::code_runner(
     python_path_(std::move(python_path)),
     java_runtime_path_(std::move(java_runtime_path)){}
 
-std::expected<std::filesystem::path, error_code> code_runner::make_input_path(
+std::expected<std::filesystem::path, error_code> testcase_runner::make_input_path(
     std::int64_t problem_id,
     std::int32_t order
 ){
     return file_utility::instance().make_testcase_input_path(problem_id, order);
 }
 
-std::expected<std::filesystem::path, error_code> code_runner::make_output_path(
+std::expected<std::filesystem::path, error_code> testcase_runner::make_output_path(
     std::int64_t problem_id,
     std::int32_t order
 ){
     return file_utility::instance().make_testcase_output_path(problem_id, order);
 }
 
-std::expected<sandbox_runner::run_result, error_code> code_runner::run_one_testcase(
+std::expected<sandbox_runner::run_result, error_code> testcase_runner::run_one_testcase(
     const std::filesystem::path& source_file_path,
     const std::filesystem::path& input_path
 ){
@@ -119,7 +119,7 @@ std::expected<sandbox_runner::run_result, error_code> code_runner::run_one_testc
     return std::unexpected(error_code::create(errno_error::invalid_argument));
 }
 
-std::expected<std::vector<sandbox_runner::run_result>, error_code> code_runner::run_all_testcases(
+std::expected<std::vector<sandbox_runner::run_result>, error_code> testcase_runner::run_all_testcases(
     const std::filesystem::path& source_file_path,
     std::int64_t problem_id
 ){
