@@ -113,7 +113,7 @@ std::expected<pl_runner_utility::prepared_source, error_code> cpp_runner::prepar
     }
 
     if(!compile_cpp_exp->is_success()){
-        return pl_runner_utility::make_compile_failed_prepared_source(
+        return pl_runner_utility::instance().make_compile_failed_prepared_source(
             compile_cpp_exp->exit_code_,
             std::move(compile_cpp_exp->stderr_text_)
         );

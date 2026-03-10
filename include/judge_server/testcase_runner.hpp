@@ -2,45 +2,15 @@
 
 #include "common/error_code.hpp"
 #include "judge_server/sandbox_runner.hpp"
-#include "pl_runner/pl_runner_utility.hpp"
 
-#include <chrono>
 #include <cstdint>
 #include <expected>
 #include <filesystem>
-#include <string>
 #include <vector>
 
-class testcase_runner{
-public:
-    static std::expected<testcase_runner, error_code> create();
-
+namespace testcase_runner{
     std::expected<std::vector<sandbox_runner::run_result>, error_code> run_all_testcases(
         const std::filesystem::path& source_file_path,
         std::int64_t problem_id
     );
-
-private:
-    testcase_runner(
-        std::string cpp_compiler_path,
-        std::string python_path,
-        std::string java_runtime_path
-    );
-
-    std::expected<std::filesystem::path, error_code> make_input_path(
-        std::int64_t problem_id,
-        std::int32_t order
-    );
-
-    std::expected<sandbox_runner::run_result, error_code> run_one_testcase(
-        const pl_runner_utility::prepared_source& prepared_source_value,
-        const std::filesystem::path& input_path
-    );
-
-    static constexpr std::chrono::milliseconds source_run_time_limit_{2000};
-    static constexpr std::int64_t source_run_memory_limit_mb_{256};
-
-    std::string cpp_compiler_path_;
-    std::string python_path_;
-    std::string java_runtime_path_;
-};
+}

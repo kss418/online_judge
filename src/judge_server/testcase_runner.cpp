@@ -1,34 +1,26 @@
 #include "judge_server/testcase_runner.hpp"
 
-#include "common/env_utility.hpp"
 #include "common/file_utility.hpp"
+#include "pl_runner/pl_runner_utility.hpp"
 
+#include <chrono>
 #include <utility>
 #include <vector>
 
-std::expected<testcase_runner, error_code> testcase_runner::create(){
-    const auto env_values_exp = env_utility::require_envs(
-        {"JUDGE_CPP_COMPILER_PATH", "JUDGE_PYTHON_PATH", "JUDGE_JAVA_RUNTIME_PATH"}
-    );
-    if(!env_values_exp){
-        return std::unexpected(env_values_exp.error());
-    }
+namespace testcase_runner{
+    constexpr std::chrono::milliseconds source_run_time_limit{2000};
+    constexpr std::int64_t source_run_memory_limit_mb = 256;
 
-    return testcase_runner(
-        std::move(env_values_exp->at(0)),
-        std::move(env_values_exp->at(1)),
-        std::move(env_values_exp->at(2))
+    std::expected<std::filesystem::path, error_code> make_input_path(
+        std::int64_t problem_id,
+        std::int32_t order
+    );
+
+    std::expected<sandbox_runner::run_result, error_code> run_one_testcase(
+        const pl_runner_utility::prepared_source& prepared_source_value,
+        const std::filesystem::path& input_path
     );
 }
-
-testcase_runner::testcase_runner(
-    std::string cpp_compiler_path,
-    std::string python_path,
-    std::string java_runtime_path
-) :
-    cpp_compiler_path_(std::move(cpp_compiler_path)),
-    python_path_(std::move(python_path)),
-    java_runtime_path_(std::move(java_runtime_path)){}
 
 std::expected<std::filesystem::path, error_code> testcase_runner::make_input_path(
     std::int64_t problem_id,
@@ -48,8 +40,8 @@ std::expected<sandbox_runner::run_result, error_code> testcase_runner::run_one_t
     return sandbox_runner::run(
         prepared_source_value.run_command_args_,
         input_path,
-        source_run_time_limit_,
-        source_run_memory_limit_mb_
+        source_run_time_limit,
+        source_run_memory_limit_mb
     );
 }
 
@@ -70,13 +62,7 @@ std::expected<std::vector<sandbox_runner::run_result>, error_code> testcase_runn
         return std::unexpected(validated_testcase_count_exp.error());
     }
 
-    const auto prepare_source_exp = pl_runner_utility::prepare_source(
-        source_file_path,
-        cpp_compiler_path_,
-        python_path_,
-        java_runtime_path_
-    );
-    
+    const auto prepare_source_exp = pl_runner_utility::instance().prepare_source(source_file_path);
     if(!prepare_source_exp){
         return std::unexpected(prepare_source_exp.error());
     }

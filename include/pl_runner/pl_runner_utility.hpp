@@ -4,13 +4,15 @@
 #include "common/temp_file.hpp"
 #include "judge_server/sandbox_runner.hpp"
 
+#include <mutex>
 #include <expected>
 #include <filesystem>
 #include <optional>
 #include <string>
 #include <vector>
 
-namespace pl_runner_utility{
+class pl_runner_utility{
+public:
     struct prepared_source{
         std::optional<temp_file> binary_file_;
         std::vector<std::string> run_command_args_;
@@ -21,15 +23,24 @@ namespace pl_runner_utility{
         }
     };
 
+    static pl_runner_utility& instance();
+
     prepared_source make_compile_failed_prepared_source(
         int exit_code,
         std::string stderr_text
     );
 
     std::expected<prepared_source, error_code> prepare_source(
-        const std::filesystem::path& source_file_path,
-        const std::filesystem::path& cpp_compiler_path,
-        const std::filesystem::path& python_path,
-        const std::filesystem::path& java_runtime_path
+        const std::filesystem::path& source_file_path
     );
-}
+
+private:
+    pl_runner_utility() = default;
+
+    void initialize_if_needed();
+
+    std::mutex initialize_mutex_;
+    std::optional<std::filesystem::path> cpp_compiler_path_;
+    std::optional<std::filesystem::path> python_path_;
+    std::optional<std::filesystem::path> java_runtime_path_;
+};
