@@ -2,6 +2,7 @@
 
 #include "common/error_code.hpp"
 #include "judge_server/sandbox_runner.hpp"
+#include "pl_runner/prepared_source.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -14,10 +15,6 @@ class testcase_runner{
 public:
     static std::expected<testcase_runner, error_code> create();
 
-    std::expected<sandbox_runner::run_result, error_code> run_one_testcase(
-        const std::filesystem::path& source_file_path,
-        const std::filesystem::path& input_path
-    );
     std::expected<std::vector<sandbox_runner::run_result>, error_code> run_all_testcases(
         const std::filesystem::path& source_file_path,
         std::int64_t problem_id
@@ -34,39 +31,14 @@ private:
         std::int64_t problem_id,
         std::int32_t order
     );
-    
-    std::expected<std::filesystem::path, error_code> make_output_path(
-        std::int64_t problem_id,
-        std::int32_t order
+
+    std::expected<pl_runner::prepared_source, error_code> prepare_source(
+        const std::filesystem::path& source_file_path
     );
 
-    std::expected<sandbox_runner::run_result, error_code> run_cpp(
-        const std::filesystem::path& source_file_path,
+    std::expected<sandbox_runner::run_result, error_code> run_one_testcase(
+        const pl_runner::prepared_source& prepared_source_value,
         const std::filesystem::path& input_path
-    );
-    std::expected<sandbox_runner::run_result, error_code> run_python(
-        const std::filesystem::path& source_file_path,
-        const std::filesystem::path& input_path
-    );
-    std::expected<sandbox_runner::run_result, error_code> run_java(
-        const std::filesystem::path& source_file_path,
-        const std::filesystem::path& input_path
-    );
-
-    std::expected<std::vector<sandbox_runner::run_result>, error_code> run_cpp(
-        const std::filesystem::path& source_file_path,
-        std::int64_t problem_id,
-        std::int32_t testcase_count
-    );
-    std::expected<std::vector<sandbox_runner::run_result>, error_code> run_python(
-        const std::filesystem::path& source_file_path,
-        std::int64_t problem_id,
-        std::int32_t testcase_count
-    );
-    std::expected<std::vector<sandbox_runner::run_result>, error_code> run_java(
-        const std::filesystem::path& source_file_path,
-        std::int64_t problem_id,
-        std::int32_t testcase_count
     );
 
     static constexpr std::chrono::milliseconds source_run_time_limit_{2000};

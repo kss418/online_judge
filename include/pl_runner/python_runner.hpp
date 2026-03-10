@@ -1,10 +1,8 @@
 #pragma once
 
 #include "common/error_code.hpp"
-#include "judge_server/sandbox_runner.hpp"
+#include "pl_runner/prepared_source.hpp"
 
-#include <chrono>
-#include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <string>
@@ -14,7 +12,6 @@ namespace python_runner{
     using path = std::filesystem::path;
 
     struct compile_result{
-        path source_file_path_;
         std::vector<std::string> run_command_args_;
         int exit_code_ = 0;
         std::string stderr_text_;
@@ -29,10 +26,8 @@ namespace python_runner{
         const path& python_path
     );
 
-    std::expected<sandbox_runner::run_result, error_code> run(
-        const compile_result& compile_result_value,
-        const path& input_path,
-        std::chrono::milliseconds time_limit,
-        std::int64_t memory_limit_mb
+    std::expected<pl_runner::prepared_source, error_code> prepare(
+        const path& source_file_path,
+        const path& python_path
     );
 }

@@ -2,10 +2,8 @@
 
 #include "common/error_code.hpp"
 #include "common/temp_file.hpp"
-#include "judge_server/sandbox_runner.hpp"
+#include "pl_runner/prepared_source.hpp"
 
-#include <chrono>
-#include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <string>
@@ -30,10 +28,8 @@ namespace cpp_runner{
         const path& compiler_path
     );
 
-    std::expected<sandbox_runner::run_result, error_code> run(
-        const compile_result& compile_result_value,
-        const path& input_path,
-        std::chrono::milliseconds time_limit,
-        std::int64_t memory_limit_mb
+    std::expected<pl_runner::prepared_source, error_code> prepare(
+        const path& source_file_path,
+        const path& compiler_path
     );
 }
