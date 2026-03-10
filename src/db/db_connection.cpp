@@ -1,5 +1,5 @@
 #include "db/db_connection.hpp"
-#include "common/env_utility.hpp"
+#include "common/env_util.hpp"
 
 #include <charconv>
 #include <cstdint>

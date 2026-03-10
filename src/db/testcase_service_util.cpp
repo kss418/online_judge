@@ -1,4 +1,4 @@
-#include "db/testcase_service_utility.hpp"
+#include "db/testcase_service_util.hpp"
 
 #include <pqxx/pqxx>
 

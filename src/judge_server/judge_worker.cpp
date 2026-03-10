@@ -1,6 +1,6 @@
 #include "judge_server/judge_worker.hpp"
 
-#include "common/file_utility.hpp"
+#include "common/file_util.hpp"
 #include "judge_server/checker.hpp"
 #include "judge_server/testcase_runner.hpp"
 

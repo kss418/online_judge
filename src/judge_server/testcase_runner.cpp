@@ -1,7 +1,7 @@
 #include "judge_server/testcase_runner.hpp"
 
-#include "common/file_utility.hpp"
-#include "pl_runner/pl_runner_utility.hpp"
+#include "common/file_util.hpp"
+#include "pl_runner/pl_runner_util.hpp"
 
 #include <chrono>
 #include <utility>

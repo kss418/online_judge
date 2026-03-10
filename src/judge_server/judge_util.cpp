@@ -1,4 +1,4 @@
-#include "judge_server/judge_utility.hpp"
+#include "judge_server/judge_util.hpp"
 
 bool judge_utility::is_blank(char c){
     return (c == ' ' || c == '\t' || c == '\r');

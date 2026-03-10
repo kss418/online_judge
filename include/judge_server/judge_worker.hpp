@@ -2,7 +2,7 @@
 
 #include "common/error_code.hpp"
 #include "db/submission_service.hpp"
-#include "judge_server/judge_utility.hpp"
+#include "judge_server/judge_util.hpp"
 #include "judge_server/sandbox_runner.hpp"
 
 #include <chrono>

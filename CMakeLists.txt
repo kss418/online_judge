@@ -17,26 +17,26 @@ add_library(lib STATIC
     src/db/problem_core_service.cpp
     src/db/problem_content_service.cpp
     src/db/problem_statistics_service.cpp
-    src/db/problem_service_utility.cpp
+    src/db/problem_service_util.cpp
     src/db/testcase_service.cpp
-    src/db/testcase_service_utility.cpp
+    src/db/testcase_service_util.cpp
     src/db/submission_service.cpp
     src/http_server/http_handler.cpp
     src/http_server/http_server.cpp
     src/http_server/acceptor.cpp
     src/http_server/http_session.cpp
-    src/common/file_utility.cpp
+    src/common/file_util.cpp
     src/judge_server/testcase_runner.cpp
     src/pl_runner/cpp_runner.cpp
     src/pl_runner/python_runner.cpp
     src/pl_runner/java_runner.cpp
-    src/pl_runner/pl_runner_utility.cpp
+    src/pl_runner/pl_runner_util.cpp
     src/judge_server/sandbox_runner.cpp
     src/judge_server/judge_worker.cpp
-    src/judge_server/judge_utility.cpp
+    src/judge_server/judge_util.cpp
     src/judge_server/checker.cpp
     src/judge_server/testcase_downloader.cpp
-    src/common/env_utility.cpp
+    src/common/env_util.cpp
     src/common/error_code.cpp
     src/common/unique_fd.cpp
     src/common/temp_file.cpp

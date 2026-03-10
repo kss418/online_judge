@@ -2,8 +2,8 @@
 
 #include "common/unique_fd.hpp"
 #include "common/blocking_io.hpp"
-#include "common/file_utility.hpp"
-#include "judge_server/judge_utility.hpp"
+#include "common/file_util.hpp"
+#include "judge_server/judge_util.hpp"
 
 #include <cerrno>
 #include <fcntl.h>

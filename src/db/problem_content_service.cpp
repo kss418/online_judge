@@ -1,5 +1,5 @@
 #include "db/problem_content_service.hpp"
-#include "db/problem_service_utility.hpp"
+#include "db/problem_service_util.hpp"
 
 #include <pqxx/pqxx>
 
