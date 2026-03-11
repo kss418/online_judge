@@ -3,6 +3,7 @@
 #include "common/file_util.hpp"
 #include "db/problem_core_service.hpp"
 #include "db/testcase_service.hpp"
+#include "judge_server/tc_util.hpp"
 
 #include <charconv>
 #include <filesystem>
@@ -25,39 +26,39 @@ std::expected<tc_downloader, error_code> tc_downloader::create(db_connection con
 }
 
 std::expected<std::int32_t, error_code> tc_downloader::read_version_file(std::int64_t problem_id) const{
-    const auto version_file_path_exp = file_util::instance().make_tc_version_file_path(
+    const auto version_file_path_exp = tc_util::instance().make_tc_version_file_path(
         problem_id
     );
     if(!version_file_path_exp){
         return std::unexpected(version_file_path_exp.error());
     }
 
-    return file_util::instance().read_int32_file(*version_file_path_exp);
+    return file_util::read_int32_file(*version_file_path_exp);
 }
 
 std::expected<std::pair<std::int32_t, std::int32_t>, error_code> tc_downloader::read_limit_file(
     std::int64_t problem_id
 ) const{
-    const auto time_limit_file_path_exp = file_util::instance().make_tc_time_limit_file_path(
+    const auto time_limit_file_path_exp = tc_util::instance().make_tc_time_limit_file_path(
         problem_id
     );
     if(!time_limit_file_path_exp){
         return std::unexpected(time_limit_file_path_exp.error());
     }
 
-    const auto memory_limit_file_path_exp = file_util::instance().make_tc_memory_limit_file_path(
+    const auto memory_limit_file_path_exp = tc_util::instance().make_tc_memory_limit_file_path(
         problem_id
     );
     if(!memory_limit_file_path_exp){
         return std::unexpected(memory_limit_file_path_exp.error());
     }
 
-    const auto time_limit_exp = file_util::instance().read_int32_file(*time_limit_file_path_exp);
+    const auto time_limit_exp = file_util::read_int32_file(*time_limit_file_path_exp);
     if(!time_limit_exp){
         return std::unexpected(time_limit_exp.error());
     }
 
-    const auto memory_limit_exp = file_util::instance().read_int32_file(
+    const auto memory_limit_exp = file_util::read_int32_file(
         *memory_limit_file_path_exp
     );
     if(!memory_limit_exp){
@@ -117,21 +118,21 @@ std::expected<void, error_code> tc_downloader::sync_version_file(std::int64_t pr
         }
     }
 
-    const auto version_file_path_exp = file_util::instance().make_tc_version_file_path(
+    const auto version_file_path_exp = tc_util::instance().make_tc_version_file_path(
         problem_id
     );
     if(!version_file_path_exp){
         return std::unexpected(version_file_path_exp.error());
     }
     const std::filesystem::path version_file_path = *version_file_path_exp;
-    const auto create_directories_exp = file_util::instance().create_directories(
+    const auto create_directories_exp = file_util::create_directories(
         version_file_path.parent_path()
     );
     if(!create_directories_exp){
         return std::unexpected(create_directories_exp.error());
     }
 
-    const auto create_version_file_exp = file_util::instance().create_file(
+    const auto create_version_file_exp = file_util::create_file(
         version_file_path,
         std::to_string(version_exp.value())
     );
@@ -171,28 +172,28 @@ std::expected<void, error_code> tc_downloader::sync_limit_file(std::int64_t prob
         }
     }
 
-    const auto memory_limit_file_path_exp = file_util::instance().make_tc_memory_limit_file_path(
+    const auto memory_limit_file_path_exp = tc_util::instance().make_tc_memory_limit_file_path(
         problem_id
     );
     if(!memory_limit_file_path_exp){
         return std::unexpected(memory_limit_file_path_exp.error());
     }
 
-    const auto time_limit_file_path_exp = file_util::instance().make_tc_time_limit_file_path(
+    const auto time_limit_file_path_exp = tc_util::instance().make_tc_time_limit_file_path(
         problem_id
     );
     if(!time_limit_file_path_exp){
         return std::unexpected(time_limit_file_path_exp.error());
     }
 
-    const auto create_directories_exp = file_util::instance().create_directories(
+    const auto create_directories_exp = file_util::create_directories(
         memory_limit_file_path_exp->parent_path()
     );
     if(!create_directories_exp){
         return std::unexpected(create_directories_exp.error());
     }
 
-    const auto create_memory_limit_file_exp = file_util::instance().create_file(
+    const auto create_memory_limit_file_exp = file_util::create_file(
         *memory_limit_file_path_exp,
         std::to_string(limits_exp->memory_limit_mb)
     );
@@ -200,7 +201,7 @@ std::expected<void, error_code> tc_downloader::sync_limit_file(std::int64_t prob
         return std::unexpected(create_memory_limit_file_exp.error());
     }
 
-    const auto create_time_limit_file_exp = file_util::instance().create_file(
+    const auto create_time_limit_file_exp = file_util::create_file(
         *time_limit_file_path_exp,
         std::to_string(limits_exp->time_limit_ms)
     );
@@ -266,13 +267,13 @@ std::expected<void, error_code> tc_downloader::delete_outdated(std::int64_t prob
         return std::unexpected(tc_count_exp.error());
     }
 
-    const auto problem_directory_path_exp = file_util::instance()
+    const auto problem_directory_path_exp = tc_util::instance()
         .make_tc_problem_directory_path(problem_id);
     if(!problem_directory_path_exp){
         return std::unexpected(problem_directory_path_exp.error());
     }
     const std::filesystem::path problem_directory_path = *problem_directory_path_exp;
-    const auto problem_directory_exists_exp = file_util::instance().exists(
+    const auto problem_directory_exists_exp = file_util::exists(
         problem_directory_path
     );
     if(!problem_directory_exists_exp){
@@ -329,7 +330,7 @@ std::expected<void, error_code> tc_downloader::delete_outdated(std::int64_t prob
             continue;
         }
 
-        const auto remove_file_exp = file_util::instance().remove_file(entry_path);
+        const auto remove_file_exp = file_util::remove_file(entry_path);
         if(!remove_file_exp){
             return std::unexpected(remove_file_exp.error());
         }
@@ -346,37 +347,37 @@ std::expected<void, error_code> tc_downloader::delete_outdated(std::int64_t prob
 std::expected<void, error_code> tc_downloader::delete_one(
     std::int64_t problem_id, std::int32_t order
 ){
-    const auto input_path_exp = file_util::instance().make_tc_input_path(
+    const auto input_path_exp = tc_util::instance().make_tc_input_path(
         problem_id,
         order
     );
     if(!input_path_exp){
         return std::unexpected(input_path_exp.error());
     }
-    const auto remove_input_exp = file_util::instance().remove_file(*input_path_exp);
+    const auto remove_input_exp = file_util::remove_file(*input_path_exp);
     if(!remove_input_exp){
         return std::unexpected(remove_input_exp.error());
     }
 
-    const auto output_path_exp = file_util::instance().make_tc_output_path(
+    const auto output_path_exp = tc_util::instance().make_tc_output_path(
         problem_id,
         order
     );
     if(!output_path_exp){
         return std::unexpected(output_path_exp.error());
     }
-    const auto remove_output_exp = file_util::instance().remove_file(*output_path_exp);
+    const auto remove_output_exp = file_util::remove_file(*output_path_exp);
     if(!remove_output_exp){
         return std::unexpected(remove_output_exp.error());
     }
 
-    const auto version_file_path_exp = file_util::instance().make_tc_version_file_path(
+    const auto version_file_path_exp = tc_util::instance().make_tc_version_file_path(
         problem_id
     );
     if(!version_file_path_exp){
         return std::unexpected(version_file_path_exp.error());
     }
-    const auto remove_version_exp = file_util::instance().remove_file(*version_file_path_exp);
+    const auto remove_version_exp = file_util::remove_file(*version_file_path_exp);
     if(!remove_version_exp){
         return std::unexpected(remove_version_exp.error());
     }
@@ -392,14 +393,14 @@ std::expected<void, error_code> tc_downloader::download_one(
         return std::unexpected(tc_exp.error());
     }
 
-    const auto input_path_exp = file_util::instance().make_tc_input_path(
+    const auto input_path_exp = tc_util::instance().make_tc_input_path(
         problem_id,
         order
     );
     if(!input_path_exp){
         return std::unexpected(input_path_exp.error());
     }
-    const auto output_path_exp = file_util::instance().make_tc_output_path(
+    const auto output_path_exp = tc_util::instance().make_tc_output_path(
         problem_id,
         order
     );
@@ -408,14 +409,14 @@ std::expected<void, error_code> tc_downloader::download_one(
     }
     const std::filesystem::path input_path = *input_path_exp;
     const std::filesystem::path output_path = *output_path_exp;
-    const auto create_directories_exp = file_util::instance().create_directories(
+    const auto create_directories_exp = file_util::create_directories(
         input_path.parent_path()
     );
     if(!create_directories_exp){
         return std::unexpected(create_directories_exp.error());
     }
 
-    const auto create_input_exp = file_util::instance().create_file(
+    const auto create_input_exp = file_util::create_file(
         input_path,
         tc_exp->tc_input
     );
@@ -424,7 +425,7 @@ std::expected<void, error_code> tc_downloader::download_one(
         return std::unexpected(create_input_exp.error());
     }
 
-    const auto create_output_exp = file_util::instance().create_file(
+    const auto create_output_exp = file_util::create_file(
         output_path,
         tc_exp->tc_output
     );

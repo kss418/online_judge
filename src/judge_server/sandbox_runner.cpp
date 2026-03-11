@@ -93,7 +93,7 @@ std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    const auto command_exists_exp = file_util::instance().exists(command_args[0]);
+    const auto command_exists_exp = file_util::exists(command_args[0]);
     if(!command_exists_exp){
         return std::unexpected(command_exists_exp.error());
     }
@@ -154,7 +154,7 @@ std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
     }
 
     run_result result;
-    result.output_lines_ = judge_util::normalize_output(*stdout_text_exp);
+    result.output_lines_ = judge_util::instance().normalize_output(*stdout_text_exp);
     result.stderr_text_ = std::move(*stderr_text_exp);
     result.max_rss_kb_ = static_cast<std::size_t>(wait_result.usage_.ru_maxrss);
     result.elapsed_ms_ = wait_result.elapsed_ms_;
