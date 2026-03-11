@@ -13,6 +13,10 @@ services:
     build:
       context: .
       target: judge_runtime
+      args:
+        JUDGE_CPP_COMPILER_PATH: "${JUDGE_CPP_COMPILER_PATH:-}"
+        JUDGE_PYTHON_PATH: "${JUDGE_PYTHON_PATH:-}"
+        JUDGE_JAVA_RUNTIME_PATH: "${JUDGE_JAVA_RUNTIME_PATH:-}"
     env_file:
       - .env
     profiles:
