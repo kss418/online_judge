@@ -9,11 +9,11 @@ struct limits{
     std::int32_t time_limit_ms = 0;
 };
 
-struct testcase{
-    std::int64_t testcase_id = 0;
-    std::int32_t testcase_order = 0;
-    std::string testcase_input;
-    std::string testcase_output;
+struct tc{
+    std::int64_t tc_id = 0;
+    std::int32_t tc_order = 0;
+    std::string tc_input;
+    std::string tc_output;
 };
 
 struct problem_statement{

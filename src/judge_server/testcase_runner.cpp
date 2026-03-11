@@ -7,29 +7,29 @@
 #include <utility>
 #include <vector>
 
-namespace testcase_runner{
+namespace tc_runner{
     constexpr std::chrono::milliseconds source_run_time_limit{2000};
     constexpr std::int64_t source_run_memory_limit_mb = 256;
 
-    std::expected<std::filesystem::path, error_code> make_input_path(
+    std::expected<std::filesystem::path, error_code> make_tc_input_path(
         std::int64_t problem_id,
         std::int32_t order
     );
 
-    std::expected<sandbox_runner::run_result, error_code> run_one_testcase(
+    std::expected<sandbox_runner::run_result, error_code> run_one_tc(
         const pl_runner_util::prepared_source& prepared_source_value,
         const std::filesystem::path& input_path
     );
 }
 
-std::expected<std::filesystem::path, error_code> testcase_runner::make_input_path(
+std::expected<std::filesystem::path, error_code> tc_runner::make_tc_input_path(
     std::int64_t problem_id,
     std::int32_t order
 ){
-    return file_util::instance().make_testcase_input_path(problem_id, order);
+    return file_util::instance().make_tc_input_path(problem_id, order);
 }
 
-std::expected<sandbox_runner::run_result, error_code> testcase_runner::run_one_testcase(
+std::expected<sandbox_runner::run_result, error_code> tc_runner::run_one_tc(
     const pl_runner_util::prepared_source& prepared_source_value,
     const std::filesystem::path& input_path
 ){
@@ -45,21 +45,21 @@ std::expected<sandbox_runner::run_result, error_code> testcase_runner::run_one_t
     );
 }
 
-std::expected<std::vector<sandbox_runner::run_result>, error_code> testcase_runner::run_all_testcases(
+std::expected<std::vector<sandbox_runner::run_result>, error_code> tc_runner::run_all_tcs(
     const std::filesystem::path& source_file_path,
     std::int64_t problem_id
 ){
-    const auto testcase_count_exp = file_util::instance().count_testcase_output(problem_id);
-    if(!testcase_count_exp){
-        return std::unexpected(testcase_count_exp.error());
+    const auto tc_count_exp = file_util::instance().count_tc_output(problem_id);
+    if(!tc_count_exp){
+        return std::unexpected(tc_count_exp.error());
     }
 
-    const auto validated_testcase_count_exp = file_util::instance().validate_testcase_output(
+    const auto validated_tc_count_exp = file_util::instance().validate_tc_output(
         problem_id,
-        testcase_count_exp.value()
+        tc_count_exp.value()
     );
-    if(!validated_testcase_count_exp){
-        return std::unexpected(validated_testcase_count_exp.error());
+    if(!validated_tc_count_exp){
+        return std::unexpected(validated_tc_count_exp.error());
     }
 
     const auto prepare_source_exp = pl_runner_util::instance().prepare_source(source_file_path);
@@ -74,20 +74,20 @@ std::expected<std::vector<sandbox_runner::run_result>, error_code> testcase_runn
     }
 
     std::vector<sandbox_runner::run_result> run_results;
-    run_results.reserve(static_cast<std::size_t>(*validated_testcase_count_exp));
+    run_results.reserve(static_cast<std::size_t>(*validated_tc_count_exp));
 
-    for(std::int32_t order = 1; order <= *validated_testcase_count_exp; ++order){
-        const auto input_path_exp = make_input_path(problem_id, order);
+    for(std::int32_t order = 1; order <= *validated_tc_count_exp; ++order){
+        const auto input_path_exp = make_tc_input_path(problem_id, order);
         if(!input_path_exp){
             return std::unexpected(input_path_exp.error());
         }
 
-        const auto run_one_testcase_exp = run_one_testcase(*prepare_source_exp, *input_path_exp);
-        if(!run_one_testcase_exp){
-            return std::unexpected(run_one_testcase_exp.error());
+        const auto run_one_tc_exp = run_one_tc(*prepare_source_exp, *input_path_exp);
+        if(!run_one_tc_exp){
+            return std::unexpected(run_one_tc_exp.error());
         }
 
-        run_results.push_back(std::move(*run_one_testcase_exp));
+        run_results.push_back(std::move(*run_one_tc_exp));
     }
 
     return run_results;

@@ -29,30 +29,30 @@ public:
         std::int64_t submission_id,
         std::string_view language
     );
-    std::expected<std::filesystem::path, error_code> make_testcase_problem_directory_path(
+    std::expected<std::filesystem::path, error_code> make_tc_problem_directory_path(
         std::int64_t problem_id
     );
-    std::expected<std::filesystem::path, error_code> make_testcase_input_path(
+    std::expected<std::filesystem::path, error_code> make_tc_input_path(
         std::int64_t problem_id,
         std::int32_t order
     );
-    std::expected<std::filesystem::path, error_code> make_testcase_output_path(
+    std::expected<std::filesystem::path, error_code> make_tc_output_path(
         std::int64_t problem_id,
         std::int32_t order
     );
-    std::expected<std::filesystem::path, error_code> make_testcase_version_file_path(
+    std::expected<std::filesystem::path, error_code> make_tc_version_file_path(
         std::int64_t problem_id
     );
-    std::expected<std::filesystem::path, error_code> make_testcase_memory_limit_file_path(
+    std::expected<std::filesystem::path, error_code> make_tc_memory_limit_file_path(
         std::int64_t problem_id
     );
-    std::expected<std::filesystem::path, error_code> make_testcase_time_limit_file_path(
+    std::expected<std::filesystem::path, error_code> make_tc_time_limit_file_path(
         std::int64_t problem_id
     );
-    std::expected<std::int32_t, error_code> count_testcase_output(std::int64_t problem_id);
-    std::expected<std::int32_t, error_code> validate_testcase_output(
+    std::expected<std::int32_t, error_code> count_tc_output(std::int64_t problem_id);
+    std::expected<std::int32_t, error_code> validate_tc_output(
         std::int64_t problem_id,
-        std::int32_t testcase_count
+        std::int32_t tc_count
     );
 
 private:
@@ -61,5 +61,5 @@ private:
 
     std::mutex initialize_mutex_;
     std::optional<std::filesystem::path> source_directory_path_;
-    std::optional<std::filesystem::path> testcase_root_path_;
+    std::optional<std::filesystem::path> tc_root_path_;
 };

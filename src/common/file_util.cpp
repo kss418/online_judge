@@ -15,7 +15,7 @@ file_util& file_util::instance(){
 
 void file_util::initialize_if_needed(){
     std::scoped_lock lock(initialize_mutex_);
-    if(source_directory_path_.has_value() && testcase_root_path_.has_value()){
+    if(source_directory_path_.has_value() && tc_root_path_.has_value()){
         return;
     }
 
@@ -24,9 +24,9 @@ void file_util::initialize_if_needed(){
         source_directory_path_ = std::filesystem::path(source_directory_path);
     }
 
-    const char* testcase_root_path = std::getenv("TESTCASE_PATH");
-    if(testcase_root_path != nullptr && *testcase_root_path != '\0'){
-        testcase_root_path_ = std::filesystem::path(testcase_root_path);
+    const char* tc_root_path = std::getenv("TESTCASE_PATH");
+    if(tc_root_path != nullptr && *tc_root_path != '\0'){
+        tc_root_path_ = std::filesystem::path(tc_root_path);
     }
 }
 
@@ -147,21 +147,21 @@ std::expected<std::filesystem::path, error_code> file_util::make_source_file_pat
     return *source_root_path_exp / (std::to_string(submission_id) + std::string(extension));
 }
 
-std::expected<std::filesystem::path, error_code> file_util::make_testcase_problem_directory_path(
+std::expected<std::filesystem::path, error_code> file_util::make_tc_problem_directory_path(
     std::int64_t problem_id
 ){
-    if(!testcase_root_path_.has_value() || testcase_root_path_->empty()){
+    if(!tc_root_path_.has_value() || tc_root_path_->empty()){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return *testcase_root_path_ / std::to_string(problem_id);
+    return *tc_root_path_ / std::to_string(problem_id);
 }
 
-std::expected<std::filesystem::path, error_code> file_util::make_testcase_input_path(
+std::expected<std::filesystem::path, error_code> file_util::make_tc_input_path(
     std::int64_t problem_id,
     std::int32_t order
 ){
-    const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
+    const auto problem_directory_path_exp = make_tc_problem_directory_path(problem_id);
     if(!problem_directory_path_exp){
         return std::unexpected(problem_directory_path_exp.error());
     }
@@ -169,11 +169,11 @@ std::expected<std::filesystem::path, error_code> file_util::make_testcase_input_
     return *problem_directory_path_exp / (std::to_string(order) + ".in");
 }
 
-std::expected<std::filesystem::path, error_code> file_util::make_testcase_output_path(
+std::expected<std::filesystem::path, error_code> file_util::make_tc_output_path(
     std::int64_t problem_id,
     std::int32_t order
 ){
-    const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
+    const auto problem_directory_path_exp = make_tc_problem_directory_path(problem_id);
     if(!problem_directory_path_exp){
         return std::unexpected(problem_directory_path_exp.error());
     }
@@ -181,10 +181,10 @@ std::expected<std::filesystem::path, error_code> file_util::make_testcase_output
     return *problem_directory_path_exp / (std::to_string(order) + ".out");
 }
 
-std::expected<std::filesystem::path, error_code> file_util::make_testcase_version_file_path(
+std::expected<std::filesystem::path, error_code> file_util::make_tc_version_file_path(
     std::int64_t problem_id
 ){
-    const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
+    const auto problem_directory_path_exp = make_tc_problem_directory_path(problem_id);
     if(!problem_directory_path_exp){
         return std::unexpected(problem_directory_path_exp.error());
     }
@@ -192,10 +192,10 @@ std::expected<std::filesystem::path, error_code> file_util::make_testcase_versio
     return *problem_directory_path_exp / "version";
 }
 
-std::expected<std::filesystem::path, error_code> file_util::make_testcase_memory_limit_file_path(
+std::expected<std::filesystem::path, error_code> file_util::make_tc_memory_limit_file_path(
     std::int64_t problem_id
 ){
-    const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
+    const auto problem_directory_path_exp = make_tc_problem_directory_path(problem_id);
     if(!problem_directory_path_exp){
         return std::unexpected(problem_directory_path_exp.error());
     }
@@ -203,10 +203,10 @@ std::expected<std::filesystem::path, error_code> file_util::make_testcase_memory
     return *problem_directory_path_exp / "memory_limit";
 }
 
-std::expected<std::filesystem::path, error_code> file_util::make_testcase_time_limit_file_path(
+std::expected<std::filesystem::path, error_code> file_util::make_tc_time_limit_file_path(
     std::int64_t problem_id
 ){
-    const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
+    const auto problem_directory_path_exp = make_tc_problem_directory_path(problem_id);
     if(!problem_directory_path_exp){
         return std::unexpected(problem_directory_path_exp.error());
     }
@@ -214,10 +214,10 @@ std::expected<std::filesystem::path, error_code> file_util::make_testcase_time_l
     return *problem_directory_path_exp / "time_limit";
 }
 
-std::expected<std::int32_t, error_code> file_util::count_testcase_output(
+std::expected<std::int32_t, error_code> file_util::count_tc_output(
     std::int64_t problem_id
 ){
-    const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
+    const auto problem_directory_path_exp = make_tc_problem_directory_path(problem_id);
     if(!problem_directory_path_exp){
         return std::unexpected(problem_directory_path_exp.error());
     }
@@ -228,30 +228,30 @@ std::expected<std::int32_t, error_code> file_util::count_testcase_output(
         return std::unexpected(error_code::create(error_code::map_errno(iterator_ec.value())));
     }
 
-    std::int32_t testcase_count = 0;
+    std::int32_t tc_count = 0;
     for(std::filesystem::directory_iterator end; directory_iterator != end; ++directory_iterator){
         if(directory_iterator->path().extension() == ".out"){
-            ++testcase_count;
+            ++tc_count;
         }
     }
 
-    return testcase_count;
+    return tc_count;
 }
 
-std::expected<std::int32_t, error_code> file_util::validate_testcase_output(
-    std::int64_t problem_id, std::int32_t testcase_count
+std::expected<std::int32_t, error_code> file_util::validate_tc_output(
+    std::int64_t problem_id, std::int32_t tc_count
 ){
-    if(testcase_count < 0){
+    if(tc_count < 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
+    const auto problem_directory_path_exp = make_tc_problem_directory_path(problem_id);
     if(!problem_directory_path_exp){
         return std::unexpected(problem_directory_path_exp.error());
     }
 
-    std::vector<std::int32_t> testcase_orders;
-    testcase_orders.reserve(static_cast<std::size_t>(testcase_count));
+    std::vector<std::int32_t> tc_orders;
+    tc_orders.reserve(static_cast<std::size_t>(tc_count));
 
     std::error_code iterator_ec;
     std::filesystem::directory_iterator directory_iterator(*problem_directory_path_exp, iterator_ec);
@@ -276,23 +276,23 @@ std::expected<std::int32_t, error_code> file_util::validate_testcase_output(
             parse_ec != std::errc{} ||
             parse_end != stem.data() + stem.size() ||
             order <= 0 ||
-            order > testcase_count
+            order > tc_count
         ){
             return std::unexpected(error_code::create(errno_error::invalid_argument));
         }
 
-        testcase_orders.push_back(order);
+        tc_orders.push_back(order);
     }
 
-    std::sort(testcase_orders.begin(), testcase_orders.end());
-    for(std::int32_t index = 0; index < testcase_count; ++index){
+    std::sort(tc_orders.begin(), tc_orders.end());
+    for(std::int32_t index = 0; index < tc_count; ++index){
         if(
-            static_cast<std::size_t>(index) >= testcase_orders.size() ||
-            testcase_orders[static_cast<std::size_t>(index)] != index + 1
+            static_cast<std::size_t>(index) >= tc_orders.size() ||
+            tc_orders[static_cast<std::size_t>(index)] != index + 1
         ){
             return std::unexpected(error_code::create(errno_error::invalid_argument));
         }
     }
 
-    return testcase_count;
+    return tc_count;
 }

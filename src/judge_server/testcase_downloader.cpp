@@ -11,21 +11,21 @@
 #include <system_error>
 #include <utility>
 
-testcase_downloader::testcase_downloader(
+tc_downloader::tc_downloader(
     db_connection connection
 ) :
     connection_(std::move(connection)){}
 
-std::expected<testcase_downloader, error_code> testcase_downloader::create(db_connection connection){
+std::expected<tc_downloader, error_code> tc_downloader::create(db_connection connection){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
 
-    return testcase_downloader(std::move(connection));
+    return tc_downloader(std::move(connection));
 }
 
-std::expected<std::int32_t, error_code> testcase_downloader::read_version_file(std::int64_t problem_id) const{
-    const auto version_file_path_exp = file_util::instance().make_testcase_version_file_path(
+std::expected<std::int32_t, error_code> tc_downloader::read_version_file(std::int64_t problem_id) const{
+    const auto version_file_path_exp = file_util::instance().make_tc_version_file_path(
         problem_id
     );
     if(!version_file_path_exp){
@@ -35,17 +35,17 @@ std::expected<std::int32_t, error_code> testcase_downloader::read_version_file(s
     return file_util::instance().read_int32_file(*version_file_path_exp);
 }
 
-std::expected<std::pair<std::int32_t, std::int32_t>, error_code> testcase_downloader::read_limit_file(
+std::expected<std::pair<std::int32_t, std::int32_t>, error_code> tc_downloader::read_limit_file(
     std::int64_t problem_id
 ) const{
-    const auto time_limit_file_path_exp = file_util::instance().make_testcase_time_limit_file_path(
+    const auto time_limit_file_path_exp = file_util::instance().make_tc_time_limit_file_path(
         problem_id
     );
     if(!time_limit_file_path_exp){
         return std::unexpected(time_limit_file_path_exp.error());
     }
 
-    const auto memory_limit_file_path_exp = file_util::instance().make_testcase_memory_limit_file_path(
+    const auto memory_limit_file_path_exp = file_util::instance().make_tc_memory_limit_file_path(
         problem_id
     );
     if(!memory_limit_file_path_exp){
@@ -67,7 +67,7 @@ std::expected<std::pair<std::int32_t, std::int32_t>, error_code> testcase_downlo
     return std::pair{*time_limit_exp, *memory_limit_exp};
 }
 
-std::expected<bool, error_code> testcase_downloader::is_latest(std::int64_t problem_id){
+std::expected<bool, error_code> tc_downloader::is_latest(std::int64_t problem_id){
     const auto version_exp = problem_core_service::get_version(connection_, problem_id);
     if(!version_exp){
         return std::unexpected(version_exp.error());
@@ -92,7 +92,7 @@ std::expected<bool, error_code> testcase_downloader::is_latest(std::int64_t prob
     return local_version_exp.value() == version_exp.value();
 }
 
-std::expected<void, error_code> testcase_downloader::sync_version_file(std::int64_t problem_id){
+std::expected<void, error_code> tc_downloader::sync_version_file(std::int64_t problem_id){
     const auto version_exp = problem_core_service::get_version(connection_, problem_id);
     if(!version_exp){
         return std::unexpected(version_exp.error());
@@ -117,7 +117,7 @@ std::expected<void, error_code> testcase_downloader::sync_version_file(std::int6
         }
     }
 
-    const auto version_file_path_exp = file_util::instance().make_testcase_version_file_path(
+    const auto version_file_path_exp = file_util::instance().make_tc_version_file_path(
         problem_id
     );
     if(!version_file_path_exp){
@@ -143,7 +143,7 @@ std::expected<void, error_code> testcase_downloader::sync_version_file(std::int6
     return {};
 }
 
-std::expected<void, error_code> testcase_downloader::sync_limit_file(std::int64_t problem_id){
+std::expected<void, error_code> tc_downloader::sync_limit_file(std::int64_t problem_id){
     const auto limits_exp = problem_core_service::get_limits(connection_, problem_id);
     if(!limits_exp){
         return std::unexpected(limits_exp.error());
@@ -171,14 +171,14 @@ std::expected<void, error_code> testcase_downloader::sync_limit_file(std::int64_
         }
     }
 
-    const auto memory_limit_file_path_exp = file_util::instance().make_testcase_memory_limit_file_path(
+    const auto memory_limit_file_path_exp = file_util::instance().make_tc_memory_limit_file_path(
         problem_id
     );
     if(!memory_limit_file_path_exp){
         return std::unexpected(memory_limit_file_path_exp.error());
     }
 
-    const auto time_limit_file_path_exp = file_util::instance().make_testcase_time_limit_file_path(
+    const auto time_limit_file_path_exp = file_util::instance().make_tc_time_limit_file_path(
         problem_id
     );
     if(!time_limit_file_path_exp){
@@ -211,7 +211,7 @@ std::expected<void, error_code> testcase_downloader::sync_limit_file(std::int64_
     return {};
 }
 
-std::expected<void, error_code> testcase_downloader::sync_testcase(std::int64_t problem_id){
+std::expected<void, error_code> tc_downloader::sync_tc(std::int64_t problem_id){
     const auto is_latest_exp = is_latest(problem_id);
     if(!is_latest_exp){
         return std::unexpected(is_latest_exp.error());
@@ -244,13 +244,13 @@ std::expected<void, error_code> testcase_downloader::sync_testcase(std::int64_t 
     return {};
 }
 
-std::expected<void, error_code> testcase_downloader::download_all(std::int64_t problem_id){
-    const auto testcase_count_exp = testcase_service::get_testcase_count(connection_, problem_id);
-    if(!testcase_count_exp){
-        return std::unexpected(testcase_count_exp.error());
+std::expected<void, error_code> tc_downloader::download_all(std::int64_t problem_id){
+    const auto tc_count_exp = tc_service::get_tc_count(connection_, problem_id);
+    if(!tc_count_exp){
+        return std::unexpected(tc_count_exp.error());
     }
 
-    for(std::int32_t order = 1; order <= testcase_count_exp.value(); ++order){
+    for(std::int32_t order = 1; order <= tc_count_exp.value(); ++order){
         const auto download_one_exp = download_one(problem_id, order);
         if(!download_one_exp){
             return std::unexpected(download_one_exp.error());
@@ -260,14 +260,14 @@ std::expected<void, error_code> testcase_downloader::download_all(std::int64_t p
     return {};
 }
 
-std::expected<void, error_code> testcase_downloader::delete_outdated(std::int64_t problem_id){
-    const auto testcase_count_exp = testcase_service::get_testcase_count(connection_, problem_id);
-    if(!testcase_count_exp){
-        return std::unexpected(testcase_count_exp.error());
+std::expected<void, error_code> tc_downloader::delete_outdated(std::int64_t problem_id){
+    const auto tc_count_exp = tc_service::get_tc_count(connection_, problem_id);
+    if(!tc_count_exp){
+        return std::unexpected(tc_count_exp.error());
     }
 
     const auto problem_directory_path_exp = file_util::instance()
-        .make_testcase_problem_directory_path(problem_id);
+        .make_tc_problem_directory_path(problem_id);
     if(!problem_directory_path_exp){
         return std::unexpected(problem_directory_path_exp.error());
     }
@@ -319,7 +319,7 @@ std::expected<void, error_code> testcase_downloader::delete_outdated(std::int64_
             continue;
         }
         
-        if(order <= testcase_count_exp.value()){
+        if(order <= tc_count_exp.value()){
             directory_iterator.increment(iterator_ec);
             if(iterator_ec){
                 return std::unexpected(
@@ -343,10 +343,10 @@ std::expected<void, error_code> testcase_downloader::delete_outdated(std::int64_
     return {};
 }
 
-std::expected<void, error_code> testcase_downloader::delete_one(
+std::expected<void, error_code> tc_downloader::delete_one(
     std::int64_t problem_id, std::int32_t order
 ){
-    const auto input_path_exp = file_util::instance().make_testcase_input_path(
+    const auto input_path_exp = file_util::instance().make_tc_input_path(
         problem_id,
         order
     );
@@ -358,7 +358,7 @@ std::expected<void, error_code> testcase_downloader::delete_one(
         return std::unexpected(remove_input_exp.error());
     }
 
-    const auto output_path_exp = file_util::instance().make_testcase_output_path(
+    const auto output_path_exp = file_util::instance().make_tc_output_path(
         problem_id,
         order
     );
@@ -370,7 +370,7 @@ std::expected<void, error_code> testcase_downloader::delete_one(
         return std::unexpected(remove_output_exp.error());
     }
 
-    const auto version_file_path_exp = file_util::instance().make_testcase_version_file_path(
+    const auto version_file_path_exp = file_util::instance().make_tc_version_file_path(
         problem_id
     );
     if(!version_file_path_exp){
@@ -384,22 +384,22 @@ std::expected<void, error_code> testcase_downloader::delete_one(
     return {};
 }
 
-std::expected<void, error_code> testcase_downloader::download_one(
+std::expected<void, error_code> tc_downloader::download_one(
     std::int64_t problem_id, std::int32_t order
 ){
-    const auto testcase_exp = testcase_service::get_testcase(connection_, problem_id, order);
-    if(!testcase_exp){
-        return std::unexpected(testcase_exp.error());
+    const auto tc_exp = tc_service::get_tc(connection_, problem_id, order);
+    if(!tc_exp){
+        return std::unexpected(tc_exp.error());
     }
 
-    const auto input_path_exp = file_util::instance().make_testcase_input_path(
+    const auto input_path_exp = file_util::instance().make_tc_input_path(
         problem_id,
         order
     );
     if(!input_path_exp){
         return std::unexpected(input_path_exp.error());
     }
-    const auto output_path_exp = file_util::instance().make_testcase_output_path(
+    const auto output_path_exp = file_util::instance().make_tc_output_path(
         problem_id,
         order
     );
@@ -417,7 +417,7 @@ std::expected<void, error_code> testcase_downloader::download_one(
 
     const auto create_input_exp = file_util::instance().create_file(
         input_path,
-        testcase_exp->testcase_input
+        tc_exp->tc_input
     );
     
     if(!create_input_exp){
@@ -426,7 +426,7 @@ std::expected<void, error_code> testcase_downloader::download_one(
 
     const auto create_output_exp = file_util::instance().create_file(
         output_path,
-        testcase_exp->testcase_output
+        tc_exp->tc_output
     );
     
     if(!create_output_exp){
