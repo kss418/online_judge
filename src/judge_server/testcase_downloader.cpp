@@ -31,37 +31,40 @@ std::expected<std::int32_t, error_code> testcase_downloader::read_version_file(s
     if(!version_file_path_exp){
         return std::unexpected(version_file_path_exp.error());
     }
-    const std::filesystem::path version_file_path = *version_file_path_exp;
-    const auto version_file_exists_exp = file_utility::instance().exists(version_file_path);
-    if(!version_file_exists_exp){
-        return std::unexpected(version_file_exists_exp.error());
+
+    return file_utility::instance().read_int32_file(*version_file_path_exp);
+}
+
+std::expected<std::pair<std::int32_t, std::int32_t>, error_code> testcase_downloader::read_limit_file(
+    std::int64_t problem_id
+) const{
+    const auto time_limit_file_path_exp = file_utility::instance().make_testcase_time_limit_file_path(
+        problem_id
+    );
+    if(!time_limit_file_path_exp){
+        return std::unexpected(time_limit_file_path_exp.error());
     }
 
-    if(!version_file_exists_exp.value()){
-        return std::unexpected(error_code::create(errno_error::file_not_found));
+    const auto memory_limit_file_path_exp = file_utility::instance().make_testcase_memory_limit_file_path(
+        problem_id
+    );
+    if(!memory_limit_file_path_exp){
+        return std::unexpected(memory_limit_file_path_exp.error());
     }
 
-    std::ifstream version_file(version_file_path);
-    if(!version_file.is_open()){
-        return std::unexpected(error_code::create(errno_error::io_error));
+    const auto time_limit_exp = file_utility::instance().read_int32_file(*time_limit_file_path_exp);
+    if(!time_limit_exp){
+        return std::unexpected(time_limit_exp.error());
     }
 
-    std::int32_t local_version = 0;
-    version_file >> local_version;
-    if(version_file.bad()){
-        return std::unexpected(error_code::create(errno_error::io_error));
-    }
-    
-    if(!version_file){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    const auto memory_limit_exp = file_utility::instance().read_int32_file(
+        *memory_limit_file_path_exp
+    );
+    if(!memory_limit_exp){
+        return std::unexpected(memory_limit_exp.error());
     }
 
-    version_file >> std::ws;
-    if(!version_file.eof()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    return local_version;
+    return std::pair{*time_limit_exp, *memory_limit_exp};
 }
 
 std::expected<bool, error_code> testcase_downloader::is_latest(std::int64_t problem_id){
@@ -140,6 +143,74 @@ std::expected<void, error_code> testcase_downloader::sync_version_file(std::int6
     return {};
 }
 
+std::expected<void, error_code> testcase_downloader::sync_limit_file(std::int64_t problem_id){
+    const auto limits_exp = problem_core_service::get_limits(connection_, problem_id);
+    if(!limits_exp){
+        return std::unexpected(limits_exp.error());
+    }
+
+    const auto local_limits_exp = read_limit_file(problem_id);
+    if(local_limits_exp){
+        if(
+            local_limits_exp->first == limits_exp->time_limit_ms &&
+            local_limits_exp->second == limits_exp->memory_limit_mb
+        ){
+            return {};
+        }
+    }
+    else{
+        const error_code local_limits_error = local_limits_exp.error();
+        if(
+            local_limits_error.type_ != error_type::errno_type ||
+            (
+                local_limits_error.code_ != static_cast<int>(errno_error::file_not_found) &&
+                local_limits_error.code_ != static_cast<int>(errno_error::invalid_argument)
+            )
+        ){
+            return std::unexpected(local_limits_error);
+        }
+    }
+
+    const auto memory_limit_file_path_exp = file_utility::instance().make_testcase_memory_limit_file_path(
+        problem_id
+    );
+    if(!memory_limit_file_path_exp){
+        return std::unexpected(memory_limit_file_path_exp.error());
+    }
+
+    const auto time_limit_file_path_exp = file_utility::instance().make_testcase_time_limit_file_path(
+        problem_id
+    );
+    if(!time_limit_file_path_exp){
+        return std::unexpected(time_limit_file_path_exp.error());
+    }
+
+    const auto create_directories_exp = file_utility::instance().create_directories(
+        memory_limit_file_path_exp->parent_path()
+    );
+    if(!create_directories_exp){
+        return std::unexpected(create_directories_exp.error());
+    }
+
+    const auto create_memory_limit_file_exp = file_utility::instance().create_file(
+        *memory_limit_file_path_exp,
+        std::to_string(limits_exp->memory_limit_mb)
+    );
+    if(!create_memory_limit_file_exp){
+        return std::unexpected(create_memory_limit_file_exp.error());
+    }
+
+    const auto create_time_limit_file_exp = file_utility::instance().create_file(
+        *time_limit_file_path_exp,
+        std::to_string(limits_exp->time_limit_ms)
+    );
+    if(!create_time_limit_file_exp){
+        return std::unexpected(create_time_limit_file_exp.error());
+    }
+
+    return {};
+}
+
 std::expected<void, error_code> testcase_downloader::sync_testcase(std::int64_t problem_id){
     const auto is_latest_exp = is_latest(problem_id);
     if(!is_latest_exp){
@@ -147,7 +218,7 @@ std::expected<void, error_code> testcase_downloader::sync_testcase(std::int64_t 
     }
 
     if(is_latest_exp.value()){
-        return {};
+        return sync_limit_file(problem_id);
     }
 
     const auto download_all_exp = download_all(problem_id);
@@ -158,6 +229,11 @@ std::expected<void, error_code> testcase_downloader::sync_testcase(std::int64_t 
     const auto delete_outdated_exp = delete_outdated(problem_id);
     if(!delete_outdated_exp){
         return std::unexpected(delete_outdated_exp.error());
+    }
+
+    const auto sync_limit_file_exp = sync_limit_file(problem_id);
+    if(!sync_limit_file_exp){
+        return std::unexpected(sync_limit_file_exp.error());
     }
 
     const auto sync_version_file_exp = sync_version_file(problem_id);

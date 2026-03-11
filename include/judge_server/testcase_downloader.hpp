@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <expected>
 #include <filesystem>
+#include <utility>
 
 class testcase_downloader{
 public:
@@ -15,6 +16,7 @@ public:
 private:
     std::expected<bool, error_code> is_latest(std::int64_t problem_id);
     std::expected<void, error_code> sync_version_file(std::int64_t problem_id);
+    std::expected<void, error_code> sync_limit_file(std::int64_t problem_id);
 
     std::expected<void, error_code> delete_outdated(std::int64_t problem_id);
     std::expected<void, error_code> delete_one(
@@ -30,6 +32,9 @@ private:
     
     explicit testcase_downloader(db_connection connection);
     std::expected<std::int32_t, error_code> read_version_file(std::int64_t problem_id) const;
+    std::expected<std::pair<std::int32_t, std::int32_t>, error_code> read_limit_file(
+        std::int64_t problem_id
+    ) const;
 
     db_connection connection_;
 };

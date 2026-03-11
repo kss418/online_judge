@@ -64,6 +64,41 @@ std::expected<void, error_code> file_utility::remove_file(const std::filesystem:
     return {};
 }
 
+std::expected<std::int32_t, error_code> file_utility::read_int32_file(
+    const std::filesystem::path& file_path
+){
+    const auto file_exists_exp = exists(file_path);
+    if(!file_exists_exp){
+        return std::unexpected(file_exists_exp.error());
+    }
+
+    if(!file_exists_exp.value()){
+        return std::unexpected(error_code::create(errno_error::file_not_found));
+    }
+
+    std::ifstream value_file(file_path);
+    if(!value_file.is_open()){
+        return std::unexpected(error_code::create(errno_error::io_error));
+    }
+
+    std::int32_t value = 0;
+    value_file >> value;
+    if(value_file.bad()){
+        return std::unexpected(error_code::create(errno_error::io_error));
+    }
+
+    if(!value_file){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    value_file >> std::ws;
+    if(!value_file.eof()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return value;
+}
+
 std::expected<void, error_code> file_utility::create_file(
     const std::filesystem::path& file_path,
     std::string_view file_content
@@ -155,6 +190,28 @@ std::expected<std::filesystem::path, error_code> file_utility::make_testcase_ver
     }
 
     return *problem_directory_path_exp / "version";
+}
+
+std::expected<std::filesystem::path, error_code> file_utility::make_testcase_memory_limit_file_path(
+    std::int64_t problem_id
+){
+    const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
+    if(!problem_directory_path_exp){
+        return std::unexpected(problem_directory_path_exp.error());
+    }
+
+    return *problem_directory_path_exp / "memory_limit";
+}
+
+std::expected<std::filesystem::path, error_code> file_utility::make_testcase_time_limit_file_path(
+    std::int64_t problem_id
+){
+    const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
+    if(!problem_directory_path_exp){
+        return std::unexpected(problem_directory_path_exp.error());
+    }
+
+    return *problem_directory_path_exp / "time_limit";
 }
 
 std::expected<std::int32_t, error_code> file_utility::count_testcase_output(

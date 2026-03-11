@@ -17,6 +17,7 @@ public:
     std::expected<bool, error_code> exists(const std::filesystem::path& file_path);
     std::expected<void, error_code> create_directories(const std::filesystem::path& directory_path);
     std::expected<void, error_code> remove_file(const std::filesystem::path& file_path);
+    std::expected<std::int32_t, error_code> read_int32_file(const std::filesystem::path& file_path);
 
     std::expected<void, error_code> create_file(
         const std::filesystem::path& file_path,
@@ -40,6 +41,12 @@ public:
         std::int32_t order
     );
     std::expected<std::filesystem::path, error_code> make_testcase_version_file_path(
+        std::int64_t problem_id
+    );
+    std::expected<std::filesystem::path, error_code> make_testcase_memory_limit_file_path(
+        std::int64_t problem_id
+    );
+    std::expected<std::filesystem::path, error_code> make_testcase_time_limit_file_path(
         std::int64_t problem_id
     );
     std::expected<std::int32_t, error_code> count_testcase_output(std::int64_t problem_id);
