@@ -10,7 +10,7 @@ std::expected<java_runner::compile_result, error_code> java_runner::compile(
     return compile_result_value;
 }
 
-std::expected<pl_runner_utility::prepared_source, error_code> java_runner::prepare(
+std::expected<pl_runner_util::prepared_source, error_code> java_runner::prepare(
     const path& source_file_path,
     const path& java_runtime_path
 ){
@@ -20,13 +20,13 @@ std::expected<pl_runner_utility::prepared_source, error_code> java_runner::prepa
     }
 
     if(!compile_java_exp->is_success()){
-        return pl_runner_utility::instance().make_compile_failed_prepared_source(
+        return pl_runner_util::instance().make_compile_failed_prepared_source(
             compile_java_exp->exit_code_,
             std::move(compile_java_exp->stderr_text_)
         );
     }
 
-    pl_runner_utility::prepared_source prepared_source_value;
+    pl_runner_util::prepared_source prepared_source_value;
     prepared_source_value.run_command_args_ = std::move(compile_java_exp->run_command_args_);
     return prepared_source_value;
 }

@@ -2,7 +2,7 @@
 
 #include <pqxx/pqxx>
 
-std::expected<std::int32_t, error_code> testcase_service_utility::increase_testcase_count(
+std::expected<std::int32_t, error_code> testcase_service_util::increase_testcase_count(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){
@@ -21,7 +21,7 @@ std::expected<std::int32_t, error_code> testcase_service_utility::increase_testc
     return increase_result[0][0].as<std::int32_t>();
 }
 
-std::expected<std::int32_t, error_code> testcase_service_utility::decrease_testcase_count(
+std::expected<std::int32_t, error_code> testcase_service_util::decrease_testcase_count(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){

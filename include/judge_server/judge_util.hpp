@@ -13,7 +13,7 @@ enum class judge_result{
     invalid_output
 };
 
-namespace judge_utility{
+namespace judge_util{
     std::vector <std::string> normalize_output(const std::string& output);
     bool is_blank(char c);
 };

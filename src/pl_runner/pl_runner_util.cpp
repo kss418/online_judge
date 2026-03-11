@@ -7,13 +7,13 @@
 #include <cstdlib>
 #include <utility>
 
-pl_runner_utility& pl_runner_utility::instance(){
-    static pl_runner_utility pl_runner_utility_value;
-    pl_runner_utility_value.initialize_if_needed();
-    return pl_runner_utility_value;
+pl_runner_util& pl_runner_util::instance(){
+    static pl_runner_util pl_runner_util_value;
+    pl_runner_util_value.initialize_if_needed();
+    return pl_runner_util_value;
 }
 
-void pl_runner_utility::initialize_if_needed(){
+void pl_runner_util::initialize_if_needed(){
     std::scoped_lock lock(initialize_mutex_);
     if(
         cpp_compiler_path_.has_value() &&
@@ -39,7 +39,7 @@ void pl_runner_utility::initialize_if_needed(){
     }
 }
 
-pl_runner_utility::prepared_source pl_runner_utility::make_compile_failed_prepared_source(
+pl_runner_util::prepared_source pl_runner_util::make_compile_failed_prepared_source(
     int exit_code,
     std::string stderr_text
 ){
@@ -51,7 +51,7 @@ pl_runner_utility::prepared_source pl_runner_utility::make_compile_failed_prepar
     return prepared_source_value;
 }
 
-std::expected<pl_runner_utility::prepared_source, error_code> pl_runner_utility::prepare_source(
+std::expected<pl_runner_util::prepared_source, error_code> pl_runner_util::prepare_source(
     const std::filesystem::path& source_file_path
 ){
     const std::string extension = source_file_path.extension().string();

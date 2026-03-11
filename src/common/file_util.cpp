@@ -7,13 +7,13 @@
 #include <mutex>
 #include <system_error>
 
-file_utility& file_utility::instance(){
-    static file_utility file_utility_value;
-    file_utility_value.initialize_if_needed();
-    return file_utility_value;
+file_util& file_util::instance(){
+    static file_util file_util_value;
+    file_util_value.initialize_if_needed();
+    return file_util_value;
 }
 
-void file_utility::initialize_if_needed(){
+void file_util::initialize_if_needed(){
     std::scoped_lock lock(initialize_mutex_);
     if(source_directory_path_.has_value() && testcase_root_path_.has_value()){
         return;
@@ -30,7 +30,7 @@ void file_utility::initialize_if_needed(){
     }
 }
 
-std::expected<bool, error_code> file_utility::exists(const std::filesystem::path& file_path){
+std::expected<bool, error_code> file_util::exists(const std::filesystem::path& file_path){
     std::error_code exists_ec;
     const bool exists_value = std::filesystem::exists(file_path, exists_ec);
     if(exists_ec){
@@ -40,7 +40,7 @@ std::expected<bool, error_code> file_utility::exists(const std::filesystem::path
     return exists_value;
 }
 
-std::expected<void, error_code> file_utility::create_directories(
+std::expected<void, error_code> file_util::create_directories(
     const std::filesystem::path& directory_path
 ){
     std::error_code create_directories_ec;
@@ -54,7 +54,7 @@ std::expected<void, error_code> file_utility::create_directories(
     return {};
 }
 
-std::expected<void, error_code> file_utility::remove_file(const std::filesystem::path& file_path){
+std::expected<void, error_code> file_util::remove_file(const std::filesystem::path& file_path){
     std::error_code remove_ec;
     std::filesystem::remove(file_path, remove_ec);
     if(remove_ec){
@@ -64,7 +64,7 @@ std::expected<void, error_code> file_utility::remove_file(const std::filesystem:
     return {};
 }
 
-std::expected<std::int32_t, error_code> file_utility::read_int32_file(
+std::expected<std::int32_t, error_code> file_util::read_int32_file(
     const std::filesystem::path& file_path
 ){
     const auto file_exists_exp = exists(file_path);
@@ -99,7 +99,7 @@ std::expected<std::int32_t, error_code> file_utility::read_int32_file(
     return value;
 }
 
-std::expected<void, error_code> file_utility::create_file(
+std::expected<void, error_code> file_util::create_file(
     const std::filesystem::path& file_path,
     std::string_view file_content
 ){
@@ -116,7 +116,7 @@ std::expected<void, error_code> file_utility::create_file(
     return {};
 }
 
-std::expected<std::filesystem::path, error_code> file_utility::make_source_directory_path(){
+std::expected<std::filesystem::path, error_code> file_util::make_source_directory_path(){
     if(!source_directory_path_.has_value() || source_directory_path_->empty()){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -124,7 +124,7 @@ std::expected<std::filesystem::path, error_code> file_utility::make_source_direc
     return *source_directory_path_;
 }
 
-std::expected<std::filesystem::path, error_code> file_utility::make_source_file_path(
+std::expected<std::filesystem::path, error_code> file_util::make_source_file_path(
     std::int64_t submission_id,
     std::string_view language
 ){
@@ -147,7 +147,7 @@ std::expected<std::filesystem::path, error_code> file_utility::make_source_file_
     return *source_root_path_exp / (std::to_string(submission_id) + std::string(extension));
 }
 
-std::expected<std::filesystem::path, error_code> file_utility::make_testcase_problem_directory_path(
+std::expected<std::filesystem::path, error_code> file_util::make_testcase_problem_directory_path(
     std::int64_t problem_id
 ){
     if(!testcase_root_path_.has_value() || testcase_root_path_->empty()){
@@ -157,7 +157,7 @@ std::expected<std::filesystem::path, error_code> file_utility::make_testcase_pro
     return *testcase_root_path_ / std::to_string(problem_id);
 }
 
-std::expected<std::filesystem::path, error_code> file_utility::make_testcase_input_path(
+std::expected<std::filesystem::path, error_code> file_util::make_testcase_input_path(
     std::int64_t problem_id,
     std::int32_t order
 ){
@@ -169,7 +169,7 @@ std::expected<std::filesystem::path, error_code> file_utility::make_testcase_inp
     return *problem_directory_path_exp / (std::to_string(order) + ".in");
 }
 
-std::expected<std::filesystem::path, error_code> file_utility::make_testcase_output_path(
+std::expected<std::filesystem::path, error_code> file_util::make_testcase_output_path(
     std::int64_t problem_id,
     std::int32_t order
 ){
@@ -181,7 +181,7 @@ std::expected<std::filesystem::path, error_code> file_utility::make_testcase_out
     return *problem_directory_path_exp / (std::to_string(order) + ".out");
 }
 
-std::expected<std::filesystem::path, error_code> file_utility::make_testcase_version_file_path(
+std::expected<std::filesystem::path, error_code> file_util::make_testcase_version_file_path(
     std::int64_t problem_id
 ){
     const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
@@ -192,7 +192,7 @@ std::expected<std::filesystem::path, error_code> file_utility::make_testcase_ver
     return *problem_directory_path_exp / "version";
 }
 
-std::expected<std::filesystem::path, error_code> file_utility::make_testcase_memory_limit_file_path(
+std::expected<std::filesystem::path, error_code> file_util::make_testcase_memory_limit_file_path(
     std::int64_t problem_id
 ){
     const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
@@ -203,7 +203,7 @@ std::expected<std::filesystem::path, error_code> file_utility::make_testcase_mem
     return *problem_directory_path_exp / "memory_limit";
 }
 
-std::expected<std::filesystem::path, error_code> file_utility::make_testcase_time_limit_file_path(
+std::expected<std::filesystem::path, error_code> file_util::make_testcase_time_limit_file_path(
     std::int64_t problem_id
 ){
     const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
@@ -214,7 +214,7 @@ std::expected<std::filesystem::path, error_code> file_utility::make_testcase_tim
     return *problem_directory_path_exp / "time_limit";
 }
 
-std::expected<std::int32_t, error_code> file_utility::count_testcase_output(
+std::expected<std::int32_t, error_code> file_util::count_testcase_output(
     std::int64_t problem_id
 ){
     const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
@@ -238,7 +238,7 @@ std::expected<std::int32_t, error_code> file_utility::count_testcase_output(
     return testcase_count;
 }
 
-std::expected<std::int32_t, error_code> file_utility::validate_testcase_output(
+std::expected<std::int32_t, error_code> file_util::validate_testcase_output(
     std::int64_t problem_id, std::int32_t testcase_count
 ){
     if(testcase_count < 0){

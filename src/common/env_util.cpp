@@ -2,7 +2,7 @@
 
 #include <cstdlib>
 
-std::expected<std::string, error_code> env_utility::require_env(const char* key){
+std::expected<std::string, error_code> env_util::require_env(const char* key){
     const char* value = std::getenv(key);
     if(value == nullptr || *value == '\0'){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
@@ -11,7 +11,7 @@ std::expected<std::string, error_code> env_utility::require_env(const char* key)
     return std::string(value);
 }
 
-std::expected<void, error_code> env_utility::require_all_envs(){
+std::expected<void, error_code> env_util::require_all_envs(){
     const auto env_values_exp = require_envs(
         {
             "HTTP_PORT",
@@ -38,7 +38,7 @@ std::expected<void, error_code> env_utility::require_all_envs(){
     return {};
 }
 
-std::expected<std::vector<std::string>, error_code> env_utility::require_envs(
+std::expected<std::vector<std::string>, error_code> env_util::require_envs(
     std::initializer_list<const char*> keys
 ){
     std::vector<std::string> env_values;

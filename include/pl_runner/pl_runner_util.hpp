@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-class pl_runner_utility{
+class pl_runner_util{
 public:
     struct prepared_source{
         std::optional<temp_file> binary_file_;
@@ -23,7 +23,7 @@ public:
         }
     };
 
-    static pl_runner_utility& instance();
+    static pl_runner_util& instance();
 
     prepared_source make_compile_failed_prepared_source(
         int exit_code,
@@ -35,7 +35,7 @@ public:
     );
 
 private:
-    pl_runner_utility() = default;
+    pl_runner_util() = default;
 
     void initialize_if_needed();
 

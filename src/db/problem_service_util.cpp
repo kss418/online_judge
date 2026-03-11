@@ -2,7 +2,7 @@
 
 #include <pqxx/pqxx>
 
-std::expected<bool, error_code> problem_service_utility::exists_problem(
+std::expected<bool, error_code> problem_service_util::exists_problem(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){
@@ -26,7 +26,7 @@ std::expected<bool, error_code> problem_service_utility::exists_problem(
     return exists_query_result[0][0].as<bool>();
 }
 
-std::expected<void, error_code> problem_service_utility::increase_version(
+std::expected<void, error_code> problem_service_util::increase_version(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){
@@ -44,7 +44,7 @@ std::expected<void, error_code> problem_service_utility::increase_version(
     return {};
 }
 
-std::expected<std::int32_t, error_code> problem_service_utility::increase_sample_count(
+std::expected<std::int32_t, error_code> problem_service_util::increase_sample_count(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){
@@ -63,7 +63,7 @@ std::expected<std::int32_t, error_code> problem_service_utility::increase_sample
     return increase_result[0][0].as<std::int32_t>();
 }
 
-std::expected<std::int32_t, error_code> problem_service_utility::decrease_sample_count(
+std::expected<std::int32_t, error_code> problem_service_util::decrease_sample_count(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){

@@ -15,7 +15,7 @@ std::expected<bool, error_code> problem_core_service::exists_problem(
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto exists_exp = problem_service_utility::exists_problem(transaction, problem_id);
+        const auto exists_exp = problem_service_util::exists_problem(transaction, problem_id);
         if(!exists_exp){
             return std::unexpected(exists_exp.error());
         }
@@ -69,7 +69,7 @@ std::expected<void, error_code> problem_core_service::increase_version(
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto version_exp = problem_service_utility::increase_version(transaction, problem_id);
+        const auto version_exp = problem_service_util::increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -172,7 +172,7 @@ std::expected<void, error_code> problem_core_service::set_limits(
             }
         );
 
-        const auto version_exp = problem_service_utility::increase_version(transaction, problem_id);
+        const auto version_exp = problem_service_util::increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }

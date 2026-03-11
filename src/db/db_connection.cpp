@@ -55,18 +55,18 @@ const pqxx::connection& db_connection::connection() const{
 }
 
 std::expected<std::string, error_code> db_connection::initialize(){
-    const auto require_envs_exp = env_utility::require_envs(
+    const auto require_envs_exp = env_util::require_envs(
         {"DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD", "DB_PORT"}
     );
     if(!require_envs_exp){
         return std::unexpected(require_envs_exp.error());
     }
 
-    auto host_exp = env_utility::require_env("DB_HOST");
-    auto database_exp = env_utility::require_env("DB_NAME");
-    auto user_exp = env_utility::require_env("DB_USER");
-    auto password_exp = env_utility::require_env("DB_PASSWORD");
-    auto port_exp = env_utility::require_env("DB_PORT");
+    auto host_exp = env_util::require_env("DB_HOST");
+    auto database_exp = env_util::require_env("DB_NAME");
+    auto user_exp = env_util::require_env("DB_USER");
+    auto password_exp = env_util::require_env("DB_PASSWORD");
+    auto port_exp = env_util::require_env("DB_PORT");
 
     const std::string port_string(*port_exp);
 

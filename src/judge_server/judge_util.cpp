@@ -1,10 +1,10 @@
 #include "judge_server/judge_util.hpp"
 
-bool judge_utility::is_blank(char c){
+bool judge_util::is_blank(char c){
     return (c == ' ' || c == '\t' || c == '\r');
 }
 
-std::vector <std::string> judge_utility::normalize_output(const std::string& output){
+std::vector <std::string> judge_util::normalize_output(const std::string& output){
     std::vector <std::string> ret;
     std::string tmp;
     for(char i : output){

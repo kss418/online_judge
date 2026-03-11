@@ -24,7 +24,7 @@ std::expected<std::uint16_t, error_code> parse_port(std::string_view text){
 }
 
 int main(){
-    const auto require_all_envs_exp = env_utility::require_all_envs();
+    const auto require_all_envs_exp = env_util::require_all_envs();
     if(!require_all_envs_exp){
         std::cerr << "required environment variables are missing\n";
         return 1;

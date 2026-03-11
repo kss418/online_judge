@@ -21,7 +21,7 @@ std::expected<std::int64_t, error_code> testcase_service::create_testcase(
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto testcase_order_exp = testcase_service_utility::increase_testcase_count(
+        const auto testcase_order_exp = testcase_service_util::increase_testcase_count(
             transaction,
             problem_id
         );
@@ -46,7 +46,7 @@ std::expected<std::int64_t, error_code> testcase_service::create_testcase(
             return std::unexpected(error_code::create(errno_error::unknown_error));
         }
 
-        const auto version_exp = problem_service_utility::increase_version(transaction, problem_id);
+        const auto version_exp = problem_service_util::increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -199,7 +199,7 @@ std::expected<void, error_code> testcase_service::set_testcase(
             return std::unexpected(error_code::create(errno_error::invalid_argument));
         }
 
-        const auto version_exp = problem_service_utility::increase_version(transaction, problem_id);
+        const auto version_exp = problem_service_util::increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -241,7 +241,7 @@ std::expected<void, error_code> testcase_service::delete_testcase(
             return std::unexpected(error_code::create(errno_error::invalid_argument));
         }
 
-        const auto testcase_count_exp = testcase_service_utility::decrease_testcase_count(
+        const auto testcase_count_exp = testcase_service_util::decrease_testcase_count(
             transaction,
             problem_id
         );
@@ -249,7 +249,7 @@ std::expected<void, error_code> testcase_service::delete_testcase(
             return std::unexpected(testcase_count_exp.error());
         }
 
-        const auto version_exp = problem_service_utility::increase_version(transaction, problem_id);
+        const auto version_exp = problem_service_util::increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }

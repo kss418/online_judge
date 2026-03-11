@@ -10,9 +10,9 @@
 #include <string_view>
 #include <vector>
 
-class file_utility{
+class file_util{
 public:
-    static file_utility& instance();
+    static file_util& instance();
 
     std::expected<bool, error_code> exists(const std::filesystem::path& file_path);
     std::expected<void, error_code> create_directories(const std::filesystem::path& directory_path);
@@ -56,7 +56,7 @@ public:
     );
 
 private:
-    file_utility() = default;
+    file_util() = default;
     void initialize_if_needed();
 
     std::mutex initialize_mutex_;

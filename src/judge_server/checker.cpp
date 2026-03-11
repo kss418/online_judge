@@ -24,13 +24,13 @@ std::expected<bool, error_code> checker::check(
     }
 
     auto answer_text = std::move(*answer_text_exp);
-    return output == judge_utility::normalize_output(answer_text);
+    return output == judge_util::normalize_output(answer_text);
 }
 
 std::expected<judge_result, error_code> checker::check_all(
     const std::vector<std::vector<std::string>>& output, std::int64_t problem_id
 ){
-    const auto testcase_count_exp = file_utility::instance().count_testcase_output(problem_id);
+    const auto testcase_count_exp = file_util::instance().count_testcase_output(problem_id);
     if(!testcase_count_exp){
         return std::unexpected(testcase_count_exp.error());
     }
@@ -39,7 +39,7 @@ std::expected<judge_result, error_code> checker::check_all(
         return judge_result::wrong_answer;
     }
 
-    const auto validated_testcase_count_exp = file_utility::instance().validate_testcase_output(
+    const auto validated_testcase_count_exp = file_util::instance().validate_testcase_output(
         problem_id,
         testcase_count_exp.value()
     );
@@ -49,7 +49,7 @@ std::expected<judge_result, error_code> checker::check_all(
     }
 
     for(std::int32_t order = 1; order <= validated_testcase_count_exp.value(); ++order){
-        const auto answer_path_exp = file_utility::instance().make_testcase_output_path(
+        const auto answer_path_exp = file_util::instance().make_testcase_output_path(
             problem_id, order
         );
 

@@ -9,7 +9,7 @@ namespace pqxx{
 class transaction_base;
 }
 
-namespace testcase_service_utility{
+namespace testcase_service_util{
 std::expected<std::int32_t, error_code> increase_testcase_count(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id

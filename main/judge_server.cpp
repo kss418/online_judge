@@ -23,7 +23,7 @@ std::expected<submission_service, error_code> create_submission_service(){
 }
 
 int main(){
-    const auto require_all_envs_exp = env_utility::require_all_envs();
+    const auto require_all_envs_exp = env_util::require_all_envs();
     if(!require_all_envs_exp){
         std::cerr << "required environment variables are missing\n";
         return 1;

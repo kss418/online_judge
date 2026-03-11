@@ -10,12 +10,12 @@
 #include <vector>
 
 std::expected<judge_worker, error_code> judge_worker::create(submission_service submission_service){
-    const auto source_directory_path_exp = file_utility::instance().make_source_directory_path();
+    const auto source_directory_path_exp = file_util::instance().make_source_directory_path();
     if(!source_directory_path_exp){
         return std::unexpected(source_directory_path_exp.error());
     }
 
-    const auto create_directories_exp = file_utility::instance().create_directories(
+    const auto create_directories_exp = file_util::instance().create_directories(
         *source_directory_path_exp
     );
     if(!create_directories_exp){
@@ -155,7 +155,7 @@ std::expected<void, error_code> judge_worker::run(){
                 return std::unexpected(update_submission_status_exp.error());
             }
 
-            const auto source_file_path_exp = file_utility::instance().make_source_file_path(
+            const auto source_file_path_exp = file_util::instance().make_source_file_path(
                 queued_submission_value.submission_id,
                 queued_submission_value.language
             );
@@ -235,7 +235,7 @@ std::expected<std::optional<queued_submission>, error_code> judge_worker::save_s
         return std::unexpected(pop_submission_exp.error());
     }
 
-    const auto source_file_path_exp = file_utility::instance().make_source_file_path(
+    const auto source_file_path_exp = file_util::instance().make_source_file_path(
         pop_submission_exp->submission_id,
         pop_submission_exp->language
     );
@@ -244,7 +244,7 @@ std::expected<std::optional<queued_submission>, error_code> judge_worker::save_s
     }
     const auto source_file_path = *source_file_path_exp;
     
-    auto create_file_exp = file_utility::instance().create_file(
+    auto create_file_exp = file_util::instance().create_file(
         source_file_path,
         pop_submission_exp->source_code
     );

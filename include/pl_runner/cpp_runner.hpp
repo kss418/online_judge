@@ -28,7 +28,7 @@ namespace cpp_runner{
         const path& compiler_path
     );
 
-    std::expected<pl_runner_utility::prepared_source, error_code> prepare(
+    std::expected<pl_runner_util::prepared_source, error_code> prepare(
         const path& source_file_path,
         const path& compiler_path
     );
