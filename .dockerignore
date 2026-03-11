@@ -11,7 +11,11 @@ submissions
 testcases
 tmp
 *.log
+.env
+http_server
+judge_server
 vcpkg/buildtrees
 vcpkg/downloads
+vcpkg/installed
 vcpkg/packages
 vcpkg_installed

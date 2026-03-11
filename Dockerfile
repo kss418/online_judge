@@ -1,6 +1,7 @@
 FROM ubuntu:24.04 AS build
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV VCPKG_DISABLE_METRICS=1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -24,11 +25,20 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
+
+COPY vcpkg.json /workspace/vcpkg.json
+COPY vcpkg /workspace/vcpkg
+
+RUN /workspace/vcpkg/vcpkg install \
+        --triplet=x64-linux \
+        --x-manifest-root=/workspace
+
 COPY . .
 
 RUN cmake -S . -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_TOOLCHAIN_FILE=/workspace/vcpkg/scripts/buildsystems/vcpkg.cmake \
+        -DVCPKG_INSTALLED_DIR=/workspace/vcpkg_installed \
     && cmake --build build -j --target http_server judge_server
 
 FROM ubuntu:24.04 AS runtime_base
