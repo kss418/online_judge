@@ -27,11 +27,27 @@ std::expected<judge_worker, error_code> judge_worker::create(submission_service 
         return std::unexpected(listen_submission_queue_exp.error());
     }
 
-    return judge_worker(std::move(submission_service));
+    auto testcase_downloader_connection_exp = db_connection::create();
+    if(!testcase_downloader_connection_exp){
+        return std::unexpected(testcase_downloader_connection_exp.error());
+    }
+
+    auto testcase_downloader_exp = testcase_downloader::create(
+        std::move(*testcase_downloader_connection_exp)
+    );
+    if(!testcase_downloader_exp){
+        return std::unexpected(testcase_downloader_exp.error());
+    }
+
+    return judge_worker(std::move(submission_service), std::move(*testcase_downloader_exp));
 }
 
-judge_worker::judge_worker(submission_service submission_service) :
-    submission_service_(std::move(submission_service)){}
+judge_worker::judge_worker(
+    submission_service submission_service,
+    testcase_downloader testcase_downloader
+) :
+    submission_service_(std::move(submission_service)),
+    testcase_downloader_(std::move(testcase_downloader)){}
 
 bool judge_worker::is_queue_empty_error(const error_code& code){
     return code.type_ == error_type::errno_type &&
@@ -146,6 +162,14 @@ std::expected<void, error_code> judge_worker::run(){
 
             if(!source_file_path_exp){
                 return std::unexpected(source_file_path_exp.error());
+            }
+
+            const auto sync_testcase_exp = testcase_downloader_.sync_testcase(
+                queued_submission_value.problem_id
+            );
+            
+            if(!sync_testcase_exp){
+                return std::unexpected(sync_testcase_exp.error());
             }
 
             const std::filesystem::path source_file_path = *source_file_path_exp;
