@@ -4,6 +4,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        autoconf \
+        automake \
         bash \
         bison \
         build-essential \
@@ -12,6 +14,7 @@ RUN apt-get update \
         curl \
         flex \
         git \
+        libtool \
         ninja-build \
         perl \
         pkg-config \
