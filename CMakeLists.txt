@@ -11,6 +11,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 find_package(boost_beast CONFIG REQUIRED)
 find_package(boost_json CONFIG REQUIRED)
 find_package(libpqxx CONFIG REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 add_library(lib STATIC
     src/db/db_connection.cpp
@@ -39,6 +40,7 @@ add_library(lib STATIC
     src/judge_server/testcase_downloader.cpp
     src/common/env_util.cpp
     src/common/error_code.cpp
+    src/common/token_util.cpp
     src/common/unique_fd.cpp
     src/common/temp_file.cpp
     src/common/blocking_io.cpp
@@ -54,6 +56,7 @@ target_link_libraries(lib
         Boost::beast
         Boost::json
         libpqxx::pqxx
+        OpenSSL::Crypto
 )
 
 add_executable(http_server
