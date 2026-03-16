@@ -19,6 +19,18 @@ http_util::response_type http_util::create_text_response(
     return response;
 }
 
+std::optional<boost::json::object> http_util::parse_json_object(
+    const request_type& request
+){
+    boost::system::error_code ec;
+    auto request_value = boost::json::parse(request.body(), ec);
+    if(ec || !request_value.is_object()){
+        return std::nullopt;
+    }
+
+    return std::move(request_value.as_object());
+}
+
 std::optional<std::string_view> http_util::get_non_empty_string_field(
     const boost::json::object& object,
     std::string_view key

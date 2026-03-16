@@ -46,9 +46,9 @@ http_router::response_type http_router::handle(const request_type& request){
         request.target().size()
     };
 
-    const auto route_handler_exp = find_route_handler(request.method(), path);
-    if(route_handler_exp.has_value()){
-        return std::invoke(route_handler_exp.value(), http_handler_, request);
+    const auto route_handler_opt = find_route_handler(request.method(), path);
+    if(route_handler_opt.has_value()){
+        return std::invoke(route_handler_opt.value(), http_handler_, request);
     }
 
     if(has_route_path(path)){

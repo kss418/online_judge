@@ -18,6 +18,9 @@ namespace http_util{
         boost::beast::http::status status,
         std::string body
     );
+    std::optional<boost::json::object> parse_json_object(
+        const request_type& request
+    );
     std::optional<std::string_view> get_non_empty_string_field(
         const boost::json::object& object,
         std::string_view key

@@ -24,6 +24,7 @@ public:
     static std::expected<http_handler, error_code> create(db_connection db_connection);
     response_type handle_health_get(const request_type& request);
     response_type handle_sign_up_post(const request_type& request);
+    response_type handle_login_post(const request_type& request);
 
 private:
     explicit http_handler(db_connection db_connection);
