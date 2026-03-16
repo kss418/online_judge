@@ -140,13 +140,18 @@ std::expected<judge_result, error_code> judge_worker::judge_submission(
 
 std::expected<void, error_code> judge_worker::run(){
     while(true){
-        auto save_source_code_exp = save_source_code();
-        if(!save_source_code_exp){
-            return std::unexpected(save_source_code_exp.error());
+        auto lease_submission_exp = lease_submission();
+        if(!lease_submission_exp){
+            return std::unexpected(lease_submission_exp.error());
         }
 
-        if(save_source_code_exp->has_value()){
-            const queued_submission& queued_submission_value = save_source_code_exp->value();
+        if(lease_submission_exp->has_value()){
+            const queued_submission& queued_submission_value = lease_submission_exp->value();
+            const auto save_source_code_exp = save_source_code(queued_submission_value);
+            if(!save_source_code_exp){
+                return std::unexpected(save_source_code_exp.error());
+            }
+
             const auto update_submission_status_exp = submission_service_.update_submission_status(
                 queued_submission_value.submission_id,
                 submission_status::judging
@@ -226,19 +231,25 @@ std::expected<void, error_code> judge_worker::run(){
     }
 }
 
-std::expected<std::optional<queued_submission>, error_code> judge_worker::save_source_code(){
-    auto pop_submission_exp = submission_service_.pop_submission();
-    if(!pop_submission_exp){
-        if(is_queue_empty_error(pop_submission_exp.error())){
+std::expected<std::optional<queued_submission>, error_code> judge_worker::lease_submission(){
+    auto lease_submission_exp = submission_service_.lease_submission(lease_duration_);
+    if(!lease_submission_exp){
+        if(is_queue_empty_error(lease_submission_exp.error())){
             return std::optional<queued_submission>{};
         }
 
-        return std::unexpected(pop_submission_exp.error());
+        return std::unexpected(lease_submission_exp.error());
     }
 
+    return std::optional<queued_submission>{std::move(*lease_submission_exp)};
+}
+
+std::expected<void, error_code> judge_worker::save_source_code(
+    const queued_submission& queued_submission_value
+){
     const auto source_file_path_exp = judge_util::instance().make_source_file_path(
-        pop_submission_exp->submission_id,
-        pop_submission_exp->language
+        queued_submission_value.submission_id,
+        queued_submission_value.language
     );
     if(!source_file_path_exp){
         return std::unexpected(source_file_path_exp.error());
@@ -247,12 +258,12 @@ std::expected<std::optional<queued_submission>, error_code> judge_worker::save_s
     
     auto create_file_exp = file_util::create_file(
         source_file_path,
-        pop_submission_exp->source_code
+        queued_submission_value.source_code
     );
 
     if(!create_file_exp){
         return std::unexpected(create_file_exp.error());
     }
 
-    return std::move(*pop_submission_exp);
+    return {};
 }

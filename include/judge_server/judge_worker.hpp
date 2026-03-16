@@ -20,7 +20,10 @@ public:
     static std::expected<judge_worker, error_code> create(submission_service submission_service);
 
     std::expected<void, error_code> run();
-    std::expected<std::optional<queued_submission>, error_code> save_source_code();
+    std::expected<std::optional<queued_submission>, error_code> lease_submission();
+    std::expected<void, error_code> save_source_code(
+        const queued_submission& queued_submission_value
+    );
 
 private:
     struct finalize_submission_data{
@@ -41,6 +44,7 @@ private:
         const queued_submission& queued_submission_value,
         const std::vector<sandbox_runner::run_result>& run_results
     );
+    static constexpr std::chrono::seconds lease_duration_{900};
     static constexpr std::chrono::milliseconds notification_wait_timeout_{30000};
 
     submission_service submission_service_;

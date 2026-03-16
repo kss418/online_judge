@@ -47,7 +47,6 @@ public:
 
     std::expected<void, error_code> listen_submission_queue();
     std::expected<bool, error_code> wait_submission_notification(std::chrono::milliseconds timeout);
-    std::expected<queued_submission, error_code> pop_submission();
     std::expected<queued_submission, error_code> lease_submission(std::chrono::seconds lease_duration);
     std::expected<void, error_code> finalize_submission(
         std::int64_t submission_id,

@@ -150,53 +150,6 @@ std::expected<bool, error_code> submission_service::wait_submission_notification
     }
 }
 
-std::expected<queued_submission, error_code> submission_service::pop_submission(){
-    if(!is_connected()){
-        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
-    }
-
-    try{
-        pqxx::work transaction(connection());
-        const auto pop_candidate_result = transaction.exec(
-            "SELECT "
-            "queue_table.submission_id, "
-            "submission_table.problem_id, "
-            "submission_table.language, "
-            "submission_table.source_code "
-            "FROM submission_queue queue_table "
-            "JOIN submissions submission_table "
-            "ON submission_table.submission_id = queue_table.submission_id "
-            "WHERE "
-            "queue_table.available_at <= NOW() AND "
-            "(queue_table.leased_until IS NULL OR queue_table.leased_until <= NOW()) "
-            "ORDER BY queue_table.priority DESC, queue_table.created_at ASC "
-            "FOR UPDATE SKIP LOCKED "
-            "LIMIT 1"
-        );
-
-        if(pop_candidate_result.empty()){
-            return std::unexpected(error_code::create(errno_error::resource_temporarily_unavailable));
-        }
-
-        queued_submission queued_submission_value;
-        queued_submission_value.submission_id = pop_candidate_result[0][0].as<std::int64_t>();
-        queued_submission_value.problem_id = pop_candidate_result[0][1].as<std::int64_t>();
-        queued_submission_value.language = pop_candidate_result[0][2].as<std::string>();
-        queued_submission_value.source_code = pop_candidate_result[0][3].as<std::string>();
-
-        transaction.exec_params(
-            "DELETE FROM submission_queue WHERE submission_id = $1",
-            queued_submission_value.submission_id
-        );
-
-        transaction.commit();
-        return queued_submission_value;
-    }
-    catch(const std::exception& exception){
-        return std::unexpected(error_code::map_psql_error_code(exception));
-    }
-}
-
 std::expected<queued_submission, error_code> submission_service::lease_submission(
     std::chrono::seconds lease_duration
 ){
