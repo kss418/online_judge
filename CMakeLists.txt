@@ -28,6 +28,8 @@ add_library(lib STATIC
     src/db/testcase_service_util.cpp
     src/db/submission_service.cpp
     src/http_server/http_handler.cpp
+    src/http_server/http_router.cpp
+    src/http_server/http_util.cpp
     src/http_server/http_server.cpp
     src/http_server/acceptor.cpp
     src/http_server/http_session.cpp

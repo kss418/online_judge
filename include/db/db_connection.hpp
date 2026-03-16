@@ -11,6 +11,12 @@ class db_connection{
     std::string connection_string_;
     std::unique_ptr <pqxx::connection> connection_;
 public:
+    db_connection() = default;
+    db_connection(const db_connection&) = delete;
+    db_connection& operator=(const db_connection&) = delete;
+    db_connection(db_connection&&) noexcept = default;
+    db_connection& operator=(db_connection&&) noexcept = default;
+
     static std::expected<db_connection, error_code> create();
     void disconnect();
     bool is_connected() const;
