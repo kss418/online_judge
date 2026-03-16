@@ -38,8 +38,8 @@ Constraints:
 
 - `submissions_pkey`
 - `submissions_score_range_check`
-- `submissions_user_id_fkey` (conditionally added)
-- `submissions_problem_id_fkey` (conditionally added)
+- `submissions_user_id_fkey` (added when auth schema is already applied)
+- `submissions_problem_id_fkey` (added when problem schema is already applied)
 
 Indexes:
 

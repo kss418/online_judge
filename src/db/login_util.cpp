@@ -7,13 +7,23 @@ std::expected<std::int64_t, error_code> login_util::create_user(
     std::string_view user_login_id,
     std::string_view user_password_hash
 ){
-    static_cast<void>(transaction);
-
     if(user_login_id.empty() || user_password_hash.empty()){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return std::unexpected(error_code::create(errno_error::operation_not_supported));
+    const auto create_user_result = transaction.exec(
+        "INSERT INTO users(user_login_id, user_password_hash) "
+        "VALUES($1, $2) "
+        "ON CONFLICT DO NOTHING "
+        "RETURNING user_id",
+        pqxx::params{user_login_id, user_password_hash}
+    );
+
+    if(create_user_result.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return create_user_result[0][0].as<std::int64_t>();
 }
 
 std::expected<bool, error_code> login_util::verify_user(

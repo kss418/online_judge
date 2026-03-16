@@ -8,9 +8,9 @@ Base migration: `scripts/migrate_auth_schema.sh`
 
 | column | type | nullable | default | note |
 |---|---|---|---|---|
-| `user_id` | `bigint` | no | | pk |
-| `user_login_id` | `text` | yes | | login identifier; nullable to support legacy users backfilled from `submissions` |
-| `user_password_hash` | `text` | yes | | password hash for local auth; nullable for legacy backfilled users |
+| `user_id` | `bigserial` | no | | pk |
+| `user_login_id` | `text` | yes | | login identifier for local auth |
+| `user_password_hash` | `text` | yes | | password hash for local auth |
 | `is_admin` | `boolean` | no | `false` | source of truth for admin privilege |
 | `created_at` | `timestamptz` | no | `now()` |  |
 | `updated_at` | `timestamptz` | no | `now()` |  |
@@ -31,7 +31,7 @@ Indexes:
 |---|---|---|---|---|
 | `token_id` | `bigserial` | no | | pk |
 | `user_id` | `bigint` | no | | fk -> `users(user_id)` on delete cascade |
-| `token_hash` | `text` | no | | output of `token_util::hash_token()`; application currently writes lowercase SHA-512 hex |
+| `token_hash` | `text` | no | | output of `crypto_util::sha512_hex()`; application currently writes lowercase SHA-512 hex |
 | `issued_at` | `timestamptz` | no | `now()` |  |
 | `expires_at` | `timestamptz` | no | | token expiration time |
 | `revoked_at` | `timestamptz` | yes | | null means not explicitly revoked |
@@ -56,7 +56,6 @@ Indexes:
 ## cross-schema relation
 
 - `auth_tokens.user_id -> users.user_id`
-- Existing `submissions.user_id` values are backfilled into `users.user_id` when the auth migration runs and `submissions` already exists.
 - `submissions.user_id -> users.user_id` is enforced when both schemas are applied.
 
 ## shared table

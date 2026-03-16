@@ -67,32 +67,6 @@ BEGIN
 END
 $do$;
 
-DO $do$
-BEGIN
-    IF EXISTS(
-        SELECT 1
-        FROM pg_type type_table
-        JOIN pg_enum enum_table
-            ON enum_table.enumtypid = type_table.oid
-        WHERE
-            type_table.typname = 'submission_status' AND
-            enum_table.enumlabel = 'system_error'
-    ) AND NOT EXISTS(
-        SELECT 1
-        FROM pg_type type_table
-        JOIN pg_enum enum_table
-            ON enum_table.enumtypid = type_table.oid
-        WHERE
-            type_table.typname = 'submission_status' AND
-            enum_table.enumlabel = 'output_exceeded'
-    ) THEN
-        ALTER TYPE submission_status RENAME VALUE 'system_error' TO 'output_exceeded';
-    END IF;
-END
-$do$;
-
-ALTER TYPE submission_status ADD VALUE IF NOT EXISTS 'output_exceeded';
-
 CREATE TABLE IF NOT EXISTS submissions(
     submission_id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
@@ -189,6 +163,10 @@ CREATE INDEX IF NOT EXISTS submission_queue_available_priority_created_idx
 
 CREATE INDEX IF NOT EXISTS submission_queue_leased_until_idx
     ON submission_queue(leased_until);
+
+INSERT INTO schema_migrations(version)
+VALUES('submission_schema_v1')
+ON CONFLICT(version) DO NOTHING;
 
 COMMIT;
 SQL
