@@ -107,10 +107,17 @@ http_handler::response_type http_handler::handle_submission(const request_type& 
         std::string(language_value->as_string()),
         std::string(source_code_value->as_string())
     );
+    
     if(!submission_id_exp){
         const auto code = submission_id_exp.error();
-        const auto status = code.type_ == error_type::errno_type &&
-                            static_cast<errno_error>(code.code_) == errno_error::invalid_argument
+        const bool is_invalid_argument_error = code.type_ == error_type::errno_type &&
+            static_cast<errno_error>(code.code_) == errno_error::invalid_argument;
+        const bool is_constraint_error = code.type_ == error_type::psql_type && (
+            static_cast<psql_error>(code.code_) == psql_error::foreign_key_violation ||
+            static_cast<psql_error>(code.code_) == psql_error::check_violation ||
+            static_cast<psql_error>(code.code_) == psql_error::not_null_violation
+        );
+        const auto status = (is_invalid_argument_error || is_constraint_error)
             ? boost::beast::http::status::bad_request
             : boost::beast::http::status::internal_server_error;
         return create_text_response(

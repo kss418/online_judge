@@ -134,6 +134,29 @@ BEGIN
     IF EXISTS(
         SELECT 1
         FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'auth_users'
+    ) THEN
+        IF NOT EXISTS(
+            SELECT 1
+            FROM pg_constraint
+            WHERE
+                conrelid = 'submissions'::regclass AND
+                conname = 'submissions_user_id_fkey'
+        ) THEN
+            ALTER TABLE submissions
+                ADD CONSTRAINT submissions_user_id_fkey
+                FOREIGN KEY(user_id)
+                REFERENCES auth_users(user_id);
+        END IF;
+    END IF;
+END
+$do$;
+
+DO $do$
+BEGIN
+    IF EXISTS(
+        SELECT 1
+        FROM information_schema.tables
         WHERE table_schema = 'public' AND table_name = 'problems'
     ) THEN
         IF NOT EXISTS(

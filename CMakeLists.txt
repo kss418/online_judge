@@ -15,6 +15,7 @@ find_package(OpenSSL REQUIRED)
 
 add_library(lib STATIC
     src/db/db_connection.cpp
+    src/db/auth_service.cpp
     src/db/problem_core_service.cpp
     src/db/problem_content_service.cpp
     src/db/problem_statistics_service.cpp
