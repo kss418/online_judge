@@ -10,49 +10,6 @@
 auth_service::auth_service(db_connection connection) :
     db_service_base<auth_service>(std::move(connection)){}
 
-std::expected<std::string, error_code> auth_service::issue_token(std::int64_t user_id){
-    if(!is_connected()){
-        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
-    }
-    
-    if(user_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    for(int issue_attempt = 0; issue_attempt < ISSUE_MAX_ATTEMPTS; ++issue_attempt){
-        auto issued_token_exp = token_util::issue_token();
-        if(!issued_token_exp){
-            return std::unexpected(issued_token_exp.error());
-        }
-
-        try{
-            pqxx::work transaction(connection());
-            const auto insert_token_exp = auth_util::insert_token(
-                transaction,
-                user_id,
-                issued_token_exp->token_hash,
-                TOKEN_TTL
-            );
-            if(!insert_token_exp){
-                return std::unexpected(insert_token_exp.error());
-            }
-
-            transaction.commit();
-            return std::move(issued_token_exp->token);
-        }
-        catch(const pqxx::unique_violation&){
-            if(issue_attempt + 1 == ISSUE_MAX_ATTEMPTS){
-                return std::unexpected(error_code::create(psql_error::unique_violation));
-            }
-        }
-        catch(const std::exception& exception){
-            return std::unexpected(error_code::map_psql_error_code(exception));
-        }
-    }
-
-    return std::unexpected(error_code::create(errno_error::unknown_error));
-}
-
 std::expected<std::optional<auth_identity>, error_code> auth_service::auth_token(
     std::string_view token
 ){
