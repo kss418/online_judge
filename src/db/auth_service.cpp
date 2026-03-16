@@ -78,7 +78,7 @@ std::expected<bool, error_code> auth_service::renew_token(std::string_view token
         const auto update_expires_at_exp = auth_util::update_expires_at(
             transaction,
             *token_hash_exp,
-            TOKEN_TTL
+            token_util::TOKEN_TTL
         );
         if(!update_expires_at_exp){
             return std::unexpected(update_expires_at_exp.error());

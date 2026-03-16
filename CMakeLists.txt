@@ -17,6 +17,7 @@ add_library(lib STATIC
     src/db/db_connection.cpp
     src/db/auth_util.cpp
     src/db/auth_service.cpp
+    src/db/login_service.cpp
     src/db/login_util.cpp
     src/db/submission_util.cpp
     src/db/problem_core_service.cpp
@@ -45,6 +46,7 @@ add_library(lib STATIC
     src/common/env_util.cpp
     src/common/error_code.cpp
     src/common/crypto_util.cpp
+    src/common/password_util.cpp
     src/common/token_util.cpp
     src/common/unique_fd.cpp
     src/common/temp_file.cpp

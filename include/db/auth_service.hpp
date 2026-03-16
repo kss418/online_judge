@@ -2,7 +2,6 @@
 #include "common/error_code.hpp"
 #include "db/db_service_base.hpp"
 
-#include <chrono>
 #include <cstdint>
 #include <expected>
 #include <optional>
@@ -22,8 +21,6 @@ public:
 
 private:
     friend class db_service_base<auth_service>;
-
-    static constexpr std::chrono::seconds TOKEN_TTL{std::chrono::hours{24 * 30}};
 
     explicit auth_service(db_connection connection);
 };
