@@ -1,4 +1,5 @@
 #include "db/submission_service.hpp"
+#include "db/problem_statistics_service.hpp"
 
 #include <pqxx/pqxx>
 
@@ -46,6 +47,15 @@ std::expected<std::int64_t, error_code> submission_service::create_submission(
             "INSERT INTO submission_queue(submission_id) VALUES($1)",
             submission_id
         );
+
+        const auto increase_submission_count_exp = problem_statistics_service::increase_submission_count(
+            transaction,
+            problem_id
+        );
+        if(!increase_submission_count_exp){
+            return std::unexpected(increase_submission_count_exp.error());
+        }
+
         transaction.exec_params(
             "SELECT pg_notify($1, $2)",
             submission_queue_channel_,
@@ -227,7 +237,7 @@ std::expected<void, error_code> submission_service::finalize_submission(
     try{
         pqxx::work transaction(connection());
         const auto current_status_result = transaction.exec_params(
-            "SELECT status::text FROM submissions WHERE submission_id = $1 FOR UPDATE",
+            "SELECT status::text, problem_id FROM submissions WHERE submission_id = $1 FOR UPDATE",
             submission_id
         );
 
@@ -236,6 +246,7 @@ std::expected<void, error_code> submission_service::finalize_submission(
         }
 
         const std::string from_status = current_status_result[0][0].as<std::string>();
+        const std::int64_t problem_id = current_status_result[0][1].as<std::int64_t>();
         transaction.exec_params(
             "UPDATE submissions "
             "SET "
@@ -260,6 +271,19 @@ std::expected<void, error_code> submission_service::finalize_submission(
             to_string(to_status),
             reason
         );
+
+        if(
+            to_status == submission_status::accepted &&
+            from_status != to_string(submission_status::accepted)
+        ){
+            const auto increase_accepted_count_exp = problem_statistics_service::increase_accepted_count(
+                transaction,
+                problem_id
+            );
+            if(!increase_accepted_count_exp){
+                return std::unexpected(increase_accepted_count_exp.error());
+            }
+        }
 
         transaction.exec_params(
             "DELETE FROM submission_queue WHERE submission_id = $1",

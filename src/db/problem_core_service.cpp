@@ -1,4 +1,5 @@
 #include "db/problem_core_service.hpp"
+#include "db/problem_statistics_service.hpp"
 #include "db/problem_service_util.hpp"
 
 #include <pqxx/pqxx>
@@ -101,6 +102,14 @@ std::expected<std::int64_t, error_code> problem_core_service::create_problem(db_
         }
 
         const std::int64_t problem_id = create_problem_result[0][0].as<std::int64_t>();
+        const auto create_problem_statistics_exp = problem_statistics_service::create_problem_statistics(
+            transaction,
+            problem_id
+        );
+        if(!create_problem_statistics_exp){
+            return std::unexpected(create_problem_statistics_exp.error());
+        }
+
         transaction.commit();
         return problem_id;
     }
