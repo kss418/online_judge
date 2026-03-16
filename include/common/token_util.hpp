@@ -1,6 +1,7 @@
 #pragma once
 #include "common/error_code.hpp"
 
+#include <cstddef>
 #include <expected>
 #include <span>
 #include <string>

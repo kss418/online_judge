@@ -23,7 +23,7 @@ Base migration: `scripts/migrate_submission_schema.sh`
 | column | type | nullable | default | note |
 |---|---|---|---|---|
 | `submission_id` | `bigserial` | no | | pk |
-| `user_id` | `bigint` | no | | `auth_users(user_id)` fk (when auth schema is applied) |
+| `user_id` | `bigint` | no | | `users(user_id)` fk (when auth schema is applied) |
 | `problem_id` | `bigint` | no | | `problems(problem_id)` fk (when problem schema is applied) |
 | `language` | `text` | no | |  |
 | `source_code` | `text` | no | |  |
@@ -80,7 +80,7 @@ Indexes:
 
 ## cross-schema relation
 
-- `submissions.user_id -> auth_users.user_id`
+- `submissions.user_id -> users.user_id`
 - `submissions.problem_id -> problems.problem_id`
 
 ## shared table

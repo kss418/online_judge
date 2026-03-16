@@ -45,16 +45,47 @@ CREATE TABLE IF NOT EXISTS schema_migrations(
     applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS auth_users(
+DO $do$
+BEGIN
+    IF EXISTS(
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'auth_users'
+    ) AND NOT EXISTS(
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'users'
+    ) THEN
+        ALTER TABLE auth_users RENAME TO users;
+    END IF;
+END
+$do$;
+
+CREATE TABLE IF NOT EXISTS users(
     user_id BIGINT PRIMARY KEY,
     is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DO $do$
+BEGIN
+    IF EXISTS(
+        SELECT 1
+        FROM pg_constraint
+        WHERE
+            conrelid = 'users'::regclass AND
+            conname = 'auth_users_pkey'
+    ) THEN
+        ALTER TABLE users
+            RENAME CONSTRAINT auth_users_pkey TO users_pkey;
+    END IF;
+END
+$do$;
+
 CREATE TABLE IF NOT EXISTS auth_tokens(
     token_id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES auth_users(user_id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     token_hash TEXT NOT NULL,
     issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL,
@@ -76,7 +107,7 @@ BEGIN
         FROM information_schema.tables
         WHERE table_schema = 'public' AND table_name = 'submissions'
     ) THEN
-        INSERT INTO auth_users(user_id)
+        INSERT INTO users(user_id)
         SELECT DISTINCT user_id
         FROM submissions
         ON CONFLICT(user_id) DO NOTHING;
@@ -101,7 +132,7 @@ BEGIN
             ALTER TABLE submissions
                 ADD CONSTRAINT submissions_user_id_fkey
                 FOREIGN KEY(user_id)
-                REFERENCES auth_users(user_id);
+                REFERENCES users(user_id);
         END IF;
     END IF;
 END
@@ -119,6 +150,10 @@ CREATE INDEX IF NOT EXISTS auth_tokens_active_user_expires_idx
 
 INSERT INTO schema_migrations(version)
 VALUES('auth_schema_v1')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('auth_schema_v2')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

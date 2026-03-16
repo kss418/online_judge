@@ -134,7 +134,7 @@ BEGIN
     IF EXISTS(
         SELECT 1
         FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'auth_users'
+        WHERE table_schema = 'public' AND table_name = 'users'
     ) THEN
         IF NOT EXISTS(
             SELECT 1
@@ -146,7 +146,7 @@ BEGIN
             ALTER TABLE submissions
                 ADD CONSTRAINT submissions_user_id_fkey
                 FOREIGN KEY(user_id)
-                REFERENCES auth_users(user_id);
+                REFERENCES users(user_id);
         END IF;
     END IF;
 END

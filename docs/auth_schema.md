@@ -4,7 +4,7 @@ Base migration: `scripts/migrate_auth_schema.sh`
 
 ## table
 
-### `auth_users`
+### `users`
 
 | column | type | nullable | default | note |
 |---|---|---|---|---|
@@ -15,14 +15,14 @@ Base migration: `scripts/migrate_auth_schema.sh`
 
 Constraints:
 
-- `auth_users_pkey`
+- `users_pkey`
 
 ### `auth_tokens`
 
 | column | type | nullable | default | note |
 |---|---|---|---|---|
 | `token_id` | `bigserial` | no | | pk |
-| `user_id` | `bigint` | no | | fk -> `auth_users(user_id)` on delete cascade |
+| `user_id` | `bigint` | no | | fk -> `users(user_id)` on delete cascade |
 | `token_hash` | `text` | no | | output of `token_util::hash_token()`; application currently writes lowercase SHA-512 hex |
 | `issued_at` | `timestamptz` | no | `now()` |  |
 | `expires_at` | `timestamptz` | no | | token expiration time |
@@ -47,9 +47,9 @@ Indexes:
 
 ## cross-schema relation
 
-- `auth_tokens.user_id -> auth_users.user_id`
-- Existing `submissions.user_id` values are backfilled into `auth_users.user_id` when the auth migration runs and `submissions` already exists.
-- `submissions.user_id -> auth_users.user_id` is enforced when both schemas are applied.
+- `auth_tokens.user_id -> users.user_id`
+- Existing `submissions.user_id` values are backfilled into `users.user_id` when the auth migration runs and `submissions` already exists.
+- `submissions.user_id -> users.user_id` is enforced when both schemas are applied.
 
 ## shared table
 
