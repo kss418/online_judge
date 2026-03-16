@@ -1,7 +1,8 @@
 #pragma once
 
 #include "common/error_code.hpp"
-#include "db/submission_service.hpp"
+#include "db/db_connection.hpp"
+#include "db/submission_util.hpp"
 
 #include <array>
 #include <boost/beast/http/message.hpp>
@@ -19,9 +20,7 @@ public:
     using request_type = boost::beast::http::request<boost::beast::http::string_body>;
     using response_type = boost::beast::http::response<boost::beast::http::string_body>;
 
-    static std::expected<http_handler, error_code> create(
-        submission_service submission_service
-    );
+    static std::expected<http_handler, error_code> create(db_connection db_connection);
 
     response_type handle(const request_type& request);
 
@@ -34,7 +33,7 @@ private:
         route_handler handler;
     };
 
-    explicit http_handler(submission_service submission_service);
+    explicit http_handler(db_connection db_connection);
 
     static response_type create_text_response(
         const request_type& request, boost::beast::http::status status, std::string body
@@ -63,5 +62,5 @@ private:
         }
     }};
 
-    submission_service submission_service_;
+    db_connection db_connection_;
 };

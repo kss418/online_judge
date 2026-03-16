@@ -1,5 +1,7 @@
 #include "http_server/http_handler.hpp"
 
+#include <pqxx/pqxx>
+
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -15,13 +17,17 @@
 #include <boost/system/error_code.hpp>
 
 std::expected<http_handler, error_code> http_handler::create(
-    submission_service submission_service
+    db_connection db_connection
 ){
-    return http_handler(std::move(submission_service));
+    if(!db_connection.is_connected()){
+        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+    }
+
+    return http_handler(std::move(db_connection));
 }
 
-http_handler::http_handler(submission_service submission_service) :
-    submission_service_(std::move(submission_service)){}
+http_handler::http_handler(db_connection db_connection) :
+    db_connection_(std::move(db_connection)){}
 
 http_handler::response_type http_handler::create_text_response(
     const request_type& request, boost::beast::http::status status, std::string body
@@ -101,12 +107,24 @@ http_handler::response_type http_handler::handle_submission(const request_type& 
         );
     }
 
-    auto submission_id_exp = submission_service_.create_submission(
-        user_id_value->as_int64(),
-        problem_id_value->as_int64(),
-        std::string(language_value->as_string()),
-        std::string(source_code_value->as_string())
-    );
+    std::expected<std::int64_t, error_code> submission_id_exp =
+        std::unexpected(error_code::create(errno_error::unknown_error));
+    try{
+        pqxx::work transaction(db_connection_.connection());
+        submission_id_exp = submission_util::create_submission(
+            transaction,
+            user_id_value->as_int64(),
+            problem_id_value->as_int64(),
+            std::string(language_value->as_string()),
+            std::string(source_code_value->as_string())
+        );
+        if(submission_id_exp){
+            transaction.commit();
+        }
+    }
+    catch(const std::exception& exception){
+        submission_id_exp = std::unexpected(error_code::map_psql_error_code(exception));
+    }
     
     if(!submission_id_exp){
         const auto code = submission_id_exp.error();

@@ -63,10 +63,18 @@ $do$;
 
 CREATE TABLE IF NOT EXISTS users(
     user_id BIGINT PRIMARY KEY,
+    user_login_id TEXT,
+    user_password_hash TEXT,
     is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS user_login_id TEXT;
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS user_password_hash TEXT;
 
 DO $do$
 BEGIN
@@ -79,6 +87,38 @@ BEGIN
     ) THEN
         ALTER TABLE users
             RENAME CONSTRAINT auth_users_pkey TO users_pkey;
+    END IF;
+END
+$do$;
+
+DO $do$
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM pg_constraint
+        WHERE
+            conrelid = 'users'::regclass AND
+            conname = 'users_user_login_id_not_blank'
+    ) THEN
+        ALTER TABLE users
+            ADD CONSTRAINT users_user_login_id_not_blank
+            CHECK(user_login_id IS NULL OR user_login_id <> '');
+    END IF;
+END
+$do$;
+
+DO $do$
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM pg_constraint
+        WHERE
+            conrelid = 'users'::regclass AND
+            conname = 'users_user_password_hash_not_blank'
+    ) THEN
+        ALTER TABLE users
+            ADD CONSTRAINT users_user_password_hash_not_blank
+            CHECK(user_password_hash IS NULL OR user_password_hash <> '');
     END IF;
 END
 $do$;
@@ -141,6 +181,10 @@ $do$;
 CREATE INDEX IF NOT EXISTS auth_tokens_user_issued_idx
     ON auth_tokens(user_id, issued_at DESC);
 
+CREATE UNIQUE INDEX IF NOT EXISTS users_user_login_id_unique_idx
+    ON users(user_login_id)
+    WHERE user_login_id IS NOT NULL;
+
 CREATE INDEX IF NOT EXISTS auth_tokens_expires_at_idx
     ON auth_tokens(expires_at);
 
@@ -154,6 +198,10 @@ ON CONFLICT(version) DO NOTHING;
 
 INSERT INTO schema_migrations(version)
 VALUES('auth_schema_v2')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('auth_schema_v3')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

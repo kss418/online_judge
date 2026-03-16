@@ -3,6 +3,7 @@
 #include "common/error_code.hpp"
 #include "db/db_connection.hpp"
 #include "db/submission_service.hpp"
+#include "db/submission_util.hpp"
 #include "judge_server/testcase_downloader.hpp"
 #include "judge_server/judge_util.hpp"
 #include "judge_server/sandbox_runner.hpp"
@@ -32,7 +33,11 @@ private:
         std::optional<std::string> judge_output = std::nullopt;
     };
 
-    judge_worker(submission_service submission_service, tc_downloader tc_downloader);
+    judge_worker(
+        submission_service submission_service,
+        db_connection db_connection,
+        tc_downloader tc_downloader
+    );
 
     static bool is_queue_empty_error(const error_code& code);
     static submission_status to_submission_status(judge_result result);
@@ -48,5 +53,6 @@ private:
     static constexpr std::chrono::milliseconds notification_wait_timeout_{30000};
 
     submission_service submission_service_;
+    db_connection db_connection_;
     tc_downloader tc_downloader_;
 };
