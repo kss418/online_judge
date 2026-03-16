@@ -41,11 +41,17 @@ private:
     static bool has_route_path(std::string_view path);
 
     static constexpr std::string_view health_path_ = "/api/health";
-    static constexpr std::array<route_definition, 1> routes_{{
+    static constexpr std::string_view sign_up_path_ = "/api/sign-up";
+    static constexpr std::array<route_definition, 2> routes_{{
         route_definition{
             boost::beast::http::verb::get,
             health_path_,
             &http_handler::handle_health_get
+        },
+        route_definition{
+            boost::beast::http::verb::post,
+            sign_up_path_,
+            &http_handler::handle_sign_up_post
         }
     }};
 

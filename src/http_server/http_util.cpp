@@ -18,3 +18,20 @@ http_util::response_type http_util::create_text_response(
     response.prepare_payload();
     return response;
 }
+
+std::optional<std::string_view> http_util::get_non_empty_string_field(
+    const boost::json::object& object,
+    std::string_view key
+){
+    const auto* value = object.if_contains(key);
+    if(!value || !value->is_string()){
+        return std::nullopt;
+    }
+
+    const auto& string_value = value->as_string();
+    if(string_value.empty()){
+        return std::nullopt;
+    }
+
+    return std::string_view{string_value.data(), string_value.size()};
+}

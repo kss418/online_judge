@@ -1,10 +1,13 @@
 #pragma once
 
+#include <boost/json.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/status.hpp>
 #include <boost/beast/http/string_body.hpp>
 
+#include <optional>
 #include <string>
+#include <string_view>
 
 namespace http_util{
     using request_type = boost::beast::http::request<boost::beast::http::string_body>;
@@ -14,5 +17,9 @@ namespace http_util{
         const request_type& request,
         boost::beast::http::status status,
         std::string body
+    );
+    std::optional<std::string_view> get_non_empty_string_field(
+        const boost::json::object& object,
+        std::string_view key
     );
 }
