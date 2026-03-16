@@ -1,5 +1,6 @@
 #include "db/auth_service.hpp"
 #include "db/auth_util.hpp"
+#include "common/crypto_util.hpp"
 #include "common/token_util.hpp"
 
 #include <pqxx/pqxx>
@@ -20,7 +21,7 @@ std::expected<std::optional<auth_identity>, error_code> auth_service::auth_token
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    const auto token_hash_exp = token_util::hash_token(token);
+    const auto token_hash_exp = crypto_util::sha512_hex(token);
     if(!token_hash_exp){
         return std::unexpected(token_hash_exp.error());
     }
@@ -67,7 +68,7 @@ std::expected<bool, error_code> auth_service::renew_token(std::string_view token
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    const auto token_hash_exp = token_util::hash_token(token);
+    const auto token_hash_exp = crypto_util::sha512_hex(token);
     if(!token_hash_exp){
         return std::unexpected(token_hash_exp.error());
     }
@@ -102,7 +103,7 @@ std::expected<bool, error_code> auth_service::revoke_token(std::string_view toke
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    const auto token_hash_exp = token_util::hash_token(token);
+    const auto token_hash_exp = crypto_util::sha512_hex(token);
     if(!token_hash_exp){
         return std::unexpected(token_hash_exp.error());
     }

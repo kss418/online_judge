@@ -44,6 +44,7 @@ add_library(lib STATIC
     src/judge_server/testcase_downloader.cpp
     src/common/env_util.cpp
     src/common/error_code.cpp
+    src/common/crypto_util.cpp
     src/common/token_util.cpp
     src/common/unique_fd.cpp
     src/common/temp_file.cpp
