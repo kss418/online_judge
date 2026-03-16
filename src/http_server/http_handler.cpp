@@ -1,6 +1,7 @@
 #include "http_server/http_handler.hpp"
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -32,6 +33,29 @@ http_handler::response_type http_handler::create_text_response(
     response.body() = std::move(body);
     response.prepare_payload();
     return response;
+}
+
+std::optional<http_handler::route_handler> http_handler::find_route_handler(
+    boost::beast::http::verb method,
+    std::string_view path
+){
+    for(const auto& route_definition_value : routes_){
+        if(route_definition_value.method == method && route_definition_value.path == path){
+            return route_definition_value.handler;
+        }
+    }
+
+    return std::nullopt;
+}
+
+bool http_handler::has_route_path(std::string_view path){
+    for(const auto& route_definition_value : routes_){
+        if(route_definition_value.path == path){
+            return true;
+        }
+    }
+
+    return false;
 }
 
 http_handler::response_type http_handler::handle_health_get(const request_type& request){
@@ -107,15 +131,17 @@ http_handler::response_type http_handler::handle_submission(const request_type& 
 }
 
 http_handler::response_type http_handler::handle(const request_type& request){
-    if(request.method() == boost::beast::http::verb::get && request.target() == "/api/health"){
-        return handle_health_get(request);
+    const std::string_view path{
+        request.target().data(),
+        request.target().size()
+    };
+    
+    const auto route_handler_exp = find_route_handler(request.method(), path);
+    if(route_handler_exp.has_value()){
+        return std::invoke(route_handler_exp.value(), *this, request);
     }
 
-    if(request.method() == boost::beast::http::verb::post && request.target() == "/api/submissions"){
-        return handle_submission(request);
-    }
-
-    if(request.target() == "/api/health" || request.target() == "/api/submissions"){
+    if(has_route_path(path)){
         return create_text_response(
             request, boost::beast::http::status::method_not_allowed, "method not allowed\n"
         );
