@@ -21,18 +21,28 @@ namespace auth_util{
         std::string_view token_hash,
         std::chrono::seconds token_ttl
     );
+    
     std::expected<bool, error_code> revoke_token(
         pqxx::transaction_base& transaction,
         std::string_view token_hash
     );
+
     std::expected<std::optional<token_identity>, error_code> get_token_identity(
         pqxx::transaction_base& transaction,
         std::string_view token_hash
     );
+
     std::expected<void, error_code> update_last_used_at(
         pqxx::transaction_base& transaction,
         std::string_view token_hash
     );
+
+    std::expected<bool, error_code> update_admin_status(
+        pqxx::transaction_base& transaction,
+        std::int64_t user_id,
+        bool is_admin
+    );
+
     std::expected<bool, error_code> update_expires_at(
         pqxx::transaction_base& transaction,
         std::string_view token_hash,

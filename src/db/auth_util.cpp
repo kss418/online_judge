@@ -103,6 +103,25 @@ std::expected<void, error_code> auth_util::update_last_used_at(
     return {};
 }
 
+std::expected<bool, error_code> auth_util::update_admin_status(
+    pqxx::transaction_base& transaction,
+    std::int64_t user_id,
+    bool is_admin
+){
+    if(user_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto update_result = transaction.exec(
+        "UPDATE users "
+        "SET is_admin = $2, updated_at = NOW() "
+        "WHERE user_id = $1",
+        pqxx::params{user_id, is_admin}
+    );
+
+    return update_result.affected_rows() > 0;
+}
+
 std::expected<bool, error_code> auth_util::update_expires_at(
     pqxx::transaction_base& transaction,
     std::string_view token_hash,
