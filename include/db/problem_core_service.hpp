@@ -8,6 +8,9 @@
 #include <expected>
 
 namespace problem_core_service{
+    inline constexpr std::int32_t INITIAL_MEMORY_LIMIT_MB = 256;
+    inline constexpr std::int32_t INITIAL_TIME_LIMIT_MS = 1000;
+
     std::expected<bool, error_code> exists_problem(
         db_connection& connection,
         std::int64_t problem_id

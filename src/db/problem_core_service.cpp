@@ -102,6 +102,19 @@ std::expected<std::int64_t, error_code> problem_core_service::create_problem(db_
         }
 
         const std::int64_t problem_id = create_problem_result[0][0].as<std::int64_t>();
+        const auto create_limits_result = transaction.exec(
+            "INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms, updated_at) "
+            "VALUES($1, $2, $3, NOW())",
+            pqxx::params{
+                problem_id,
+                problem_core_service::INITIAL_MEMORY_LIMIT_MB,
+                problem_core_service::INITIAL_TIME_LIMIT_MS
+            }
+        );
+        if(create_limits_result.affected_rows() == 0){
+            return std::unexpected(error_code::create(errno_error::unknown_error));
+        }
+
         const auto create_problem_statistics_exp = problem_statistics_service::create_problem_statistics(
             transaction,
             problem_id
