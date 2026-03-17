@@ -65,8 +65,7 @@ judge_worker::judge_worker(
     tc_downloader_(std::move(tc_downloader)){}
 
 bool judge_worker::is_queue_empty_error(const error_code& code){
-    return code.type_ == error_type::errno_type &&
-        code.code_ == static_cast<int>(errno_error::resource_temporarily_unavailable);
+    return code == errno_error::resource_temporarily_unavailable;
 }
 
 submission_status judge_worker::to_submission_status(judge_result result){

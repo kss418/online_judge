@@ -67,16 +67,11 @@ http_handler::response_type http_handler::handle_sign_up_post(const request_type
     
     if(!sign_up_exp){
         const auto code = sign_up_exp.error();
-        const bool is_invalid_argument_error =
-            code.type_ == error_type::errno_type &&
-            static_cast<errno_error>(code.code_) == errno_error::invalid_argument;
+        const bool is_invalid_argument_error = code == errno_error::invalid_argument;
         const bool is_constraint_error =
-            code.type_ == error_type::psql_type &&
-            (
-                static_cast<psql_error>(code.code_) == psql_error::unique_violation ||
-                static_cast<psql_error>(code.code_) == psql_error::check_violation ||
-                static_cast<psql_error>(code.code_) == psql_error::not_null_violation
-            );
+            code == psql_error::unique_violation ||
+            code == psql_error::check_violation ||
+            code == psql_error::not_null_violation;
         const auto status =
             (is_invalid_argument_error || is_constraint_error)
                 ? boost::beast::http::status::bad_request
@@ -138,9 +133,7 @@ http_handler::response_type http_handler::handle_login_post(const request_type& 
     );
     if(!login_exp){
         const auto code = login_exp.error();
-        const bool is_invalid_argument_error =
-            code.type_ == error_type::errno_type &&
-            static_cast<errno_error>(code.code_) == errno_error::invalid_argument;
+        const bool is_invalid_argument_error = code == errno_error::invalid_argument;
         const auto status = is_invalid_argument_error
             ? boost::beast::http::status::bad_request
             : boost::beast::http::status::internal_server_error;
@@ -185,9 +178,7 @@ http_handler::response_type http_handler::handle_logout_post(const request_type&
     const auto revoke_token_exp = auth_service::revoke_token(db_connection_, *token_opt);
     if(!revoke_token_exp){
         const auto code = revoke_token_exp.error();
-        const bool is_invalid_argument_error =
-            code.type_ == error_type::errno_type &&
-            static_cast<errno_error>(code.code_) == errno_error::invalid_argument;
+        const bool is_invalid_argument_error = code == errno_error::invalid_argument;
         if(is_invalid_argument_error){
             return http_util::create_bearer_unauthorized_response(
                 request,
