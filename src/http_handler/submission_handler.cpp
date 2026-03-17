@@ -22,18 +22,10 @@ submission_handler::response_type submission_handler::handle(
             return handle_create_submission_post(request);
         }
 
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::method_not_allowed,
-            "method not allowed\n"
-        );
+        return http_util::method_not_allowed_response(request);
     }
 
-    return http_util::create_text_response(
-        request,
-        boost::beast::http::status::not_found,
-        "not found\n"
-    );
+    return http_util::not_found_response(request);
 }
 
 submission_handler::response_type submission_handler::handle_create_submission_post(

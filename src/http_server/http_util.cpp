@@ -37,6 +37,26 @@ http_util::response_type http_util::create_bearer_unauthorized_response(
     return response;
 }
 
+http_util::response_type http_util::method_not_allowed_response(
+    const request_type& request
+){
+    return create_text_response(
+        request,
+        boost::beast::http::status::method_not_allowed,
+        "method not allowed\n"
+    );
+}
+
+http_util::response_type http_util::not_found_response(
+    const request_type& request
+){
+    return create_text_response(
+        request,
+        boost::beast::http::status::not_found,
+        "not found\n"
+    );
+}
+
 std::optional<boost::json::object> http_util::parse_json_object(
     const request_type& request
 ){

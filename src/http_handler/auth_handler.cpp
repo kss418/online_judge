@@ -1,81 +1,16 @@
 #include "http_handler/auth_handler.hpp"
-#include "http_server/http_util.hpp"
-
 #include "db/auth_service.hpp"
 #include "db/login_service.hpp"
-
-#include <string>
-#include <utility>
+#include "http_server/http_util.hpp"
 
 #include <boost/json.hpp>
 
-auth_handler::auth_handler(db_connection& db_connection) :
-    db_connection_(db_connection){}
+#include <string>
 
-bool auth_handler::is_auth_path(std::string_view path){
-    return path.starts_with(path_prefix_);
-}
-
-auth_handler::response_type auth_handler::handle(
+auth_handler::response_type auth_handler::handle_sign_up_post(
     const request_type& request,
-    std::string_view path
+    db_connection& db_connection_value
 ){
-    if(path == "/sign-up"){
-        if(request.method() == boost::beast::http::verb::post){
-            return handle_sign_up_post(request);
-        }
-
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::method_not_allowed,
-            "method not allowed\n"
-        );
-    }
-
-    if(path == "/login"){
-        if(request.method() == boost::beast::http::verb::post){
-            return handle_login_post(request);
-        }
-
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::method_not_allowed,
-            "method not allowed\n"
-        );
-    }
-
-    if(path == "/token/renew"){
-        if(request.method() == boost::beast::http::verb::post){
-            return handle_token_renew_post(request);
-        }
-
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::method_not_allowed,
-            "method not allowed\n"
-        );
-    }
-
-    if(path == "/logout"){
-        if(request.method() == boost::beast::http::verb::post){
-            return handle_logout_post(request);
-        }
-
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::method_not_allowed,
-            "method not allowed\n"
-        );
-    }
-
-    return http_util::create_text_response(
-        request,
-        boost::beast::http::status::not_found,
-        "not found\n"
-    );
-}
-
-auth_handler::response_type auth_handler::handle_sign_up_post(const request_type& request){
     const auto request_object_opt = http_util::parse_json_object(request);
     if(!request_object_opt){
         return http_util::create_text_response(
@@ -90,7 +25,6 @@ auth_handler::response_type auth_handler::handle_sign_up_post(const request_type
         request_object,
         "user_login_id"
     );
-
     const auto raw_password_opt = http_util::get_non_empty_string_field(
         request_object,
         "raw_password"
@@ -105,11 +39,10 @@ auth_handler::response_type auth_handler::handle_sign_up_post(const request_type
     }
 
     const auto sign_up_exp = login_service::sign_up(
-        db_connection_,
+        db_connection_value,
         *user_login_id_opt,
         *raw_password_opt
     );
-    
     if(!sign_up_exp){
         const auto code = sign_up_exp.error();
         const auto status =
@@ -138,7 +71,10 @@ auth_handler::response_type auth_handler::handle_sign_up_post(const request_type
     return response;
 }
 
-auth_handler::response_type auth_handler::handle_login_post(const request_type& request){
+auth_handler::response_type auth_handler::handle_login_post(
+    const request_type& request,
+    db_connection& db_connection_value
+){
     const auto request_object_opt = http_util::parse_json_object(request);
     if(!request_object_opt){
         return http_util::create_text_response(
@@ -167,7 +103,7 @@ auth_handler::response_type auth_handler::handle_login_post(const request_type& 
     }
 
     const auto login_exp = login_service::login(
-        db_connection_,
+        db_connection_value,
         *user_login_id_opt,
         *raw_password_opt
     );
@@ -205,7 +141,10 @@ auth_handler::response_type auth_handler::handle_login_post(const request_type& 
     return response;
 }
 
-auth_handler::response_type auth_handler::handle_token_renew_post(const request_type& request){
+auth_handler::response_type auth_handler::handle_token_renew_post(
+    const request_type& request,
+    db_connection& db_connection_value
+){
     const auto token_opt = http_util::get_bearer_token(request);
     if(!token_opt){
         return http_util::create_bearer_unauthorized_response(
@@ -214,11 +153,13 @@ auth_handler::response_type auth_handler::handle_token_renew_post(const request_
         );
     }
 
-    const auto renew_token_exp = auth_service::renew_token(db_connection_, *token_opt);
+    const auto renew_token_exp = auth_service::renew_token(
+        db_connection_value,
+        *token_opt
+    );
     if(!renew_token_exp){
         const auto code = renew_token_exp.error();
-        const bool is_invalid_argument_error = code == errno_error::invalid_argument;
-        if(is_invalid_argument_error){
+        if(code == errno_error::invalid_argument){
             return http_util::create_bearer_unauthorized_response(
                 request,
                 "missing or invalid bearer token\n"
@@ -245,7 +186,10 @@ auth_handler::response_type auth_handler::handle_token_renew_post(const request_
     );
 }
 
-auth_handler::response_type auth_handler::handle_logout_post(const request_type& request){
+auth_handler::response_type auth_handler::handle_logout_post(
+    const request_type& request,
+    db_connection& db_connection_value
+){
     const auto token_opt = http_util::get_bearer_token(request);
     if(!token_opt){
         return http_util::create_bearer_unauthorized_response(
@@ -254,11 +198,13 @@ auth_handler::response_type auth_handler::handle_logout_post(const request_type&
         );
     }
 
-    const auto revoke_token_exp = auth_service::revoke_token(db_connection_, *token_opt);
+    const auto revoke_token_exp = auth_service::revoke_token(
+        db_connection_value,
+        *token_opt
+    );
     if(!revoke_token_exp){
         const auto code = revoke_token_exp.error();
-        const bool is_invalid_argument_error = code == errno_error::invalid_argument;
-        if(is_invalid_argument_error){
+        if(code == errno_error::invalid_argument){
             return http_util::create_bearer_unauthorized_response(
                 request,
                 "missing or invalid bearer token\n"

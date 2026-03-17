@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/error_code.hpp"
-#include "http_server/http_router.hpp"
+#include "http_server/http_dispatcher.hpp"
 
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/string_body.hpp>
@@ -22,6 +22,6 @@ public:
     static std::expected<std::shared_ptr<http_server>, error_code> create();
     response_type handle(const request_type& request);
 private:
-    explicit http_server(http_router&& http_router);
-    http_router http_router_;
+    explicit http_server(http_dispatcher&& http_dispatcher);
+    http_dispatcher http_dispatcher_;
 };

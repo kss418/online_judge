@@ -28,6 +28,12 @@ namespace http_util{
         const request_type& request,
         std::string body
     );
+    response_type method_not_allowed_response(
+        const request_type& request
+    );
+    response_type not_found_response(
+        const request_type& request
+    );
     std::optional<boost::json::object> parse_json_object(
         const request_type& request
     );

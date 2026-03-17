@@ -14,18 +14,10 @@ system_handler::response_type system_handler::handle(
             return handle_health_get(request);
         }
 
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::method_not_allowed,
-            "method not allowed\n"
-        );
+        return http_util::method_not_allowed_response(request);
     }
 
-    return http_util::create_text_response(
-        request,
-        boost::beast::http::status::not_found,
-        "not found\n"
-    );
+    return http_util::not_found_response(request);
 }
 
 system_handler::response_type system_handler::handle_health_get(const request_type& request){

@@ -427,7 +427,7 @@ Error bodies are currently returned as plain text.
 
 ## note
 
-- Current HTTP routes are defined in [`http_router.hpp`](/home/kss418/online_judge/include/http_server/http_router.hpp).
+- Current HTTP routes are defined in [`http_dispatcher.hpp`](/home/kss418/online_judge/include/http_server/http_dispatcher.hpp).
 - Auth request handling logic lives in [`auth_handler.cpp`](/home/kss418/online_judge/src/http_handler/auth_handler.cpp).
 - Problem request handling logic lives in [`problem_handler.cpp`](/home/kss418/online_judge/src/http_handler/problem_handler.cpp).
 - Submission request handling logic lives in [`submission_handler.cpp`](/home/kss418/online_judge/src/http_handler/submission_handler.cpp).

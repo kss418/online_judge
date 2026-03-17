@@ -19,11 +19,7 @@ problem_handler::response_type problem_handler::handle(
 ){
     const auto path_segments_opt = http_util::parse_path("", path);
     if(!path_segments_opt){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::not_found,
-            "not found\n"
-        );
+        return http_util::not_found_response(request);
     }
 
     const auto& path_segments = *path_segments_opt;
@@ -32,39 +28,23 @@ problem_handler::response_type problem_handler::handle(
             return handle_create_problem_post(request);
         }
 
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::method_not_allowed,
-            "method not allowed\n"
-        );
+        return http_util::method_not_allowed_response(request);
     }
 
     if(path_segments.size() == 2 && path_segments[1] == "limits"){
         const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
         if(!problem_id_opt){
-            return http_util::create_text_response(
-                request,
-                boost::beast::http::status::not_found,
-                "not found\n"
-            );
+            return http_util::not_found_response(request);
         }
 
         if(request.method() == boost::beast::http::verb::put){
             return handle_set_limits_put(request, *problem_id_opt);
         }
 
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::method_not_allowed,
-            "method not allowed\n"
-        );
+        return http_util::method_not_allowed_response(request);
     }
 
-    return http_util::create_text_response(
-        request,
-        boost::beast::http::status::not_found,
-        "not found\n"
-    );
+    return http_util::not_found_response(request);
 }
 
 problem_handler::response_type problem_handler::handle_create_problem_post(
