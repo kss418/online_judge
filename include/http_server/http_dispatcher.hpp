@@ -2,8 +2,8 @@
 
 #include "http_handler/problem_handler.hpp"
 #include "http_handler/submission_handler.hpp"
-#include "http_handler/system_handler.hpp"
 #include "http_router/auth_router.hpp"
+#include "http_router/system_router.hpp"
 #include "common/error_code.hpp"
 #include "db/db_connection.hpp"
 
@@ -38,8 +38,8 @@ private:
     static constexpr std::string_view problem_path_prefix_ = "/api/problem";
 
     db_connection db_connection_;
-    system_handler system_handler_;
     auth_router auth_router_;
+    system_router system_router_;
     submission_handler submission_handler_;
     problem_handler problem_handler_;
 };

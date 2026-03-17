@@ -14,15 +14,15 @@ std::expected<http_dispatcher, error_code> http_dispatcher::create(db_connection
 
 http_dispatcher::http_dispatcher(db_connection db_connection) :
     db_connection_(std::move(db_connection)),
-    system_handler_(),
     auth_router_(db_connection_),
+    system_router_(),
     submission_handler_(db_connection_),
     problem_handler_(db_connection_){}
 
 http_dispatcher::http_dispatcher(http_dispatcher&& other) noexcept :
     db_connection_(std::move(other.db_connection_)),
-    system_handler_(),
     auth_router_(db_connection_),
+    system_router_(),
     submission_handler_(db_connection_),
     problem_handler_(db_connection_){}
 
@@ -52,7 +52,7 @@ std::optional<http_dispatcher::response_type> http_dispatcher::try_handle_route(
 
     const auto system_path_opt = strip_path_prefix(system_path_prefix_, path);
     if(system_path_opt){
-        return system_handler_.handle(request, *system_path_opt);
+        return system_router_.handle(request, *system_path_opt);
     }
 
     const auto auth_path_opt = strip_path_prefix(auth_path_prefix_, path);

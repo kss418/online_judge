@@ -33,6 +33,7 @@ add_library(lib STATIC
     src/http_handler/submission_handler.cpp
     src/http_handler/system_handler.cpp
     src/http_router/auth_router.cpp
+    src/http_router/system_router.cpp
     src/http_server/http_dispatcher.cpp
     src/http_server/http_util.cpp
     src/http_server/http_server.cpp
