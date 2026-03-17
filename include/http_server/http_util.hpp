@@ -42,6 +42,10 @@ namespace http_util{
         const request_type& request,
         db_connection& db_connection
     );
+    std::expected<auth_service::auth_identity, response_type> try_admin_auth_bearer(
+        const request_type& request,
+        db_connection& db_connection
+    );
     std::optional<std::string_view> get_bearer_token(
         const request_type& request
     );

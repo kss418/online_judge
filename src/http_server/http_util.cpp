@@ -137,6 +137,24 @@ std::expected<auth_service::auth_identity, http_util::response_type> http_util::
     return auth_identity_exp->value();
 }
 
+std::expected<auth_service::auth_identity, http_util::response_type> http_util::try_admin_auth_bearer(
+    const request_type& request,
+    db_connection& db_connection
+){
+    const auto auth_identity_exp = try_auth_bearer(request, db_connection);
+    if(!auth_identity_exp){
+        return std::unexpected(std::move(auth_identity_exp.error()));
+    }
+    if(!auth_identity_exp->is_admin){
+        return std::unexpected(create_bearer_unauthorized_response(
+            request,
+            "admin bearer token required\n"
+        ));
+    }
+
+    return *auth_identity_exp;
+}
+
 std::optional<std::string_view> http_util::get_bearer_token(
     const request_type& request
 ){
