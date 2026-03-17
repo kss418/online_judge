@@ -63,6 +63,7 @@ private:
     static constexpr std::string_view token_renew_path_ = "/api/auth/token/renew";
     static constexpr std::string_view logout_path_ = "/api/auth/logout";
     static constexpr std::string_view create_submission_path_ = "/api/submission";
+    static constexpr std::string_view create_problem_path_ = "/api/problem";
 
     static constexpr std::array<route_definition<system_handler>, 1> system_routes_{{
         route_definition<system_handler>{
@@ -103,7 +104,13 @@ private:
         }
     }};
 
-    static constexpr std::array<route_definition<problem_handler>, 0> problem_routes_{};
+    static constexpr std::array<route_definition<problem_handler>, 1> problem_routes_{{
+        route_definition<problem_handler>{
+            boost::beast::http::verb::post,
+            create_problem_path_,
+            &problem_handler::handle_create_problem_post
+        }
+    }};
 
     db_connection db_connection_;
     system_handler system_handler_;

@@ -1,7 +1,9 @@
 #pragma once
 
+#include "common/error_code.hpp"
 #include "db/db_connection.hpp"
 
+#include <boost/beast/http/field.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/status.hpp>
 #include <boost/beast/http/string_body.hpp>
@@ -20,6 +22,7 @@ public:
 
     explicit problem_handler(db_connection& db_connection);
     static bool is_problem_path(std::string_view path);
+    response_type handle_create_problem_post(const request_type& request);
 
 private:
     static constexpr std::string_view path_prefix_ = "/api/problem";

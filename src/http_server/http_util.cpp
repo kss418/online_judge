@@ -99,6 +99,37 @@ std::optional<std::int64_t> http_util::get_positive_int64_field(
     return std::nullopt;
 }
 
+std::optional<std::vector<std::string_view>> http_util::parse_path(
+    std::string_view prefix,
+    std::string_view path
+){
+    if(!path.starts_with(prefix)){
+        return std::nullopt;
+    }
+
+    path.remove_prefix(prefix.size());
+    if(!path.empty() && path.front() != '/'){
+        return std::nullopt;
+    }
+    if(path.starts_with("/")){
+        path.remove_prefix(1);
+    }
+
+    std::vector<std::string_view> path_segments;
+    while(!path.empty()){
+        const std::size_t slash_position = path.find('/');
+        if(slash_position == std::string_view::npos){
+            path_segments.push_back(path);
+            break;
+        }
+
+        path_segments.push_back(path.substr(0, slash_position));
+        path.remove_prefix(slash_position + 1);
+    }
+
+    return path_segments;
+}
+
 std::expected<auth_service::auth_identity, http_util::response_type> http_util::try_auth_bearer(
     const request_type& request,
     db_connection& db_connection

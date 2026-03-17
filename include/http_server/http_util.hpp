@@ -13,6 +13,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace http_util{
     using request_type = boost::beast::http::request<boost::beast::http::string_body>;
@@ -37,6 +38,10 @@ namespace http_util{
     std::optional<std::int64_t> get_positive_int64_field(
         const boost::json::object& object,
         std::string_view key
+    );
+    std::optional<std::vector<std::string_view>> parse_path(
+        std::string_view prefix,
+        std::string_view path
     );
     std::expected<auth_service::auth_identity, response_type> try_auth_bearer(
         const request_type& request,
