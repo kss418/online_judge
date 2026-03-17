@@ -1,7 +1,6 @@
 #include "http_server/http_router.hpp"
 #include "http_server/http_util.hpp"
 
-#include <functional>
 #include <string_view>
 #include <utility>
 
@@ -27,56 +26,20 @@ http_router::http_router(http_router&& other) noexcept :
     submission_handler_(db_connection_),
     problem_handler_(db_connection_){}
 
-std::optional<http_router::route_handler<system_handler>> http_router::find_system_route_handler(
-    boost::beast::http::verb method,
+std::optional<std::string_view> http_router::strip_path_prefix(
+    std::string_view prefix_path,
     std::string_view path
 ){
-    for(const auto& route_definition_value : system_routes_){
-        if(route_definition_value.method == method && route_definition_value.path == path){
-            return route_definition_value.handler;
-        }
+    if(!path.starts_with(prefix_path)){
+        return std::nullopt;
     }
 
-    return std::nullopt;
-}
-
-std::optional<http_router::route_handler<auth_handler>> http_router::find_auth_route_handler(
-    boost::beast::http::verb method,
-    std::string_view path
-){
-    for(const auto& route_definition_value : auth_routes_){
-        if(route_definition_value.method == method && route_definition_value.path == path){
-            return route_definition_value.handler;
-        }
+    path.remove_prefix(prefix_path.size());
+    if(!path.empty() && path.front() != '/'){
+        return std::nullopt;
     }
 
-    return std::nullopt;
-}
-
-std::optional<http_router::route_handler<submission_handler>> http_router::find_submission_route_handler(
-    boost::beast::http::verb method,
-    std::string_view path
-){
-    for(const auto& route_definition_value : submission_routes_){
-        if(route_definition_value.method == method && route_definition_value.path == path){
-            return route_definition_value.handler;
-        }
-    }
-
-    return std::nullopt;
-}
-
-std::optional<http_router::route_handler<problem_handler>> http_router::find_problem_route_handler(
-    boost::beast::http::verb method,
-    std::string_view path
-){
-    for(const auto& route_definition_value : problem_routes_){
-        if(route_definition_value.method == method && route_definition_value.path == path){
-            return route_definition_value.handler;
-        }
-    }
-
-    return std::nullopt;
+    return path;
 }
 
 std::optional<http_router::response_type> http_router::try_handle_route(
@@ -87,94 +50,33 @@ std::optional<http_router::response_type> http_router::try_handle_route(
         request.target().size()
     };
 
-    if(system_handler::is_system_path(path)){
-        const auto system_route_handler_opt = find_system_route_handler(request.method(), path);
-        if(system_route_handler_opt.has_value()){
-            return std::invoke(system_route_handler_opt.value(), system_handler_, request);
-        }
+    const auto system_path_opt = strip_path_prefix(system_path_prefix_, path);
+    if(system_path_opt){
+        return system_handler_.handle(request, *system_path_opt);
     }
 
-    if(auth_handler::is_auth_path(path)){
-        const auto auth_route_handler_opt = find_auth_route_handler(request.method(), path);
-        if(auth_route_handler_opt.has_value()){
-            return std::invoke(auth_route_handler_opt.value(), auth_handler_, request);
-        }
+    const auto auth_path_opt = strip_path_prefix(auth_path_prefix_, path);
+    if(auth_path_opt){
+        return auth_handler_.handle(request, *auth_path_opt);
     }
 
-    if(submission_handler::is_submission_path(path)){
-        const auto submission_route_handler_opt = find_submission_route_handler(
-            request.method(), path
-        );
-        if(submission_route_handler_opt.has_value()){
-            return std::invoke(
-                submission_route_handler_opt.value(),
-                submission_handler_,
-                request
-            );
-        }
+    const auto submission_path_opt = strip_path_prefix(submission_path_prefix_, path);
+    if(submission_path_opt){
+        return submission_handler_.handle(request, *submission_path_opt);
     }
 
-    if(problem_handler::is_problem_path(path)){
-        const auto problem_route_handler_opt = find_problem_route_handler(
-            request.method(), path
-        );
-        if(problem_route_handler_opt.has_value()){
-            return std::invoke(
-                problem_route_handler_opt.value(),
-                problem_handler_,
-                request
-            );
-        }
+    const auto problem_path_opt = strip_path_prefix(problem_path_prefix_, path);
+    if(problem_path_opt){
+        return problem_handler_.handle(request, *problem_path_opt);
     }
 
     return std::nullopt;
 }
 
-bool http_router::has_route_path(std::string_view path){
-    for(const auto& route_definition_value : system_routes_){
-        if(route_definition_value.path == path){
-            return true;
-        }
-    }
-
-    for(const auto& route_definition_value : auth_routes_){
-        if(route_definition_value.path == path){
-            return true;
-        }
-    }
-
-    for(const auto& route_definition_value : submission_routes_){
-        if(route_definition_value.path == path){
-            return true;
-        }
-    }
-
-    for(const auto& route_definition_value : problem_routes_){
-        if(route_definition_value.path == path){
-            return true;
-        }
-    }
-
-    return false;
-}
-
 http_router::response_type http_router::handle(const request_type& request){
-    const std::string_view path{
-        request.target().data(),
-        request.target().size()
-    };
-
     const auto response_opt = try_handle_route(request);
     if(response_opt.has_value()){
         return std::move(response_opt.value());
-    }
-
-    if(has_route_path(path)){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::method_not_allowed,
-            "method not allowed\n"
-        );
     }
 
     return http_util::create_text_response(

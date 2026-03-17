@@ -24,6 +24,7 @@ public:
 
     explicit auth_handler(db_connection& db_connection);
     static bool is_auth_path(std::string_view path);
+    response_type handle(const request_type& request, std::string_view path);
     response_type handle_sign_up_post(const request_type& request);
     response_type handle_login_post(const request_type& request);
     response_type handle_token_renew_post(const request_type& request);

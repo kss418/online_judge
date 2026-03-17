@@ -24,6 +24,7 @@ public:
 
     explicit submission_handler(db_connection& db_connection);
     static bool is_submission_path(std::string_view path);
+    response_type handle(const request_type& request, std::string_view path);
     response_type handle_create_submission_post(const request_type& request);
 
 private:

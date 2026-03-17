@@ -13,6 +13,29 @@ bool submission_handler::is_submission_path(std::string_view path){
     return path.starts_with(path_prefix_);
 }
 
+submission_handler::response_type submission_handler::handle(
+    const request_type& request,
+    std::string_view path
+){
+    if(path.empty()){
+        if(request.method() == boost::beast::http::verb::post){
+            return handle_create_submission_post(request);
+        }
+
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::method_not_allowed,
+            "method not allowed\n"
+        );
+    }
+
+    return http_util::create_text_response(
+        request,
+        boost::beast::http::status::not_found,
+        "not found\n"
+    );
+}
+
 submission_handler::response_type submission_handler::handle_create_submission_post(
     const request_type& request
 ){

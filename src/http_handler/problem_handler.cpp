@@ -12,6 +12,29 @@ bool problem_handler::is_problem_path(std::string_view path){
     return path.starts_with(path_prefix_);
 }
 
+problem_handler::response_type problem_handler::handle(
+    const request_type& request,
+    std::string_view path
+){
+    if(path.empty()){
+        if(request.method() == boost::beast::http::verb::post){
+            return handle_create_problem_post(request);
+        }
+
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::method_not_allowed,
+            "method not allowed\n"
+        );
+    }
+
+    return http_util::create_text_response(
+        request,
+        boost::beast::http::status::not_found,
+        "not found\n"
+    );
+}
+
 problem_handler::response_type problem_handler::handle_create_problem_post(
     const request_type& request
 ){

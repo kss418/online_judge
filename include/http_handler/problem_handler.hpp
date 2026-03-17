@@ -22,6 +22,7 @@ public:
 
     explicit problem_handler(db_connection& db_connection);
     static bool is_problem_path(std::string_view path);
+    response_type handle(const request_type& request, std::string_view path);
     response_type handle_create_problem_post(const request_type& request);
 
 private:

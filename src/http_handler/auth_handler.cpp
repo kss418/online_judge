@@ -16,6 +16,65 @@ bool auth_handler::is_auth_path(std::string_view path){
     return path.starts_with(path_prefix_);
 }
 
+auth_handler::response_type auth_handler::handle(
+    const request_type& request,
+    std::string_view path
+){
+    if(path == "/sign-up"){
+        if(request.method() == boost::beast::http::verb::post){
+            return handle_sign_up_post(request);
+        }
+
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::method_not_allowed,
+            "method not allowed\n"
+        );
+    }
+
+    if(path == "/login"){
+        if(request.method() == boost::beast::http::verb::post){
+            return handle_login_post(request);
+        }
+
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::method_not_allowed,
+            "method not allowed\n"
+        );
+    }
+
+    if(path == "/token/renew"){
+        if(request.method() == boost::beast::http::verb::post){
+            return handle_token_renew_post(request);
+        }
+
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::method_not_allowed,
+            "method not allowed\n"
+        );
+    }
+
+    if(path == "/logout"){
+        if(request.method() == boost::beast::http::verb::post){
+            return handle_logout_post(request);
+        }
+
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::method_not_allowed,
+            "method not allowed\n"
+        );
+    }
+
+    return http_util::create_text_response(
+        request,
+        boost::beast::http::status::not_found,
+        "not found\n"
+    );
+}
+
 auth_handler::response_type auth_handler::handle_sign_up_post(const request_type& request){
     const auto request_object_opt = http_util::parse_json_object(request);
     if(!request_object_opt){
