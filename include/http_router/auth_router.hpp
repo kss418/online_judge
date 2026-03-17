@@ -16,7 +16,7 @@ public:
     auth_router& operator=(auth_router&&) noexcept = delete;
 
     explicit auth_router(db_connection& db_connection);
-    response_type handle(const request_type& request, std::string_view path);
+    response_type route(const request_type& request, std::string_view path);
 
 private:
     response_type handle_sign_up(const request_type& request);

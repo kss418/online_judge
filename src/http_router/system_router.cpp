@@ -2,7 +2,7 @@
 
 #include "http_server/http_util.hpp"
 
-system_router::response_type system_router::handle(
+system_router::response_type system_router::route(
     const request_type& request,
     std::string_view path
 ){

@@ -6,32 +6,11 @@
 
 #include <boost/json.hpp>
 
-submission_handler::submission_handler(db_connection& db_connection) :
-    db_connection_(db_connection){}
-
-bool submission_handler::is_submission_path(std::string_view path){
-    return path.starts_with(path_prefix_);
-}
-
-submission_handler::response_type submission_handler::handle(
-    const request_type& request,
-    std::string_view path
-){
-    if(path.empty()){
-        if(request.method() == boost::beast::http::verb::post){
-            return handle_create_submission_post(request);
-        }
-
-        return http_util::method_not_allowed_response(request);
-    }
-
-    return http_util::not_found_response(request);
-}
-
 submission_handler::response_type submission_handler::handle_create_submission_post(
-    const request_type& request
+    const request_type& request,
+    db_connection& db_connection_value
 ){
-    const auto auth_identity_exp = http_util::try_auth_bearer(request, db_connection_);
+    const auto auth_identity_exp = http_util::try_auth_bearer(request, db_connection_value);
     if(!auth_identity_exp){
         return std::move(auth_identity_exp.error());
     }
@@ -59,7 +38,7 @@ submission_handler::response_type submission_handler::handle_create_submission_p
     }
 
     const auto create_submission_exp = submission_core_service::create_submission(
-        db_connection_,
+        db_connection_value,
         auth_identity_exp->user_id,
         *problem_id_opt,
         *language_opt,

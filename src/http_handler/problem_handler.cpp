@@ -1,61 +1,20 @@
 #include "http_handler/problem_handler.hpp"
-#include "common/string_util.hpp"
 #include "http_server/http_util.hpp"
 
 #include "db/problem_core_service.hpp"
 
 #include <boost/json.hpp>
 
-problem_handler::problem_handler(db_connection& db_connection) :
-    db_connection_(db_connection){}
-
-bool problem_handler::is_problem_path(std::string_view path){
-    return path.starts_with(path_prefix_);
-}
-
-problem_handler::response_type problem_handler::handle(
-    const request_type& request,
-    std::string_view path
-){
-    const auto path_segments_opt = http_util::parse_path("", path);
-    if(!path_segments_opt){
-        return http_util::not_found_response(request);
-    }
-
-    const auto& path_segments = *path_segments_opt;
-    if(path_segments.empty()){
-        if(request.method() == boost::beast::http::verb::post){
-            return handle_create_problem_post(request);
-        }
-
-        return http_util::method_not_allowed_response(request);
-    }
-
-    if(path_segments.size() == 2 && path_segments[1] == "limits"){
-        const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
-        if(!problem_id_opt){
-            return http_util::not_found_response(request);
-        }
-
-        if(request.method() == boost::beast::http::verb::put){
-            return handle_set_limits_put(request, *problem_id_opt);
-        }
-
-        return http_util::method_not_allowed_response(request);
-    }
-
-    return http_util::not_found_response(request);
-}
-
 problem_handler::response_type problem_handler::handle_create_problem_post(
-    const request_type& request
+    const request_type& request,
+    db_connection& db_connection_value
 ){
-    if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_);
+    if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_value);
         !auth_identity_exp){
         return std::move(auth_identity_exp.error());
     }
 
-    const auto create_problem_exp = problem_core_service::create_problem(db_connection_);
+    const auto create_problem_exp = problem_core_service::create_problem(db_connection_value);
     if(!create_problem_exp){
         return http_util::create_text_response(
             request,
@@ -78,9 +37,10 @@ problem_handler::response_type problem_handler::handle_create_problem_post(
 
 problem_handler::response_type problem_handler::handle_set_limits_put(
     const request_type& request,
+    db_connection& db_connection_value,
     std::int64_t problem_id
 ){
-    if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_);
+    if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_value);
         !auth_identity_exp){
         return std::move(auth_identity_exp.error());
     }
@@ -116,7 +76,7 @@ problem_handler::response_type problem_handler::handle_set_limits_put(
     limits_value.time_limit_ms = *time_limit_ms_opt;
 
     const auto set_limits_exp = problem_core_service::set_limits(
-        db_connection_,
+        db_connection_value,
         problem_id,
         limits_value
     );

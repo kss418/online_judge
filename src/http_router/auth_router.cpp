@@ -5,7 +5,7 @@
 auth_router::auth_router(db_connection& db_connection) :
     db_connection_(db_connection){}
 
-auth_router::response_type auth_router::handle(
+auth_router::response_type auth_router::route(
     const request_type& request,
     std::string_view path
 ){

@@ -15,7 +15,7 @@ public:
     system_router(system_router&&) noexcept = delete;
     system_router& operator=(system_router&&) noexcept = delete;
 
-    response_type handle(const request_type& request, std::string_view path);
+    response_type route(const request_type& request, std::string_view path);
 
 private:
     response_type handle_health(const request_type& request);
