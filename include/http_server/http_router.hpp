@@ -43,7 +43,8 @@ private:
     static constexpr std::string_view health_path_ = "/api/health";
     static constexpr std::string_view sign_up_path_ = "/api/sign-up";
     static constexpr std::string_view login_path_ = "/api/login";
-    static constexpr std::array<route_definition, 3> routes_{{
+    static constexpr std::string_view logout_path_ = "/api/logout";
+    static constexpr std::array<route_definition, 4> routes_{{
         route_definition{
             boost::beast::http::verb::get,
             health_path_,
@@ -58,6 +59,11 @@ private:
             boost::beast::http::verb::post,
             login_path_,
             &http_handler::handle_login_post
+        },
+        route_definition{
+            boost::beast::http::verb::post,
+            logout_path_,
+            &http_handler::handle_logout_post
         }
     }};
 

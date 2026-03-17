@@ -36,6 +36,7 @@
 ## Expected Variable Naming
 - When receiving `std::expected`, name variables with the `_exp` suffix (for example, `run_exp`).
 - When receiving `std::optional`, name variables with the `_opt` suffix (for example, `route_handler_opt`).
+- When using iterators, name variables with the `_it` suffix (for example, `authorization_field_it`).
 - Do not use the `_result` suffix for `std::expected` variables.
 
 ## HTTP API Path Convention

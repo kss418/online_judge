@@ -40,7 +40,7 @@ std::expected<bool, error_code> auth_util::revoke_token(
     const auto revoke_result = transaction.exec(
         "UPDATE auth_tokens "
         "SET revoked_at = NOW() "
-        "WHERE token_hash = $1 AND revoked_at IS NULL",
+        "WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > NOW()",
         pqxx::params{token_hash}
     );
 

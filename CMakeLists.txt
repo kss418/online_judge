@@ -49,6 +49,7 @@ add_library(lib STATIC
     src/common/error_code.cpp
     src/common/crypto_util.cpp
     src/common/password_util.cpp
+    src/common/string_util.cpp
     src/common/token_util.cpp
     src/common/unique_fd.cpp
     src/common/temp_file.cpp

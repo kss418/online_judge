@@ -1,8 +1,10 @@
 #include "http_server/http_handler.hpp"
 #include "http_server/http_util.hpp"
 
+#include "db/auth_service.hpp"
 #include "db/login_service.hpp"
 
+#include <string>
 #include <utility>
 
 #include <boost/json.hpp>
@@ -169,4 +171,46 @@ http_handler::response_type http_handler::handle_login_post(const request_type& 
     );
     response.set(boost::beast::http::field::content_type, "application/json; charset=utf-8");
     return response;
+}
+
+http_handler::response_type http_handler::handle_logout_post(const request_type& request){
+    const auto token_opt = http_util::get_bearer_token(request);
+    if(!token_opt){
+        return http_util::create_bearer_unauthorized_response(
+            request,
+            "missing or invalid bearer token\n"
+        );
+    }
+
+    const auto revoke_token_exp = auth_service::revoke_token(db_connection_, *token_opt);
+    if(!revoke_token_exp){
+        const auto code = revoke_token_exp.error();
+        const bool is_invalid_argument_error =
+            code.type_ == error_type::errno_type &&
+            static_cast<errno_error>(code.code_) == errno_error::invalid_argument;
+        if(is_invalid_argument_error){
+            return http_util::create_bearer_unauthorized_response(
+                request,
+                "missing or invalid bearer token\n"
+            );
+        }
+
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::internal_server_error,
+            "failed to logout: " + to_string(code) + "\n"
+        );
+    }
+    if(!revoke_token_exp.value()){
+        return http_util::create_bearer_unauthorized_response(
+            request,
+            "invalid, expired, or revoked token\n"
+        );
+    }
+
+    return http_util::create_text_response(
+        request,
+        boost::beast::http::status::ok,
+        "logged out\n"
+    );
 }

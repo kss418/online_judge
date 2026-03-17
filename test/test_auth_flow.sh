@@ -26,13 +26,17 @@ test_log_temp_file="$(mktemp)"
 server_log_temp_file="$(mktemp)"
 sign_up_response_file="$(mktemp)"
 login_response_file="$(mktemp)"
+logout_response_file="$(mktemp)"
+second_logout_response_file="$(mktemp)"
 
 cleanup(){
     rm -f \
         "${test_log_temp_file}" \
         "${server_log_temp_file}" \
         "${sign_up_response_file}" \
-        "${login_response_file}"
+        "${login_response_file}" \
+        "${logout_response_file}" \
+        "${second_logout_response_file}"
 
     if [[ -n "${server_pid}" ]]; then
         kill "${server_pid}" >/dev/null 2>&1 || true
@@ -226,3 +230,63 @@ then
 fi
 
 append_log_line "${test_log_temp_file}" "auth flow test passed"
+
+login_token="$(
+    python3 - "${login_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    login_response = json.load(response_file)
+
+login_token = login_response.get("token")
+if not isinstance(login_token, str) or not login_token:
+    raise SystemExit("missing token in login response")
+
+print(login_token)
+PY
+)"
+
+logout_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${logout_response_file}" \
+        --write-out "%{http_code}" \
+        --request POST \
+        -H "Authorization: Bearer ${login_token}" \
+        "${base_url}/api/logout"
+)"
+
+if [[ "${logout_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "logout failed: status=${logout_status_code}"
+    publish_failure_logs
+    echo "logout test failed: expected status 200, got ${logout_status_code}" >&2
+    echo "response body:" >&2
+    cat "${logout_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "logout passed: status=${logout_status_code}"
+
+second_logout_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${second_logout_response_file}" \
+        --write-out "%{http_code}" \
+        --request POST \
+        -H "Authorization: Bearer ${login_token}" \
+        "${base_url}/api/logout"
+)"
+
+if [[ "${second_logout_status_code}" != "401" ]]; then
+    append_log_line "${test_log_temp_file}" "second logout failed: status=${second_logout_status_code}"
+    publish_failure_logs
+    echo "second logout test failed: expected status 401, got ${second_logout_status_code}" >&2
+    echo "response body:" >&2
+    cat "${second_logout_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "second logout passed: status=${second_logout_status_code}"
