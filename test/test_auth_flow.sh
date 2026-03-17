@@ -82,6 +82,18 @@ publish_failure_logs(){
     fi
 }
 
+print_success_log(){
+    local log_message="$1"
+
+    if [[ -z "${log_message}" ]]; then
+        echo "missing log_message" >&2
+        return 1
+    fi
+
+    printf '%s\n' "${log_message}"
+    append_log_line "${test_log_temp_file}" "${log_message}"
+}
+
 trap cleanup EXIT
 
 require_command curl
@@ -152,6 +164,7 @@ if [[ "${sign_up_status_code}" != "201" ]]; then
 fi
 
 append_log_line "${test_log_temp_file}" "sign-up passed: status=${sign_up_status_code}"
+print_success_log "sign-up success"
 
 login_status_code="$(
     curl \
@@ -174,6 +187,7 @@ if [[ "${login_status_code}" != "200" ]]; then
 fi
 
 append_log_line "${test_log_temp_file}" "login passed: status=${login_status_code}"
+print_success_log "login success"
 
 if ! python3 - "${sign_up_response_file}" "${login_response_file}" "${user_login_id}" <<'PY'
 import json
@@ -217,11 +231,6 @@ if not isinstance(login_token, str) or not login_token:
 
 if login_token == sign_up_token:
     raise SystemExit("expected login to issue a new token")
-
-print(
-    f"auth flow test passed: login_id={expected_login_id}, "
-    f"user_id={sign_up_user_id}"
-)
 PY
 then
     append_log_line "${test_log_temp_file}" "response validation failed"
@@ -230,6 +239,22 @@ then
 fi
 
 append_log_line "${test_log_temp_file}" "auth flow test passed"
+
+login_user_id="$(
+    python3 - "${login_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    login_response = json.load(response_file)
+
+user_id = login_response.get("user_id")
+if not isinstance(user_id, int) or user_id <= 0:
+    raise SystemExit("invalid user_id in login response")
+
+print(user_id)
+PY
+)"
 
 login_token="$(
     python3 - "${login_response_file}" <<'PY'
@@ -268,6 +293,7 @@ if [[ "${logout_status_code}" != "200" ]]; then
 fi
 
 append_log_line "${test_log_temp_file}" "logout passed: status=${logout_status_code}"
+print_success_log "logout success"
 
 second_logout_status_code="$(
     curl \
@@ -290,3 +316,5 @@ if [[ "${second_logout_status_code}" != "401" ]]; then
 fi
 
 append_log_line "${test_log_temp_file}" "second logout passed: status=${second_logout_status_code}"
+print_success_log "token reuse failure success"
+print_success_log "auth flow test passed: login_id=${user_login_id}, user_id=${login_user_id}"
