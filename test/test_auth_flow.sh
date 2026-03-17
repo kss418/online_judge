@@ -54,7 +54,7 @@ require_command(){
 }
 
 health_check(){
-    curl --silent --show-error --fail "${base_url}/api/health" >/dev/null 2>&1
+    curl --silent --show-error --fail "${base_url}/api/system/health" >/dev/null 2>&1
 }
 
 wait_for_health(){
@@ -153,7 +153,7 @@ sign_up_status_code="$(
         --write-out "%{http_code}" \
         -H "Content-Type: application/json" \
         -d "${request_body}" \
-        "${base_url}/api/sign-up"
+        "${base_url}/api/auth/sign-up"
 )"
 
 if [[ "${sign_up_status_code}" != "201" ]]; then
@@ -176,7 +176,7 @@ login_status_code="$(
         --write-out "%{http_code}" \
         -H "Content-Type: application/json" \
         -d "${request_body}" \
-        "${base_url}/api/login"
+        "${base_url}/api/auth/login"
 )"
 
 if [[ "${login_status_code}" != "200" ]]; then
@@ -282,7 +282,7 @@ renew_status_code="$(
         --write-out "%{http_code}" \
         --request POST \
         -H "Authorization: Bearer ${login_token}" \
-        "${base_url}/api/token/renew"
+        "${base_url}/api/auth/token/renew"
 )"
 
 if [[ "${renew_status_code}" != "200" ]]; then
@@ -305,7 +305,7 @@ logout_status_code="$(
         --write-out "%{http_code}" \
         --request POST \
         -H "Authorization: Bearer ${login_token}" \
-        "${base_url}/api/logout"
+        "${base_url}/api/auth/logout"
 )"
 
 if [[ "${logout_status_code}" != "200" ]]; then
@@ -328,7 +328,7 @@ second_logout_status_code="$(
         --write-out "%{http_code}" \
         --request POST \
         -H "Authorization: Bearer ${login_token}" \
-        "${base_url}/api/logout"
+        "${base_url}/api/auth/logout"
 )"
 
 if [[ "${second_logout_status_code}" != "401" ]]; then

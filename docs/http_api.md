@@ -4,7 +4,7 @@ Current HTTP API exposed by `http_server`.
 
 ## endpoint
 
-### `GET /api/health`
+### `GET /api/system/health`
 
 Health check endpoint.
 
@@ -22,7 +22,7 @@ Health check endpoint.
 ok
 ```
 
-### `POST /api/sign-up`
+### `POST /api/auth/sign-up`
 
 Create a local user and issue an auth token in the same request.
 
@@ -89,7 +89,7 @@ required fields: user_login_id, raw_password
 failed to sign up: invalid argument
 ```
 
-### `POST /api/login`
+### `POST /api/auth/login`
 
 Authenticate an existing local user and issue a new auth token.
 
@@ -149,7 +149,7 @@ Examples:
 invalid credentials
 ```
 
-### `POST /api/logout`
+### `POST /api/auth/logout`
 
 Revoke the current bearer token.
 
@@ -196,7 +196,7 @@ missing or invalid bearer token
 invalid, expired, or revoked token
 ```
 
-### `POST /api/token/renew`
+### `POST /api/auth/token/renew`
 
 Extend the expiration time of the current bearer token.
 
@@ -246,4 +246,4 @@ invalid, expired, or revoked token
 ## note
 
 - Current HTTP routes are defined in [`http_router.hpp`](/home/kss418/online_judge/include/http_server/http_router.hpp).
-- Request handling logic lives in [`http_handler.cpp`](/home/kss418/online_judge/src/http_server/http_handler.cpp).
+- Request handling logic lives in [`auth_handler.cpp`](/home/kss418/online_judge/src/http_handler/auth_handler.cpp).
