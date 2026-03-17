@@ -1,6 +1,7 @@
 #pragma once
 
 #include "http_handler/auth_handler.hpp"
+#include "http_handler/problem_handler.hpp"
 #include "http_handler/submission_handler.hpp"
 #include "http_handler/system_handler.hpp"
 #include "common/error_code.hpp"
@@ -46,6 +47,10 @@ private:
         std::string_view path
     );
     static std::optional<route_handler<submission_handler>> find_submission_route_handler(
+        boost::beast::http::verb method,
+        std::string_view path
+    );
+    static std::optional<route_handler<problem_handler>> find_problem_route_handler(
         boost::beast::http::verb method,
         std::string_view path
     );
@@ -98,8 +103,11 @@ private:
         }
     }};
 
+    static constexpr std::array<route_definition<problem_handler>, 0> problem_routes_{};
+
     db_connection db_connection_;
     system_handler system_handler_;
     auth_handler auth_handler_;
     submission_handler submission_handler_;
+    problem_handler problem_handler_;
 };
