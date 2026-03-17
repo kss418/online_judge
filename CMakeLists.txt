@@ -20,6 +20,7 @@ add_library(lib STATIC
     src/db/login_service.cpp
     src/db/login_util.cpp
     src/db/submission_util.cpp
+    src/db/submission_core_service.cpp
     src/db/problem_core_service.cpp
     src/db/problem_content_service.cpp
     src/db/problem_statistics_service.cpp
@@ -28,6 +29,7 @@ add_library(lib STATIC
     src/db/testcase_service_util.cpp
     src/db/submission_service.cpp
     src/http_handler/auth_handler.cpp
+    src/http_handler/submission_handler.cpp
     src/http_handler/system_handler.cpp
     src/http_server/http_router.cpp
     src/http_server/http_util.cpp

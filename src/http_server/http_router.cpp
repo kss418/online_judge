@@ -16,12 +16,14 @@ std::expected<http_router, error_code> http_router::create(db_connection db_conn
 http_router::http_router(db_connection db_connection) :
     db_connection_(std::move(db_connection)),
     system_handler_(),
-    auth_handler_(db_connection_){}
+    auth_handler_(db_connection_),
+    submission_handler_(db_connection_){}
 
 http_router::http_router(http_router&& other) noexcept :
     db_connection_(std::move(other.db_connection_)),
     system_handler_(),
-    auth_handler_(db_connection_){}
+    auth_handler_(db_connection_),
+    submission_handler_(db_connection_){}
 
 std::optional<http_router::route_handler<system_handler>> http_router::find_system_route_handler(
     boost::beast::http::verb method,
@@ -41,6 +43,19 @@ std::optional<http_router::route_handler<auth_handler>> http_router::find_auth_r
     std::string_view path
 ){
     for(const auto& route_definition_value : auth_routes_){
+        if(route_definition_value.method == method && route_definition_value.path == path){
+            return route_definition_value.handler;
+        }
+    }
+
+    return std::nullopt;
+}
+
+std::optional<http_router::route_handler<submission_handler>> http_router::find_submission_route_handler(
+    boost::beast::http::verb method,
+    std::string_view path
+){
+    for(const auto& route_definition_value : submission_routes_){
         if(route_definition_value.method == method && route_definition_value.path == path){
             return route_definition_value.handler;
         }
@@ -71,6 +86,20 @@ std::optional<http_router::response_type> http_router::try_handle_route(
         }
     }
 
+    if(submission_handler::is_submission_path(path)){
+        const auto submission_route_handler_opt = find_submission_route_handler(
+            request.method(),
+            path
+        );
+        if(submission_route_handler_opt.has_value()){
+            return std::invoke(
+                submission_route_handler_opt.value(),
+                submission_handler_,
+                request
+            );
+        }
+    }
+
     return std::nullopt;
 }
 
@@ -82,6 +111,12 @@ bool http_router::has_route_path(std::string_view path){
     }
 
     for(const auto& route_definition_value : auth_routes_){
+        if(route_definition_value.path == path){
+            return true;
+        }
+    }
+
+    for(const auto& route_definition_value : submission_routes_){
         if(route_definition_value.path == path){
             return true;
         }

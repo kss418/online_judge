@@ -2,6 +2,8 @@
 
 #include "common/string_util.hpp"
 
+#include <cstdint>
+#include <limits>
 #include <utility>
 
 #include <boost/beast/core/string.hpp>
@@ -62,6 +64,39 @@ std::optional<std::string_view> http_util::get_non_empty_string_field(
     }
 
     return std::string_view{string_value.data(), string_value.size()};
+}
+
+std::optional<std::int64_t> http_util::get_positive_int64_field(
+    const boost::json::object& object,
+    std::string_view key
+){
+    const auto* value = object.if_contains(key);
+    if(value == nullptr){
+        return std::nullopt;
+    }
+
+    if(value->is_int64()){
+        const std::int64_t int64_value = value->as_int64();
+        if(int64_value <= 0){
+            return std::nullopt;
+        }
+
+        return int64_value;
+    }
+
+    if(value->is_uint64()){
+        const std::uint64_t uint64_value = value->as_uint64();
+        if(
+            uint64_value == 0 ||
+            uint64_value > static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max())
+        ){
+            return std::nullopt;
+        }
+
+        return static_cast<std::int64_t>(uint64_value);
+    }
+
+    return std::nullopt;
 }
 
 std::optional<std::string_view> http_util::get_bearer_token(

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "http_handler/auth_handler.hpp"
+#include "http_handler/submission_handler.hpp"
 #include "http_handler/system_handler.hpp"
 #include "common/error_code.hpp"
 #include "db/db_connection.hpp"
@@ -44,6 +45,10 @@ private:
         boost::beast::http::verb method,
         std::string_view path
     );
+    static std::optional<route_handler<submission_handler>> find_submission_route_handler(
+        boost::beast::http::verb method,
+        std::string_view path
+    );
     std::optional<response_type> try_handle_route(const request_type& request);
     static bool has_route_path(std::string_view path);
 
@@ -52,6 +57,7 @@ private:
     static constexpr std::string_view login_path_ = "/api/auth/login";
     static constexpr std::string_view token_renew_path_ = "/api/auth/token/renew";
     static constexpr std::string_view logout_path_ = "/api/auth/logout";
+    static constexpr std::string_view create_submission_path_ = "/api/submission";
 
     static constexpr std::array<route_definition<system_handler>, 1> system_routes_{{
         route_definition<system_handler>{
@@ -84,7 +90,16 @@ private:
         }
     }};
 
+    static constexpr std::array<route_definition<submission_handler>, 1> submission_routes_{{
+        route_definition<submission_handler>{
+            boost::beast::http::verb::post,
+            create_submission_path_,
+            &submission_handler::handle_create_submission_post
+        }
+    }};
+
     db_connection db_connection_;
     system_handler system_handler_;
     auth_handler auth_handler_;
+    submission_handler submission_handler_;
 };

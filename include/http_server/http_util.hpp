@@ -5,6 +5,7 @@
 #include <boost/beast/http/status.hpp>
 #include <boost/beast/http/string_body.hpp>
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -26,6 +27,10 @@ namespace http_util{
         const request_type& request
     );
     std::optional<std::string_view> get_non_empty_string_field(
+        const boost::json::object& object,
+        std::string_view key
+    );
+    std::optional<std::int64_t> get_positive_int64_field(
         const boost::json::object& object,
         std::string_view key
     );
