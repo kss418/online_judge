@@ -367,6 +367,64 @@ Examples:
 admin bearer token required
 ```
 
+### `PUT /api/problem/{problem_id}/limits`
+
+Update the limits of an existing problem.
+
+#### request
+
+- content-type: `application/json`
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+
+- body fields:
+
+| field | type | required | note |
+|---|---|---|---|
+| `memory_limit_mb` | `int32` | yes | must be positive |
+| `time_limit_ms` | `int32` | yes | must be positive |
+
+Example:
+
+```json
+{
+  "memory_limit_mb": 512,
+  "time_limit_ms": 2000
+}
+```
+
+#### success response
+
+- status: `200 OK`
+- content-type: `text/plain; charset=utf-8`
+- body:
+
+```text
+problem limits updated
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- invalid json: `400 Bad Request`
+- missing required fields: `400 Bad Request`
+- unknown `problem_id`: `400 Bad Request`
+- invalid limit values: `400 Bad Request`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are currently returned as plain text.
+
 ## note
 
 - Current HTTP routes are defined in [`http_router.hpp`](/home/kss418/online_judge/include/http_server/http_router.hpp).

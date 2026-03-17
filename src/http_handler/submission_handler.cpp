@@ -75,13 +75,8 @@ submission_handler::response_type submission_handler::handle_create_submission_p
     );
     if(!create_submission_exp){
         const auto code = create_submission_exp.error();
-        const bool is_invalid_argument_error = code == errno_error::invalid_argument;
-        const bool is_constraint_error =
-            code == psql_error::foreign_key_violation ||
-            code == psql_error::not_null_violation ||
-            code == psql_error::check_violation;
         const auto status =
-            (is_invalid_argument_error || is_constraint_error)
+            code.is_bad_request_error()
                 ? boost::beast::http::status::bad_request
                 : boost::beast::http::status::internal_server_error;
 

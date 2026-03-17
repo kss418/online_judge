@@ -112,13 +112,8 @@ auth_handler::response_type auth_handler::handle_sign_up_post(const request_type
     
     if(!sign_up_exp){
         const auto code = sign_up_exp.error();
-        const bool is_invalid_argument_error = code == errno_error::invalid_argument;
-        const bool is_constraint_error =
-            code == psql_error::unique_violation ||
-            code == psql_error::check_violation ||
-            code == psql_error::not_null_violation;
         const auto status =
-            (is_invalid_argument_error || is_constraint_error)
+            code.is_bad_request_error()
                 ? boost::beast::http::status::bad_request
                 : boost::beast::http::status::internal_server_error;
 
@@ -178,8 +173,7 @@ auth_handler::response_type auth_handler::handle_login_post(const request_type& 
     );
     if(!login_exp){
         const auto code = login_exp.error();
-        const bool is_invalid_argument_error = code == errno_error::invalid_argument;
-        const auto status = is_invalid_argument_error
+        const auto status = code.is_bad_request_error()
             ? boost::beast::http::status::bad_request
             : boost::beast::http::status::internal_server_error;
 

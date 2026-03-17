@@ -116,6 +116,20 @@ struct error_code{
 
     constexpr bool operator==(const error_code&) const = default;
 
+    constexpr bool is_constraint_violation_error() const{
+        return
+            *this == psql_error::unique_violation ||
+            *this == psql_error::foreign_key_violation ||
+            *this == psql_error::not_null_violation ||
+            *this == psql_error::check_violation;
+    }
+
+    constexpr bool is_bad_request_error() const{
+        return
+            *this == errno_error::invalid_argument ||
+            is_constraint_violation_error();
+    }
+
     static error_code create(syscall_error code);
     static error_code create(errno_error code);
     static error_code create(signal_error code);
