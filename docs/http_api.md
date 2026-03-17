@@ -196,6 +196,53 @@ missing or invalid bearer token
 invalid, expired, or revoked token
 ```
 
+### `POST /api/token/renew`
+
+Extend the expiration time of the current bearer token.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <token>` |
+
+Example:
+
+```text
+Authorization: Bearer ...
+```
+
+#### success response
+
+- status: `200 OK`
+- content-type: `text/plain; charset=utf-8`
+- body:
+
+```text
+token renewed
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are currently returned as plain text.
+
+Examples:
+
+```text
+missing or invalid bearer token
+```
+
+```text
+invalid, expired, or revoked token
+```
+
 ## note
 
 - Current HTTP routes are defined in [`http_router.hpp`](/home/kss418/online_judge/include/http_server/http_router.hpp).

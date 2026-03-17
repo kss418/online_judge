@@ -25,6 +25,7 @@ public:
     response_type handle_health_get(const request_type& request);
     response_type handle_sign_up_post(const request_type& request);
     response_type handle_login_post(const request_type& request);
+    response_type handle_token_renew_post(const request_type& request);
     response_type handle_logout_post(const request_type& request);
 
 private:

@@ -26,6 +26,7 @@ test_log_temp_file="$(mktemp)"
 server_log_temp_file="$(mktemp)"
 sign_up_response_file="$(mktemp)"
 login_response_file="$(mktemp)"
+renew_response_file="$(mktemp)"
 logout_response_file="$(mktemp)"
 second_logout_response_file="$(mktemp)"
 
@@ -35,6 +36,7 @@ cleanup(){
         "${server_log_temp_file}" \
         "${sign_up_response_file}" \
         "${login_response_file}" \
+        "${renew_response_file}" \
         "${logout_response_file}" \
         "${second_logout_response_file}"
 
@@ -271,6 +273,29 @@ if not isinstance(login_token, str) or not login_token:
 print(login_token)
 PY
 )"
+
+renew_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${renew_response_file}" \
+        --write-out "%{http_code}" \
+        --request POST \
+        -H "Authorization: Bearer ${login_token}" \
+        "${base_url}/api/token/renew"
+)"
+
+if [[ "${renew_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "token renew failed: status=${renew_status_code}"
+    publish_failure_logs
+    echo "token renew test failed: expected status 200, got ${renew_status_code}" >&2
+    echo "response body:" >&2
+    cat "${renew_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "token renew passed: status=${renew_status_code}"
+print_success_log "token renew success"
 
 logout_status_code="$(
     curl \

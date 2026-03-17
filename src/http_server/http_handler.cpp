@@ -166,6 +166,46 @@ http_handler::response_type http_handler::handle_login_post(const request_type& 
     return response;
 }
 
+http_handler::response_type http_handler::handle_token_renew_post(const request_type& request){
+    const auto token_opt = http_util::get_bearer_token(request);
+    if(!token_opt){
+        return http_util::create_bearer_unauthorized_response(
+            request,
+            "missing or invalid bearer token\n"
+        );
+    }
+
+    const auto renew_token_exp = auth_service::renew_token(db_connection_, *token_opt);
+    if(!renew_token_exp){
+        const auto code = renew_token_exp.error();
+        const bool is_invalid_argument_error = code == errno_error::invalid_argument;
+        if(is_invalid_argument_error){
+            return http_util::create_bearer_unauthorized_response(
+                request,
+                "missing or invalid bearer token\n"
+            );
+        }
+
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::internal_server_error,
+            "failed to renew token: " + to_string(code) + "\n"
+        );
+    }
+    if(!renew_token_exp.value()){
+        return http_util::create_bearer_unauthorized_response(
+            request,
+            "invalid, expired, or revoked token\n"
+        );
+    }
+
+    return http_util::create_text_response(
+        request,
+        boost::beast::http::status::ok,
+        "token renewed\n"
+    );
+}
+
 http_handler::response_type http_handler::handle_logout_post(const request_type& request){
     const auto token_opt = http_util::get_bearer_token(request);
     if(!token_opt){
