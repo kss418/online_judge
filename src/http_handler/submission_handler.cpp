@@ -1,7 +1,6 @@
 #include "http_handler/submission_handler.hpp"
 #include "http_server/http_util.hpp"
 
-#include "db/auth_service.hpp"
 #include "db/submission_core_service.hpp"
 #include "db/submission_util.hpp"
 
@@ -17,35 +16,9 @@ bool submission_handler::is_submission_path(std::string_view path){
 submission_handler::response_type submission_handler::handle_create_submission_post(
     const request_type& request
 ){
-    const auto token_opt = http_util::get_bearer_token(request);
-    if(!token_opt){
-        return http_util::create_bearer_unauthorized_response(
-            request,
-            "missing or invalid bearer token\n"
-        );
-    }
-
-    const auto auth_identity_exp = auth_service::auth_token(db_connection_, *token_opt);
+    const auto auth_identity_exp = http_util::try_auth_bearer(request, db_connection_);
     if(!auth_identity_exp){
-        const auto code = auth_identity_exp.error();
-        if(code == errno_error::invalid_argument){
-            return http_util::create_bearer_unauthorized_response(
-                request,
-                "missing or invalid bearer token\n"
-            );
-        }
-
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::internal_server_error,
-            "failed to authenticate token: " + to_string(code) + "\n"
-        );
-    }
-    if(!auth_identity_exp->has_value()){
-        return http_util::create_bearer_unauthorized_response(
-            request,
-            "invalid, expired, or revoked token\n"
-        );
+        return std::move(auth_identity_exp.error());
     }
 
     const auto request_object_opt = http_util::parse_json_object(request);
@@ -72,7 +45,7 @@ submission_handler::response_type submission_handler::handle_create_submission_p
 
     const auto create_submission_exp = submission_core_service::create_submission(
         db_connection_,
-        auth_identity_exp->value().user_id,
+        auth_identity_exp->user_id,
         *problem_id_opt,
         *language_opt,
         *source_code_opt

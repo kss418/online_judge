@@ -99,6 +99,44 @@ std::optional<std::int64_t> http_util::get_positive_int64_field(
     return std::nullopt;
 }
 
+std::expected<auth_service::auth_identity, http_util::response_type> http_util::try_auth_bearer(
+    const request_type& request,
+    db_connection& db_connection
+){
+    const auto token_opt = get_bearer_token(request);
+    if(!token_opt){
+        return std::unexpected(create_bearer_unauthorized_response(
+            request,
+            "missing or invalid bearer token\n"
+        ));
+    }
+
+    const auto auth_identity_exp = auth_service::auth_token(db_connection, *token_opt);
+    if(!auth_identity_exp){
+        const auto code = auth_identity_exp.error();
+        if(code == errno_error::invalid_argument){
+            return std::unexpected(create_bearer_unauthorized_response(
+                request,
+                "missing or invalid bearer token\n"
+            ));
+        }
+
+        return std::unexpected(create_text_response(
+            request,
+            boost::beast::http::status::internal_server_error,
+            "failed to authenticate token: " + to_string(code) + "\n"
+        ));
+    }
+    if(!auth_identity_exp->has_value()){
+        return std::unexpected(create_bearer_unauthorized_response(
+            request,
+            "invalid, expired, or revoked token\n"
+        ));
+    }
+
+    return auth_identity_exp->value();
+}
+
 std::optional<std::string_view> http_util::get_bearer_token(
     const request_type& request
 ){
