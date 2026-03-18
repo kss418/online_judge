@@ -33,6 +33,10 @@ private:
         const request_type& request,
         std::int64_t problem_id
     );
+    response_type handle_create_testcases(
+        const request_type& request,
+        std::int64_t problem_id
+    );
 
     db_connection& db_connection_;
 };

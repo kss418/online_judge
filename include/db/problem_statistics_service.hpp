@@ -12,7 +12,7 @@ class transaction_base;
 }
 
 namespace problem_statistics_service{
-    std::expected<problem_statistics, error_code> get_statistics(
+    std::expected<problem_dto::statistics, error_code> get_statistics(
         db_connection& connection,
         std::int64_t problem_id
     );

@@ -5,7 +5,7 @@
 
 #include <utility>
 
-std::expected<problem_statement, error_code> problem_content_service::get_statement(
+std::expected<problem_dto::statement, error_code> problem_content_service::get_statement(
     db_connection& connection,
     std::int64_t problem_id
 ){
@@ -29,13 +29,23 @@ std::expected<problem_statement, error_code> problem_content_service::get_statem
             return std::unexpected(error_code::create(errno_error::invalid_argument));
         }
 
-        problem_statement statement;
+        problem_dto::statement statement;
         statement.description = statement_query_result[0][0].as<std::string>();
         statement.input_format = statement_query_result[0][1].as<std::string>();
         statement.output_format = statement_query_result[0][2].as<std::string>();
         if(!statement_query_result[0][3].is_null()){
             statement.note = statement_query_result[0][3].as<std::string>();
         }
+
+        if(
+            statement.description.empty() &&
+            statement.input_format.empty() &&
+            statement.output_format.empty() &&
+            !statement.note
+        ){
+            return std::unexpected(error_code::create(errno_error::invalid_argument));
+        }
+
         return statement;
     }
     catch(const std::exception& exception){
@@ -46,7 +56,7 @@ std::expected<problem_statement, error_code> problem_content_service::get_statem
 std::expected<void, error_code> problem_content_service::set_statement(
     db_connection& connection,
     std::int64_t problem_id,
-    const problem_statement& statement
+    const problem_dto::statement& statement
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
@@ -91,7 +101,7 @@ std::expected<void, error_code> problem_content_service::set_statement(
     }
 }
 
-std::expected<std::vector<sample>, error_code> problem_content_service::list_samples(
+std::expected<std::vector<problem_dto::sample>, error_code> problem_content_service::list_samples(
     db_connection& connection,
     std::int64_t problem_id
 ){
@@ -112,14 +122,14 @@ std::expected<std::vector<sample>, error_code> problem_content_service::list_sam
             pqxx::params{problem_id}
         );
 
-        std::vector<sample> sample_values;
+        std::vector<problem_dto::sample> sample_values;
         sample_values.reserve(samples_query_result.size());
         for(const auto& row : samples_query_result){
-            sample sample_value;
-            sample_value.sample_id = row[0].as<std::int64_t>();
-            sample_value.sample_order = row[1].as<std::int32_t>();
-            sample_value.sample_input = row[2].as<std::string>();
-            sample_value.sample_output = row[3].as<std::string>();
+            problem_dto::sample sample_value;
+            sample_value.id = row[0].as<std::int64_t>();
+            sample_value.order = row[1].as<std::int32_t>();
+            sample_value.input = row[2].as<std::string>();
+            sample_value.output = row[3].as<std::string>();
             sample_values.push_back(std::move(sample_value));
         }
 
@@ -133,7 +143,7 @@ std::expected<std::vector<sample>, error_code> problem_content_service::list_sam
 std::expected<std::int64_t, error_code> problem_content_service::create_sample(
     db_connection& connection,
     std::int64_t problem_id,
-    const sample& sample_value
+    const problem_dto::sample& sample_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
@@ -160,8 +170,8 @@ std::expected<std::int64_t, error_code> problem_content_service::create_sample(
             pqxx::params{
                 problem_id,
                 sample_order,
-                sample_value.sample_input,
-                sample_value.sample_output
+                sample_value.input,
+                sample_value.output
             }
         );
 
@@ -186,12 +196,12 @@ std::expected<std::int64_t, error_code> problem_content_service::create_sample(
 std::expected<void, error_code> problem_content_service::set_sample(
     db_connection& connection,
     std::int64_t problem_id,
-    const sample& sample_value
+    const problem_dto::sample& sample_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
-    if(problem_id <= 0 || sample_value.sample_order <= 0){
+    if(problem_id <= 0 || sample_value.order <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -206,9 +216,9 @@ std::expected<void, error_code> problem_content_service::set_sample(
             "sample_output = EXCLUDED.sample_output",
             pqxx::params{
                 problem_id,
-                sample_value.sample_order,
-                sample_value.sample_input,
-                sample_value.sample_output
+                sample_value.order,
+                sample_value.input,
+                sample_value.output
             }
         );
 
@@ -228,12 +238,12 @@ std::expected<void, error_code> problem_content_service::set_sample(
 std::expected<void, error_code> problem_content_service::delete_sample(
     db_connection& connection,
     std::int64_t problem_id,
-    const sample& sample_value
+    const problem_dto::sample& sample_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
-    if(problem_id <= 0 || sample_value.sample_order <= 0){
+    if(problem_id <= 0 || sample_value.order <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -249,7 +259,7 @@ std::expected<void, error_code> problem_content_service::delete_sample(
             "FROM problem_samples "
             "WHERE problem_id = $1"
             ")",
-            pqxx::params{problem_id, sample_value.sample_order}
+            pqxx::params{problem_id, sample_value.order}
         );
 
         if(delete_result.affected_rows() == 0){

@@ -259,3 +259,76 @@ problem statement updated
 - unexpected internal failure: `500 Internal Server Error`
 
 Error bodies are currently returned as plain text.
+
+### `POST /api/problem/{problem_id}/testcases`
+
+Append one hidden testcase to an existing problem. The created testcase is not returned by the public problem detail endpoint, but the problem version is incremented so judge-side testcase sync can detect the update.
+
+#### request
+
+- content-type: `application/json`
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+
+- body fields:
+
+| field | type | required | note |
+|---|---|---|---|
+| `testcase_input` | `string` | yes | may be empty for no-input problems |
+| `testcase_output` | `string` | yes | may be empty for problems with empty output |
+
+Example:
+
+```json
+{
+  "testcase_input": "1 2\n",
+  "testcase_output": "3\n"
+}
+```
+
+#### success response
+
+- status: `201 Created`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `testcase_id` | `int64` | created hidden testcase id |
+| `testcase_order` | `int32` | appended order starting from 1 |
+
+Example:
+
+```json
+{
+  "testcase_id": 1,
+  "testcase_order": 1
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- invalid json: `400 Bad Request`
+- missing required fields: `400 Bad Request`
+- unknown `problem_id`: `400 Bad Request`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are currently returned as plain text.
+
+Examples:
+
+```text
+required fields: testcase_input, testcase_output
+```

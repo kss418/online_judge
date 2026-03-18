@@ -1,12 +1,14 @@
 #include "http_handler/problem_handler.hpp"
+#include "dto/problem_dto.hpp"
 #include "http_server/json_util.hpp"
 #include "http_server/http_util.hpp"
 
 #include "db/problem_content_service.hpp"
 #include "db/problem_core_service.hpp"
 #include "db/problem_statistics_service.hpp"
+#include "db/testcase_service.hpp"
 
-static std::expected<problem_statement, problem_handler::response_type> parse_statement_request(
+static std::expected<problem_dto::statement, problem_handler::response_type> parse_statement_request(
     const problem_handler::request_type& request,
     const boost::json::object& request_object
 ){
@@ -30,7 +32,7 @@ static std::expected<problem_statement, problem_handler::response_type> parse_st
         ));
     }
 
-    problem_statement statement_value;
+    problem_dto::statement statement_value;
     statement_value.description = std::string{*description_opt};
     statement_value.input_format = std::string{*input_format_opt};
     statement_value.output_format = std::string{*output_format_opt};
@@ -103,7 +105,7 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         );
     }
 
-    std::optional<problem_statement> statement_opt = std::nullopt;
+    std::optional<problem_dto::statement> statement_opt = std::nullopt;
     const auto statement_exp = problem_content_service::get_statement(
         db_connection_value,
         problem_id
@@ -223,9 +225,9 @@ problem_handler::response_type problem_handler::handle_set_limits_put(
         );
     }
 
-    limits limits_value;
-    limits_value.memory_limit_mb = *memory_limit_mb_opt;
-    limits_value.time_limit_ms = *time_limit_ms_opt;
+    problem_dto::limits limits_value;
+    limits_value.memory_mb = *memory_limit_mb_opt;
+    limits_value.time_ms = *time_limit_ms_opt;
 
     const auto set_limits_exp = problem_core_service::set_limits(
         db_connection_value,
@@ -300,5 +302,62 @@ problem_handler::response_type problem_handler::handle_set_statement_put(
         request,
         boost::beast::http::status::ok,
         "problem statement updated\n"
+    );
+}
+
+problem_handler::response_type problem_handler::handle_create_testcase_post(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t problem_id
+){
+    if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_value);
+        !auth_identity_exp){
+        return std::move(auth_identity_exp.error());
+    }
+
+    const auto request_object_opt = http_util::parse_json_object(request);
+    if(!request_object_opt){
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::bad_request,
+            "invalid json\n"
+        );
+    }
+
+    const auto testcase_opt = problem_dto::make_tc(*request_object_opt);
+    if(!testcase_opt){
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::bad_request,
+            "required fields: testcase_input, testcase_output\n"
+        );
+    }
+
+    const auto create_testcase_exp = tc_service::create_tc(
+        db_connection_value,
+        problem_id,
+        *testcase_opt
+    );
+    if(!create_testcase_exp){
+        const auto code = create_testcase_exp.error();
+        const auto status =
+            code.is_bad_request_error()
+                ? boost::beast::http::status::bad_request
+                : boost::beast::http::status::internal_server_error;
+
+        return http_util::create_text_response(
+            request,
+            status,
+            "failed to create testcase: " + to_string(code) + "\n"
+        );
+    }
+
+    return json_util::create_json_response(
+        request,
+        boost::beast::http::status::created,
+        json_util::make_problem_testcase_created_object(
+            create_testcase_exp->id,
+            create_testcase_exp->order
+        )
     );
 }

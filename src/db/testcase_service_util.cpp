@@ -1,11 +1,21 @@
 #include "db/testcase_service_util.hpp"
 
+#include "db/problem_service_util.hpp"
+
 #include <pqxx/pqxx>
 
 std::expected<std::int32_t, error_code> tc_service_util::increase_tc_count(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){
+    const auto ensure_statement_exp = problem_service_util::ensure_statement_row(
+        transaction,
+        problem_id
+    );
+    if(!ensure_statement_exp){
+        return std::unexpected(ensure_statement_exp.error());
+    }
+
     const auto increase_result = transaction.exec(
         "UPDATE problem_statements "
         "SET testcase_count = testcase_count + 1, updated_at = NOW() "

@@ -69,7 +69,7 @@ std::optional<boost::json::object> http_util::parse_json_object(
     return std::move(request_value.as_object());
 }
 
-std::optional<std::string_view> http_util::get_non_empty_string_field(
+std::optional<std::string_view> http_util::get_string_field(
     const boost::json::object& object,
     std::string_view key
 ){
@@ -79,11 +79,19 @@ std::optional<std::string_view> http_util::get_non_empty_string_field(
     }
 
     const auto& string_value = value->as_string();
-    if(string_value.empty()){
+    return std::string_view{string_value.data(), string_value.size()};
+}
+
+std::optional<std::string_view> http_util::get_non_empty_string_field(
+    const boost::json::object& object,
+    std::string_view key
+){
+    const auto string_value_opt = get_string_field(object, key);
+    if(!string_value_opt || string_value_opt->empty()){
         return std::nullopt;
     }
 
-    return std::string_view{string_value.data(), string_value.size()};
+    return string_value_opt;
 }
 
 std::optional<std::int64_t> http_util::get_positive_int64_field(

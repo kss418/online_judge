@@ -15,6 +15,11 @@ std::expected<bool, error_code> exists_problem(
     std::int64_t problem_id
 );
 
+std::expected<void, error_code> ensure_statement_row(
+    pqxx::transaction_base& transaction,
+    std::int64_t problem_id
+);
+
 std::expected<void, error_code> increase_version(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id

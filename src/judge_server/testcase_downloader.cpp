@@ -153,8 +153,8 @@ std::expected<void, error_code> tc_downloader::sync_limit_file(std::int64_t prob
     const auto local_limits_exp = read_limit_file(problem_id);
     if(local_limits_exp){
         if(
-            local_limits_exp->first == limits_exp->time_limit_ms &&
-            local_limits_exp->second == limits_exp->memory_limit_mb
+            local_limits_exp->first == limits_exp->time_ms &&
+            local_limits_exp->second == limits_exp->memory_mb
         ){
             return {};
         }
@@ -195,7 +195,7 @@ std::expected<void, error_code> tc_downloader::sync_limit_file(std::int64_t prob
 
     const auto create_memory_limit_file_exp = file_util::create_file(
         *memory_limit_file_path_exp,
-        std::to_string(limits_exp->memory_limit_mb)
+        std::to_string(limits_exp->memory_mb)
     );
     if(!create_memory_limit_file_exp){
         return std::unexpected(create_memory_limit_file_exp.error());
@@ -203,7 +203,7 @@ std::expected<void, error_code> tc_downloader::sync_limit_file(std::int64_t prob
 
     const auto create_time_limit_file_exp = file_util::create_file(
         *time_limit_file_path_exp,
-        std::to_string(limits_exp->time_limit_ms)
+        std::to_string(limits_exp->time_ms)
     );
     if(!create_time_limit_file_exp){
         return std::unexpected(create_time_limit_file_exp.error());
@@ -418,7 +418,7 @@ std::expected<void, error_code> tc_downloader::download_one(
 
     const auto create_input_exp = file_util::create_file(
         input_path,
-        tc_exp->tc_input
+        tc_exp->input
     );
     
     if(!create_input_exp){
@@ -427,7 +427,7 @@ std::expected<void, error_code> tc_downloader::download_one(
 
     const auto create_output_exp = file_util::create_file(
         output_path,
-        tc_exp->tc_output
+        tc_exp->output
     );
     
     if(!create_output_exp){

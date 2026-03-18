@@ -123,6 +123,14 @@ std::expected<std::int64_t, error_code> problem_core_service::create_problem(db_
             return std::unexpected(create_problem_statistics_exp.error());
         }
 
+        const auto ensure_statement_exp = problem_service_util::ensure_statement_row(
+            transaction,
+            problem_id
+        );
+        if(!ensure_statement_exp){
+            return std::unexpected(ensure_statement_exp.error());
+        }
+
         transaction.commit();
         return problem_id;
     }
@@ -131,7 +139,7 @@ std::expected<std::int64_t, error_code> problem_core_service::create_problem(db_
     }
 }
 
-std::expected<limits, error_code> problem_core_service::get_limits(
+std::expected<problem_dto::limits, error_code> problem_core_service::get_limits(
     db_connection& connection,
     std::int64_t problem_id
 ){
@@ -155,9 +163,9 @@ std::expected<limits, error_code> problem_core_service::get_limits(
             return std::unexpected(error_code::create(errno_error::invalid_argument));
         }
 
-        limits limits_value;
-        limits_value.memory_limit_mb = limits_query_result[0][0].as<std::int32_t>();
-        limits_value.time_limit_ms = limits_query_result[0][1].as<std::int32_t>();
+        problem_dto::limits limits_value;
+        limits_value.memory_mb = limits_query_result[0][0].as<std::int32_t>();
+        limits_value.time_ms = limits_query_result[0][1].as<std::int32_t>();
         return limits_value;
     }
     catch(const std::exception& exception){
@@ -168,12 +176,12 @@ std::expected<limits, error_code> problem_core_service::get_limits(
 std::expected<void, error_code> problem_core_service::set_limits(
     db_connection& connection,
     std::int64_t problem_id,
-    const limits& limits_value
+    const problem_dto::limits& limits_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
-    if(problem_id <= 0 || limits_value.memory_limit_mb <= 0 || limits_value.time_limit_ms <= 0){
+    if(problem_id <= 0 || limits_value.memory_mb <= 0 || limits_value.time_ms <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -189,8 +197,8 @@ std::expected<void, error_code> problem_core_service::set_limits(
             "updated_at = NOW()",
             pqxx::params{
                 problem_id,
-                limits_value.memory_limit_mb,
-                limits_value.time_limit_ms
+                limits_value.memory_mb,
+                limits_value.time_ms
             }
         );
 

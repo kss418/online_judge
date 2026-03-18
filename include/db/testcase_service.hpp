@@ -9,13 +9,13 @@
 #include <vector>
 
 namespace tc_service{
-    std::expected<std::int64_t, error_code> create_tc(
+    std::expected<problem_dto::tc, error_code> create_tc(
         db_connection& connection,
         std::int64_t problem_id,
-        const tc& tc_value
+        const problem_dto::tc& tc_value
     );
 
-    std::expected<tc, error_code> get_tc(
+    std::expected<problem_dto::tc, error_code> get_tc(
         db_connection& connection,
         std::int64_t problem_id,
         std::int32_t tc_order
@@ -25,7 +25,7 @@ namespace tc_service{
         std::int64_t problem_id
     );
 
-    std::expected<std::vector<tc>, error_code> list_tcs(
+    std::expected<std::vector<problem_dto::tc>, error_code> list_tcs(
         db_connection& connection,
         std::int64_t problem_id
     );
@@ -33,7 +33,7 @@ namespace tc_service{
     std::expected<void, error_code> set_tc(
         db_connection& connection,
         std::int64_t problem_id,
-        const tc& tc_value
+        const problem_dto::tc& tc_value
     );
 
     std::expected<void, error_code> delete_tc(

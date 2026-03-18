@@ -9,7 +9,7 @@
 #include <vector>
 
 namespace problem_content_service{
-    std::expected<problem_statement, error_code> get_statement(
+    std::expected<problem_dto::statement, error_code> get_statement(
         db_connection& connection,
         std::int64_t problem_id
     );
@@ -17,10 +17,10 @@ namespace problem_content_service{
     std::expected<void, error_code> set_statement(
         db_connection& connection,
         std::int64_t problem_id,
-        const problem_statement& statement
+        const problem_dto::statement& statement
     );
 
-    std::expected<std::vector<sample>, error_code> list_samples(
+    std::expected<std::vector<problem_dto::sample>, error_code> list_samples(
         db_connection& connection,
         std::int64_t problem_id
     );
@@ -28,18 +28,18 @@ namespace problem_content_service{
     std::expected<std::int64_t, error_code> create_sample(
         db_connection& connection,
         std::int64_t problem_id,
-        const sample& sample_value
+        const problem_dto::sample& sample_value
     );
 
     std::expected<void, error_code> set_sample(
         db_connection& connection,
         std::int64_t problem_id,
-        const sample& sample_value
+        const problem_dto::sample& sample_value
     );
 
     std::expected<void, error_code> delete_sample(
         db_connection& connection,
         std::int64_t problem_id,
-        const sample& sample_value
+        const problem_dto::sample& sample_value
     );
 }

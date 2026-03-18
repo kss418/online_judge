@@ -7,10 +7,10 @@
 
 #include <utility>
 
-std::expected<std::int64_t, error_code> tc_service::create_tc(
+std::expected<problem_dto::tc, error_code> tc_service::create_tc(
     db_connection& connection,
     std::int64_t problem_id,
-    const tc& tc_value
+    const problem_dto::tc& tc_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
@@ -37,8 +37,8 @@ std::expected<std::int64_t, error_code> tc_service::create_tc(
             pqxx::params{
                 problem_id,
                 tc_order,
-                tc_value.tc_input,
-                tc_value.tc_output
+                tc_value.input,
+                tc_value.output
             }
         );
 
@@ -51,16 +51,18 @@ std::expected<std::int64_t, error_code> tc_service::create_tc(
             return std::unexpected(version_exp.error());
         }
 
-        const std::int64_t tc_id = create_tc_result[0][0].as<std::int64_t>();
+        problem_dto::tc created_tc_value = tc_value;
+        created_tc_value.id = create_tc_result[0][0].as<std::int64_t>();
+        created_tc_value.order = tc_order;
         transaction.commit();
-        return tc_id;
+        return created_tc_value;
     }
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
     }
 }
 
-std::expected<tc, error_code> tc_service::get_tc(
+std::expected<problem_dto::tc, error_code> tc_service::get_tc(
     db_connection& connection,
     std::int64_t problem_id,
     std::int32_t tc_order
@@ -85,11 +87,11 @@ std::expected<tc, error_code> tc_service::get_tc(
             return std::unexpected(error_code::create(errno_error::invalid_argument));
         }
 
-        tc tc_value;
-        tc_value.tc_id = tc_query_result[0][0].as<std::int64_t>();
-        tc_value.tc_order = tc_query_result[0][1].as<std::int32_t>();
-        tc_value.tc_input = tc_query_result[0][2].as<std::string>();
-        tc_value.tc_output = tc_query_result[0][3].as<std::string>();
+        problem_dto::tc tc_value;
+        tc_value.id = tc_query_result[0][0].as<std::int64_t>();
+        tc_value.order = tc_query_result[0][1].as<std::int32_t>();
+        tc_value.input = tc_query_result[0][2].as<std::string>();
+        tc_value.output = tc_query_result[0][3].as<std::string>();
         return tc_value;
     }
     catch(const std::exception& exception){
@@ -128,7 +130,7 @@ std::expected<std::int32_t, error_code> tc_service::get_tc_count(
     }
 }
 
-std::expected<std::vector<tc>, error_code> tc_service::list_tcs(
+std::expected<std::vector<problem_dto::tc>, error_code> tc_service::list_tcs(
     db_connection& connection,
     std::int64_t problem_id
 ){
@@ -149,14 +151,14 @@ std::expected<std::vector<tc>, error_code> tc_service::list_tcs(
             pqxx::params{problem_id}
         );
 
-        std::vector<tc> tc_values;
+        std::vector<problem_dto::tc> tc_values;
         tc_values.reserve(tcs_query_result.size());
         for(const auto& row : tcs_query_result){
-            tc tc_value;
-            tc_value.tc_id = row[0].as<std::int64_t>();
-            tc_value.tc_order = row[1].as<std::int32_t>();
-            tc_value.tc_input = row[2].as<std::string>();
-            tc_value.tc_output = row[3].as<std::string>();
+            problem_dto::tc tc_value;
+            tc_value.id = row[0].as<std::int64_t>();
+            tc_value.order = row[1].as<std::int32_t>();
+            tc_value.input = row[2].as<std::string>();
+            tc_value.output = row[3].as<std::string>();
             tc_values.push_back(std::move(tc_value));
         }
 
@@ -170,12 +172,12 @@ std::expected<std::vector<tc>, error_code> tc_service::list_tcs(
 std::expected<void, error_code> tc_service::set_tc(
     db_connection& connection,
     std::int64_t problem_id,
-    const tc& tc_value
+    const problem_dto::tc& tc_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
-    if(problem_id <= 0 || tc_value.tc_order <= 0){
+    if(problem_id <= 0 || tc_value.order <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -189,9 +191,9 @@ std::expected<void, error_code> tc_service::set_tc(
             "WHERE problem_id = $1 AND testcase_order = $2",
             pqxx::params{
                 problem_id,
-                tc_value.tc_order,
-                tc_value.tc_input,
-                tc_value.tc_output
+                tc_value.order,
+                tc_value.input,
+                tc_value.output
             }
         );
 

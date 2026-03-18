@@ -34,18 +34,26 @@ namespace json_util{
     );
 
     boost::json::object make_problem_created_object(std::int64_t problem_id);
-    boost::json::object make_problem_limits_object(const limits& limits_value);
-    boost::json::object make_problem_statement_object(const problem_statement& statement_value);
-    boost::json::array make_problem_samples_array(const std::vector<sample>& sample_values);
+    boost::json::object make_problem_testcase_created_object(
+        std::int64_t testcase_id,
+        std::int32_t testcase_order
+    );
+    boost::json::object make_problem_limits_object(const problem_dto::limits& limits_value);
+    boost::json::object make_problem_statement_object(
+        const problem_dto::statement& statement_value
+    );
+    boost::json::array make_problem_samples_array(
+        const std::vector<problem_dto::sample>& sample_values
+    );
     boost::json::object make_problem_statistics_object(
-        const problem_statistics& statistics_value
+        const problem_dto::statistics& statistics_value
     );
     boost::json::object make_problem_detail_object(
         std::int64_t problem_id,
         std::int32_t version,
-        const limits& limits_value,
-        const std::optional<problem_statement>& statement_opt,
-        const std::vector<sample>& sample_values,
-        const problem_statistics& statistics_value
+        const problem_dto::limits& limits_value,
+        const std::optional<problem_dto::statement>& statement_opt,
+        const std::vector<problem_dto::sample>& sample_values,
+        const problem_dto::statistics& statistics_value
     );
 }

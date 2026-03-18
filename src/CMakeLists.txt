@@ -1,6 +1,7 @@
 add_library(lib STATIC)
 
 add_subdirectory(common)
+add_subdirectory(dto)
 add_subdirectory(db)
 add_subdirectory(http_handler)
 add_subdirectory(http_router)

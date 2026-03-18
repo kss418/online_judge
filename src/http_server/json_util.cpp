@@ -43,15 +43,27 @@ boost::json::object json_util::make_problem_created_object(std::int64_t problem_
     return response_object;
 }
 
-boost::json::object json_util::make_problem_limits_object(const limits& limits_value){
+boost::json::object json_util::make_problem_testcase_created_object(
+    std::int64_t testcase_id,
+    std::int32_t testcase_order
+){
+    boost::json::object response_object;
+    response_object["testcase_id"] = testcase_id;
+    response_object["testcase_order"] = testcase_order;
+    return response_object;
+}
+
+boost::json::object json_util::make_problem_limits_object(
+    const problem_dto::limits& limits_value
+){
     boost::json::object limits_object;
-    limits_object["memory_limit_mb"] = limits_value.memory_limit_mb;
-    limits_object["time_limit_ms"] = limits_value.time_limit_ms;
+    limits_object["memory_limit_mb"] = limits_value.memory_mb;
+    limits_object["time_limit_ms"] = limits_value.time_ms;
     return limits_object;
 }
 
 boost::json::object json_util::make_problem_statement_object(
-    const problem_statement& statement_value
+    const problem_dto::statement& statement_value
 ){
     boost::json::object statement_object;
     statement_object["description"] = statement_value.description;
@@ -64,22 +76,22 @@ boost::json::object json_util::make_problem_statement_object(
 }
 
 boost::json::array json_util::make_problem_samples_array(
-    const std::vector<sample>& sample_values
+    const std::vector<problem_dto::sample>& sample_values
 ){
     boost::json::array samples_array;
     samples_array.reserve(sample_values.size());
     for(const auto& sample_value : sample_values){
         boost::json::object sample_object;
-        sample_object["sample_order"] = sample_value.sample_order;
-        sample_object["sample_input"] = sample_value.sample_input;
-        sample_object["sample_output"] = sample_value.sample_output;
+        sample_object["sample_order"] = sample_value.order;
+        sample_object["sample_input"] = sample_value.input;
+        sample_object["sample_output"] = sample_value.output;
         samples_array.push_back(std::move(sample_object));
     }
     return samples_array;
 }
 
 boost::json::object json_util::make_problem_statistics_object(
-    const problem_statistics& statistics_value
+    const problem_dto::statistics& statistics_value
 ){
     boost::json::object statistics_object;
     statistics_object["submission_count"] = statistics_value.submission_count;
@@ -90,10 +102,10 @@ boost::json::object json_util::make_problem_statistics_object(
 boost::json::object json_util::make_problem_detail_object(
     std::int64_t problem_id,
     std::int32_t version,
-    const limits& limits_value,
-    const std::optional<problem_statement>& statement_opt,
-    const std::vector<sample>& sample_values,
-    const problem_statistics& statistics_value
+    const problem_dto::limits& limits_value,
+    const std::optional<problem_dto::statement>& statement_opt,
+    const std::vector<problem_dto::sample>& sample_values,
+    const problem_dto::statistics& statistics_value
 ){
     boost::json::object response_object;
     response_object["problem_id"] = problem_id;

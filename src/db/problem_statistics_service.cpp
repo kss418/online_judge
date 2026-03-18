@@ -2,7 +2,7 @@
 
 #include <pqxx/pqxx>
 
-std::expected<problem_statistics, error_code> problem_statistics_service::get_statistics(
+std::expected<problem_dto::statistics, error_code> problem_statistics_service::get_statistics(
     db_connection& connection,
     std::int64_t problem_id
 ){
@@ -26,7 +26,7 @@ std::expected<problem_statistics, error_code> problem_statistics_service::get_st
             return std::unexpected(error_code::create(errno_error::invalid_argument));
         }
 
-        problem_statistics statistics_value;
+        problem_dto::statistics statistics_value;
         statistics_value.submission_count = statistics_query_result[0][0].as<std::int64_t>();
         statistics_value.accepted_count = statistics_query_result[0][1].as<std::int64_t>();
         return statistics_value;

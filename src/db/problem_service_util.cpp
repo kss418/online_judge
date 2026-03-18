@@ -26,6 +26,25 @@ std::expected<bool, error_code> problem_service_util::exists_problem(
     return exists_query_result[0][0].as<bool>();
 }
 
+std::expected<void, error_code> problem_service_util::ensure_statement_row(
+    pqxx::transaction_base& transaction,
+    std::int64_t problem_id
+){
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    transaction.exec(
+        "INSERT INTO problem_statements("
+        "problem_id, description, input_format, output_format, note, created_at, updated_at"
+        ") VALUES($1, '', '', '', NULL, NOW(), NOW()) "
+        "ON CONFLICT(problem_id) DO NOTHING",
+        pqxx::params{problem_id}
+    );
+
+    return {};
+}
+
 std::expected<void, error_code> problem_service_util::increase_version(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
@@ -48,6 +67,11 @@ std::expected<std::int32_t, error_code> problem_service_util::increase_sample_co
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){
+    const auto ensure_statement_exp = ensure_statement_row(transaction, problem_id);
+    if(!ensure_statement_exp){
+        return std::unexpected(ensure_statement_exp.error());
+    }
+
     const auto increase_result = transaction.exec(
         "UPDATE problem_statements "
         "SET sample_count = sample_count + 1, updated_at = NOW() "

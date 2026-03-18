@@ -27,7 +27,7 @@ namespace problem_core_service{
     );
 
     std::expected<std::int64_t, error_code> create_problem(db_connection& connection);
-    std::expected<limits, error_code> get_limits(
+    std::expected<problem_dto::limits, error_code> get_limits(
         db_connection& connection,
         std::int64_t problem_id
     );
@@ -35,6 +35,6 @@ namespace problem_core_service{
     std::expected<void, error_code> set_limits(
         db_connection& connection,
         std::int64_t problem_id,
-        const limits& limits_value
+        const problem_dto::limits& limits_value
     );
 }

@@ -8,7 +8,9 @@
 #include <utility>
 #include <vector>
 
-std::expected<limits, error_code> tc_runner::read_problem_limits(std::int64_t problem_id){
+std::expected<problem_dto::limits, error_code> tc_runner::read_problem_limits(
+    std::int64_t problem_id
+){
     const auto time_limit_file_path_exp = tc_util::instance().make_tc_time_limit_file_path(
         problem_id
     );
@@ -35,16 +37,16 @@ std::expected<limits, error_code> tc_runner::read_problem_limits(std::int64_t pr
         return std::unexpected(memory_limit_mb_exp.error());
     }
 
-    limits problem_limits_value;
-    problem_limits_value.memory_limit_mb = *memory_limit_mb_exp;
-    problem_limits_value.time_limit_ms = *time_limit_ms_exp;
+    problem_dto::limits problem_limits_value;
+    problem_limits_value.memory_mb = *memory_limit_mb_exp;
+    problem_limits_value.time_ms = *time_limit_ms_exp;
     return problem_limits_value;
 }
 
 std::expected<sandbox_runner::run_result, error_code> tc_runner::run_one_tc(
     const pl_runner_util::prepared_source& prepared_source_value,
     const std::filesystem::path& input_path,
-    const limits& problem_limits_value
+    const problem_dto::limits& problem_limits_value
 ){
     if(!prepared_source_value.is_runnable()){
         return *prepared_source_value.compile_failed_run_result_;
@@ -53,8 +55,8 @@ std::expected<sandbox_runner::run_result, error_code> tc_runner::run_one_tc(
     return sandbox_runner::run(
         prepared_source_value.run_command_args_,
         input_path,
-        std::chrono::milliseconds{problem_limits_value.time_limit_ms},
-        problem_limits_value.memory_limit_mb
+        std::chrono::milliseconds{problem_limits_value.time_ms},
+        problem_limits_value.memory_mb
     );
 }
 
