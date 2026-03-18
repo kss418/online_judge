@@ -254,7 +254,6 @@ problem statement updated
 - authenticated but not admin: `401 Unauthorized`
 - invalid json: `400 Bad Request`
 - missing required fields: `400 Bad Request`
-- invalid `note` type: `400 Bad Request`
 - unknown `problem_id`: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 

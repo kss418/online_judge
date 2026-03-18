@@ -38,5 +38,7 @@ namespace problem_dto{
         std::int64_t accepted_count = 0;
     };
 
+    std::optional<limits> make_limits(const boost::json::object& request_object);
+    std::optional<statement> make_statement(const boost::json::object& request_object);
     std::optional<tc> make_tc(const boost::json::object& request_object);
 }

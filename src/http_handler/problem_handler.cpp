@@ -8,56 +8,6 @@
 #include "db/problem_statistics_service.hpp"
 #include "db/testcase_service.hpp"
 
-static std::expected<problem_dto::statement, problem_handler::response_type> parse_statement_request(
-    const problem_handler::request_type& request,
-    const boost::json::object& request_object
-){
-    const auto description_opt = http_util::get_non_empty_string_field(
-        request_object,
-        "description"
-    );
-    const auto input_format_opt = http_util::get_non_empty_string_field(
-        request_object,
-        "input_format"
-    );
-    const auto output_format_opt = http_util::get_non_empty_string_field(
-        request_object,
-        "output_format"
-    );
-    if(!description_opt || !input_format_opt || !output_format_opt){
-        return std::unexpected(http_util::create_text_response(
-            request,
-            boost::beast::http::status::bad_request,
-            "required fields: description, input_format, output_format\n"
-        ));
-    }
-
-    problem_dto::statement statement_value;
-    statement_value.description = std::string{*description_opt};
-    statement_value.input_format = std::string{*input_format_opt};
-    statement_value.output_format = std::string{*output_format_opt};
-
-    const auto* note_value = request_object.if_contains("note");
-    if(note_value != nullptr){
-        if(note_value->is_null()){
-            statement_value.note = std::nullopt;
-        }
-        else if(note_value->is_string()){
-            const auto& note_string = note_value->as_string();
-            statement_value.note = std::string{note_string.data(), note_string.size()};
-        }
-        else{
-            return std::unexpected(http_util::create_text_response(
-                request,
-                boost::beast::http::status::bad_request,
-                "note must be string or null\n"
-            ));
-        }
-    }
-
-    return statement_value;
-}
-
 problem_handler::response_type problem_handler::handle_get_problem_get(
     const request_type& request,
     db_connection& db_connection_value,
@@ -208,16 +158,8 @@ problem_handler::response_type problem_handler::handle_set_limits_put(
         );
     }
 
-    const auto& request_object = *request_object_opt;
-    const auto memory_limit_mb_opt = http_util::get_positive_int32_field(
-        request_object,
-        "memory_limit_mb"
-    );
-    const auto time_limit_ms_opt = http_util::get_positive_int32_field(
-        request_object,
-        "time_limit_ms"
-    );
-    if(!memory_limit_mb_opt || !time_limit_ms_opt){
+    const auto limits_opt = problem_dto::make_limits(*request_object_opt);
+    if(!limits_opt){
         return http_util::create_text_response(
             request,
             boost::beast::http::status::bad_request,
@@ -225,14 +167,10 @@ problem_handler::response_type problem_handler::handle_set_limits_put(
         );
     }
 
-    problem_dto::limits limits_value;
-    limits_value.memory_mb = *memory_limit_mb_opt;
-    limits_value.time_ms = *time_limit_ms_opt;
-
     const auto set_limits_exp = problem_core_service::set_limits(
         db_connection_value,
         problem_id,
-        limits_value
+        *limits_opt
     );
     if(!set_limits_exp){
         const auto code = set_limits_exp.error();
@@ -274,15 +212,19 @@ problem_handler::response_type problem_handler::handle_set_statement_put(
         );
     }
 
-    const auto statement_exp = parse_statement_request(request, *request_object_opt);
-    if(!statement_exp){
-        return std::move(statement_exp.error());
+    const auto statement_opt = problem_dto::make_statement(*request_object_opt);
+    if(!statement_opt){
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::bad_request,
+            "required fields: description, input_format, output_format\n"
+        );
     }
 
     const auto set_statement_exp = problem_content_service::set_statement(
         db_connection_value,
         problem_id,
-        *statement_exp
+        *statement_opt
     );
     if(!set_statement_exp){
         const auto code = set_statement_exp.error();
