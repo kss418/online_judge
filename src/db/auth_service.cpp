@@ -7,7 +7,7 @@
 
 #include <chrono>
 
-std::expected<std::optional<auth_service::auth_identity>, error_code> auth_service::auth_token(
+std::expected<std::optional<auth_dto::identity>, error_code> auth_service::auth_token(
     db_connection& connection_value,
     std::string_view token
 ){
@@ -45,12 +45,12 @@ std::expected<std::optional<auth_service::auth_identity>, error_code> auth_servi
         }
 
         const auth_util::token_identity& token_identity_value = get_token_identity_exp->value();
-        auth_service::auth_identity auth_identity_value;
-        auth_identity_value.user_id = token_identity_value.user_id;
-        auth_identity_value.is_admin = token_identity_value.is_admin;
+        auth_dto::identity identity_value;
+        identity_value.user_id = token_identity_value.user_id;
+        identity_value.is_admin = token_identity_value.is_admin;
 
         transaction.commit();
-        return auth_identity_value;
+        return identity_value;
     }
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));

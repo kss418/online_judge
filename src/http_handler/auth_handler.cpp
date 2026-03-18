@@ -1,6 +1,7 @@
 #include "http_handler/auth_handler.hpp"
 #include "db/auth_service.hpp"
 #include "db/login_service.hpp"
+#include "dto/auth_dto.hpp"
 #include "http_server/json_util.hpp"
 #include "http_server/http_util.hpp"
 
@@ -19,17 +20,8 @@ auth_handler::response_type auth_handler::handle_sign_up_post(
         );
     }
 
-    const auto& request_object = *request_object_opt;
-    const auto user_login_id_opt = http_util::get_non_empty_string_field(
-        request_object,
-        "user_login_id"
-    );
-    const auto raw_password_opt = http_util::get_non_empty_string_field(
-        request_object,
-        "raw_password"
-    );
-
-    if(!user_login_id_opt || !raw_password_opt){
+    const auto credentials_opt = auth_dto::make_credentials(*request_object_opt);
+    if(!credentials_opt){
         return http_util::create_text_response(
             request,
             boost::beast::http::status::bad_request,
@@ -39,8 +31,7 @@ auth_handler::response_type auth_handler::handle_sign_up_post(
 
     const auto sign_up_exp = login_service::sign_up(
         db_connection_value,
-        *user_login_id_opt,
-        *raw_password_opt
+        *credentials_opt
     );
     if(!sign_up_exp){
         const auto code = sign_up_exp.error();
@@ -59,11 +50,7 @@ auth_handler::response_type auth_handler::handle_sign_up_post(
     return json_util::create_json_response(
         request,
         boost::beast::http::status::created,
-        json_util::make_auth_session_object(
-            sign_up_exp->user_id,
-            sign_up_exp->is_admin,
-            sign_up_exp->token
-        )
+        json_util::make_auth_session_object(*sign_up_exp)
     );
 }
 
@@ -80,17 +67,8 @@ auth_handler::response_type auth_handler::handle_login_post(
         );
     }
 
-    const auto& request_object = *request_object_opt;
-    const auto user_login_id_opt = http_util::get_non_empty_string_field(
-        request_object,
-        "user_login_id"
-    );
-    const auto raw_password_opt = http_util::get_non_empty_string_field(
-        request_object,
-        "raw_password"
-    );
-
-    if(!user_login_id_opt || !raw_password_opt){
+    const auto credentials_opt = auth_dto::make_credentials(*request_object_opt);
+    if(!credentials_opt){
         return http_util::create_text_response(
             request,
             boost::beast::http::status::bad_request,
@@ -100,8 +78,7 @@ auth_handler::response_type auth_handler::handle_login_post(
 
     const auto login_exp = login_service::login(
         db_connection_value,
-        *user_login_id_opt,
-        *raw_password_opt
+        *credentials_opt
     );
     if(!login_exp){
         const auto code = login_exp.error();
@@ -126,11 +103,7 @@ auth_handler::response_type auth_handler::handle_login_post(
     return json_util::create_json_response(
         request,
         boost::beast::http::status::ok,
-        json_util::make_auth_session_object(
-            login_exp->value().user_id,
-            login_exp->value().is_admin,
-            login_exp->value().token
-        )
+        json_util::make_auth_session_object(login_exp->value())
     );
 }
 

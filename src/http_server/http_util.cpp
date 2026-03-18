@@ -173,7 +173,7 @@ std::optional<std::vector<std::string_view>> http_util::parse_path(
     return path_segments;
 }
 
-std::expected<auth_service::auth_identity, http_util::response_type> http_util::try_auth_bearer(
+std::expected<auth_dto::identity, http_util::response_type> http_util::try_auth_bearer(
     const request_type& request,
     db_connection& db_connection
 ){
@@ -211,7 +211,7 @@ std::expected<auth_service::auth_identity, http_util::response_type> http_util::
     return auth_identity_exp->value();
 }
 
-std::expected<auth_service::auth_identity, http_util::response_type> http_util::try_admin_auth_bearer(
+std::expected<auth_dto::identity, http_util::response_type> http_util::try_admin_auth_bearer(
     const request_type& request,
     db_connection& db_connection
 ){

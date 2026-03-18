@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dto/auth_dto.hpp"
 #include "dto/problem_dto.hpp"
 
 #include <boost/json.hpp>
@@ -22,11 +23,7 @@ namespace json_util{
         const boost::json::value& response_value
     );
 
-    boost::json::object make_auth_session_object(
-        std::int64_t user_id,
-        bool is_admin,
-        std::string_view token
-    );
+    boost::json::object make_auth_session_object(const auth_dto::session& session_value);
 
     boost::json::object make_submission_created_object(
         std::int64_t submission_id,

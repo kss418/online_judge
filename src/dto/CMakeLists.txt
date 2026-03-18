@@ -1,4 +1,5 @@
 target_sources(lib
     PRIVATE
+        auth_dto.cpp
         problem_dto.cpp
 )

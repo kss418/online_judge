@@ -2,6 +2,7 @@
 
 #include "db/auth_service.hpp"
 #include "db/db_connection.hpp"
+#include "dto/auth_dto.hpp"
 
 #include <boost/json.hpp>
 #include <boost/beast/http/message.hpp>
@@ -57,11 +58,11 @@ namespace http_util{
         std::string_view prefix,
         std::string_view path
     );
-    std::expected<auth_service::auth_identity, response_type> try_auth_bearer(
+    std::expected<auth_dto::identity, response_type> try_auth_bearer(
         const request_type& request,
         db_connection& db_connection
     );
-    std::expected<auth_service::auth_identity, response_type> try_admin_auth_bearer(
+    std::expected<auth_dto::identity, response_type> try_admin_auth_bearer(
         const request_type& request,
         db_connection& db_connection
     );
