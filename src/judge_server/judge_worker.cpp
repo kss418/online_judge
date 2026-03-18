@@ -74,15 +74,15 @@ submission_status judge_worker::to_submission_status(judge_result result){
             return submission_status::accepted;
         case judge_result::wrong_answer:
             return submission_status::wrong_answer;
-        case judge_result::time_limit_excced:
+        case judge_result::time_limit_exceeded:
             return submission_status::time_limit_exceeded;
-        case judge_result::memory_limit_excced:
+        case judge_result::memory_limit_exceeded:
             return submission_status::memory_limit_exceeded;
         case judge_result::runtime_error:
             return submission_status::runtime_error;
         case judge_result::compile_error:
             return submission_status::compile_error;
-        case judge_result::output_exceed:
+        case judge_result::output_exceeded:
             return submission_status::output_exceeded;
         case judge_result::invalid_output:
             return submission_status::wrong_answer;
@@ -132,10 +132,10 @@ std::expected<judge_result, error_code> judge_worker::judge_submission(
 
     for(const auto& run_result : run_results){
         if(run_result.time_limit_exceeded_){
-            return judge_result::time_limit_excced;
+            return judge_result::time_limit_exceeded;
         }
         if(run_result.memory_limit_exceeded_){
-            return judge_result::memory_limit_excced;
+            return judge_result::memory_limit_exceeded;
         }
         if(run_result.exit_code_ != 0){
             if(queued_submission_value.language == "cpp"){

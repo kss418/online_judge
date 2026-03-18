@@ -284,16 +284,16 @@ std::expected<void, error_code> tc_downloader::delete_outdated(std::int64_t prob
     }
 
     std::error_code iterator_ec;
-    std::filesystem::directory_iterator directory_iterator(problem_directory_path, iterator_ec);
+    std::filesystem::directory_iterator directory_it(problem_directory_path, iterator_ec);
     if(iterator_ec){
         return std::unexpected(error_code::create(error_code::map_errno(iterator_ec.value())));
     }
 
-    for(std::filesystem::directory_iterator end; directory_iterator != end;){
-        const std::filesystem::path entry_path = directory_iterator->path();
+    for(std::filesystem::directory_iterator end_it; directory_it != end_it;){
+        const std::filesystem::path entry_path = directory_it->path();
         const std::string extension = entry_path.extension().string();
         if(extension != ".in" && extension != ".out"){
-            directory_iterator.increment(iterator_ec);
+            directory_it.increment(iterator_ec);
             if(iterator_ec){
                 return std::unexpected(
                     error_code::create(error_code::map_errno(iterator_ec.value()))
@@ -311,7 +311,7 @@ std::expected<void, error_code> tc_downloader::delete_outdated(std::int64_t prob
         );
 
         if(parse_ec != std::errc{} || parse_end != stem.data() + stem.size()){
-            directory_iterator.increment(iterator_ec);
+            directory_it.increment(iterator_ec);
             if(iterator_ec){
                 return std::unexpected(
                     error_code::create(error_code::map_errno(iterator_ec.value()))
@@ -321,7 +321,7 @@ std::expected<void, error_code> tc_downloader::delete_outdated(std::int64_t prob
         }
         
         if(order <= tc_count_exp.value()){
-            directory_iterator.increment(iterator_ec);
+            directory_it.increment(iterator_ec);
             if(iterator_ec){
                 return std::unexpected(
                     error_code::create(error_code::map_errno(iterator_ec.value()))
@@ -335,7 +335,7 @@ std::expected<void, error_code> tc_downloader::delete_outdated(std::int64_t prob
             return std::unexpected(remove_file_exp.error());
         }
 
-        directory_iterator.increment(iterator_ec);
+        directory_it.increment(iterator_ec);
         if(iterator_ec){
             return std::unexpected(error_code::create(error_code::map_errno(iterator_ec.value())));
         }

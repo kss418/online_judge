@@ -41,7 +41,7 @@ namespace submission_util{
         pqxx::transaction_base& transaction,
         std::int64_t submission_id,
         submission_status to_status,
-        const std::optional<std::string>& reason = std::nullopt
+        const std::optional<std::string>& reason_opt = std::nullopt
     );
 
     std::expected<submission_dto::queued_submission, error_code> lease_submission(
@@ -53,9 +53,9 @@ namespace submission_util{
         pqxx::transaction_base& transaction,
         std::int64_t submission_id,
         submission_status to_status,
-        std::optional<std::int16_t> score,
-        std::optional<std::string> compile_output,
-        std::optional<std::string> judge_output,
-        std::optional<std::string> reason
+        std::optional<std::int16_t> score_opt,
+        std::optional<std::string> compile_output_opt,
+        std::optional<std::string> judge_output_opt,
+        std::optional<std::string> reason_opt
     );
 }

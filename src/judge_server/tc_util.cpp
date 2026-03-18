@@ -98,14 +98,14 @@ std::expected<std::int32_t, error_code> tc_util::count_tc_output(std::int64_t pr
     }
 
     std::error_code iterator_ec;
-    std::filesystem::directory_iterator directory_iterator(*problem_directory_path_exp, iterator_ec);
+    std::filesystem::directory_iterator directory_it(*problem_directory_path_exp, iterator_ec);
     if(iterator_ec){
         return std::unexpected(error_code::create(error_code::map_errno(iterator_ec.value())));
     }
 
     std::int32_t tc_count = 0;
-    for(std::filesystem::directory_iterator end; directory_iterator != end; ++directory_iterator){
-        if(directory_iterator->path().extension() == ".out"){
+    for(std::filesystem::directory_iterator end_it; directory_it != end_it; ++directory_it){
+        if(directory_it->path().extension() == ".out"){
             ++tc_count;
         }
     }
@@ -130,13 +130,13 @@ std::expected<std::int32_t, error_code> tc_util::validate_tc_output(
     tc_orders.reserve(static_cast<std::size_t>(tc_count));
 
     std::error_code iterator_ec;
-    std::filesystem::directory_iterator directory_iterator(*problem_directory_path_exp, iterator_ec);
+    std::filesystem::directory_iterator directory_it(*problem_directory_path_exp, iterator_ec);
     if(iterator_ec){
         return std::unexpected(error_code::create(error_code::map_errno(iterator_ec.value())));
     }
 
-    for(std::filesystem::directory_iterator end; directory_iterator != end; ++directory_iterator){
-        const std::filesystem::path entry_path = directory_iterator->path();
+    for(std::filesystem::directory_iterator end_it; directory_it != end_it; ++directory_it){
+        const std::filesystem::path entry_path = directory_it->path();
         if(entry_path.extension() != ".out"){
             continue;
         }

@@ -68,7 +68,7 @@ std::expected<void, error_code> submission_util::update_submission_status(
     pqxx::transaction_base& transaction,
     std::int64_t submission_id,
     submission_status to_status,
-    const std::optional<std::string>& reason
+    const std::optional<std::string>& reason_opt
 ){
     if(submission_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
@@ -94,7 +94,7 @@ std::expected<void, error_code> submission_util::update_submission_status(
     transaction.exec(
         "INSERT INTO submission_status_history(submission_id, from_status, to_status, reason) "
         "VALUES($1, $2::submission_status, $3::submission_status, $4)",
-        pqxx::params{submission_id, from_status, to_string(to_status), reason}
+        pqxx::params{submission_id, from_status, to_string(to_status), reason_opt}
     );
 
     return {};
@@ -151,10 +151,10 @@ std::expected<void, error_code> submission_util::finalize_submission(
     pqxx::transaction_base& transaction,
     std::int64_t submission_id,
     submission_status to_status,
-    std::optional<std::int16_t> score,
-    std::optional<std::string> compile_output,
-    std::optional<std::string> judge_output,
-    std::optional<std::string> reason
+    std::optional<std::int16_t> score_opt,
+    std::optional<std::string> compile_output_opt,
+    std::optional<std::string> judge_output_opt,
+    std::optional<std::string> reason_opt
 ){
     if(submission_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
@@ -183,16 +183,16 @@ std::expected<void, error_code> submission_util::finalize_submission(
         pqxx::params{
             submission_id,
             to_string(to_status),
-            score,
-            compile_output,
-            judge_output
+            score_opt,
+            compile_output_opt,
+            judge_output_opt
         }
     );
 
     transaction.exec(
         "INSERT INTO submission_status_history(submission_id, from_status, to_status, reason) "
         "VALUES($1, $2::submission_status, $3::submission_status, $4)",
-        pqxx::params{submission_id, from_status, to_string(to_status), reason}
+        pqxx::params{submission_id, from_status, to_string(to_status), reason_opt}
     );
 
     if(
