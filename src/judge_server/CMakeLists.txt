@@ -1,0 +1,10 @@
+target_sources(lib
+    PRIVATE
+        testcase_runner.cpp
+        sandbox_runner.cpp
+        judge_worker.cpp
+        judge_util.cpp
+        tc_util.cpp
+        checker.cpp
+        testcase_downloader.cpp
+)

@@ -1,0 +1,17 @@
+target_sources(lib
+    PRIVATE
+        db_connection.cpp
+        auth_util.cpp
+        auth_service.cpp
+        login_service.cpp
+        login_util.cpp
+        submission_util.cpp
+        submission_core_service.cpp
+        problem_core_service.cpp
+        problem_content_service.cpp
+        problem_statistics_service.cpp
+        problem_service_util.cpp
+        testcase_service.cpp
+        testcase_service_util.cpp
+        submission_service.cpp
+)
