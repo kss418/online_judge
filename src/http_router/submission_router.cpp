@@ -17,26 +17,33 @@ submission_router::response_type submission_router::route(
 
     const auto& path_segments = *path_segments_opt;
     if(path_segments.size() == 1){
-        const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
-        if(!problem_id_opt){
+        const auto resource_id_opt = string_util::parse_positive_int64(path_segments[0]);
+        if(!resource_id_opt){
             return http_util::not_found_response(request);
         }
 
-        return handle_create_submission(request, *problem_id_opt);
+        return handle_submission(request, *resource_id_opt);
     }
 
     return http_util::not_found_response(request);
 }
 
-submission_router::response_type submission_router::handle_create_submission(
+submission_router::response_type submission_router::handle_submission(
     const request_type& request,
-    std::int64_t problem_id
+    std::int64_t resource_id
 ){
     if(request.method() == boost::beast::http::verb::post){
         return submission_handler::handle_create_submission_post(
             request,
             db_connection_,
-            problem_id
+            resource_id
+        );
+    }
+    if(request.method() == boost::beast::http::verb::get){
+        return submission_handler::handle_get_submission_get(
+            request,
+            db_connection_,
+            resource_id
         );
     }
 

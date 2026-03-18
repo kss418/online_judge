@@ -28,6 +28,7 @@ int main(){
     return 0;
 }
 }"
+get_submission_response_file="$(mktemp)"
 test_log_path=""
 server_log_path=""
 server_pid=""
@@ -43,7 +44,8 @@ cleanup(){
         "${test_log_temp_file}" \
         "${server_log_temp_file}" \
         "${sign_up_response_file}" \
-        "${submission_response_file}"
+        "${submission_response_file}" \
+        "${get_submission_response_file}"
 
     cleanup_http_server
 }
@@ -240,6 +242,90 @@ if status != "queued":
 print(submission_id)
 PY
 )"
+
+get_submission_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${get_submission_response_file}" \
+        --write-out "%{http_code}" \
+        --request GET \
+        -H "Authorization: Bearer ${sign_up_token}" \
+        "${base_url}/api/submission/${submission_id}"
+)"
+
+if [[ "${get_submission_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "submission get failed: status=${get_submission_status_code}"
+    publish_failure_logs
+    echo "submission get test failed: expected status 200, got ${get_submission_status_code}" >&2
+    echo "response body:" >&2
+    cat "${get_submission_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "submission get passed: status=${get_submission_status_code}"
+print_success_log "submission get success"
+
+if ! python3 \
+    - "${get_submission_response_file}" \
+    "${submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "${submission_language}" \
+    "${submission_source_code}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    submission_detail = json.load(response_file)
+
+expected_submission_id = int(sys.argv[2])
+expected_user_id = int(sys.argv[3])
+expected_problem_id = int(sys.argv[4])
+expected_language = sys.argv[5]
+expected_source_code = sys.argv[6]
+
+if submission_detail.get("submission_id") != expected_submission_id:
+    raise SystemExit("submission_id mismatch in submission get response")
+
+if submission_detail.get("user_id") != expected_user_id:
+    raise SystemExit("user_id mismatch in submission get response")
+
+if submission_detail.get("problem_id") != expected_problem_id:
+    raise SystemExit("problem_id mismatch in submission get response")
+
+if submission_detail.get("language") != expected_language:
+    raise SystemExit("language mismatch in submission get response")
+
+if submission_detail.get("source_code") != expected_source_code:
+    raise SystemExit("source_code mismatch in submission get response")
+
+if submission_detail.get("status") != "queued":
+    raise SystemExit("expected submission get status to be queued")
+
+if submission_detail.get("score", "missing") is not None:
+    raise SystemExit("expected score to be null before judging")
+
+if submission_detail.get("compile_output", "missing") is not None:
+    raise SystemExit("expected compile_output to be null before judging")
+
+if submission_detail.get("judge_output", "missing") is not None:
+    raise SystemExit("expected judge_output to be null before judging")
+
+created_at = submission_detail.get("created_at")
+updated_at = submission_detail.get("updated_at")
+
+if not isinstance(created_at, str) or not created_at:
+    raise SystemExit("missing created_at in submission get response")
+
+if not isinstance(updated_at, str) or not updated_at:
+    raise SystemExit("missing updated_at in submission get response")
+PY
+then
+    append_log_line "${test_log_temp_file}" "submission get validation failed"
+    publish_failure_logs
+    exit 1
+fi
 
 append_log_line "${test_log_temp_file}" "submission flow test passed"
 print_success_log "submission flow test passed: login_id=${user_login_id}, user_id=${sign_up_user_id}, problem_id=${problem_id}, submission_id=${submission_id}"

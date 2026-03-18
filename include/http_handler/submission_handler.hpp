@@ -16,4 +16,9 @@ namespace submission_handler{
         db_connection& db_connection_value,
         std::int64_t problem_id
     );
+    response_type handle_get_submission_get(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t submission_id
+    );
 }

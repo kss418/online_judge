@@ -64,3 +64,49 @@ submission_handler::response_type submission_handler::handle_create_submission_p
         json_util::make_submission_created_object(created_value)
     );
 }
+
+submission_handler::response_type submission_handler::handle_get_submission_get(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t submission_id
+){
+    const auto auth_identity_exp = http_util::try_auth_bearer(request, db_connection_value);
+    if(!auth_identity_exp){
+        return std::move(auth_identity_exp.error());
+    }
+
+    const auto submission_detail_exp = submission_core_service::get_submission(
+        db_connection_value,
+        submission_id
+    );
+    if(!submission_detail_exp){
+        const auto code = submission_detail_exp.error();
+        const auto status =
+            code == errno_error::invalid_argument
+                ? boost::beast::http::status::not_found
+                : boost::beast::http::status::internal_server_error;
+
+        return http_util::create_text_response(
+            request,
+            status,
+            "failed to get submission: " + to_string(code) + "\n"
+        );
+    }
+
+    if(
+        !auth_identity_exp->is_admin &&
+        submission_detail_exp->user_id != auth_identity_exp->user_id
+    ){
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::forbidden,
+            "submission owner or admin required\n"
+        );
+    }
+
+    return json_util::create_json_response(
+        request,
+        boost::beast::http::status::ok,
+        json_util::make_submission_detail_object(*submission_detail_exp)
+    );
+}

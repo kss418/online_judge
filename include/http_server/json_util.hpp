@@ -29,6 +29,9 @@ namespace json_util{
     boost::json::object make_submission_created_object(
         const submission_dto::created& created_value
     );
+    boost::json::object make_submission_detail_object(
+        const submission_dto::detail& detail_value
+    );
 
     boost::json::object make_problem_created_object(std::int64_t problem_id);
     boost::json::object make_problem_testcase_created_object(

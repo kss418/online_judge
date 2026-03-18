@@ -14,4 +14,8 @@ namespace submission_core_service{
         std::int64_t problem_id,
         const submission_dto::source& source_value
     );
+    std::expected<submission_dto::detail, error_code> get_submission(
+        db_connection& connection,
+        std::int64_t submission_id
+    );
 }

@@ -20,9 +20,9 @@ public:
     response_type route(const request_type& request, std::string_view path);
 
 private:
-    response_type handle_create_submission(
+    response_type handle_submission(
         const request_type& request,
-        std::int64_t problem_id
+        std::int64_t resource_id
     );
 
     db_connection& db_connection_;
