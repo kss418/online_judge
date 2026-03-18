@@ -6,6 +6,8 @@ project_root="$(cd "${script_dir}/.." && pwd)"
 
 # shellcheck disable=SC1091
 source "${script_dir}/test_util.sh"
+# shellcheck disable=SC1091
+source "${script_dir}/http_server_test_util.sh"
 
 if [[ -f "${project_root}/.env" ]]; then
     set -a
@@ -29,6 +31,8 @@ int main(){
 test_log_path=""
 server_log_path=""
 server_pid=""
+test_log_name="test_submission_flow.log"
+server_log_name="test_submission_flow_server.log"
 test_log_temp_file="$(mktemp)"
 server_log_temp_file="$(mktemp)"
 sign_up_response_file="$(mktemp)"
@@ -41,48 +45,7 @@ cleanup(){
         "${sign_up_response_file}" \
         "${submission_response_file}"
 
-    if [[ -n "${server_pid}" ]]; then
-        kill "${server_pid}" >/dev/null 2>&1 || true
-        wait "${server_pid}" >/dev/null 2>&1 || true
-    fi
-}
-
-require_command(){
-    if ! command -v "$1" >/dev/null 2>&1; then
-        echo "missing command: $1" >&2
-        exit 1
-    fi
-}
-
-health_check(){
-    curl --silent --show-error --fail "${base_url}/api/system/health" >/dev/null 2>&1
-}
-
-wait_for_health(){
-    local attempt=0
-
-    while (( attempt < 50 )); do
-        if health_check; then
-            return 0
-        fi
-
-        sleep 0.2
-        attempt=$((attempt + 1))
-    done
-
-    return 1
-}
-
-publish_failure_logs(){
-    if [[ -z "${test_log_path}" ]]; then
-        test_log_path="$(publish_log_file "${test_log_temp_file}" "test_submission_flow.log")"
-        print_log_file_created "${test_log_path}"
-    fi
-
-    if [[ -z "${server_log_path}" ]] && [[ -n "${server_pid}" || -s "${server_log_temp_file}" ]]; then
-        server_log_path="$(publish_log_file "${server_log_temp_file}" "test_submission_flow_server.log")"
-        print_log_file_created "${server_log_path}"
-    fi
+    cleanup_http_server
 }
 
 print_success_log(){
@@ -132,30 +95,7 @@ require_command python3
 append_log_line "${test_log_temp_file}" "base_url=${base_url}"
 append_log_line "${test_log_temp_file}" "user_login_id=${user_login_id}"
 
-if ! health_check; then
-    if [[ ! -x "${http_server_bin}" ]]; then
-        echo "http_server binary not found or not executable: ${http_server_bin}" >&2
-        append_log_line "${test_log_temp_file}" "http_server binary not found: ${http_server_bin}"
-        publish_failure_logs
-        echo "hint: run 'cmake --build ${project_root}/build'" >&2
-        exit 1
-    fi
-
-    append_log_line "${test_log_temp_file}" "starting local http_server"
-    HTTP_PORT="${http_port}" "${http_server_bin}" >"${server_log_temp_file}" 2>&1 &
-    server_pid="$!"
-
-    if ! wait_for_health; then
-        echo "failed to start http_server" >&2
-        append_log_line "${test_log_temp_file}" "failed to start local http_server"
-        publish_failure_logs
-        echo "server log:" >&2
-        cat "${server_log_temp_file}" >&2
-        exit 1
-    fi
-else
-    append_log_line "${test_log_temp_file}" "reusing existing http_server"
-fi
+ensure_http_server
 
 sign_up_request_body="$(
     python3 - "${user_login_id}" "${raw_password}" <<'PY'

@@ -6,6 +6,56 @@
 #include "db/problem_core_service.hpp"
 #include "db/problem_statistics_service.hpp"
 
+static std::expected<problem_statement, problem_handler::response_type> parse_statement_request(
+    const problem_handler::request_type& request,
+    const boost::json::object& request_object
+){
+    const auto description_opt = http_util::get_non_empty_string_field(
+        request_object,
+        "description"
+    );
+    const auto input_format_opt = http_util::get_non_empty_string_field(
+        request_object,
+        "input_format"
+    );
+    const auto output_format_opt = http_util::get_non_empty_string_field(
+        request_object,
+        "output_format"
+    );
+    if(!description_opt || !input_format_opt || !output_format_opt){
+        return std::unexpected(http_util::create_text_response(
+            request,
+            boost::beast::http::status::bad_request,
+            "required fields: description, input_format, output_format\n"
+        ));
+    }
+
+    problem_statement statement_value;
+    statement_value.description = std::string{*description_opt};
+    statement_value.input_format = std::string{*input_format_opt};
+    statement_value.output_format = std::string{*output_format_opt};
+
+    const auto* note_value = request_object.if_contains("note");
+    if(note_value != nullptr){
+        if(note_value->is_null()){
+            statement_value.note = std::nullopt;
+        }
+        else if(note_value->is_string()){
+            const auto& note_string = note_value->as_string();
+            statement_value.note = std::string{note_string.data(), note_string.size()};
+        }
+        else{
+            return std::unexpected(http_util::create_text_response(
+                request,
+                boost::beast::http::status::bad_request,
+                "note must be string or null\n"
+            ));
+        }
+    }
+
+    return statement_value;
+}
+
 problem_handler::response_type problem_handler::handle_get_problem_get(
     const request_type& request,
     db_connection& db_connection_value,
@@ -200,5 +250,55 @@ problem_handler::response_type problem_handler::handle_set_limits_put(
         request,
         boost::beast::http::status::ok,
         "problem limits updated\n"
+    );
+}
+
+problem_handler::response_type problem_handler::handle_set_statement_put(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t problem_id
+){
+    if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_value);
+        !auth_identity_exp){
+        return std::move(auth_identity_exp.error());
+    }
+
+    const auto request_object_opt = http_util::parse_json_object(request);
+    if(!request_object_opt){
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::bad_request,
+            "invalid json\n"
+        );
+    }
+
+    const auto statement_exp = parse_statement_request(request, *request_object_opt);
+    if(!statement_exp){
+        return std::move(statement_exp.error());
+    }
+
+    const auto set_statement_exp = problem_content_service::set_statement(
+        db_connection_value,
+        problem_id,
+        *statement_exp
+    );
+    if(!set_statement_exp){
+        const auto code = set_statement_exp.error();
+        const auto status =
+            code.is_bad_request_error()
+                ? boost::beast::http::status::bad_request
+                : boost::beast::http::status::internal_server_error;
+
+        return http_util::create_text_response(
+            request,
+            status,
+            "failed to set problem statement: " + to_string(code) + "\n"
+        );
+    }
+
+    return http_util::create_text_response(
+        request,
+        boost::beast::http::status::ok,
+        "problem statement updated\n"
     );
 }

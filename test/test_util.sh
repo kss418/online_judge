@@ -3,6 +3,13 @@
 test_util_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 test_util_project_root="$(cd "${test_util_dir}/.." && pwd)"
 
+require_command(){
+    if ! command -v "$1" >/dev/null 2>&1; then
+        echo "missing command: $1" >&2
+        return 1
+    fi
+}
+
 create_log_file(){
     local log_name="$1"
     local log_base_name=""
