@@ -5,7 +5,10 @@
 
 ## structure
 
-- [`api/http_api.md`](./api/http_api.md)
+- [`api/system_api.md`](./api/system_api.md)
+- [`api/auth_api.md`](./api/auth_api.md)
+- [`api/submission_api.md`](./api/submission_api.md)
+- [`api/problem_api.md`](./api/problem_api.md)
 - [`schema/auth_schema.md`](./schema/auth_schema.md)
 - [`schema/problem_schema.md`](./schema/problem_schema.md)
 - [`schema/submission_schema.md`](./schema/submission_schema.md)
