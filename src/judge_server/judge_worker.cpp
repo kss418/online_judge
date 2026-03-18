@@ -124,7 +124,7 @@ judge_worker::finalize_submission_data judge_worker::make_finalize_submission_da
 }
 
 std::expected<judge_result, error_code> judge_worker::judge_submission(
-    const queued_submission& queued_submission_value,
+    const submission_dto::queued_submission& queued_submission_value,
     const std::vector<sandbox_runner::run_result>& run_results
 ){
     std::vector<std::vector<std::string>> output_lines;
@@ -159,7 +159,8 @@ std::expected<void, error_code> judge_worker::run(){
         }
 
         if(lease_submission_exp->has_value()){
-            const queued_submission& queued_submission_value = lease_submission_exp->value();
+            const submission_dto::queued_submission& queued_submission_value =
+                lease_submission_exp->value();
             const auto save_source_code_exp = save_source_code(queued_submission_value);
             if(!save_source_code_exp){
                 return std::unexpected(save_source_code_exp.error());
@@ -260,20 +261,20 @@ std::expected<void, error_code> judge_worker::run(){
     }
 }
 
-std::expected<std::optional<queued_submission>, error_code> judge_worker::lease_submission(){
+std::expected<std::optional<submission_dto::queued_submission>, error_code> judge_worker::lease_submission(){
     try{
         pqxx::work transaction(db_connection_.connection());
         auto lease_submission_exp = submission_util::lease_submission(transaction, lease_duration_);
         if(!lease_submission_exp){
             if(is_queue_empty_error(lease_submission_exp.error())){
-                return std::optional<queued_submission>{};
+                return std::optional<submission_dto::queued_submission>{};
             }
 
             return std::unexpected(lease_submission_exp.error());
         }
 
         transaction.commit();
-        return std::optional<queued_submission>{std::move(*lease_submission_exp)};
+        return std::optional<submission_dto::queued_submission>{std::move(*lease_submission_exp)};
     }
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
@@ -281,7 +282,7 @@ std::expected<std::optional<queued_submission>, error_code> judge_worker::lease_
 }
 
 std::expected<void, error_code> judge_worker::save_source_code(
-    const queued_submission& queued_submission_value
+    const submission_dto::queued_submission& queued_submission_value
 ){
     const auto source_file_path_exp = judge_util::instance().make_source_file_path(
         queued_submission_value.submission_id,

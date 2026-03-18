@@ -1,4 +1,5 @@
 #include "http_handler/submission_handler.hpp"
+#include "dto/submission_dto.hpp"
 #include "http_server/json_util.hpp"
 #include "http_server/http_util.hpp"
 
@@ -24,11 +25,8 @@ submission_handler::response_type submission_handler::handle_create_submission_p
         );
     }
 
-    const auto& request_object = *request_object_opt;
-    const auto language_opt = http_util::get_non_empty_string_field(request_object, "language");
-    const auto source_code_opt = http_util::get_non_empty_string_field(request_object, "source_code");
-
-    if(!language_opt || !source_code_opt){
+    const auto source_opt = submission_dto::make_source(*request_object_opt);
+    if(!source_opt){
         return http_util::create_text_response(
             request,
             boost::beast::http::status::bad_request,
@@ -40,8 +38,7 @@ submission_handler::response_type submission_handler::handle_create_submission_p
         db_connection_value,
         auth_identity_exp->user_id,
         problem_id,
-        *language_opt,
-        *source_code_opt
+        *source_opt
     );
     if(!create_submission_exp){
         const auto code = create_submission_exp.error();
@@ -57,12 +54,13 @@ submission_handler::response_type submission_handler::handle_create_submission_p
         );
     }
 
+    submission_dto::created created_value;
+    created_value.submission_id = create_submission_exp.value();
+    created_value.status = to_string(submission_status::queued);
+
     return json_util::create_json_response(
         request,
         boost::beast::http::status::created,
-        json_util::make_submission_created_object(
-            create_submission_exp.value(),
-            to_string(submission_status::queued)
-        )
+        json_util::make_submission_created_object(created_value)
     );
 }

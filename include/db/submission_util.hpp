@@ -1,5 +1,6 @@
 #pragma once
 #include "common/error_code.hpp"
+#include "dto/submission_dto.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -26,13 +27,6 @@ enum class submission_status{
 
 std::string to_string(submission_status status);
 
-struct queued_submission{
-    std::int64_t submission_id = 0;
-    std::int64_t problem_id = 0;
-    std::string language;
-    std::string source_code;
-};
-
 namespace submission_util{
     inline constexpr std::string_view SUBMISSION_QUEUE_CHANNEL = "submission_queue";
 
@@ -40,8 +34,7 @@ namespace submission_util{
         pqxx::transaction_base& transaction,
         std::int64_t user_id,
         std::int64_t problem_id,
-        const std::string& language,
-        const std::string& source_code
+        const submission_dto::source& source_value
     );
 
     std::expected<void, error_code> update_submission_status(
@@ -51,7 +44,7 @@ namespace submission_util{
         const std::optional<std::string>& reason = std::nullopt
     );
 
-    std::expected<queued_submission, error_code> lease_submission(
+    std::expected<submission_dto::queued_submission, error_code> lease_submission(
         pqxx::transaction_base& transaction,
         std::chrono::seconds lease_duration
     );

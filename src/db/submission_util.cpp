@@ -9,10 +9,14 @@ std::expected<std::int64_t, error_code> submission_util::create_submission(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     std::int64_t problem_id,
-    const std::string& language,
-    const std::string& source_code
+    const submission_dto::source& source_value
 ){
-    if(user_id <= 0 || problem_id <= 0 || language.empty() || source_code.empty()){
+    if(
+        user_id <= 0 ||
+        problem_id <= 0 ||
+        source_value.language.empty() ||
+        source_value.source_code.empty()
+    ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -20,7 +24,12 @@ std::expected<std::int64_t, error_code> submission_util::create_submission(
         "INSERT INTO submissions(user_id, problem_id, language, source_code) "
         "VALUES($1, $2, $3, $4) "
         "RETURNING submission_id",
-        pqxx::params{user_id, problem_id, language, source_code}
+        pqxx::params{
+            user_id,
+            problem_id,
+            source_value.language,
+            source_value.source_code
+        }
     );
 
     if(create_submission_result.empty()){
@@ -91,7 +100,7 @@ std::expected<void, error_code> submission_util::update_submission_status(
     return {};
 }
 
-std::expected<queued_submission, error_code> submission_util::lease_submission(
+std::expected<submission_dto::queued_submission, error_code> submission_util::lease_submission(
     pqxx::transaction_base& transaction,
     std::chrono::seconds lease_duration
 ){
@@ -120,7 +129,7 @@ std::expected<queued_submission, error_code> submission_util::lease_submission(
         return std::unexpected(error_code::create(errno_error::resource_temporarily_unavailable));
     }
 
-    queued_submission queued_submission_value;
+    submission_dto::queued_submission queued_submission_value;
     queued_submission_value.submission_id = lease_candidate_result[0][0].as<std::int64_t>();
     queued_submission_value.problem_id = lease_candidate_result[0][1].as<std::int64_t>();
     queued_submission_value.language = lease_candidate_result[0][2].as<std::string>();

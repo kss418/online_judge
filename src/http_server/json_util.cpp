@@ -24,12 +24,11 @@ boost::json::object json_util::make_auth_session_object(const auth_dto::session&
 }
 
 boost::json::object json_util::make_submission_created_object(
-    std::int64_t submission_id,
-    std::string_view status_value
+    const submission_dto::created& created_value
 ){
     boost::json::object response_object;
-    response_object["submission_id"] = submission_id;
-    response_object["status"] = status_value;
+    response_object["submission_id"] = created_value.submission_id;
+    response_object["status"] = created_value.status;
     return response_object;
 }
 

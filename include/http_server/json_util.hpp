@@ -2,6 +2,7 @@
 
 #include "dto/auth_dto.hpp"
 #include "dto/problem_dto.hpp"
+#include "dto/submission_dto.hpp"
 
 #include <boost/json.hpp>
 #include <boost/beast/http/message.hpp>
@@ -26,8 +27,7 @@ namespace json_util{
     boost::json::object make_auth_session_object(const auth_dto::session& session_value);
 
     boost::json::object make_submission_created_object(
-        std::int64_t submission_id,
-        std::string_view status_value
+        const submission_dto::created& created_value
     );
 
     boost::json::object make_problem_created_object(std::int64_t problem_id);
