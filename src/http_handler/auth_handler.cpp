@@ -1,9 +1,8 @@
 #include "http_handler/auth_handler.hpp"
 #include "db/auth_service.hpp"
 #include "db/login_service.hpp"
+#include "http_server/json_util.hpp"
 #include "http_server/http_util.hpp"
-
-#include <boost/json.hpp>
 
 #include <string>
 
@@ -57,18 +56,15 @@ auth_handler::response_type auth_handler::handle_sign_up_post(
         );
     }
 
-    boost::json::object response_object;
-    response_object["user_id"] = sign_up_exp->user_id;
-    response_object["is_admin"] = sign_up_exp->is_admin;
-    response_object["token"] = sign_up_exp->token;
-
-    auto response = http_util::create_text_response(
+    return json_util::create_json_response(
         request,
         boost::beast::http::status::created,
-        boost::json::serialize(response_object) + "\n"
+        json_util::make_auth_session_object(
+            sign_up_exp->user_id,
+            sign_up_exp->is_admin,
+            sign_up_exp->token
+        )
     );
-    response.set(boost::beast::http::field::content_type, "application/json; charset=utf-8");
-    return response;
 }
 
 auth_handler::response_type auth_handler::handle_login_post(
@@ -127,18 +123,15 @@ auth_handler::response_type auth_handler::handle_login_post(
         );
     }
 
-    boost::json::object response_object;
-    response_object["user_id"] = login_exp->value().user_id;
-    response_object["is_admin"] = login_exp->value().is_admin;
-    response_object["token"] = login_exp->value().token;
-
-    auto response = http_util::create_text_response(
+    return json_util::create_json_response(
         request,
         boost::beast::http::status::ok,
-        boost::json::serialize(response_object) + "\n"
+        json_util::make_auth_session_object(
+            login_exp->value().user_id,
+            login_exp->value().is_admin,
+            login_exp->value().token
+        )
     );
-    response.set(boost::beast::http::field::content_type, "application/json; charset=utf-8");
-    return response;
 }
 
 auth_handler::response_type auth_handler::handle_token_renew_post(

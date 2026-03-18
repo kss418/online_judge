@@ -1,6 +1,8 @@
 #pragma once
 
 #include "common/error_code.hpp"
+#include "db/db_connection.hpp"
+#include "dto/problem_dto.hpp"
 
 #include <cstdint>
 #include <expected>
@@ -10,6 +12,11 @@ class transaction_base;
 }
 
 namespace problem_statistics_service{
+    std::expected<problem_statistics, error_code> get_statistics(
+        db_connection& connection,
+        std::int64_t problem_id
+    );
+
     std::expected<void, error_code> create_problem_statistics(
         pqxx::transaction_base& transaction,
         std::int64_t problem_id

@@ -1,10 +1,9 @@
 #include "http_handler/submission_handler.hpp"
+#include "http_server/json_util.hpp"
 #include "http_server/http_util.hpp"
 
 #include "db/submission_core_service.hpp"
 #include "db/submission_util.hpp"
-
-#include <boost/json.hpp>
 
 submission_handler::response_type submission_handler::handle_create_submission_post(
     const request_type& request,
@@ -58,15 +57,12 @@ submission_handler::response_type submission_handler::handle_create_submission_p
         );
     }
 
-    boost::json::object response_object;
-    response_object["submission_id"] = create_submission_exp.value();
-    response_object["status"] = to_string(submission_status::queued);
-
-    auto response = http_util::create_text_response(
+    return json_util::create_json_response(
         request,
         boost::beast::http::status::created,
-        boost::json::serialize(response_object) + "\n"
+        json_util::make_submission_created_object(
+            create_submission_exp.value(),
+            to_string(submission_status::queued)
+        )
     );
-    response.set(boost::beast::http::field::content_type, "application/json; charset=utf-8");
-    return response;
 }

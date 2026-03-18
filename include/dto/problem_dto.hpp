@@ -29,3 +29,8 @@ struct sample{
     std::string sample_input;
     std::string sample_output;
 };
+
+struct problem_statistics{
+    std::int64_t submission_count = 0;
+    std::int64_t accepted_count = 0;
+};

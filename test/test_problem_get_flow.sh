@@ -1,0 +1,402 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+project_root="$(cd "${script_dir}/.." && pwd)"
+
+# shellcheck disable=SC1091
+source "${script_dir}/test_util.sh"
+
+if [[ -f "${project_root}/.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "${project_root}/.env"
+    set +a
+fi
+
+http_port="${HTTP_PORT:-18080}"
+base_url="${PROBLEM_GET_FLOW_TEST_BASE_URL:-http://127.0.0.1:${http_port}}"
+http_server_bin="${PROBLEM_GET_FLOW_TEST_HTTP_SERVER_BIN:-${project_root}/http_server}"
+test_log_path=""
+server_log_path=""
+server_pid=""
+test_log_temp_file="$(mktemp)"
+server_log_temp_file="$(mktemp)"
+full_problem_response_file="$(mktemp)"
+blank_problem_response_file="$(mktemp)"
+missing_problem_response_file="$(mktemp)"
+
+cleanup(){
+    rm -f \
+        "${test_log_temp_file}" \
+        "${server_log_temp_file}" \
+        "${full_problem_response_file}" \
+        "${blank_problem_response_file}" \
+        "${missing_problem_response_file}"
+
+    if [[ -n "${server_pid}" ]]; then
+        kill "${server_pid}" >/dev/null 2>&1 || true
+        wait "${server_pid}" >/dev/null 2>&1 || true
+    fi
+}
+
+require_command(){
+    if ! command -v "$1" >/dev/null 2>&1; then
+        echo "missing command: $1" >&2
+        exit 1
+    fi
+}
+
+health_check(){
+    curl --silent --show-error --fail "${base_url}/api/system/health" >/dev/null 2>&1
+}
+
+wait_for_health(){
+    local attempt=0
+
+    while (( attempt < 50 )); do
+        if health_check; then
+            return 0
+        fi
+
+        sleep 0.2
+        attempt=$((attempt + 1))
+    done
+
+    return 1
+}
+
+publish_failure_logs(){
+    if [[ -z "${test_log_path}" ]]; then
+        test_log_path="$(publish_log_file "${test_log_temp_file}" "test_problem_get_flow.log")"
+        print_log_file_created "${test_log_path}"
+    fi
+
+    if [[ -z "${server_log_path}" ]] && [[ -n "${server_pid}" || -s "${server_log_temp_file}" ]]; then
+        server_log_path="$(publish_log_file "${server_log_temp_file}" "test_problem_get_flow_server.log")"
+        print_log_file_created "${server_log_path}"
+    fi
+}
+
+print_success_log(){
+    local log_message="$1"
+
+    if [[ -z "${log_message}" ]]; then
+        echo "missing log_message" >&2
+        return 1
+    fi
+
+    printf '%s\n' "${log_message}"
+    append_log_line "${test_log_temp_file}" "${log_message}"
+}
+
+create_full_problem(){
+    if [[ -z "${DB_HOST:-}" || -z "${DB_PORT:-}" || -z "${DB_USER:-}" || -z "${DB_PASSWORD:-}" || -z "${DB_NAME:-}" ]]; then
+        echo "missing required db envs" >&2
+        return 1
+    fi
+
+    PGPASSWORD="${DB_PASSWORD}" psql \
+        -X \
+        -h "${DB_HOST}" \
+        -p "${DB_PORT}" \
+        -U "${DB_USER}" \
+        -d "${DB_NAME}" \
+        -v ON_ERROR_STOP=1 \
+        -qAt <<'SQL' | sed -n '1p'
+WITH created_problem AS (
+    INSERT INTO problems(version)
+    VALUES(3)
+    RETURNING problem_id
+), inserted_limits AS (
+    INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms, updated_at)
+    SELECT problem_id, 512, 2000, NOW()
+    FROM created_problem
+), inserted_statistics AS (
+    INSERT INTO problem_statistics(problem_id, submission_count, accepted_count, updated_at)
+    SELECT problem_id, 12, 7, NOW()
+    FROM created_problem
+), inserted_statement AS (
+    INSERT INTO problem_statements(
+        problem_id,
+        description,
+        input_format,
+        output_format,
+        sample_count,
+        testcase_count,
+        note,
+        created_at,
+        updated_at
+    )
+    SELECT
+        problem_id,
+        'Print A+B.',
+        'Two integers A and B are given.',
+        'Print A+B.',
+        1,
+        2,
+        '1 <= A, B <= 10',
+        NOW(),
+        NOW()
+    FROM created_problem
+), inserted_sample AS (
+    INSERT INTO problem_samples(problem_id, sample_order, sample_input, sample_output)
+    SELECT problem_id, 1, '1 2', '3'
+    FROM created_problem
+), inserted_testcase_1 AS (
+    INSERT INTO problem_testcases(problem_id, testcase_order, testcase_input, testcase_output)
+    SELECT problem_id, 1, '1 2', '3'
+    FROM created_problem
+), inserted_testcase_2 AS (
+    INSERT INTO problem_testcases(problem_id, testcase_order, testcase_input, testcase_output)
+    SELECT problem_id, 2, '10 20', '30'
+    FROM created_problem
+)
+SELECT problem_id
+FROM created_problem;
+SQL
+}
+
+create_blank_problem(){
+    if [[ -z "${DB_HOST:-}" || -z "${DB_PORT:-}" || -z "${DB_USER:-}" || -z "${DB_PASSWORD:-}" || -z "${DB_NAME:-}" ]]; then
+        echo "missing required db envs" >&2
+        return 1
+    fi
+
+    PGPASSWORD="${DB_PASSWORD}" psql \
+        -X \
+        -h "${DB_HOST}" \
+        -p "${DB_PORT}" \
+        -U "${DB_USER}" \
+        -d "${DB_NAME}" \
+        -v ON_ERROR_STOP=1 \
+        -qAt <<'SQL' | sed -n '1p'
+WITH created_problem AS (
+    INSERT INTO problems(version)
+    VALUES(1)
+    RETURNING problem_id
+), inserted_limits AS (
+    INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms, updated_at)
+    SELECT problem_id, 256, 1000, NOW()
+    FROM created_problem
+), inserted_statistics AS (
+    INSERT INTO problem_statistics(problem_id, submission_count, accepted_count, updated_at)
+    SELECT problem_id, 0, 0, NOW()
+    FROM created_problem
+)
+SELECT problem_id
+FROM created_problem;
+SQL
+}
+
+trap cleanup EXIT
+
+require_command curl
+require_command psql
+require_command python3
+
+append_log_line "${test_log_temp_file}" "base_url=${base_url}"
+
+if ! health_check; then
+    if [[ ! -x "${http_server_bin}" ]]; then
+        echo "http_server binary not found or not executable: ${http_server_bin}" >&2
+        append_log_line "${test_log_temp_file}" "http_server binary not found: ${http_server_bin}"
+        publish_failure_logs
+        echo "hint: run 'cmake --build ${project_root}/build'" >&2
+        exit 1
+    fi
+
+    append_log_line "${test_log_temp_file}" "starting local http_server"
+    HTTP_PORT="${http_port}" "${http_server_bin}" >"${server_log_temp_file}" 2>&1 &
+    server_pid="$!"
+
+    if ! wait_for_health; then
+        echo "failed to start http_server" >&2
+        append_log_line "${test_log_temp_file}" "failed to start local http_server"
+        publish_failure_logs
+        echo "server log:" >&2
+        cat "${server_log_temp_file}" >&2
+        exit 1
+    fi
+else
+    append_log_line "${test_log_temp_file}" "reusing existing http_server"
+fi
+
+full_problem_id="$(create_full_problem)"
+blank_problem_id="$(create_blank_problem)"
+missing_problem_id=$((blank_problem_id + 999999))
+
+append_log_line "${test_log_temp_file}" "full_problem_id=${full_problem_id}"
+append_log_line "${test_log_temp_file}" "blank_problem_id=${blank_problem_id}"
+append_log_line "${test_log_temp_file}" "missing_problem_id=${missing_problem_id}"
+
+full_problem_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${full_problem_response_file}" \
+        --write-out "%{http_code}" \
+        "${base_url}/api/problem/${full_problem_id}"
+)"
+
+if [[ "${full_problem_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "full problem get failed: status=${full_problem_status_code}"
+    publish_failure_logs
+    echo "problem get test failed: expected status 200, got ${full_problem_status_code}" >&2
+    echo "response body:" >&2
+    cat "${full_problem_response_file}" >&2
+    exit 1
+fi
+
+if ! python3 - "${full_problem_response_file}" "${full_problem_id}" <<'PY'
+import json
+import sys
+
+response_file_path = sys.argv[1]
+expected_problem_id = int(sys.argv[2])
+
+with open(response_file_path, encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("problem_id") != expected_problem_id:
+    raise SystemExit("problem_id mismatch")
+
+if response.get("version") != 3:
+    raise SystemExit("version mismatch")
+
+limits = response.get("limits")
+if limits != {"memory_limit_mb": 512, "time_limit_ms": 2000}:
+    raise SystemExit("limits mismatch")
+
+statement = response.get("statement")
+expected_statement = {
+    "description": "Print A+B.",
+    "input_format": "Two integers A and B are given.",
+    "output_format": "Print A+B.",
+    "note": "1 <= A, B <= 10",
+}
+if statement != expected_statement:
+    raise SystemExit("statement mismatch")
+
+if response.get("sample_count") != 1:
+    raise SystemExit("sample_count mismatch")
+
+if "testcase_count" in response:
+    raise SystemExit("unexpected testcase_count field")
+
+samples = response.get("samples")
+expected_samples = [
+    {
+        "sample_order": 1,
+        "sample_input": "1 2",
+        "sample_output": "3",
+    }
+]
+if samples != expected_samples:
+    raise SystemExit("samples mismatch")
+
+statistics = response.get("statistics")
+expected_statistics = {
+    "submission_count": 12,
+    "accepted_count": 7,
+}
+if statistics != expected_statistics:
+    raise SystemExit("statistics mismatch")
+PY
+then
+    append_log_line "${test_log_temp_file}" "full problem response validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+print_success_log "problem detail response validated"
+
+blank_problem_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${blank_problem_response_file}" \
+        --write-out "%{http_code}" \
+        "${base_url}/api/problem/${blank_problem_id}"
+)"
+
+if [[ "${blank_problem_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "blank problem get failed: status=${blank_problem_status_code}"
+    publish_failure_logs
+    echo "blank problem get test failed: expected status 200, got ${blank_problem_status_code}" >&2
+    echo "response body:" >&2
+    cat "${blank_problem_response_file}" >&2
+    exit 1
+fi
+
+if ! python3 - "${blank_problem_response_file}" "${blank_problem_id}" <<'PY'
+import json
+import sys
+
+response_file_path = sys.argv[1]
+expected_problem_id = int(sys.argv[2])
+
+with open(response_file_path, encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("problem_id") != expected_problem_id:
+    raise SystemExit("blank problem_id mismatch")
+
+if response.get("version") != 1:
+    raise SystemExit("blank version mismatch")
+
+if response.get("limits") != {"memory_limit_mb": 256, "time_limit_ms": 1000}:
+    raise SystemExit("blank limits mismatch")
+
+if response.get("statement", "missing") is not None:
+    raise SystemExit("expected null statement")
+
+if response.get("sample_count") != 0:
+    raise SystemExit("blank sample_count mismatch")
+
+if "testcase_count" in response:
+    raise SystemExit("unexpected blank testcase_count field")
+
+if response.get("samples") != []:
+    raise SystemExit("expected empty samples")
+
+if response.get("statistics") != {"submission_count": 0, "accepted_count": 0}:
+    raise SystemExit("blank statistics mismatch")
+PY
+then
+    append_log_line "${test_log_temp_file}" "blank problem response validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+print_success_log "blank problem response validated"
+
+missing_problem_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${missing_problem_response_file}" \
+        --write-out "%{http_code}" \
+        "${base_url}/api/problem/${missing_problem_id}"
+)"
+
+if [[ "${missing_problem_status_code}" != "404" ]]; then
+    append_log_line "${test_log_temp_file}" "missing problem get failed: status=${missing_problem_status_code}"
+    publish_failure_logs
+    echo "missing problem get test failed: expected status 404, got ${missing_problem_status_code}" >&2
+    echo "response body:" >&2
+    cat "${missing_problem_response_file}" >&2
+    exit 1
+fi
+
+if [[ "$(cat "${missing_problem_response_file}")" != "problem not found" ]]; then
+    append_log_line "${test_log_temp_file}" "missing problem body mismatch"
+    publish_failure_logs
+    echo "missing problem get test failed: unexpected response body" >&2
+    cat "${missing_problem_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "problem get flow test passed"
+print_success_log \
+    "problem get flow test passed: full_problem_id=${full_problem_id}, blank_problem_id=${blank_problem_id}"

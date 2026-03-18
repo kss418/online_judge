@@ -20,6 +20,15 @@ problem_router::response_type problem_router::route(
         return handle_create_problem(request);
     }
 
+    if(path_segments.size() == 1){
+        const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
+        if(!problem_id_opt){
+            return http_util::not_found_response(request);
+        }
+
+        return handle_get_problem(request, *problem_id_opt);
+    }
+
     if(path_segments.size() == 2 && path_segments[1] == "limits"){
         const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
         if(!problem_id_opt){
@@ -37,6 +46,21 @@ problem_router::response_type problem_router::handle_create_problem(
 ){
     if(request.method() == boost::beast::http::verb::post){
         return problem_handler::handle_create_problem_post(request, db_connection_);
+    }
+
+    return http_util::method_not_allowed_response(request);
+}
+
+problem_router::response_type problem_router::handle_get_problem(
+    const request_type& request,
+    std::int64_t problem_id
+){
+    if(request.method() == boost::beast::http::verb::get){
+        return problem_handler::handle_get_problem_get(
+            request,
+            db_connection_,
+            problem_id
+        );
     }
 
     return http_util::method_not_allowed_response(request);

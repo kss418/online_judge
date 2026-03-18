@@ -20,6 +20,10 @@ public:
     response_type route(const request_type& request, std::string_view path);
 
 private:
+    response_type handle_get_problem(
+        const request_type& request,
+        std::int64_t problem_id
+    );
     response_type handle_create_problem(const request_type& request);
     response_type handle_set_limits(
         const request_type& request,
