@@ -7,7 +7,8 @@
 
 submission_handler::response_type submission_handler::handle_create_submission_post(
     const request_type& request,
-    db_connection& db_connection_value
+    db_connection& db_connection_value,
+    std::int64_t problem_id
 ){
     const auto auth_identity_exp = http_util::try_auth_bearer(request, db_connection_value);
     if(!auth_identity_exp){
@@ -24,22 +25,21 @@ submission_handler::response_type submission_handler::handle_create_submission_p
     }
 
     const auto& request_object = *request_object_opt;
-    const auto problem_id_opt = http_util::get_positive_int64_field(request_object, "problem_id");
     const auto language_opt = http_util::get_non_empty_string_field(request_object, "language");
     const auto source_code_opt = http_util::get_non_empty_string_field(request_object, "source_code");
 
-    if(!problem_id_opt || !language_opt || !source_code_opt){
+    if(!language_opt || !source_code_opt){
         return http_util::create_text_response(
             request,
             boost::beast::http::status::bad_request,
-            "required fields: problem_id, language, source_code\n"
+            "required fields: language, source_code\n"
         );
     }
 
     const auto create_submission_exp = submission_core_service::create_submission(
         db_connection_value,
         auth_identity_exp->user_id,
-        *problem_id_opt,
+        problem_id,
         *language_opt,
         *source_code_opt
     );

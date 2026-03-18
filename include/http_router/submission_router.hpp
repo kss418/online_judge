@@ -3,6 +3,7 @@
 #include "db/db_connection.hpp"
 #include "http_handler/submission_handler.hpp"
 
+#include <cstdint>
 #include <string_view>
 
 class submission_router{
@@ -19,7 +20,10 @@ public:
     response_type route(const request_type& request, std::string_view path);
 
 private:
-    response_type handle_create_submission(const request_type& request);
+    response_type handle_create_submission(
+        const request_type& request,
+        std::int64_t problem_id
+    );
 
     db_connection& db_connection_;
 };

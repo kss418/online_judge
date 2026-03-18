@@ -4,7 +4,7 @@ HTTP API handled by `submission_router`.
 
 ## endpoint
 
-### `POST /api/submission`
+### `POST /api/submission/{problem_id}`
 
 Create a new submission for a problem. The user-visible problem number is the same as the database `problem_id`.
 
@@ -17,11 +17,16 @@ Create a new submission for a problem. The user-visible problem number is the sa
 |---|---|---|
 | `Authorization` | yes | format: `Bearer <token>` |
 
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+
 - body fields:
 
 | field | type | required | note |
 |---|---|---|---|
-| `problem_id` | `int64` | yes | must be positive |
 | `language` | `string` | yes | must be non-empty |
 | `source_code` | `string` | yes | must be non-empty |
 
@@ -29,7 +34,6 @@ Example:
 
 ```json
 {
-  "problem_id": 1000,
   "language": "cpp",
   "source_code": "#include <iostream>\nint main(){ return 0; }\n"
 }
@@ -69,7 +73,7 @@ Error bodies are currently returned as plain text.
 Examples:
 
 ```text
-required fields: problem_id, language, source_code
+required fields: language, source_code
 ```
 
 ```text

@@ -180,16 +180,15 @@ append_log_line "${test_log_temp_file}" "problem created: problem_id=${problem_i
 print_success_log "problem create success"
 
 submission_request_body="$(
-    python3 - "${problem_id}" "${submission_language}" "${submission_source_code}" <<'PY'
+    python3 - "${submission_language}" "${submission_source_code}" <<'PY'
 import json
 import sys
 
 print(
     json.dumps(
         {
-            "problem_id": int(sys.argv[1]),
-            "language": sys.argv[2],
-            "source_code": sys.argv[3],
+            "language": sys.argv[1],
+            "source_code": sys.argv[2],
         }
     )
 )
@@ -206,7 +205,7 @@ submission_status_code="$(
         -H "Authorization: Bearer ${sign_up_token}" \
         -H "Content-Type: application/json" \
         -d "${submission_request_body}" \
-        "${base_url}/api/submission"
+        "${base_url}/api/submission/${problem_id}"
 )"
 
 if [[ "${submission_status_code}" != "201" ]]; then
