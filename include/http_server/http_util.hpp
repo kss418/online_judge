@@ -127,6 +127,38 @@ namespace http_util{
         const request_type& request,
         db_connection& db_connection
     );
+    template <typename callback_type>
+    response_type with_auth_bearer(
+        const request_type& request,
+        db_connection& db_connection,
+        callback_type&& callback
+    ){
+        const auto auth_identity_exp = try_auth_bearer(request, db_connection);
+        if(!auth_identity_exp){
+            return std::move(auth_identity_exp.error());
+        }
+
+        return std::invoke(
+            std::forward<callback_type>(callback),
+            *auth_identity_exp
+        );
+    }
+    template <typename callback_type>
+    response_type with_admin_auth_bearer(
+        const request_type& request,
+        db_connection& db_connection,
+        callback_type&& callback
+    ){
+        const auto auth_identity_exp = try_admin_auth_bearer(request, db_connection);
+        if(!auth_identity_exp){
+            return std::move(auth_identity_exp.error());
+        }
+
+        return std::invoke(
+            std::forward<callback_type>(callback),
+            *auth_identity_exp
+        );
+    }
     std::optional<std::string_view> get_bearer_token(
         const request_type& request
     );

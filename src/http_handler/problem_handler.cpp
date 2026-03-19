@@ -115,24 +115,27 @@ problem_handler::response_type problem_handler::handle_create_problem_post(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_value);
-        !auth_identity_exp){
-        return std::move(auth_identity_exp.error());
-    }
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto create_problem_exp = problem_core_service::create_problem(db_connection_value);
+        if(!create_problem_exp){
+            return http_util::create_text_response(
+                request,
+                boost::beast::http::status::internal_server_error,
+                "failed to create problem: " + to_string(create_problem_exp.error()) + "\n"
+            );
+        }
 
-    const auto create_problem_exp = problem_core_service::create_problem(db_connection_value);
-    if(!create_problem_exp){
-        return http_util::create_text_response(
+        return json_util::create_json_response(
             request,
-            boost::beast::http::status::internal_server_error,
-            "failed to create problem: " + to_string(create_problem_exp.error()) + "\n"
+            boost::beast::http::status::created,
+            json_util::make_problem_created_object(*create_problem_exp)
         );
-    }
+    };
 
-    return json_util::create_json_response(
+    return http_util::with_admin_auth_bearer(
         request,
-        boost::beast::http::status::created,
-        json_util::make_problem_created_object(*create_problem_exp)
+        db_connection_value,
+        handle_authenticated
     );
 }
 
@@ -142,36 +145,39 @@ problem_handler::response_type problem_handler::handle_set_limits_put(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_value);
-        !auth_identity_exp){
-        return std::move(auth_identity_exp.error());
-    }
-
-    const auto limits_exp = http_util::parse_json_dto_or_400<problem_dto::limits>(
-        request,
-        problem_dto::make_limits_from_json
-    );
-    if(!limits_exp){
-        return std::move(limits_exp.error());
-    }
-
-    const auto set_limits_exp = problem_core_service::set_limits(
-        db_connection_value,
-        problem_reference_value,
-        *limits_exp
-    );
-    if(!set_limits_exp){
-        return http_util::create_400_or_500_response(
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto limits_exp = http_util::parse_json_dto_or_400<problem_dto::limits>(
             request,
-            "set problem limits",
-            set_limits_exp.error()
+            problem_dto::make_limits_from_json
         );
-    }
+        if(!limits_exp){
+            return std::move(limits_exp.error());
+        }
 
-    return http_util::create_text_response(
+        const auto set_limits_exp = problem_core_service::set_limits(
+            db_connection_value,
+            problem_reference_value,
+            *limits_exp
+        );
+        if(!set_limits_exp){
+            return http_util::create_400_or_500_response(
+                request,
+                "set problem limits",
+                set_limits_exp.error()
+            );
+        }
+
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::ok,
+            "problem limits updated\n"
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
         request,
-        boost::beast::http::status::ok,
-        "problem limits updated\n"
+        db_connection_value,
+        handle_authenticated
     );
 }
 
@@ -181,36 +187,39 @@ problem_handler::response_type problem_handler::handle_set_statement_put(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_value);
-        !auth_identity_exp){
-        return std::move(auth_identity_exp.error());
-    }
-
-    const auto statement_exp = http_util::parse_json_dto_or_400<problem_dto::statement>(
-        request,
-        problem_dto::make_statement_from_json
-    );
-    if(!statement_exp){
-        return std::move(statement_exp.error());
-    }
-
-    const auto set_statement_exp = problem_content_service::set_statement(
-        db_connection_value,
-        problem_reference_value,
-        *statement_exp
-    );
-    if(!set_statement_exp){
-        return http_util::create_400_or_500_response(
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto statement_exp = http_util::parse_json_dto_or_400<problem_dto::statement>(
             request,
-            "set problem statement",
-            set_statement_exp.error()
+            problem_dto::make_statement_from_json
         );
-    }
+        if(!statement_exp){
+            return std::move(statement_exp.error());
+        }
 
-    return http_util::create_text_response(
+        const auto set_statement_exp = problem_content_service::set_statement(
+            db_connection_value,
+            problem_reference_value,
+            *statement_exp
+        );
+        if(!set_statement_exp){
+            return http_util::create_400_or_500_response(
+                request,
+                "set problem statement",
+                set_statement_exp.error()
+            );
+        }
+
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::ok,
+            "problem statement updated\n"
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
         request,
-        boost::beast::http::status::ok,
-        "problem statement updated\n"
+        db_connection_value,
+        handle_authenticated
     );
 }
 
@@ -220,35 +229,38 @@ problem_handler::response_type problem_handler::handle_create_testcase_post(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_value);
-        !auth_identity_exp){
-        return std::move(auth_identity_exp.error());
-    }
-
-    const auto testcase_exp = http_util::parse_json_dto_or_400<problem_dto::testcase>(
-        request,
-        problem_dto::make_testcase_from_json
-    );
-    if(!testcase_exp){
-        return std::move(testcase_exp.error());
-    }
-
-    const auto create_testcase_exp = testcase_service::create_testcase(
-        db_connection_value,
-        problem_reference_value,
-        *testcase_exp
-    );
-    if(!create_testcase_exp){
-        return http_util::create_400_or_500_response(
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto testcase_exp = http_util::parse_json_dto_or_400<problem_dto::testcase>(
             request,
-            "create testcase",
-            create_testcase_exp.error()
+            problem_dto::make_testcase_from_json
         );
-    }
+        if(!testcase_exp){
+            return std::move(testcase_exp.error());
+        }
 
-    return json_util::create_json_response(
+        const auto create_testcase_exp = testcase_service::create_testcase(
+            db_connection_value,
+            problem_reference_value,
+            *testcase_exp
+        );
+        if(!create_testcase_exp){
+            return http_util::create_400_or_500_response(
+                request,
+                "create testcase",
+                create_testcase_exp.error()
+            );
+        }
+
+        return json_util::create_json_response(
+            request,
+            boost::beast::http::status::created,
+            json_util::make_problem_testcase_created_object(*create_testcase_exp)
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
         request,
-        boost::beast::http::status::created,
-        json_util::make_problem_testcase_created_object(*create_testcase_exp)
+        db_connection_value,
+        handle_authenticated
     );
 }
