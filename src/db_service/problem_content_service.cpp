@@ -1,5 +1,6 @@
 #include "db_service/problem_content_service.hpp"
-#include "db_util/problem_util.hpp"
+#include "db_util/problem_content_util.hpp"
+#include "db_util/problem_core_util.hpp"
 
 #include <pqxx/pqxx>
 
@@ -15,7 +16,7 @@ std::expected<problem_dto::statement, error_code> problem_content_service::get_s
 
     try{
         pqxx::read_transaction transaction(connection.connection());
-        const auto statement_exp = problem_util::get_statement(transaction, problem_id);
+        const auto statement_exp = problem_content_util::get_statement(transaction, problem_id);
         if(!statement_exp){
             return std::unexpected(statement_exp.error());
         }
@@ -38,7 +39,7 @@ std::expected<void, error_code> problem_content_service::set_statement(
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto set_statement_exp = problem_util::set_statement(
+        const auto set_statement_exp = problem_content_util::set_statement(
             transaction,
             problem_id,
             statement
@@ -47,7 +48,7 @@ std::expected<void, error_code> problem_content_service::set_statement(
             return std::unexpected(set_statement_exp.error());
         }
 
-        const auto version_exp = problem_util::increase_version(transaction, problem_id);
+        const auto version_exp = problem_core_util::increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -70,7 +71,7 @@ std::expected<std::vector<problem_dto::sample>, error_code> problem_content_serv
 
     try{
         pqxx::read_transaction transaction(connection.connection());
-        const auto sample_values_exp = problem_util::list_samples(transaction, problem_id);
+        const auto sample_values_exp = problem_content_util::list_samples(transaction, problem_id);
         if(!sample_values_exp){
             return std::unexpected(sample_values_exp.error());
         }

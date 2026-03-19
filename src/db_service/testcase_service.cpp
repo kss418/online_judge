@@ -1,6 +1,7 @@
 #include "db_service/testcase_service.hpp"
 
-#include "db_util/problem_util.hpp"
+#include "db_util/problem_content_util.hpp"
+#include "db_util/problem_core_util.hpp"
 #include "db_util/testcase_util.hpp"
 
 #include <pqxx/pqxx>
@@ -19,7 +20,7 @@ std::expected<problem_dto::testcase, error_code> testcase_service::create_testca
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto ensure_statement_exp = problem_util::ensure_statement_row(
+        const auto ensure_statement_exp = problem_content_util::ensure_statement_row(
             transaction,
             problem_id
         );
@@ -45,7 +46,7 @@ std::expected<problem_dto::testcase, error_code> testcase_service::create_testca
             return std::unexpected(created_testcase_exp.error());
         }
 
-        const auto version_exp = problem_util::increase_version(transaction, problem_id);
+        const auto version_exp = problem_core_util::increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }

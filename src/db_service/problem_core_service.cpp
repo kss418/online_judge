@@ -1,6 +1,7 @@
 #include "db_service/problem_core_service.hpp"
+#include "db_util/problem_content_util.hpp"
+#include "db_util/problem_core_util.hpp"
 #include "db_util/problem_statistics_util.hpp"
-#include "db_util/problem_util.hpp"
 
 #include <pqxx/pqxx>
 
@@ -14,7 +15,7 @@ std::expected<bool, error_code> problem_core_service::exists_problem(
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto exists_exp = problem_util::exists_problem(transaction, problem_id);
+        const auto exists_exp = problem_core_util::exists_problem(transaction, problem_id);
         if(!exists_exp){
             return std::unexpected(exists_exp.error());
         }
@@ -37,7 +38,7 @@ std::expected<std::int32_t, error_code> problem_core_service::get_version(
 
     try{
         pqxx::read_transaction transaction(connection.connection());
-        const auto version_exp = problem_util::get_version(transaction, problem_id);
+        const auto version_exp = problem_core_util::get_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -56,7 +57,7 @@ std::expected<std::int64_t, error_code> problem_core_service::create_problem(db_
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto problem_id_exp = problem_util::create_problem(
+        const auto problem_id_exp = problem_core_util::create_problem(
             transaction
         );
         if(!problem_id_exp){
@@ -67,7 +68,7 @@ std::expected<std::int64_t, error_code> problem_core_service::create_problem(db_
         initial_limits_value.memory_mb = problem_core_service::INITIAL_MEMORY_LIMIT_MB;
         initial_limits_value.time_ms = problem_core_service::INITIAL_TIME_LIMIT_MS;
 
-        const auto set_limits_exp = problem_util::set_limits(
+        const auto set_limits_exp = problem_core_util::set_limits(
             transaction,
             *problem_id_exp,
             initial_limits_value
@@ -84,7 +85,7 @@ std::expected<std::int64_t, error_code> problem_core_service::create_problem(db_
             return std::unexpected(create_problem_statistics_exp.error());
         }
 
-        const auto ensure_statement_exp = problem_util::ensure_statement_row(
+        const auto ensure_statement_exp = problem_content_util::ensure_statement_row(
             transaction,
             *problem_id_exp
         );
@@ -110,7 +111,7 @@ std::expected<problem_dto::limits, error_code> problem_core_service::get_limits(
 
     try{
         pqxx::read_transaction transaction(connection.connection());
-        const auto limits_exp = problem_util::get_limits(transaction, problem_id);
+        const auto limits_exp = problem_core_util::get_limits(transaction, problem_id);
         if(!limits_exp){
             return std::unexpected(limits_exp.error());
         }
@@ -133,7 +134,7 @@ std::expected<void, error_code> problem_core_service::set_limits(
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto set_limits_exp = problem_util::set_limits(
+        const auto set_limits_exp = problem_core_util::set_limits(
             transaction,
             problem_id,
             limits_value
@@ -142,7 +143,7 @@ std::expected<void, error_code> problem_core_service::set_limits(
             return std::unexpected(set_limits_exp.error());
         }
 
-        const auto version_exp = problem_util::increase_version(transaction, problem_id);
+        const auto version_exp = problem_core_util::increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
