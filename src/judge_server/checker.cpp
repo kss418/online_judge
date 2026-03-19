@@ -3,7 +3,7 @@
 #include "common/unique_fd.hpp"
 #include "common/blocking_io.hpp"
 #include "judge_server/judge_util.hpp"
-#include "judge_server/tc_util.hpp"
+#include "judge_server/testcase_util.hpp"
 
 #include <cerrno>
 #include <fcntl.h>
@@ -30,26 +30,26 @@ std::expected<bool, error_code> checker::check(
 std::expected<judge_result, error_code> checker::check_all(
     const std::vector<std::vector<std::string>>& output, std::int64_t problem_id
 ){
-    const auto tc_count_exp = tc_util::instance().count_tc_output(problem_id);
-    if(!tc_count_exp){
-        return std::unexpected(tc_count_exp.error());
+    const auto testcase_count_exp = testcase_util::instance().count_testcase_output(problem_id);
+    if(!testcase_count_exp){
+        return std::unexpected(testcase_count_exp.error());
     }
 
-    if(output.size() != static_cast<std::size_t>(tc_count_exp.value())){
+    if(output.size() != static_cast<std::size_t>(testcase_count_exp.value())){
         return judge_result::wrong_answer;
     }
 
-    const auto validated_tc_count_exp = tc_util::instance().validate_tc_output(
+    const auto validated_testcase_count_exp = testcase_util::instance().validate_testcase_output(
         problem_id,
-        tc_count_exp.value()
+        testcase_count_exp.value()
     );
     
-    if(!validated_tc_count_exp){
-        return std::unexpected(validated_tc_count_exp.error());
+    if(!validated_testcase_count_exp){
+        return std::unexpected(validated_testcase_count_exp.error());
     }
 
-    for(std::int32_t order = 1; order <= validated_tc_count_exp.value(); ++order){
-        const auto answer_path_exp = tc_util::instance().make_tc_output_path(
+    for(std::int32_t order = 1; order <= validated_testcase_count_exp.value(); ++order){
+        const auto answer_path_exp = testcase_util::instance().make_testcase_output_path(
             problem_id, order
         );
 

@@ -4,7 +4,7 @@ target_sources(lib
         sandbox_runner.cpp
         judge_worker.cpp
         judge_util.cpp
-        tc_util.cpp
+        testcase_util.cpp
         checker.cpp
         testcase_downloader.cpp
 )

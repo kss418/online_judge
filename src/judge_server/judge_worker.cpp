@@ -33,16 +33,16 @@ std::expected<judge_worker, error_code> judge_worker::create(
         return std::unexpected(listen_submission_queue_exp.error());
     }
 
-    auto tc_downloader_connection_exp = db_connection::create();
-    if(!tc_downloader_connection_exp){
-        return std::unexpected(tc_downloader_connection_exp.error());
+    auto testcase_downloader_connection_exp = db_connection::create();
+    if(!testcase_downloader_connection_exp){
+        return std::unexpected(testcase_downloader_connection_exp.error());
     }
 
-    auto tc_downloader_exp = tc_downloader::create(
-        std::move(*tc_downloader_connection_exp)
+    auto testcase_downloader_exp = testcase_downloader::create(
+        std::move(*testcase_downloader_connection_exp)
     );
-    if(!tc_downloader_exp){
-        return std::unexpected(tc_downloader_exp.error());
+    if(!testcase_downloader_exp){
+        return std::unexpected(testcase_downloader_exp.error());
     }
 
     auto db_connection_exp = db_connection::create();
@@ -53,18 +53,18 @@ std::expected<judge_worker, error_code> judge_worker::create(
     return judge_worker(
         std::move(submission_event_listener),
         std::move(*db_connection_exp),
-        std::move(*tc_downloader_exp)
+        std::move(*testcase_downloader_exp)
     );
 }
 
 judge_worker::judge_worker(
     submission_event_listener submission_event_listener,
     db_connection db_connection,
-    tc_downloader tc_downloader
+    testcase_downloader testcase_downloader
 ) :
     submission_event_listener_(std::move(submission_event_listener)),
     db_connection_(std::move(db_connection)),
-    tc_downloader_(std::move(tc_downloader)){}
+    testcase_downloader_(std::move(testcase_downloader)){}
 
 bool judge_worker::is_queue_empty_error(const error_code& code){
     return code == errno_error::resource_temporarily_unavailable;
@@ -194,26 +194,26 @@ std::expected<void, error_code> judge_worker::run(){
                 return std::unexpected(source_file_path_exp.error());
             }
 
-            const auto sync_tc_exp = tc_downloader_.sync_tc(
+            const auto sync_testcases_exp = testcase_downloader_.sync_testcases(
                 queued_submission_value.problem_id
             );
             
-            if(!sync_tc_exp){
-                return std::unexpected(sync_tc_exp.error());
+            if(!sync_testcases_exp){
+                return std::unexpected(sync_testcases_exp.error());
             }
 
             const std::filesystem::path source_file_path = *source_file_path_exp;
-            auto run_all_tcs_exp = tc_runner::run_all_tcs(
+            auto run_all_testcases_exp = testcase_runner::run_all_testcases(
                 source_file_path,
                 queued_submission_value.problem_id
             );
 
-            if(!run_all_tcs_exp){
-                return std::unexpected(run_all_tcs_exp.error());
+            if(!run_all_testcases_exp){
+                return std::unexpected(run_all_testcases_exp.error());
             }
 
             const auto judge_result_exp = judge_submission(
-                queued_submission_value, *run_all_tcs_exp
+                queued_submission_value, *run_all_testcases_exp
             );
 
             if(!judge_result_exp){
@@ -226,7 +226,7 @@ std::expected<void, error_code> judge_worker::run(){
 
             const finalize_submission_data finalize_submission_data_value = make_finalize_submission_data(
                 submission_status_value,
-                *run_all_tcs_exp
+                *run_all_testcases_exp
             );
 
             try{

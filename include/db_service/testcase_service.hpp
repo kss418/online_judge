@@ -7,19 +7,19 @@
 #include <cstdint>
 #include <expected>
 
-namespace tc_service{
-    std::expected<problem_dto::tc, error_code> create_tc(
+namespace testcase_service{
+    std::expected<problem_dto::testcase, error_code> create_testcase(
         db_connection& connection,
         std::int64_t problem_id,
-        const problem_dto::tc& tc_value
+        const problem_dto::testcase& testcase_value
     );
 
-    std::expected<problem_dto::tc, error_code> get_tc(
+    std::expected<problem_dto::testcase, error_code> get_testcase(
         db_connection& connection,
         std::int64_t problem_id,
-        std::int32_t tc_order
+        std::int32_t testcase_order
     );
-    std::expected<std::int32_t, error_code> get_tc_count(
+    std::expected<std::int32_t, error_code> get_testcase_count(
         db_connection& connection,
         std::int64_t problem_id
     );

@@ -266,7 +266,7 @@ problem_handler::response_type problem_handler::handle_create_testcase_post(
         );
     }
 
-    const auto testcase_opt = problem_dto::make_tc(*request_object_opt);
+    const auto testcase_opt = problem_dto::make_testcase(*request_object_opt);
     if(!testcase_opt){
         return http_util::create_text_response(
             request,
@@ -275,7 +275,7 @@ problem_handler::response_type problem_handler::handle_create_testcase_post(
         );
     }
 
-    const auto create_testcase_exp = tc_service::create_tc(
+    const auto create_testcase_exp = testcase_service::create_testcase(
         db_connection_value,
         problem_id,
         *testcase_opt

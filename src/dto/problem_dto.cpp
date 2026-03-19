@@ -64,7 +64,7 @@ std::optional<problem_dto::statement> problem_dto::make_statement(
     return statement_value;
 }
 
-std::optional<problem_dto::tc> problem_dto::make_tc(
+std::optional<problem_dto::testcase> problem_dto::make_testcase(
     const boost::json::object& request_object
 ){
     const auto input_opt = http_util::get_string_field(request_object, "testcase_input");
@@ -73,7 +73,7 @@ std::optional<problem_dto::tc> problem_dto::make_tc(
         return std::nullopt;
     }
 
-    tc testcase_value;
+    testcase testcase_value;
     testcase_value.input = std::string{*input_opt};
     testcase_value.output = std::string{*output_opt};
     return testcase_value;

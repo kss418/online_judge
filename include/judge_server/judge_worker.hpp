@@ -38,7 +38,7 @@ private:
     judge_worker(
         submission_event_listener submission_event_listener,
         db_connection db_connection,
-        tc_downloader tc_downloader
+        testcase_downloader testcase_downloader
     );
 
     static bool is_queue_empty_error(const error_code& code);
@@ -56,5 +56,5 @@ private:
 
     submission_event_listener submission_event_listener_;
     db_connection db_connection_;
-    tc_downloader tc_downloader_;
+    testcase_downloader testcase_downloader_;
 };

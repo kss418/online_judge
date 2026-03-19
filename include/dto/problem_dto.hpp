@@ -12,7 +12,7 @@ namespace problem_dto{
         std::int32_t time_ms = 0;
     };
 
-    struct tc{
+    struct testcase{
         std::int64_t id = 0;
         std::int32_t order = 0;
         std::string input;
@@ -40,5 +40,5 @@ namespace problem_dto{
 
     std::optional<limits> make_limits(const boost::json::object& request_object);
     std::optional<statement> make_statement(const boost::json::object& request_object);
-    std::optional<tc> make_tc(const boost::json::object& request_object);
+    std::optional<testcase> make_testcase(const boost::json::object& request_object);
 }

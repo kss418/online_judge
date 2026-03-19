@@ -5,7 +5,7 @@
 #include <pqxx/pqxx>
 #include <utility>
 
-std::expected<std::int32_t, error_code> testcase_util::increase_tc_count(
+std::expected<std::int32_t, error_code> testcase_util::increase_testcase_count(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){
@@ -32,7 +32,7 @@ std::expected<std::int32_t, error_code> testcase_util::increase_tc_count(
     return increase_result[0][0].as<std::int32_t>();
 }
 
-std::expected<std::int32_t, error_code> testcase_util::decrease_tc_count(
+std::expected<std::int32_t, error_code> testcase_util::decrease_testcase_count(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){
@@ -51,7 +51,7 @@ std::expected<std::int32_t, error_code> testcase_util::decrease_tc_count(
     return decrease_result[0][0].as<std::int32_t>();
 }
 
-std::expected<std::vector<problem_dto::tc>, error_code> testcase_util::list_tcs(
+std::expected<std::vector<problem_dto::testcase>, error_code> testcase_util::list_testcases(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){
@@ -59,7 +59,7 @@ std::expected<std::vector<problem_dto::tc>, error_code> testcase_util::list_tcs(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    const auto tcs_query_result = transaction.exec(
+    const auto testcases_query_result = transaction.exec(
         "SELECT testcase_id, testcase_order, testcase_input, testcase_output "
         "FROM problem_testcases "
         "WHERE problem_id = $1 "
@@ -67,26 +67,26 @@ std::expected<std::vector<problem_dto::tc>, error_code> testcase_util::list_tcs(
         pqxx::params{problem_id}
     );
 
-    std::vector<problem_dto::tc> tc_values;
-    tc_values.reserve(tcs_query_result.size());
-    for(const auto& row : tcs_query_result){
-        problem_dto::tc tc_value;
-        tc_value.id = row[0].as<std::int64_t>();
-        tc_value.order = row[1].as<std::int32_t>();
-        tc_value.input = row[2].as<std::string>();
-        tc_value.output = row[3].as<std::string>();
-        tc_values.push_back(std::move(tc_value));
+    std::vector<problem_dto::testcase> testcase_values;
+    testcase_values.reserve(testcases_query_result.size());
+    for(const auto& row : testcases_query_result){
+        problem_dto::testcase testcase_value;
+        testcase_value.id = row[0].as<std::int64_t>();
+        testcase_value.order = row[1].as<std::int32_t>();
+        testcase_value.input = row[2].as<std::string>();
+        testcase_value.output = row[3].as<std::string>();
+        testcase_values.push_back(std::move(testcase_value));
     }
 
-    return tc_values;
+    return testcase_values;
 }
 
-std::expected<void, error_code> testcase_util::set_tc(
+std::expected<void, error_code> testcase_util::set_testcase(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id,
-    const problem_dto::tc& tc_value
+    const problem_dto::testcase& testcase_value
 ){
-    if(problem_id <= 0 || tc_value.order <= 0){
+    if(problem_id <= 0 || testcase_value.order <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -98,9 +98,9 @@ std::expected<void, error_code> testcase_util::set_tc(
         "WHERE problem_id = $1 AND testcase_order = $2",
         pqxx::params{
             problem_id,
-            tc_value.order,
-            tc_value.input,
-            tc_value.output
+            testcase_value.order,
+            testcase_value.input,
+            testcase_value.output
         }
     );
 
@@ -116,7 +116,7 @@ std::expected<void, error_code> testcase_util::set_tc(
     return {};
 }
 
-std::expected<void, error_code> testcase_util::delete_tc(
+std::expected<void, error_code> testcase_util::delete_testcase(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){
@@ -140,9 +140,9 @@ std::expected<void, error_code> testcase_util::delete_tc(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    const auto tc_count_exp = decrease_tc_count(transaction, problem_id);
-    if(!tc_count_exp){
-        return std::unexpected(tc_count_exp.error());
+    const auto testcase_count_exp = decrease_testcase_count(transaction, problem_id);
+    if(!testcase_count_exp){
+        return std::unexpected(testcase_count_exp.error());
     }
 
     const auto version_exp = problem_util::increase_version(transaction, problem_id);
