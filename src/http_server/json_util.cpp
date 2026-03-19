@@ -32,40 +32,45 @@ boost::json::object json_util::make_submission_created_object(
     return response_object;
 }
 
-boost::json::object json_util::make_submission_detail_object(
-    const submission_dto::detail& detail_value
+boost::json::object json_util::make_submission_summary_object(
+    const submission_dto::summary& summary_value
 ){
     boost::json::object response_object;
-    response_object["submission_id"] = detail_value.submission_id;
-    response_object["user_id"] = detail_value.user_id;
-    response_object["problem_id"] = detail_value.problem_id;
-    response_object["language"] = detail_value.language;
-    response_object["source_code"] = detail_value.source_code;
-    response_object["status"] = detail_value.status;
-    response_object["created_at"] = detail_value.created_at;
-    response_object["updated_at"] = detail_value.updated_at;
+    response_object["submission_id"] = summary_value.submission_id;
+    response_object["user_id"] = summary_value.user_id;
+    response_object["problem_id"] = summary_value.problem_id;
+    response_object["language"] = summary_value.language;
+    response_object["status"] = summary_value.status;
+    response_object["created_at"] = summary_value.created_at;
+    response_object["updated_at"] = summary_value.updated_at;
 
-    if(detail_value.score){
-        response_object["score"] = *detail_value.score;
+    if(summary_value.score){
+        response_object["score"] = *summary_value.score;
     }
     else{
         response_object["score"] = nullptr;
     }
 
-    if(detail_value.compile_output){
-        response_object["compile_output"] = *detail_value.compile_output;
-    }
-    else{
-        response_object["compile_output"] = nullptr;
-    }
+    return response_object;
+}
 
-    if(detail_value.judge_output){
-        response_object["judge_output"] = *detail_value.judge_output;
+boost::json::array json_util::make_submission_summary_array(
+    const std::vector<submission_dto::summary>& summary_values
+){
+    boost::json::array response_array;
+    response_array.reserve(summary_values.size());
+    for(const auto& summary_value : summary_values){
+        response_array.push_back(make_submission_summary_object(summary_value));
     }
-    else{
-        response_object["judge_output"] = nullptr;
-    }
+    return response_array;
+}
 
+boost::json::object json_util::make_submission_list_object(
+    const std::vector<submission_dto::summary>& summary_values
+){
+    boost::json::object response_object;
+    response_object["submission_count"] = static_cast<std::int64_t>(summary_values.size());
+    response_object["submissions"] = make_submission_summary_array(summary_values);
     return response_object;
 }
 

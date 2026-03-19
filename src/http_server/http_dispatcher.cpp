@@ -45,10 +45,11 @@ std::optional<std::string_view> http_dispatcher::strip_path_prefix(
 std::optional<http_dispatcher::response_type> http_dispatcher::try_handle_route(
     const request_type& request
 ){
-    const std::string_view path{
+    const std::string_view target{
         request.target().data(),
         request.target().size()
     };
+    const auto path = http_util::get_target_path(target);
 
     const auto system_path_opt = strip_path_prefix(system_path_prefix_, path);
     if(system_path_opt){

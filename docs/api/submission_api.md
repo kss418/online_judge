@@ -79,3 +79,95 @@ required fields: language, source_code
 ```text
 failed to create submission: foreign key violation
 ```
+
+### `GET /api/submission?user_id=...&problem_id=...&status=...`
+
+List submissions using optional filters. This endpoint is public and does not require authentication.
+
+#### request
+
+- required header: none
+- supported query parameters:
+
+| field | type | required | note |
+|---|---|---|---|
+| `top` | `int64` | no | return submissions with `submission_id <= top`; must be positive |
+| `user_id` | `int64` | no | must be positive |
+| `problem_id` | `int64` | no | must be positive |
+| `status` | `string` | no | one of `queued`, `judging`, `accepted`, `wrong_answer`, `time_limit_exceeded`, `memory_limit_exceeded`, `runtime_error`, `compile_error`, `output_exceeded` |
+
+All query parameters are optional. If omitted, the endpoint returns the full submission list. Parameters can be combined.
+The response always returns at most 20 submissions, ordered by `submission_id` descending.
+If `top` is omitted, the latest submission id is used as the starting point.
+
+Example:
+
+```text
+GET /api/submission?top=120&user_id=7&problem_id=3&status=accepted
+```
+
+```text
+GET /api/submission
+```
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `submission_count` | `int64` | number of returned submissions, maximum 20 |
+| `submissions` | `array` | newest-first submission summaries, maximum 20 items |
+
+Each submission summary contains:
+
+| field | type | note |
+|---|---|---|
+| `submission_id` | `int64` | submission id |
+| `user_id` | `int64` | submitter user id |
+| `problem_id` | `int64` | related problem id |
+| `language` | `string` | submitted language |
+| `status` | `string` | current submission status |
+| `score` | `int16 \| null` | score, null before judging finishes |
+| `created_at` | `string` | creation timestamp |
+| `updated_at` | `string` | last update timestamp |
+
+Example:
+
+```json
+{
+  "submission_count": 2,
+  "submissions": [
+    {
+      "submission_id": 12,
+      "user_id": 7,
+      "problem_id": 3,
+      "language": "cpp",
+      "status": "accepted",
+      "score": 100,
+      "created_at": "2026-03-19 14:02:11.123456+09",
+      "updated_at": "2026-03-19 14:02:12.123456+09"
+    },
+    {
+      "submission_id": 9,
+      "user_id": 7,
+      "problem_id": 3,
+      "language": "python",
+      "status": "accepted",
+      "score": 100,
+      "created_at": "2026-03-19 13:58:44.000000+09",
+      "updated_at": "2026-03-19 13:58:45.000000+09"
+    }
+  ]
+}
+```
+
+#### error response
+
+- invalid query string or duplicate query parameter: `400 Bad Request`
+- invalid query parameter value: `400 Bad Request`
+- unexpected internal failure: `500 Internal Server Error`
+
+If no submissions match the filters, the endpoint returns `200 OK` with an empty `submissions` array.

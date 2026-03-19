@@ -26,6 +26,7 @@ enum class submission_status{
 };
 
 std::string to_string(submission_status status);
+std::optional<submission_status> parse_submission_status(std::string_view status);
 
 namespace submission_util{
     inline constexpr std::string_view SUBMISSION_QUEUE_CHANNEL = "submission_queue";

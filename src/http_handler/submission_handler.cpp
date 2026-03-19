@@ -1,5 +1,6 @@
 #include "http_handler/submission_handler.hpp"
 #include "dto/submission_dto.hpp"
+#include "http_server/param_util.hpp"
 #include "http_server/json_util.hpp"
 #include "http_server/http_util.hpp"
 
@@ -65,48 +66,61 @@ submission_handler::response_type submission_handler::handle_create_submission_p
     );
 }
 
-submission_handler::response_type submission_handler::handle_get_submission_get(
+submission_handler::response_type submission_handler::handle_list_submissions_get(
     const request_type& request,
-    db_connection& db_connection_value,
-    std::int64_t submission_id
+    db_connection& db_connection_value
 ){
-    const auto auth_identity_exp = http_util::try_auth_bearer(request, db_connection_value);
-    if(!auth_identity_exp){
-        return std::move(auth_identity_exp.error());
+    const std::string_view target{
+        request.target().data(),
+        request.target().size()
+    };
+    const auto query_opt = http_util::get_target_query(target);
+    const auto query_params_opt = http_util::parse_query_params(query_opt.value_or(""));
+    if(!query_params_opt){
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::bad_request,
+            "invalid query string\n"
+        );
     }
 
-    const auto submission_detail_exp = submission_core_service::get_submission(
+    submission_dto::list_filter filter_value;
+    for(const auto& query_param : *query_params_opt){
+        const auto error_message_opt = param_util::try_apply_submission_list_filter(
+            query_param.key,
+            query_param.value,
+            filter_value
+        );
+        if(error_message_opt){
+            return http_util::create_text_response(
+                request,
+                boost::beast::http::status::bad_request,
+                *error_message_opt + "\n"
+            );
+        }
+    }
+
+    const auto submission_summary_values_exp = submission_core_service::list_submissions(
         db_connection_value,
-        submission_id
+        filter_value
     );
-    if(!submission_detail_exp){
-        const auto code = submission_detail_exp.error();
+    if(!submission_summary_values_exp){
+        const auto code = submission_summary_values_exp.error();
         const auto status =
-            code == errno_error::invalid_argument
-                ? boost::beast::http::status::not_found
+            code.is_bad_request_error()
+                ? boost::beast::http::status::bad_request
                 : boost::beast::http::status::internal_server_error;
 
         return http_util::create_text_response(
             request,
             status,
-            "failed to get submission: " + to_string(code) + "\n"
-        );
-    }
-
-    if(
-        !auth_identity_exp->is_admin &&
-        submission_detail_exp->user_id != auth_identity_exp->user_id
-    ){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::forbidden,
-            "submission owner or admin required\n"
+            "failed to list submissions: " + to_string(code) + "\n"
         );
     }
 
     return json_util::create_json_response(
         request,
         boost::beast::http::status::ok,
-        json_util::make_submission_detail_object(*submission_detail_exp)
+        json_util::make_submission_list_object(*submission_summary_values_exp)
     );
 }

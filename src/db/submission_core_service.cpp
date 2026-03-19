@@ -3,6 +3,9 @@
 
 #include <pqxx/pqxx>
 
+#include <string>
+#include <utility>
+
 std::expected<std::int64_t, error_code> submission_core_service::create_submission(
     db_connection& connection,
     std::int64_t user_id,
@@ -41,61 +44,87 @@ std::expected<std::int64_t, error_code> submission_core_service::create_submissi
     }
 }
 
-std::expected<submission_dto::detail, error_code> submission_core_service::get_submission(
+std::expected<std::vector<submission_dto::summary>, error_code>
+submission_core_service::list_submissions(
     db_connection& connection,
-    std::int64_t submission_id
+    const submission_dto::list_filter& filter_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
-    if(submission_id <= 0){
+    if(
+        (filter_value.top_submission_id_opt && *filter_value.top_submission_id_opt <= 0) ||
+        (filter_value.user_id_opt && *filter_value.user_id_opt <= 0) ||
+        (filter_value.problem_id_opt && *filter_value.problem_id_opt <= 0) ||
+        (filter_value.status_opt && !parse_submission_status(*filter_value.status_opt))
+    ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
     try{
         pqxx::read_transaction transaction(connection.connection());
-        const auto submission_detail_query = transaction.exec(
+
+        std::string submission_list_query =
             "SELECT "
             "submission_id, "
             "user_id, "
             "problem_id, "
             "language, "
-            "source_code, "
             "status::text, "
             "score, "
-            "compile_output, "
-            "judge_output, "
             "created_at::text, "
             "updated_at::text "
             "FROM submissions "
-            "WHERE submission_id = $1",
-            pqxx::params{submission_id}
+            "WHERE 1 = 1";
+        pqxx::params query_params;
+        int query_param_index = 1;
+
+        if(filter_value.top_submission_id_opt){
+            submission_list_query +=
+                " AND submission_id <= $" + std::to_string(query_param_index++);
+            query_params.append(*filter_value.top_submission_id_opt);
+        }
+        if(filter_value.user_id_opt){
+            submission_list_query +=
+                " AND user_id = $" + std::to_string(query_param_index++);
+            query_params.append(*filter_value.user_id_opt);
+        }
+        if(filter_value.problem_id_opt){
+            submission_list_query +=
+                " AND problem_id = $" + std::to_string(query_param_index++);
+            query_params.append(*filter_value.problem_id_opt);
+        }
+        if(filter_value.status_opt){
+            submission_list_query +=
+                " AND status = $" + std::to_string(query_param_index++) + "::submission_status";
+            query_params.append(*filter_value.status_opt);
+        }
+
+        submission_list_query += " ORDER BY submission_id DESC LIMIT 20";
+
+        const auto submission_summary_query = transaction.exec(
+            submission_list_query,
+            query_params
         );
-        if(submission_detail_query.empty()){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+
+        std::vector<submission_dto::summary> summary_values;
+        summary_values.reserve(submission_summary_query.size());
+        for(const auto& submission_summary_row : submission_summary_query){
+            submission_dto::summary summary_value;
+            summary_value.submission_id = submission_summary_row[0].as<std::int64_t>();
+            summary_value.user_id = submission_summary_row[1].as<std::int64_t>();
+            summary_value.problem_id = submission_summary_row[2].as<std::int64_t>();
+            summary_value.language = submission_summary_row[3].as<std::string>();
+            summary_value.status = submission_summary_row[4].as<std::string>();
+            if(!submission_summary_row[5].is_null()){
+                summary_value.score = submission_summary_row[5].as<std::int16_t>();
+            }
+            summary_value.created_at = submission_summary_row[6].as<std::string>();
+            summary_value.updated_at = submission_summary_row[7].as<std::string>();
+            summary_values.push_back(std::move(summary_value));
         }
 
-        submission_dto::detail detail_value;
-        detail_value.submission_id = submission_detail_query[0][0].as<std::int64_t>();
-        detail_value.user_id = submission_detail_query[0][1].as<std::int64_t>();
-        detail_value.problem_id = submission_detail_query[0][2].as<std::int64_t>();
-        detail_value.language = submission_detail_query[0][3].as<std::string>();
-        detail_value.source_code = submission_detail_query[0][4].as<std::string>();
-        detail_value.status = submission_detail_query[0][5].as<std::string>();
-
-        if(!submission_detail_query[0][6].is_null()){
-            detail_value.score = submission_detail_query[0][6].as<std::int16_t>();
-        }
-        if(!submission_detail_query[0][7].is_null()){
-            detail_value.compile_output = submission_detail_query[0][7].as<std::string>();
-        }
-        if(!submission_detail_query[0][8].is_null()){
-            detail_value.judge_output = submission_detail_query[0][8].as<std::string>();
-        }
-
-        detail_value.created_at = submission_detail_query[0][9].as<std::string>();
-        detail_value.updated_at = submission_detail_query[0][10].as<std::string>();
-        return detail_value;
+        return summary_values;
     }
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
