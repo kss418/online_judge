@@ -2,10 +2,11 @@
 
 #include <pqxx/pqxx>
 
-std::expected<bool, error_code> problem_core_util::exists_problem(
+std::expected<problem_dto::existence, error_code> problem_core_util::exists_problem(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -23,13 +24,16 @@ std::expected<bool, error_code> problem_core_util::exists_problem(
         return std::unexpected(error_code::create(errno_error::unknown_error));
     }
 
-    return exists_query_result[0][0].as<bool>();
+    problem_dto::existence existence_value;
+    existence_value.exists = exists_query_result[0][0].as<bool>();
+    return existence_value;
 }
 
-std::expected<std::int32_t, error_code> problem_core_util::get_version(
+std::expected<problem_dto::version, error_code> problem_core_util::get_version(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -45,10 +49,12 @@ std::expected<std::int32_t, error_code> problem_core_util::get_version(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return version_query_result[0][0].as<std::int32_t>();
+    problem_dto::version version_value;
+    version_value.version = version_query_result[0][0].as<std::int32_t>();
+    return version_value;
 }
 
-std::expected<std::int64_t, error_code> problem_core_util::create_problem(
+std::expected<problem_dto::created, error_code> problem_core_util::create_problem(
     pqxx::transaction_base& transaction
 ){
     const auto create_problem_result = transaction.exec(
@@ -62,13 +68,16 @@ std::expected<std::int64_t, error_code> problem_core_util::create_problem(
         return std::unexpected(error_code::create(errno_error::unknown_error));
     }
 
-    return create_problem_result[0][0].as<std::int64_t>();
+    problem_dto::created created_value;
+    created_value.problem_id = create_problem_result[0][0].as<std::int64_t>();
+    return created_value;
 }
 
 std::expected<problem_dto::limits, error_code> problem_core_util::get_limits(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -92,9 +101,10 @@ std::expected<problem_dto::limits, error_code> problem_core_util::get_limits(
 
 std::expected<void, error_code> problem_core_util::set_limits(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id,
+    const problem_dto::reference& problem_reference_value,
     const problem_dto::limits& limits_value
 ){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0 || limits_value.memory_mb <= 0 || limits_value.time_ms <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -119,8 +129,9 @@ std::expected<void, error_code> problem_core_util::set_limits(
 
 std::expected<void, error_code> problem_core_util::increase_version(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
     const auto update_result = transaction.exec(
         "UPDATE problems "
         "SET version = version + 1 "

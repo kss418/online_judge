@@ -13,9 +13,11 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
     db_connection& db_connection_value,
     std::int64_t problem_id
 ){
+    problem_dto::reference problem_reference_value;
+    problem_reference_value.problem_id = problem_id;
     const auto exists_problem_exp = problem_core_service::exists_problem(
         db_connection_value,
-        problem_id
+        problem_reference_value
     );
     if(!exists_problem_exp){
         return http_util::create_text_response(
@@ -24,7 +26,7 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
             "failed to check problem: " + to_string(exists_problem_exp.error()) + "\n"
         );
     }
-    if(!exists_problem_exp.value()){
+    if(!exists_problem_exp->exists){
         return http_util::create_text_response(
             request,
             boost::beast::http::status::not_found,
@@ -32,7 +34,10 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         );
     }
 
-    const auto version_exp = problem_core_service::get_version(db_connection_value, problem_id);
+    const auto version_exp = problem_core_service::get_version(
+        db_connection_value,
+        problem_reference_value
+    );
     if(!version_exp){
         return http_util::create_text_response(
             request,
@@ -41,7 +46,10 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         );
     }
 
-    const auto limits_exp = problem_core_service::get_limits(db_connection_value, problem_id);
+    const auto limits_exp = problem_core_service::get_limits(
+        db_connection_value,
+        problem_reference_value
+    );
     if(!limits_exp){
         const auto status =
             limits_exp.error().is_bad_request_error()
@@ -58,7 +66,7 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
     std::optional<problem_dto::statement> statement_opt = std::nullopt;
     const auto statement_exp = problem_content_service::get_statement(
         db_connection_value,
-        problem_id
+        problem_reference_value
     );
     if(statement_exp){
         statement_opt = statement_exp.value();
@@ -73,7 +81,7 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
 
     const auto samples_exp = problem_content_service::list_samples(
         db_connection_value,
-        problem_id
+        problem_reference_value
     );
     if(!samples_exp){
         return http_util::create_text_response(
@@ -85,7 +93,7 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
 
     const auto statistics_exp = problem_statistics_service::get_statistics(
         db_connection_value,
-        problem_id
+        problem_reference_value
     );
     if(!statistics_exp){
         const auto status =
@@ -104,12 +112,12 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         request,
         boost::beast::http::status::ok,
         json_util::make_problem_detail_object(
-            problem_id,
-            version_exp.value(),
-            limits_exp.value(),
+            problem_reference_value,
+            *version_exp,
+            *limits_exp,
             statement_opt,
-            samples_exp.value(),
-            statistics_exp.value()
+            *samples_exp,
+            *statistics_exp
         )
     );
 }
@@ -135,7 +143,7 @@ problem_handler::response_type problem_handler::handle_create_problem_post(
     return json_util::create_json_response(
         request,
         boost::beast::http::status::created,
-        json_util::make_problem_created_object(create_problem_exp.value())
+        json_util::make_problem_created_object(*create_problem_exp)
     );
 }
 
@@ -144,6 +152,8 @@ problem_handler::response_type problem_handler::handle_set_limits_put(
     db_connection& db_connection_value,
     std::int64_t problem_id
 ){
+    problem_dto::reference problem_reference_value;
+    problem_reference_value.problem_id = problem_id;
     if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_value);
         !auth_identity_exp){
         return std::move(auth_identity_exp.error());
@@ -169,7 +179,7 @@ problem_handler::response_type problem_handler::handle_set_limits_put(
 
     const auto set_limits_exp = problem_core_service::set_limits(
         db_connection_value,
-        problem_id,
+        problem_reference_value,
         *limits_opt
     );
     if(!set_limits_exp){
@@ -198,6 +208,8 @@ problem_handler::response_type problem_handler::handle_set_statement_put(
     db_connection& db_connection_value,
     std::int64_t problem_id
 ){
+    problem_dto::reference problem_reference_value;
+    problem_reference_value.problem_id = problem_id;
     if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_value);
         !auth_identity_exp){
         return std::move(auth_identity_exp.error());
@@ -223,7 +235,7 @@ problem_handler::response_type problem_handler::handle_set_statement_put(
 
     const auto set_statement_exp = problem_content_service::set_statement(
         db_connection_value,
-        problem_id,
+        problem_reference_value,
         *statement_opt
     );
     if(!set_statement_exp){
@@ -252,6 +264,8 @@ problem_handler::response_type problem_handler::handle_create_testcase_post(
     db_connection& db_connection_value,
     std::int64_t problem_id
 ){
+    problem_dto::reference problem_reference_value;
+    problem_reference_value.problem_id = problem_id;
     if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_value);
         !auth_identity_exp){
         return std::move(auth_identity_exp.error());
@@ -277,7 +291,7 @@ problem_handler::response_type problem_handler::handle_create_testcase_post(
 
     const auto create_testcase_exp = testcase_service::create_testcase(
         db_connection_value,
-        problem_id,
+        problem_reference_value,
         *testcase_opt
     );
     if(!create_testcase_exp){
@@ -297,9 +311,6 @@ problem_handler::response_type problem_handler::handle_create_testcase_post(
     return json_util::create_json_response(
         request,
         boost::beast::http::status::created,
-        json_util::make_problem_testcase_created_object(
-            create_testcase_exp->id,
-            create_testcase_exp->order
-        )
+        json_util::make_problem_testcase_created_object(*create_testcase_exp)
     );
 }

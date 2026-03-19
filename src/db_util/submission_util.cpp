@@ -4,17 +4,15 @@
 
 #include <string>
 
-std::expected<std::int64_t, error_code> submission_util::create_submission(
+std::expected<submission_dto::created, error_code> submission_util::create_submission(
     pqxx::transaction_base& transaction,
-    std::int64_t user_id,
-    std::int64_t problem_id,
-    const submission_dto::source& source_value
+    const submission_dto::create_request& create_request_value
 ){
     if(
-        user_id <= 0 ||
-        problem_id <= 0 ||
-        source_value.language.empty() ||
-        source_value.source_code.empty()
+        create_request_value.user_id <= 0 ||
+        create_request_value.problem_id <= 0 ||
+        create_request_value.source_value.language.empty() ||
+        create_request_value.source_value.source_code.empty()
     ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -24,10 +22,10 @@ std::expected<std::int64_t, error_code> submission_util::create_submission(
         "VALUES($1, $2, $3, $4) "
         "RETURNING submission_id",
         pqxx::params{
-            user_id,
-            problem_id,
-            source_value.language,
-            source_value.source_code
+            create_request_value.user_id,
+            create_request_value.problem_id,
+            create_request_value.source_value.language,
+            create_request_value.source_value.source_code
         }
     );
 
@@ -52,15 +50,17 @@ std::expected<std::int64_t, error_code> submission_util::create_submission(
         pqxx::params{SUBMISSION_QUEUE_CHANNEL, std::to_string(submission_id)}
     );
 
-    return submission_id;
+    submission_dto::created created_value;
+    created_value.submission_id = submission_id;
+    created_value.status = to_string(submission_status::queued);
+    return created_value;
 }
 
 std::expected<void, error_code> submission_util::update_submission_status(
     pqxx::transaction_base& transaction,
-    std::int64_t submission_id,
-    submission_status to_status,
-    const std::optional<std::string>& reason_opt
+    const submission_dto::status_update& status_update_value
 ){
+    const std::int64_t submission_id = status_update_value.submission_id;
     if(submission_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -79,13 +79,18 @@ std::expected<void, error_code> submission_util::update_submission_status(
         "UPDATE submissions "
         "SET status = $2::submission_status, updated_at = NOW() "
         "WHERE submission_id = $1",
-        pqxx::params{submission_id, to_string(to_status)}
+        pqxx::params{submission_id, to_string(status_update_value.to_status)}
     );
 
     transaction.exec(
         "INSERT INTO submission_status_history(submission_id, from_status, to_status, reason) "
         "VALUES($1, $2::submission_status, $3::submission_status, $4)",
-        pqxx::params{submission_id, from_status, to_string(to_status), reason_opt}
+        pqxx::params{
+            submission_id,
+            from_status,
+            to_string(status_update_value.to_status),
+            status_update_value.reason_opt
+        }
     );
 
     return {};
@@ -93,8 +98,9 @@ std::expected<void, error_code> submission_util::update_submission_status(
 
 std::expected<submission_dto::queued_submission, error_code> submission_util::lease_submission(
     pqxx::transaction_base& transaction,
-    std::chrono::seconds lease_duration
+    const submission_dto::lease_request& lease_request_value
 ){
+    const std::chrono::seconds lease_duration = lease_request_value.lease_duration;
     if(lease_duration <= std::chrono::seconds::zero()){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -138,15 +144,11 @@ std::expected<submission_dto::queued_submission, error_code> submission_util::le
     return queued_submission_value;
 }
 
-std::expected<submission_util::finalize_result, error_code> submission_util::finalize_submission(
+std::expected<submission_dto::finalize_result, error_code> submission_util::finalize_submission(
     pqxx::transaction_base& transaction,
-    std::int64_t submission_id,
-    submission_status to_status,
-    std::optional<std::int16_t> score_opt,
-    std::optional<std::string> compile_output_opt,
-    std::optional<std::string> judge_output_opt,
-    std::optional<std::string> reason_opt
+    const submission_dto::finalize_request& finalize_request_value
 ){
+    const std::int64_t submission_id = finalize_request_value.submission_id;
     if(submission_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -163,7 +165,7 @@ std::expected<submission_util::finalize_result, error_code> submission_util::fin
     const std::string from_status = current_status_result[0][0].as<std::string>();
     const std::int64_t problem_id = current_status_result[0][1].as<std::int64_t>();
     const bool should_increase_accepted_count =
-        to_status == submission_status::accepted &&
+        finalize_request_value.to_status == submission_status::accepted &&
         from_status != to_string(submission_status::accepted);
     transaction.exec(
         "UPDATE submissions "
@@ -176,17 +178,22 @@ std::expected<submission_util::finalize_result, error_code> submission_util::fin
         "WHERE submission_id = $1",
         pqxx::params{
             submission_id,
-            to_string(to_status),
-            score_opt,
-            compile_output_opt,
-            judge_output_opt
+            to_string(finalize_request_value.to_status),
+            finalize_request_value.score_opt,
+            finalize_request_value.compile_output_opt,
+            finalize_request_value.judge_output_opt
         }
     );
 
     transaction.exec(
         "INSERT INTO submission_status_history(submission_id, from_status, to_status, reason) "
         "VALUES($1, $2::submission_status, $3::submission_status, $4)",
-        pqxx::params{submission_id, from_status, to_string(to_status), reason_opt}
+        pqxx::params{
+            submission_id,
+            from_status,
+            to_string(finalize_request_value.to_status),
+            finalize_request_value.reason_opt
+        }
     );
 
     transaction.exec(
@@ -194,7 +201,7 @@ std::expected<submission_util::finalize_result, error_code> submission_util::fin
         pqxx::params{submission_id}
     );
 
-    finalize_result finalize_result_value;
+    submission_dto::finalize_result finalize_result_value;
     finalize_result_value.problem_id = problem_id;
     finalize_result_value.should_increase_accepted_count = should_increase_accepted_count;
     return finalize_result_value;

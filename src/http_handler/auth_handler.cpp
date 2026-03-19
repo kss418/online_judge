@@ -118,10 +118,12 @@ auth_handler::response_type auth_handler::handle_token_renew_post(
             "missing or invalid bearer token\n"
         );
     }
+    auth_dto::token token_value;
+    token_value.value = std::string{*token_opt};
 
     const auto renew_token_exp = auth_service::renew_token(
         db_connection_value,
-        *token_opt
+        token_value
     );
     if(!renew_token_exp){
         const auto code = renew_token_exp.error();
@@ -163,10 +165,12 @@ auth_handler::response_type auth_handler::handle_logout_post(
             "missing or invalid bearer token\n"
         );
     }
+    auth_dto::token token_value;
+    token_value.value = std::string{*token_opt};
 
     const auto revoke_token_exp = auth_service::revoke_token(
         db_connection_value,
-        *token_opt
+        token_value
     );
     if(!revoke_token_exp){
         const auto code = revoke_token_exp.error();

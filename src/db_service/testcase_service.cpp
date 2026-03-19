@@ -8,13 +8,13 @@
 
 std::expected<problem_dto::testcase, error_code> testcase_service::create_testcase(
     db_connection& connection,
-    std::int64_t problem_id,
+    const problem_dto::reference& problem_reference_value,
     const problem_dto::testcase& testcase_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
-    if(problem_id <= 0){
+    if(problem_reference_value.problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -22,31 +22,36 @@ std::expected<problem_dto::testcase, error_code> testcase_service::create_testca
         pqxx::work transaction(connection.connection());
         const auto ensure_statement_exp = problem_content_util::ensure_statement_row(
             transaction,
-            problem_id
+            problem_reference_value
         );
         if(!ensure_statement_exp){
             return std::unexpected(ensure_statement_exp.error());
         }
 
-        const auto testcase_order_exp = testcase_util::increase_testcase_count(
+        const auto testcase_count_exp = testcase_util::increase_testcase_count(
             transaction,
-            problem_id
+            problem_reference_value
         );
-        if(!testcase_order_exp){
-            return std::unexpected(testcase_order_exp.error());
+        if(!testcase_count_exp){
+            return std::unexpected(testcase_count_exp.error());
         }
+        problem_dto::testcase_ref testcase_reference_value;
+        testcase_reference_value.problem_id = problem_reference_value.problem_id;
+        testcase_reference_value.testcase_order = testcase_count_exp->testcase_count;
 
         const auto created_testcase_exp = testcase_util::create_testcase(
             transaction,
-            problem_id,
-            *testcase_order_exp,
+            testcase_reference_value,
             testcase_value
         );
         if(!created_testcase_exp){
             return std::unexpected(created_testcase_exp.error());
         }
 
-        const auto version_exp = problem_core_util::increase_version(transaction, problem_id);
+        const auto version_exp = problem_core_util::increase_version(
+            transaction,
+            problem_reference_value
+        );
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -61,13 +66,15 @@ std::expected<problem_dto::testcase, error_code> testcase_service::create_testca
 
 std::expected<problem_dto::testcase, error_code> testcase_service::get_testcase(
     db_connection& connection,
-    std::int64_t problem_id,
-    std::int32_t testcase_order
+    const problem_dto::testcase_ref& testcase_reference_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
-    if(problem_id <= 0 || testcase_order <= 0){
+    if(
+        testcase_reference_value.problem_id <= 0 ||
+        testcase_reference_value.testcase_order <= 0
+    ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -75,8 +82,7 @@ std::expected<problem_dto::testcase, error_code> testcase_service::get_testcase(
         pqxx::work transaction(connection.connection());
         const auto testcase_exp = testcase_util::get_testcase(
             transaction,
-            problem_id,
-            testcase_order
+            testcase_reference_value
         );
         if(!testcase_exp){
             return std::unexpected(testcase_exp.error());
@@ -90,14 +96,14 @@ std::expected<problem_dto::testcase, error_code> testcase_service::get_testcase(
     }
 }
 
-std::expected<std::int32_t, error_code> testcase_service::get_testcase_count(
+std::expected<problem_dto::testcase_count, error_code> testcase_service::get_testcase_count(
     db_connection& connection,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
-    if(problem_id <= 0){
+    if(problem_reference_value.problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -105,7 +111,7 @@ std::expected<std::int32_t, error_code> testcase_service::get_testcase_count(
         pqxx::work transaction(connection.connection());
         const auto testcase_count_exp = testcase_util::get_testcase_count(
             transaction,
-            problem_id
+            problem_reference_value
         );
         if(!testcase_count_exp){
             return std::unexpected(testcase_count_exp.error());

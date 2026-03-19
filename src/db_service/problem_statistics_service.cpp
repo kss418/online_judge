@@ -5,7 +5,7 @@
 
 std::expected<problem_dto::statistics, error_code> problem_statistics_service::get_statistics(
     db_connection& connection,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
@@ -15,7 +15,7 @@ std::expected<problem_dto::statistics, error_code> problem_statistics_service::g
         pqxx::read_transaction transaction(connection.connection());
         const auto statistics_exp = problem_statistics_util::get_statistics(
             transaction,
-            problem_id
+            problem_reference_value
         );
         if(!statistics_exp){
             return std::unexpected(statistics_exp.error());

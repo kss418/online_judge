@@ -11,25 +11,25 @@ namespace problem_core_service{
     inline constexpr std::int32_t INITIAL_MEMORY_LIMIT_MB = 256;
     inline constexpr std::int32_t INITIAL_TIME_LIMIT_MS = 1000;
 
-    std::expected<bool, error_code> exists_problem(
+    std::expected<problem_dto::existence, error_code> exists_problem(
         db_connection& connection,
-        std::int64_t problem_id
+        const problem_dto::reference& problem_reference_value
     );
     
-    std::expected<std::int32_t, error_code> get_version(
+    std::expected<problem_dto::version, error_code> get_version(
         db_connection& connection,
-        std::int64_t problem_id
+        const problem_dto::reference& problem_reference_value
     );
 
-    std::expected<std::int64_t, error_code> create_problem(db_connection& connection);
+    std::expected<problem_dto::created, error_code> create_problem(db_connection& connection);
     std::expected<problem_dto::limits, error_code> get_limits(
         db_connection& connection,
-        std::int64_t problem_id
+        const problem_dto::reference& problem_reference_value
     );
 
     std::expected<void, error_code> set_limits(
         db_connection& connection,
-        std::int64_t problem_id,
+        const problem_dto::reference& problem_reference_value,
         const problem_dto::limits& limits_value
     );
 }

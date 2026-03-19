@@ -1,5 +1,6 @@
 #pragma once
 #include "common/error_code.hpp"
+#include "dto/auth_dto.hpp"
 
 #include <pqxx/pqxx>
 
@@ -7,34 +8,28 @@
 #include <cstdint>
 #include <expected>
 #include <optional>
-#include <string_view>
 
 namespace auth_util{
-    struct token_identity{
-        std::int64_t user_id = 0;
-        bool is_admin = false;
-    };
-
     std::expected<void, error_code> insert_token(
         pqxx::transaction_base& transaction,
         std::int64_t user_id,
-        std::string_view token_hash,
+        const auth_dto::hashed_token& hashed_token_value,
         std::chrono::seconds token_ttl
     );
     
     std::expected<bool, error_code> revoke_token(
         pqxx::transaction_base& transaction,
-        std::string_view token_hash
+        const auth_dto::hashed_token& hashed_token_value
     );
 
-    std::expected<std::optional<token_identity>, error_code> get_token_identity(
+    std::expected<std::optional<auth_dto::identity>, error_code> get_token_identity(
         pqxx::transaction_base& transaction,
-        std::string_view token_hash
+        const auth_dto::hashed_token& hashed_token_value
     );
 
     std::expected<void, error_code> update_last_used_at(
         pqxx::transaction_base& transaction,
-        std::string_view token_hash
+        const auth_dto::hashed_token& hashed_token_value
     );
 
     std::expected<bool, error_code> update_admin_status(
@@ -45,7 +40,7 @@ namespace auth_util{
 
     std::expected<bool, error_code> update_expires_at(
         pqxx::transaction_base& transaction,
-        std::string_view token_hash,
+        const auth_dto::hashed_token& hashed_token_value,
         std::chrono::seconds token_ttl
     );
 }

@@ -10,6 +10,6 @@
 namespace problem_statistics_service{
     std::expected<problem_dto::statistics, error_code> get_statistics(
         db_connection& connection,
-        std::int64_t problem_id
+        const problem_dto::reference& problem_reference_value
     );
 }

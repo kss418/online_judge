@@ -8,7 +8,7 @@
 
 std::expected<problem_dto::statement, error_code> problem_content_service::get_statement(
     db_connection& connection,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
@@ -16,7 +16,10 @@ std::expected<problem_dto::statement, error_code> problem_content_service::get_s
 
     try{
         pqxx::read_transaction transaction(connection.connection());
-        const auto statement_exp = problem_content_util::get_statement(transaction, problem_id);
+        const auto statement_exp = problem_content_util::get_statement(
+            transaction,
+            problem_reference_value
+        );
         if(!statement_exp){
             return std::unexpected(statement_exp.error());
         }
@@ -30,7 +33,7 @@ std::expected<problem_dto::statement, error_code> problem_content_service::get_s
 
 std::expected<void, error_code> problem_content_service::set_statement(
     db_connection& connection,
-    std::int64_t problem_id,
+    const problem_dto::reference& problem_reference_value,
     const problem_dto::statement& statement
 ){
     if(!connection.is_connected()){
@@ -41,14 +44,17 @@ std::expected<void, error_code> problem_content_service::set_statement(
         pqxx::work transaction(connection.connection());
         const auto set_statement_exp = problem_content_util::set_statement(
             transaction,
-            problem_id,
+            problem_reference_value,
             statement
         );
         if(!set_statement_exp){
             return std::unexpected(set_statement_exp.error());
         }
 
-        const auto version_exp = problem_core_util::increase_version(transaction, problem_id);
+        const auto version_exp = problem_core_util::increase_version(
+            transaction,
+            problem_reference_value
+        );
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -63,7 +69,7 @@ std::expected<void, error_code> problem_content_service::set_statement(
 
 std::expected<std::vector<problem_dto::sample>, error_code> problem_content_service::list_samples(
     db_connection& connection,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
@@ -71,7 +77,10 @@ std::expected<std::vector<problem_dto::sample>, error_code> problem_content_serv
 
     try{
         pqxx::read_transaction transaction(connection.connection());
-        const auto sample_values_exp = problem_content_util::list_samples(transaction, problem_id);
+        const auto sample_values_exp = problem_content_util::list_samples(
+            transaction,
+            problem_reference_value
+        );
         if(!sample_values_exp){
             return std::unexpected(sample_values_exp.error());
         }

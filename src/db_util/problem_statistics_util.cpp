@@ -4,8 +4,9 @@
 
 std::expected<problem_dto::statistics, error_code> problem_statistics_util::get_statistics(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -29,8 +30,9 @@ std::expected<problem_dto::statistics, error_code> problem_statistics_util::get_
 
 std::expected<void, error_code> problem_statistics_util::create_problem_statistics(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -49,8 +51,9 @@ std::expected<void, error_code> problem_statistics_util::create_problem_statisti
 
 std::expected<void, error_code> problem_statistics_util::increase_submission_count(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -73,8 +76,9 @@ std::expected<void, error_code> problem_statistics_util::increase_submission_cou
 
 std::expected<void, error_code> problem_statistics_util::increase_accepted_count(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }

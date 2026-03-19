@@ -39,10 +39,9 @@ namespace json_util{
         const std::vector<submission_dto::summary>& summary_values
     );
 
-    boost::json::object make_problem_created_object(std::int64_t problem_id);
+    boost::json::object make_problem_created_object(const problem_dto::created& created_value);
     boost::json::object make_problem_testcase_created_object(
-        std::int64_t testcase_id,
-        std::int32_t testcase_order
+        const problem_dto::testcase& testcase_value
     );
     boost::json::object make_problem_limits_object(const problem_dto::limits& limits_value);
     boost::json::object make_problem_statement_object(
@@ -55,8 +54,8 @@ namespace json_util{
         const problem_dto::statistics& statistics_value
     );
     boost::json::object make_problem_detail_object(
-        std::int64_t problem_id,
-        std::int32_t version,
+        const problem_dto::reference& problem_reference_value,
+        const problem_dto::version& version_value,
         const problem_dto::limits& limits_value,
         const std::optional<problem_dto::statement>& statement_opt,
         const std::vector<problem_dto::sample>& sample_values,

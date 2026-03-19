@@ -69,7 +69,11 @@ std::expected<std::pair<std::int32_t, std::int32_t>, error_code> testcase_downlo
 }
 
 std::expected<bool, error_code> testcase_downloader::is_latest(std::int64_t problem_id){
-    const auto version_exp = problem_core_service::get_version(connection_, problem_id);
+    const problem_dto::reference problem_reference_value{problem_id};
+    const auto version_exp = problem_core_service::get_version(
+        connection_,
+        problem_reference_value
+    );
     if(!version_exp){
         return std::unexpected(version_exp.error());
     }
@@ -90,18 +94,22 @@ std::expected<bool, error_code> testcase_downloader::is_latest(std::int64_t prob
         return std::unexpected(local_version_error);
     }
 
-    return local_version_exp.value() == version_exp.value();
+    return local_version_exp.value() == version_exp->version;
 }
 
 std::expected<void, error_code> testcase_downloader::sync_version_file(std::int64_t problem_id){
-    const auto version_exp = problem_core_service::get_version(connection_, problem_id);
+    const problem_dto::reference problem_reference_value{problem_id};
+    const auto version_exp = problem_core_service::get_version(
+        connection_,
+        problem_reference_value
+    );
     if(!version_exp){
         return std::unexpected(version_exp.error());
     }
 
     const auto local_version_exp = read_version_file(problem_id);
     if(local_version_exp){
-        if(local_version_exp.value() == version_exp.value()){
+        if(local_version_exp.value() == version_exp->version){
             return {};
         }
     }
@@ -134,7 +142,7 @@ std::expected<void, error_code> testcase_downloader::sync_version_file(std::int6
 
     const auto create_version_file_exp = file_util::create_file(
         version_file_path,
-        std::to_string(version_exp.value())
+        std::to_string(version_exp->version)
     );
     
     if(!create_version_file_exp){
@@ -145,7 +153,11 @@ std::expected<void, error_code> testcase_downloader::sync_version_file(std::int6
 }
 
 std::expected<void, error_code> testcase_downloader::sync_limit_file(std::int64_t problem_id){
-    const auto limits_exp = problem_core_service::get_limits(connection_, problem_id);
+    const problem_dto::reference problem_reference_value{problem_id};
+    const auto limits_exp = problem_core_service::get_limits(
+        connection_,
+        problem_reference_value
+    );
     if(!limits_exp){
         return std::unexpected(limits_exp.error());
     }
@@ -246,12 +258,16 @@ std::expected<void, error_code> testcase_downloader::sync_testcases(std::int64_t
 }
 
 std::expected<void, error_code> testcase_downloader::download_all(std::int64_t problem_id){
-    const auto testcase_count_exp = testcase_service::get_testcase_count(connection_, problem_id);
+    const problem_dto::reference problem_reference_value{problem_id};
+    const auto testcase_count_exp = testcase_service::get_testcase_count(
+        connection_,
+        problem_reference_value
+    );
     if(!testcase_count_exp){
         return std::unexpected(testcase_count_exp.error());
     }
 
-    for(std::int32_t order = 1; order <= testcase_count_exp.value(); ++order){
+    for(std::int32_t order = 1; order <= testcase_count_exp->testcase_count; ++order){
         const auto download_one_exp = download_one(problem_id, order);
         if(!download_one_exp){
             return std::unexpected(download_one_exp.error());
@@ -262,7 +278,11 @@ std::expected<void, error_code> testcase_downloader::download_all(std::int64_t p
 }
 
 std::expected<void, error_code> testcase_downloader::delete_outdated(std::int64_t problem_id){
-    const auto testcase_count_exp = testcase_service::get_testcase_count(connection_, problem_id);
+    const problem_dto::reference problem_reference_value{problem_id};
+    const auto testcase_count_exp = testcase_service::get_testcase_count(
+        connection_,
+        problem_reference_value
+    );
     if(!testcase_count_exp){
         return std::unexpected(testcase_count_exp.error());
     }
@@ -320,7 +340,7 @@ std::expected<void, error_code> testcase_downloader::delete_outdated(std::int64_
             continue;
         }
         
-        if(order <= testcase_count_exp.value()){
+        if(order <= testcase_count_exp->testcase_count){
             directory_it.increment(iterator_ec);
             if(iterator_ec){
                 return std::unexpected(
@@ -388,7 +408,13 @@ std::expected<void, error_code> testcase_downloader::delete_one(
 std::expected<void, error_code> testcase_downloader::download_one(
     std::int64_t problem_id, std::int32_t order
 ){
-    const auto testcase_exp = testcase_service::get_testcase(connection_, problem_id, order);
+    problem_dto::testcase_ref testcase_reference_value;
+    testcase_reference_value.problem_id = problem_id;
+    testcase_reference_value.testcase_order = order;
+    const auto testcase_exp = testcase_service::get_testcase(
+        connection_,
+        testcase_reference_value
+    );
     if(!testcase_exp){
         return std::unexpected(testcase_exp.error());
     }

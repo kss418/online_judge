@@ -11,33 +11,33 @@ namespace pqxx{
 }
 
 namespace problem_core_util{
-    std::expected<bool, error_code> exists_problem(
+    std::expected<problem_dto::existence, error_code> exists_problem(
         pqxx::transaction_base& transaction,
-        std::int64_t problem_id
+        const problem_dto::reference& problem_reference_value
     );
 
-    std::expected<std::int32_t, error_code> get_version(
+    std::expected<problem_dto::version, error_code> get_version(
         pqxx::transaction_base& transaction,
-        std::int64_t problem_id
+        const problem_dto::reference& problem_reference_value
     );
 
-    std::expected<std::int64_t, error_code> create_problem(
+    std::expected<problem_dto::created, error_code> create_problem(
         pqxx::transaction_base& transaction
     );
 
     std::expected<problem_dto::limits, error_code> get_limits(
         pqxx::transaction_base& transaction,
-        std::int64_t problem_id
+        const problem_dto::reference& problem_reference_value
     );
 
     std::expected<void, error_code> set_limits(
         pqxx::transaction_base& transaction,
-        std::int64_t problem_id,
+        const problem_dto::reference& problem_reference_value,
         const problem_dto::limits& limits_value
     );
 
     std::expected<void, error_code> increase_version(
         pqxx::transaction_base& transaction,
-        std::int64_t problem_id
+        const problem_dto::reference& problem_reference_value
     );
 }

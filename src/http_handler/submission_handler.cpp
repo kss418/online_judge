@@ -33,12 +33,14 @@ submission_handler::response_type submission_handler::handle_create_submission_p
             "required fields: language, source_code\n"
         );
     }
+    submission_dto::create_request create_request_value;
+    create_request_value.user_id = auth_identity_exp->user_id;
+    create_request_value.problem_id = problem_id;
+    create_request_value.source_value = *source_opt;
 
     const auto create_submission_exp = submission_service::create_submission(
         db_connection_value,
-        auth_identity_exp->user_id,
-        problem_id,
-        *source_opt
+        create_request_value
     );
     if(!create_submission_exp){
         const auto code = create_submission_exp.error();
@@ -54,14 +56,10 @@ submission_handler::response_type submission_handler::handle_create_submission_p
         );
     }
 
-    submission_dto::created created_value;
-    created_value.submission_id = create_submission_exp.value();
-    created_value.status = to_string(submission_status::queued);
-
     return json_util::create_json_response(
         request,
         boost::beast::http::status::created,
-        json_util::make_submission_created_object(created_value)
+        json_util::make_submission_created_object(*create_submission_exp)
     );
 }
 

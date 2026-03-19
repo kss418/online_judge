@@ -26,18 +26,22 @@ std::expected<auth_dto::session, error_code> login_service::sign_up(
     if(!user_password_hash_exp){
         return std::unexpected(user_password_hash_exp.error());
     }
+    auth_dto::hashed_credentials hashed_credentials_value;
+    hashed_credentials_value.user_login_id = credentials_value.user_login_id;
+    hashed_credentials_value.password_hash = *user_password_hash_exp;
 
     const auto issued_token_exp = token_util::issue_token();
     if(!issued_token_exp){
         return std::unexpected(issued_token_exp.error());
     }
+    auth_dto::hashed_token hashed_token_value;
+    hashed_token_value.token_hash = issued_token_exp->token_hash;
 
     try{
         pqxx::work transaction(connection_value.connection());
         const auto user_id_exp = login_util::create_user(
             transaction,
-            credentials_value.user_login_id,
-            *user_password_hash_exp
+            hashed_credentials_value
         );
         if(!user_id_exp){
             return std::unexpected(user_id_exp.error());
@@ -46,7 +50,7 @@ std::expected<auth_dto::session, error_code> login_service::sign_up(
         const auto insert_token_exp = auth_util::insert_token(
             transaction,
             *user_id_exp,
-            issued_token_exp->token_hash,
+            hashed_token_value,
             token_util::TOKEN_TTL
         );
         if(!insert_token_exp){
@@ -86,13 +90,15 @@ std::expected<std::optional<auth_dto::session>, error_code> login_service::login
     if(!user_password_hash_exp){
         return std::unexpected(user_password_hash_exp.error());
     }
+    auth_dto::hashed_credentials hashed_credentials_value;
+    hashed_credentials_value.user_login_id = credentials_value.user_login_id;
+    hashed_credentials_value.password_hash = *user_password_hash_exp;
 
     try{
         pqxx::work transaction(connection_value.connection());
         const auto login_identity_exp = login_util::get_login_identity(
             transaction,
-            credentials_value.user_login_id,
-            *user_password_hash_exp
+            hashed_credentials_value
         );
         if(!login_identity_exp){
             return std::unexpected(login_identity_exp.error());
@@ -105,11 +111,13 @@ std::expected<std::optional<auth_dto::session>, error_code> login_service::login
         if(!issued_token_exp){
             return std::unexpected(issued_token_exp.error());
         }
+        auth_dto::hashed_token hashed_token_value;
+        hashed_token_value.token_hash = issued_token_exp->token_hash;
 
         const auto insert_token_exp = auth_util::insert_token(
             transaction,
             login_identity_exp->value().user_id,
-            issued_token_exp->token_hash,
+            hashed_token_value,
             token_util::TOKEN_TTL
         );
         if(!insert_token_exp){

@@ -11,20 +11,20 @@ static bool is_queue_empty_error(const error_code& code){
     return code == errno_error::resource_temporarily_unavailable;
 }
 
-std::expected<std::int64_t, error_code> submission_service::create_submission(
+std::expected<submission_dto::created, error_code> submission_service::create_submission(
     db_connection& connection,
-    std::int64_t user_id,
-    std::int64_t problem_id,
-    const submission_dto::source& source_value
+    const submission_dto::create_request& create_request_value
 ){
+    problem_dto::reference problem_reference_value;
+    problem_reference_value.problem_id = create_request_value.problem_id;
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
     if(
-        user_id <= 0 ||
-        problem_id <= 0 ||
-        source_value.language.empty() ||
-        source_value.source_code.empty()
+        create_request_value.user_id <= 0 ||
+        problem_reference_value.problem_id <= 0 ||
+        create_request_value.source_value.language.empty() ||
+        create_request_value.source_value.source_code.empty()
     ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -33,9 +33,7 @@ std::expected<std::int64_t, error_code> submission_service::create_submission(
         pqxx::work transaction(connection.connection());
         const auto create_submission_exp = submission_util::create_submission(
             transaction,
-            user_id,
-            problem_id,
-            source_value
+            create_request_value
         );
         if(!create_submission_exp){
             return std::unexpected(create_submission_exp.error());
@@ -43,14 +41,14 @@ std::expected<std::int64_t, error_code> submission_service::create_submission(
 
         const auto increase_submission_count_exp = problem_statistics_util::increase_submission_count(
             transaction,
-            problem_id
+            problem_reference_value
         );
         if(!increase_submission_count_exp){
             return std::unexpected(increase_submission_count_exp.error());
         }
 
         transaction.commit();
-        return create_submission_exp.value();
+        return *create_submission_exp;
     }
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
@@ -59,9 +57,7 @@ std::expected<std::int64_t, error_code> submission_service::create_submission(
 
 std::expected<void, error_code> submission_service::update_submission_status(
     db_connection& connection,
-    std::int64_t submission_id,
-    submission_status to_status,
-    const std::optional<std::string>& reason_opt
+    const submission_dto::status_update& status_update_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
@@ -71,9 +67,7 @@ std::expected<void, error_code> submission_service::update_submission_status(
         pqxx::work transaction(connection.connection());
         const auto update_submission_status_exp = submission_util::update_submission_status(
             transaction,
-            submission_id,
-            to_status,
-            reason_opt
+            status_update_value
         );
         if(!update_submission_status_exp){
             return std::unexpected(update_submission_status_exp.error());
@@ -90,7 +84,7 @@ std::expected<void, error_code> submission_service::update_submission_status(
 std::expected<std::optional<submission_dto::queued_submission>, error_code>
 submission_service::lease_submission(
     db_connection& connection,
-    std::chrono::seconds lease_duration
+    const submission_dto::lease_request& lease_request_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
@@ -98,7 +92,10 @@ submission_service::lease_submission(
 
     try{
         pqxx::work transaction(connection.connection());
-        auto lease_submission_exp = submission_util::lease_submission(transaction, lease_duration);
+        auto lease_submission_exp = submission_util::lease_submission(
+            transaction,
+            lease_request_value
+        );
         if(!lease_submission_exp){
             if(is_queue_empty_error(lease_submission_exp.error())){
                 return std::optional<submission_dto::queued_submission>{};
@@ -117,12 +114,7 @@ submission_service::lease_submission(
 
 std::expected<void, error_code> submission_service::finalize_submission(
     db_connection& connection,
-    std::int64_t submission_id,
-    submission_status to_status,
-    std::optional<std::int16_t> score_opt,
-    std::optional<std::string> compile_output_opt,
-    std::optional<std::string> judge_output_opt,
-    std::optional<std::string> reason_opt
+    const submission_dto::finalize_request& finalize_request_value
 ){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
@@ -132,22 +124,19 @@ std::expected<void, error_code> submission_service::finalize_submission(
         pqxx::work transaction(connection.connection());
         const auto finalize_submission_exp = submission_util::finalize_submission(
             transaction,
-            submission_id,
-            to_status,
-            score_opt,
-            compile_output_opt,
-            judge_output_opt,
-            reason_opt
+            finalize_request_value
         );
         if(!finalize_submission_exp){
             return std::unexpected(finalize_submission_exp.error());
         }
 
+        problem_dto::reference problem_reference_value;
+        problem_reference_value.problem_id = finalize_submission_exp->problem_id;
         if(finalize_submission_exp->should_increase_accepted_count){
             const auto increase_accepted_count_exp =
                 problem_statistics_util::increase_accepted_count(
                     transaction,
-                    finalize_submission_exp->problem_id
+                    problem_reference_value
                 );
             if(!increase_accepted_count_exp){
                 return std::unexpected(increase_accepted_count_exp.error());

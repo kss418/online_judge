@@ -7,9 +7,22 @@
 #include <string>
 
 namespace auth_dto{
+    struct token{
+        std::string value;
+    };
+
+    struct hashed_token{
+        std::string token_hash;
+    };
+
     struct credentials{
         std::string user_login_id;
         std::string raw_password;
+    };
+
+    struct hashed_credentials{
+        std::string user_login_id;
+        std::string password_hash;
     };
 
     struct identity{

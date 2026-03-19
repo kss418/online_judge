@@ -162,10 +162,12 @@ std::expected<void, error_code> judge_worker::run(){
                 return std::unexpected(save_source_code_exp.error());
             }
 
+            submission_dto::status_update status_update_value;
+            status_update_value.submission_id = queued_submission_value.submission_id;
+            status_update_value.to_status = submission_status::judging;
             const auto update_submission_status_exp = submission_service::update_submission_status(
                 db_connection_,
-                queued_submission_value.submission_id,
-                submission_status::judging
+                status_update_value
             );
             if(!update_submission_status_exp){
                 return std::unexpected(update_submission_status_exp.error());
@@ -215,14 +217,16 @@ std::expected<void, error_code> judge_worker::run(){
                 *run_all_testcases_exp
             );
 
+            submission_dto::finalize_request finalize_request_value;
+            finalize_request_value.submission_id = queued_submission_value.submission_id;
+            finalize_request_value.to_status = submission_status_value;
+            finalize_request_value.score_opt = finalize_submission_data_value.score;
+            finalize_request_value.compile_output_opt =
+                finalize_submission_data_value.compile_output;
+            finalize_request_value.judge_output_opt = finalize_submission_data_value.judge_output;
             const auto finalize_submission_exp = submission_service::finalize_submission(
                 db_connection_,
-                queued_submission_value.submission_id,
-                submission_status_value,
-                finalize_submission_data_value.score,
-                finalize_submission_data_value.compile_output,
-                finalize_submission_data_value.judge_output,
-                std::nullopt
+                finalize_request_value
             );
             if(!finalize_submission_exp){
                 return std::unexpected(finalize_submission_exp.error());
@@ -242,7 +246,9 @@ std::expected<void, error_code> judge_worker::run(){
 }
 
 std::expected<std::optional<submission_dto::queued_submission>, error_code> judge_worker::lease_submission(){
-    return submission_service::lease_submission(db_connection_, lease_duration_);
+    submission_dto::lease_request lease_request_value;
+    lease_request_value.lease_duration = lease_duration_;
+    return submission_service::lease_submission(db_connection_, lease_request_value);
 }
 
 std::expected<void, error_code> judge_worker::save_source_code(

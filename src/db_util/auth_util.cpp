@@ -3,10 +3,14 @@
 std::expected<void, error_code> auth_util::insert_token(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
-    std::string_view token_hash,
+    const auth_dto::hashed_token& hashed_token_value,
     std::chrono::seconds token_ttl
 ){
-    if(user_id <= 0 || token_hash.empty() || token_ttl <= std::chrono::seconds::zero()){
+    if(
+        user_id <= 0 ||
+        hashed_token_value.token_hash.empty() ||
+        token_ttl <= std::chrono::seconds::zero()
+    ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -19,7 +23,7 @@ std::expected<void, error_code> auth_util::insert_token(
         "FROM users "
         "WHERE user_id = $1 "
         "RETURNING token_id",
-        pqxx::params{user_id, token_hash, token_ttl.count()}
+        pqxx::params{user_id, hashed_token_value.token_hash, token_ttl.count()}
     );
 
     if(insert_result.empty()){
@@ -31,9 +35,9 @@ std::expected<void, error_code> auth_util::insert_token(
 
 std::expected<bool, error_code> auth_util::revoke_token(
     pqxx::transaction_base& transaction,
-    std::string_view token_hash
+    const auth_dto::hashed_token& hashed_token_value
 ){
-    if(token_hash.empty()){
+    if(hashed_token_value.token_hash.empty()){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -41,17 +45,17 @@ std::expected<bool, error_code> auth_util::revoke_token(
         "UPDATE auth_tokens "
         "SET revoked_at = NOW() "
         "WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > NOW()",
-        pqxx::params{token_hash}
+        pqxx::params{hashed_token_value.token_hash}
     );
 
     return revoke_result.affected_rows() > 0;
 }
 
-std::expected<std::optional<auth_util::token_identity>, error_code> auth_util::get_token_identity(
+std::expected<std::optional<auth_dto::identity>, error_code> auth_util::get_token_identity(
     pqxx::transaction_base& transaction,
-    std::string_view token_hash
+    const auth_dto::hashed_token& hashed_token_value
 ){
-    if(token_hash.empty()){
+    if(hashed_token_value.token_hash.empty()){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -65,24 +69,24 @@ std::expected<std::optional<auth_util::token_identity>, error_code> auth_util::g
         "token_table.revoked_at IS NULL AND "
         "token_table.expires_at > NOW() "
         "FOR UPDATE OF token_table",
-        pqxx::params{token_hash}
+        pqxx::params{hashed_token_value.token_hash}
     );
 
     if(token_identity_result.empty()){
         return std::nullopt;
     }
 
-    token_identity token_identity_value;
-    token_identity_value.user_id = token_identity_result[0][0].as<std::int64_t>();
-    token_identity_value.is_admin = token_identity_result[0][1].as<bool>();
-    return token_identity_value;
+    auth_dto::identity identity_value;
+    identity_value.user_id = token_identity_result[0][0].as<std::int64_t>();
+    identity_value.is_admin = token_identity_result[0][1].as<bool>();
+    return identity_value;
 }
 
 std::expected<void, error_code> auth_util::update_last_used_at(
     pqxx::transaction_base& transaction,
-    std::string_view token_hash
+    const auth_dto::hashed_token& hashed_token_value
 ){
-    if(token_hash.empty()){
+    if(hashed_token_value.token_hash.empty()){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -93,7 +97,7 @@ std::expected<void, error_code> auth_util::update_last_used_at(
         "token_hash = $1 AND "
         "revoked_at IS NULL AND "
         "expires_at > NOW()",
-        pqxx::params{token_hash}
+        pqxx::params{hashed_token_value.token_hash}
     );
 
     if(update_result.affected_rows() == 0){
@@ -124,10 +128,13 @@ std::expected<bool, error_code> auth_util::update_admin_status(
 
 std::expected<bool, error_code> auth_util::update_expires_at(
     pqxx::transaction_base& transaction,
-    std::string_view token_hash,
+    const auth_dto::hashed_token& hashed_token_value,
     std::chrono::seconds token_ttl
 ){
-    if(token_hash.empty() || token_ttl <= std::chrono::seconds::zero()){
+    if(
+        hashed_token_value.token_hash.empty() ||
+        token_ttl <= std::chrono::seconds::zero()
+    ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -138,7 +145,7 @@ std::expected<bool, error_code> auth_util::update_expires_at(
         "token_hash = $1 AND "
         "revoked_at IS NULL AND "
         "expires_at > NOW()",
-        pqxx::params{token_hash, token_ttl.count()}
+        pqxx::params{hashed_token_value.token_hash, token_ttl.count()}
     );
 
     return update_result.affected_rows() > 0;

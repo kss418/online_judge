@@ -10,14 +10,14 @@
 namespace auth_service{
     std::expected<std::optional<auth_dto::identity>, error_code> auth_token(
         db_connection& connection_value,
-        std::string_view token
+        const auth_dto::token& token_value
     );
     std::expected<bool, error_code> renew_token(
         db_connection& connection_value,
-        std::string_view token
+        const auth_dto::token& token_value
     );
     std::expected<bool, error_code> revoke_token(
         db_connection& connection_value,
-        std::string_view token
+        const auth_dto::token& token_value
     );
 }

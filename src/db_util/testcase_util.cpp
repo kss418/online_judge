@@ -5,10 +5,11 @@
 
 std::expected<problem_dto::testcase, error_code> testcase_util::create_testcase(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id,
-    std::int32_t testcase_order,
+    const problem_dto::testcase_ref& testcase_reference_value,
     const problem_dto::testcase& testcase_value
 ){
+    const std::int64_t problem_id = testcase_reference_value.problem_id;
+    const std::int32_t testcase_order = testcase_reference_value.testcase_order;
     if(problem_id <= 0 || testcase_order <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -36,9 +37,10 @@ std::expected<problem_dto::testcase, error_code> testcase_util::create_testcase(
 
 std::expected<problem_dto::testcase, error_code> testcase_util::get_testcase(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id,
-    std::int32_t testcase_order
+    const problem_dto::testcase_ref& testcase_reference_value
 ){
+    const std::int64_t problem_id = testcase_reference_value.problem_id;
+    const std::int32_t testcase_order = testcase_reference_value.testcase_order;
     if(problem_id <= 0 || testcase_order <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -62,10 +64,11 @@ std::expected<problem_dto::testcase, error_code> testcase_util::get_testcase(
     return testcase_value;
 }
 
-std::expected<std::int32_t, error_code> testcase_util::get_testcase_count(
+std::expected<problem_dto::testcase_count, error_code> testcase_util::get_testcase_count(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -81,13 +84,16 @@ std::expected<std::int32_t, error_code> testcase_util::get_testcase_count(
         return std::unexpected(error_code::create(errno_error::unknown_error));
     }
 
-    return testcase_count_query_result[0][0].as<std::int32_t>();
+    problem_dto::testcase_count testcase_count_value;
+    testcase_count_value.testcase_count = testcase_count_query_result[0][0].as<std::int32_t>();
+    return testcase_count_value;
 }
 
-std::expected<std::int32_t, error_code> testcase_util::increase_testcase_count(
+std::expected<problem_dto::testcase_count, error_code> testcase_util::increase_testcase_count(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -104,32 +110,37 @@ std::expected<std::int32_t, error_code> testcase_util::increase_testcase_count(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return increase_result[0][0].as<std::int32_t>();
+    problem_dto::testcase_count testcase_count_value;
+    testcase_count_value.testcase_count = increase_result[0][0].as<std::int32_t>();
+    return testcase_count_value;
 }
 
-std::expected<std::int32_t, error_code> testcase_util::decrease_testcase_count(
+std::expected<problem_dto::testcase_count, error_code> testcase_util::decrease_testcase_count(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
     const auto decrease_result = transaction.exec(
         "UPDATE problem_statements "
         "SET testcase_count = testcase_count - 1, updated_at = NOW() "
         "WHERE problem_id = $1 AND testcase_count > 0 "
         "RETURNING testcase_count",
-        pqxx::params{problem_id}
+        pqxx::params{problem_reference_value.problem_id}
     );
 
     if(decrease_result.empty()){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return decrease_result[0][0].as<std::int32_t>();
+    problem_dto::testcase_count testcase_count_value;
+    testcase_count_value.testcase_count = decrease_result[0][0].as<std::int32_t>();
+    return testcase_count_value;
 }
 
 std::expected<std::vector<problem_dto::testcase>, error_code> testcase_util::list_testcases(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -158,10 +169,12 @@ std::expected<std::vector<problem_dto::testcase>, error_code> testcase_util::lis
 
 std::expected<void, error_code> testcase_util::set_testcase(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id,
+    const problem_dto::testcase_ref& testcase_reference_value,
     const problem_dto::testcase& testcase_value
 ){
-    if(problem_id <= 0 || testcase_value.order <= 0){
+    const std::int64_t problem_id = testcase_reference_value.problem_id;
+    const std::int32_t testcase_order = testcase_reference_value.testcase_order;
+    if(problem_id <= 0 || testcase_order <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -173,7 +186,7 @@ std::expected<void, error_code> testcase_util::set_testcase(
         "WHERE problem_id = $1 AND testcase_order = $2",
         pqxx::params{
             problem_id,
-            testcase_value.order,
+            testcase_order,
             testcase_value.input,
             testcase_value.output
         }
@@ -188,8 +201,9 @@ std::expected<void, error_code> testcase_util::set_testcase(
 
 std::expected<void, error_code> testcase_util::delete_testcase(
     pqxx::transaction_base& transaction,
-    std::int64_t problem_id
+    const problem_dto::reference& problem_reference_value
 ){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }

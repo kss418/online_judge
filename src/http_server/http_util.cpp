@@ -242,8 +242,10 @@ std::expected<auth_dto::identity, http_util::response_type> http_util::try_auth_
             "missing or invalid bearer token\n"
         ));
     }
+    auth_dto::token token_value;
+    token_value.value = std::string{*token_opt};
 
-    const auto auth_identity_exp = auth_service::auth_token(db_connection, *token_opt);
+    const auto auth_identity_exp = auth_service::auth_token(db_connection, token_value);
     if(!auth_identity_exp){
         const auto code = auth_identity_exp.error();
         if(code == errno_error::invalid_argument){
