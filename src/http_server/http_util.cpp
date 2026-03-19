@@ -264,9 +264,8 @@ std::optional<std::vector<http_util::query_param>> http_util::parse_query_params
     return query_params;
 }
 
-std::expected<auth_dto::identity, http_util::response_type> http_util::try_auth_bearer(
-    const request_type& request,
-    db_connection& db_connection
+std::expected<auth_dto::token, http_util::response_type> http_util::parse_bearer_token_or_401(
+    const request_type& request
 ){
     const auto token_opt = get_bearer_token(request);
     if(!token_opt){
@@ -275,10 +274,22 @@ std::expected<auth_dto::identity, http_util::response_type> http_util::try_auth_
             "missing or invalid bearer token\n"
         ));
     }
+
     auth_dto::token token_value;
     token_value.value = std::string{*token_opt};
+    return token_value;
+}
 
-    const auto auth_identity_exp = auth_service::auth_token(db_connection, token_value);
+std::expected<auth_dto::identity, http_util::response_type> http_util::try_auth_bearer(
+    const request_type& request,
+    db_connection& db_connection
+){
+    const auto token_exp = parse_bearer_token_or_401(request);
+    if(!token_exp){
+        return std::unexpected(std::move(token_exp.error()));
+    }
+
+    const auto auth_identity_exp = auth_service::auth_token(db_connection, *token_exp);
     if(!auth_identity_exp){
         const auto code = auth_identity_exp.error();
         if(code == errno_error::invalid_argument){

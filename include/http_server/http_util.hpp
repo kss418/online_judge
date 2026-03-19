@@ -111,6 +111,9 @@ namespace http_util{
     std::optional<std::vector<query_param>> parse_query_params(
         std::string_view query
     );
+    std::expected<auth_dto::token, response_type> parse_bearer_token_or_401(
+        const request_type& request
+    );
     std::expected<auth_dto::identity, response_type> try_auth_bearer(
         const request_type& request,
         db_connection& db_connection

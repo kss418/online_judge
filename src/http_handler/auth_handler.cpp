@@ -80,19 +80,14 @@ auth_handler::response_type auth_handler::handle_token_renew_post(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto token_opt = http_util::get_bearer_token(request);
-    if(!token_opt){
-        return http_util::create_bearer_unauthorized_response(
-            request,
-            "missing or invalid bearer token\n"
-        );
+    const auto token_exp = http_util::parse_bearer_token_or_401(request);
+    if(!token_exp){
+        return std::move(token_exp.error());
     }
-    auth_dto::token token_value;
-    token_value.value = std::string{*token_opt};
 
     const auto renew_token_exp = auth_service::renew_token(
         db_connection_value,
-        token_value
+        *token_exp
     );
     if(!renew_token_exp){
         const auto code = renew_token_exp.error();
@@ -127,19 +122,14 @@ auth_handler::response_type auth_handler::handle_logout_post(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto token_opt = http_util::get_bearer_token(request);
-    if(!token_opt){
-        return http_util::create_bearer_unauthorized_response(
-            request,
-            "missing or invalid bearer token\n"
-        );
+    const auto token_exp = http_util::parse_bearer_token_or_401(request);
+    if(!token_exp){
+        return std::move(token_exp.error());
     }
-    auth_dto::token token_value;
-    token_value.value = std::string{*token_opt};
 
     const auto revoke_token_exp = auth_service::revoke_token(
         db_connection_value,
-        token_value
+        *token_exp
     );
     if(!revoke_token_exp){
         const auto code = revoke_token_exp.error();
