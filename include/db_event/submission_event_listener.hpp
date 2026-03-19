@@ -1,7 +1,6 @@
 #pragma once
 #include "common/db_connection.hpp"
 #include "common/error_code.hpp"
-#include "db_util/submission_util.hpp"
 
 #include <chrono>
 #include <expected>

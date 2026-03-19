@@ -1,5 +1,6 @@
 #pragma once
 #include "common/error_code.hpp"
+#include "common/submission_status.hpp"
 #include "dto/submission_dto.hpp"
 
 #include <chrono>
@@ -7,31 +8,13 @@
 #include <expected>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <vector>
 
 namespace pqxx{
     class transaction_base;
 }
 
-enum class submission_status{
-    queued,
-    judging,
-    accepted,
-    wrong_answer,
-    time_limit_exceeded,
-    memory_limit_exceeded,
-    runtime_error,
-    compile_error,
-    output_exceeded
-};
-
-std::string to_string(submission_status status);
-std::optional<submission_status> parse_submission_status(std::string_view status);
-
 namespace submission_util{
-    inline constexpr std::string_view SUBMISSION_QUEUE_CHANNEL = "submission_queue";
-
     struct finalize_result{
         std::int64_t problem_id = 0;
         bool should_increase_accepted_count = false;

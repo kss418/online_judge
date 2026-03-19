@@ -1,7 +1,7 @@
 #include "http_server/param_util.hpp"
 
+#include "common/submission_status.hpp"
 #include "common/string_util.hpp"
-#include "db_util/submission_util.hpp"
 
 std::optional<std::string> param_util::try_apply_submission_list_filter(
     std::string_view key,

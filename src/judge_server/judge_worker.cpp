@@ -1,13 +1,10 @@
 #include "judge_server/judge_worker.hpp"
 
 #include "common/file_util.hpp"
-#include "db_util/problem_statistics_util.hpp"
-#include "db_util/submission_util.hpp"
+#include "db_service/submission_core_service.hpp"
 #include "judge_server/checker.hpp"
 #include "judge_server/judge_util.hpp"
 #include "judge_server/testcase_runner.hpp"
-
-#include <pqxx/pqxx>
 
 #include <optional>
 #include <string>
@@ -66,10 +63,6 @@ judge_worker::judge_worker(
     submission_event_listener_(std::move(submission_event_listener)),
     db_connection_(std::move(db_connection)),
     testcase_downloader_(std::move(testcase_downloader)){}
-
-bool judge_worker::is_queue_empty_error(const error_code& code){
-    return code == errno_error::resource_temporarily_unavailable;
-}
 
 submission_status judge_worker::to_submission_status(judge_result result){
     switch(result){
@@ -169,21 +162,13 @@ std::expected<void, error_code> judge_worker::run(){
                 return std::unexpected(save_source_code_exp.error());
             }
 
-            try{
-                pqxx::work transaction(db_connection_.connection());
-                const auto update_submission_status_exp = submission_util::update_submission_status(
-                    transaction,
-                    queued_submission_value.submission_id,
-                    submission_status::judging
-                );
-                if(!update_submission_status_exp){
-                    return std::unexpected(update_submission_status_exp.error());
-                }
-
-                transaction.commit();
-            }
-            catch(const std::exception& exception){
-                return std::unexpected(error_code::map_psql_error_code(exception));
+            const auto update_submission_status_exp = submission_core_service::update_submission_status(
+                db_connection_,
+                queued_submission_value.submission_id,
+                submission_status::judging
+            );
+            if(!update_submission_status_exp){
+                return std::unexpected(update_submission_status_exp.error());
             }
 
             const auto source_file_path_exp = judge_util::instance().make_source_file_path(
@@ -230,36 +215,17 @@ std::expected<void, error_code> judge_worker::run(){
                 *run_all_testcases_exp
             );
 
-            try{
-                pqxx::work transaction(db_connection_.connection());
-                const auto finalize_submission_exp = submission_util::finalize_submission(
-                    transaction,
-                    queued_submission_value.submission_id,
-                    submission_status_value,
-                    finalize_submission_data_value.score,
-                    finalize_submission_data_value.compile_output,
-                    finalize_submission_data_value.judge_output,
-                    std::nullopt
-                );
-                if(!finalize_submission_exp){
-                    return std::unexpected(finalize_submission_exp.error());
-                }
-
-                if(finalize_submission_exp->should_increase_accepted_count){
-                    const auto increase_accepted_count_exp =
-                        problem_statistics_util::increase_accepted_count(
-                            transaction,
-                            finalize_submission_exp->problem_id
-                        );
-                    if(!increase_accepted_count_exp){
-                        return std::unexpected(increase_accepted_count_exp.error());
-                    }
-                }
-
-                transaction.commit();
-            }
-            catch(const std::exception& exception){
-                return std::unexpected(error_code::map_psql_error_code(exception));
+            const auto finalize_submission_exp = submission_core_service::finalize_submission(
+                db_connection_,
+                queued_submission_value.submission_id,
+                submission_status_value,
+                finalize_submission_data_value.score,
+                finalize_submission_data_value.compile_output,
+                finalize_submission_data_value.judge_output,
+                std::nullopt
+            );
+            if(!finalize_submission_exp){
+                return std::unexpected(finalize_submission_exp.error());
             }
 
             continue;
@@ -276,23 +242,7 @@ std::expected<void, error_code> judge_worker::run(){
 }
 
 std::expected<std::optional<submission_dto::queued_submission>, error_code> judge_worker::lease_submission(){
-    try{
-        pqxx::work transaction(db_connection_.connection());
-        auto lease_submission_exp = submission_util::lease_submission(transaction, lease_duration_);
-        if(!lease_submission_exp){
-            if(is_queue_empty_error(lease_submission_exp.error())){
-                return std::optional<submission_dto::queued_submission>{};
-            }
-
-            return std::unexpected(lease_submission_exp.error());
-        }
-
-        transaction.commit();
-        return std::optional<submission_dto::queued_submission>{std::move(*lease_submission_exp)};
-    }
-    catch(const std::exception& exception){
-        return std::unexpected(error_code::map_psql_error_code(exception));
-    }
+    return submission_core_service::lease_submission(db_connection_, lease_duration_);
 }
 
 std::expected<void, error_code> judge_worker::save_source_code(

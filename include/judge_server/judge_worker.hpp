@@ -1,9 +1,10 @@
 #pragma once
 
+#include "common/submission_status.hpp"
 #include "common/error_code.hpp"
 #include "common/db_connection.hpp"
 #include "db_event/submission_event_listener.hpp"
-#include "db_util/submission_util.hpp"
+#include "dto/submission_dto.hpp"
 #include "judge_server/testcase_downloader.hpp"
 #include "judge_server/judge_util.hpp"
 #include "judge_server/sandbox_runner.hpp"
@@ -41,7 +42,6 @@ private:
         testcase_downloader testcase_downloader
     );
 
-    static bool is_queue_empty_error(const error_code& code);
     static submission_status to_submission_status(judge_result result);
     static finalize_submission_data make_finalize_submission_data(
         submission_status submission_status_value,

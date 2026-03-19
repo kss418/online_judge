@@ -1,11 +1,10 @@
 #include "http_handler/submission_handler.hpp"
-#include "dto/submission_dto.hpp"
-#include "http_server/param_util.hpp"
-#include "http_server/json_util.hpp"
-#include "http_server/http_util.hpp"
-
+#include "common/submission_status.hpp"
 #include "db_service/submission_core_service.hpp"
-#include "db_util/submission_util.hpp"
+#include "dto/submission_dto.hpp"
+#include "http_server/http_util.hpp"
+#include "http_server/json_util.hpp"
+#include "http_server/param_util.hpp"
 
 submission_handler::response_type submission_handler::handle_create_submission_post(
     const request_type& request,

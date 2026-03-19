@@ -1,5 +1,7 @@
 #include "db_event/submission_event_listener.hpp"
 
+#include "common/submission_status.hpp"
+
 #include <pqxx/pqxx>
 
 #include <chrono>
@@ -29,7 +31,7 @@ std::expected<void, error_code> submission_event_listener::listen_submission_que
 
     try{
         db_connection_.connection().listen(
-            submission_util::SUBMISSION_QUEUE_CHANNEL,
+            SUBMISSION_QUEUE_CHANNEL,
             [](const pqxx::notification&){}
         );
         return {};

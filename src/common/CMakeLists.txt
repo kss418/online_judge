@@ -6,6 +6,7 @@ target_sources(lib
         error_code.cpp
         crypto_util.cpp
         password_util.cpp
+        submission_status.cpp
         string_util.cpp
         token_util.cpp
         unique_fd.cpp
