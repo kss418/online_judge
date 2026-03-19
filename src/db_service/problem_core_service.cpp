@@ -1,6 +1,6 @@
 #include "db_service/problem_core_service.hpp"
 #include "db_service/problem_statistics_service.hpp"
-#include "db_util/problem_service_util.hpp"
+#include "db_util/problem_util.hpp"
 
 #include <pqxx/pqxx>
 
@@ -16,7 +16,7 @@ std::expected<bool, error_code> problem_core_service::exists_problem(
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto exists_exp = problem_service_util::exists_problem(transaction, problem_id);
+        const auto exists_exp = problem_util::exists_problem(transaction, problem_id);
         if(!exists_exp){
             return std::unexpected(exists_exp.error());
         }
@@ -70,7 +70,7 @@ std::expected<void, error_code> problem_core_service::increase_version(
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto version_exp = problem_service_util::increase_version(transaction, problem_id);
+        const auto version_exp = problem_util::increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -123,7 +123,7 @@ std::expected<std::int64_t, error_code> problem_core_service::create_problem(db_
             return std::unexpected(create_problem_statistics_exp.error());
         }
 
-        const auto ensure_statement_exp = problem_service_util::ensure_statement_row(
+        const auto ensure_statement_exp = problem_util::ensure_statement_row(
             transaction,
             problem_id
         );
@@ -202,7 +202,7 @@ std::expected<void, error_code> problem_core_service::set_limits(
             }
         );
 
-        const auto version_exp = problem_service_util::increase_version(transaction, problem_id);
+        const auto version_exp = problem_util::increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }

@@ -1,5 +1,5 @@
 #include "db_service/problem_content_service.hpp"
-#include "db_util/problem_service_util.hpp"
+#include "db_util/problem_util.hpp"
 
 #include <pqxx/pqxx>
 
@@ -88,7 +88,7 @@ std::expected<void, error_code> problem_content_service::set_statement(
             }
         );
 
-        const auto version_exp = problem_service_util::increase_version(transaction, problem_id);
+        const auto version_exp = problem_util::increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -154,7 +154,7 @@ std::expected<std::int64_t, error_code> problem_content_service::create_sample(
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto sample_order_exp = problem_service_util::increase_sample_count(
+        const auto sample_order_exp = problem_util::increase_sample_count(
             transaction,
             problem_id
         );
@@ -179,7 +179,7 @@ std::expected<std::int64_t, error_code> problem_content_service::create_sample(
             return std::unexpected(error_code::create(errno_error::unknown_error));
         }
 
-        const auto version_exp = problem_service_util::increase_version(transaction, problem_id);
+        const auto version_exp = problem_util::increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -222,7 +222,7 @@ std::expected<void, error_code> problem_content_service::set_sample(
             }
         );
 
-        const auto version_exp = problem_service_util::increase_version(transaction, problem_id);
+        const auto version_exp = problem_util::increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }
@@ -266,7 +266,7 @@ std::expected<void, error_code> problem_content_service::delete_sample(
             return std::unexpected(error_code::create(errno_error::invalid_argument));
         }
 
-        const auto sample_count_exp = problem_service_util::decrease_sample_count(
+        const auto sample_count_exp = problem_util::decrease_sample_count(
             transaction,
             problem_id
         );
@@ -274,7 +274,7 @@ std::expected<void, error_code> problem_content_service::delete_sample(
             return std::unexpected(sample_count_exp.error());
         }
 
-        const auto version_exp = problem_service_util::increase_version(transaction, problem_id);
+        const auto version_exp = problem_util::increase_version(transaction, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
         }

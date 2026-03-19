@@ -9,7 +9,7 @@ namespace pqxx{
 class transaction_base;
 }
 
-namespace problem_service_util{
+namespace problem_util{
 std::expected<bool, error_code> exists_problem(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id

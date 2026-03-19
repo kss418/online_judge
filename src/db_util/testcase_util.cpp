@@ -1,14 +1,14 @@
-#include "db_util/testcase_service_util.hpp"
+#include "db_util/testcase_util.hpp"
 
-#include "db_util/problem_service_util.hpp"
+#include "db_util/problem_util.hpp"
 
 #include <pqxx/pqxx>
 
-std::expected<std::int32_t, error_code> tc_service_util::increase_tc_count(
+std::expected<std::int32_t, error_code> testcase_util::increase_tc_count(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){
-    const auto ensure_statement_exp = problem_service_util::ensure_statement_row(
+    const auto ensure_statement_exp = problem_util::ensure_statement_row(
         transaction,
         problem_id
     );
@@ -31,7 +31,7 @@ std::expected<std::int32_t, error_code> tc_service_util::increase_tc_count(
     return increase_result[0][0].as<std::int32_t>();
 }
 
-std::expected<std::int32_t, error_code> tc_service_util::decrease_tc_count(
+std::expected<std::int32_t, error_code> testcase_util::decrease_tc_count(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){
