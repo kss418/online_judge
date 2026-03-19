@@ -13,8 +13,7 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
     db_connection& db_connection_value,
     std::int64_t problem_id
 ){
-    problem_dto::reference problem_reference_value;
-    problem_reference_value.problem_id = problem_id;
+    problem_dto::reference problem_reference_value{problem_id};
     const auto exists_problem_exp = problem_core_service::exists_problem(
         db_connection_value,
         problem_reference_value
@@ -142,8 +141,7 @@ problem_handler::response_type problem_handler::handle_set_limits_put(
     db_connection& db_connection_value,
     std::int64_t problem_id
 ){
-    problem_dto::reference problem_reference_value;
-    problem_reference_value.problem_id = problem_id;
+    problem_dto::reference problem_reference_value{problem_id};
     if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_value);
         !auth_identity_exp){
         return std::move(auth_identity_exp.error());
@@ -182,8 +180,7 @@ problem_handler::response_type problem_handler::handle_set_statement_put(
     db_connection& db_connection_value,
     std::int64_t problem_id
 ){
-    problem_dto::reference problem_reference_value;
-    problem_reference_value.problem_id = problem_id;
+    problem_dto::reference problem_reference_value{problem_id};
     if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_value);
         !auth_identity_exp){
         return std::move(auth_identity_exp.error());
@@ -222,8 +219,7 @@ problem_handler::response_type problem_handler::handle_create_testcase_post(
     db_connection& db_connection_value,
     std::int64_t problem_id
 ){
-    problem_dto::reference problem_reference_value;
-    problem_reference_value.problem_id = problem_id;
+    problem_dto::reference problem_reference_value{problem_id};
     if(const auto auth_identity_exp = http_util::try_admin_auth_bearer(request, db_connection_value);
         !auth_identity_exp){
         return std::move(auth_identity_exp.error());

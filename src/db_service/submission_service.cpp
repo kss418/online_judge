@@ -14,8 +14,7 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
     db_connection& connection,
     const submission_dto::create_request& create_request_value
 ){
-    problem_dto::reference problem_reference_value;
-    problem_reference_value.problem_id = create_request_value.problem_id;
+    problem_dto::reference problem_reference_value{create_request_value.problem_id};
     if(
         create_request_value.user_id <= 0 ||
         problem_reference_value.problem_id <= 0 ||
@@ -109,8 +108,9 @@ std::expected<void, error_code> submission_service::finalize_submission(
                 return std::unexpected(finalize_submission_exp.error());
             }
 
-            problem_dto::reference problem_reference_value;
-            problem_reference_value.problem_id = finalize_submission_exp->problem_id;
+            problem_dto::reference problem_reference_value{
+                finalize_submission_exp->problem_id
+            };
             if(finalize_submission_exp->should_increase_accepted_count){
                 const auto increase_accepted_count_exp =
                     problem_statistics_util::increase_accepted_count(
