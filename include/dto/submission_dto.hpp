@@ -10,6 +10,11 @@
 #include <expected>
 #include <optional>
 #include <string>
+#include <vector>
+
+namespace http_util{
+    struct query_param;
+}
 
 namespace submission_dto{
     struct source{
@@ -79,6 +84,9 @@ namespace submission_dto{
 
     std::expected<source, dto_validation_error> make_source_from_json(
         const boost::json::object& json
+    );
+    std::expected<list_filter, dto_validation_error> make_list_filter_from_query_params(
+        const std::vector<http_util::query_param>& query_params
     );
     std::expected<create_request, dto_validation_error> make_create_request_from_json(
         const boost::json::object& json,

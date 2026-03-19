@@ -4,7 +4,6 @@
 #include "dto/submission_dto.hpp"
 #include "http_server/http_util.hpp"
 #include "http_server/json_util.hpp"
-#include "http_server/param_util.hpp"
 
 submission_handler::response_type submission_handler::handle_create_submission_post(
     const request_type& request,
@@ -50,39 +49,14 @@ submission_handler::response_type submission_handler::handle_list_submissions_ge
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const std::string_view target{
-        request.target().data(),
-        request.target().size()
-    };
-    const auto query_opt = http_util::get_target_query(target);
-    const auto query_params_opt = http_util::parse_query_params(query_opt.value_or(""));
-    if(!query_params_opt){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::bad_request,
-            "invalid query string\n"
-        );
-    }
-
-    submission_dto::list_filter filter_value;
-    for(const auto& query_param : *query_params_opt){
-        const auto error_message_opt = param_util::try_apply_submission_list_filter(
-            query_param.key,
-            query_param.value,
-            filter_value
-        );
-        if(error_message_opt){
-            return http_util::create_text_response(
-                request,
-                boost::beast::http::status::bad_request,
-                *error_message_opt + "\n"
-            );
-        }
+    const auto filter_exp = http_util::parse_submission_list_filter_or_400(request);
+    if(!filter_exp){
+        return std::move(filter_exp.error());
     }
 
     const auto submission_summary_values_exp = submission_service::list_submissions(
         db_connection_value,
-        filter_value
+        *filter_exp
     );
     if(!submission_summary_values_exp){
         return http_util::create_400_or_500_response(

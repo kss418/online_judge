@@ -4,6 +4,7 @@
 #include "common/db_connection.hpp"
 #include "dto/auth_dto.hpp"
 #include "dto/dto_validation_error.hpp"
+#include "dto/submission_dto.hpp"
 
 #include <boost/json.hpp>
 #include <boost/beast/http/message.hpp>
@@ -110,6 +111,10 @@ namespace http_util{
     std::optional<std::string_view> get_target_query(std::string_view target);
     std::optional<std::vector<query_param>> parse_query_params(
         std::string_view query
+    );
+    std::expected<submission_dto::list_filter, response_type>
+    parse_submission_list_filter_or_400(
+        const request_type& request
     );
     std::expected<auth_dto::token, response_type> parse_bearer_token_or_401(
         const request_type& request
