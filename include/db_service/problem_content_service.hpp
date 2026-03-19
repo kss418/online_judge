@@ -24,22 +24,4 @@ namespace problem_content_service{
         db_connection& connection,
         std::int64_t problem_id
     );
-
-    std::expected<std::int64_t, error_code> create_sample(
-        db_connection& connection,
-        std::int64_t problem_id,
-        const problem_dto::sample& sample_value
-    );
-
-    std::expected<void, error_code> set_sample(
-        db_connection& connection,
-        std::int64_t problem_id,
-        const problem_dto::sample& sample_value
-    );
-
-    std::expected<void, error_code> delete_sample(
-        db_connection& connection,
-        std::int64_t problem_id,
-        const problem_dto::sample& sample_value
-    );
 }

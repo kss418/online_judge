@@ -21,11 +21,6 @@ namespace problem_core_service{
         std::int64_t problem_id
     );
 
-    std::expected<void, error_code> increase_version(
-        db_connection& connection,
-        std::int64_t problem_id
-    );
-
     std::expected<std::int64_t, error_code> create_problem(db_connection& connection);
     std::expected<problem_dto::limits, error_code> get_limits(
         db_connection& connection,

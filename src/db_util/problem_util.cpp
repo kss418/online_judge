@@ -104,3 +104,113 @@ std::expected<std::int32_t, error_code> problem_util::decrease_sample_count(
     }
     return decrease_result[0][0].as<std::int32_t>();
 }
+
+std::expected<std::int64_t, error_code> problem_util::create_sample(
+    pqxx::transaction_base& transaction,
+    std::int64_t problem_id,
+    const problem_dto::sample& sample_value
+){
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto sample_order_exp = increase_sample_count(transaction, problem_id);
+    if(!sample_order_exp){
+        return std::unexpected(sample_order_exp.error());
+    }
+
+    const std::int32_t sample_order = sample_order_exp.value();
+    const auto create_sample_result = transaction.exec(
+        "INSERT INTO problem_samples(problem_id, sample_order, sample_input, sample_output) "
+        "VALUES($1, $2, $3, $4) "
+        "RETURNING sample_id",
+        pqxx::params{
+            problem_id,
+            sample_order,
+            sample_value.input,
+            sample_value.output
+        }
+    );
+
+    if(create_sample_result.empty()){
+        return std::unexpected(error_code::create(errno_error::unknown_error));
+    }
+
+    const auto version_exp = increase_version(transaction, problem_id);
+    if(!version_exp){
+        return std::unexpected(version_exp.error());
+    }
+
+    return create_sample_result[0][0].as<std::int64_t>();
+}
+
+std::expected<void, error_code> problem_util::set_sample(
+    pqxx::transaction_base& transaction,
+    std::int64_t problem_id,
+    const problem_dto::sample& sample_value
+){
+    if(problem_id <= 0 || sample_value.order <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    transaction.exec(
+        "INSERT INTO problem_samples(problem_id, sample_order, sample_input, sample_output) "
+        "VALUES($1, $2, $3, $4) "
+        "ON CONFLICT(problem_id, sample_order) DO UPDATE "
+        "SET "
+        "sample_input = EXCLUDED.sample_input, "
+        "sample_output = EXCLUDED.sample_output",
+        pqxx::params{
+            problem_id,
+            sample_value.order,
+            sample_value.input,
+            sample_value.output
+        }
+    );
+
+    const auto version_exp = increase_version(transaction, problem_id);
+    if(!version_exp){
+        return std::unexpected(version_exp.error());
+    }
+
+    return {};
+}
+
+std::expected<void, error_code> problem_util::delete_sample(
+    pqxx::transaction_base& transaction,
+    std::int64_t problem_id,
+    const problem_dto::sample& sample_value
+){
+    if(problem_id <= 0 || sample_value.order <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto delete_result = transaction.exec(
+        "DELETE FROM problem_samples "
+        "WHERE "
+        "problem_id = $1 AND "
+        "sample_order = $2 AND "
+        "sample_order = ("
+        "SELECT MAX(sample_order) "
+        "FROM problem_samples "
+        "WHERE problem_id = $1"
+        ")",
+        pqxx::params{problem_id, sample_value.order}
+    );
+
+    if(delete_result.affected_rows() == 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto sample_count_exp = decrease_sample_count(transaction, problem_id);
+    if(!sample_count_exp){
+        return std::unexpected(sample_count_exp.error());
+    }
+
+    const auto version_exp = increase_version(transaction, problem_id);
+    if(!version_exp){
+        return std::unexpected(version_exp.error());
+    }
+
+    return {};
+}

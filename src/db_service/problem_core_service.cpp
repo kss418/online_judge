@@ -61,29 +61,6 @@ std::expected<std::int32_t, error_code> problem_core_service::get_version(
     }
 }
 
-std::expected<void, error_code> problem_core_service::increase_version(
-    db_connection& connection,
-    std::int64_t problem_id
-){
-    if(!connection.is_connected()){
-        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
-    }
-
-    try{
-        pqxx::work transaction(connection.connection());
-        const auto version_exp = problem_util::increase_version(transaction, problem_id);
-        if(!version_exp){
-            return std::unexpected(version_exp.error());
-        }
-
-        transaction.commit();
-        return {};
-    }
-    catch(const std::exception& exception){
-        return std::unexpected(error_code::map_psql_error_code(exception));
-    }
-}
-
 std::expected<std::int64_t, error_code> problem_core_service::create_problem(db_connection& connection){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
