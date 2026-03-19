@@ -25,22 +25,22 @@ submission_handler::response_type submission_handler::handle_create_submission_p
         );
     }
 
-    const auto source_opt = submission_dto::make_source(*request_object_opt);
-    if(!source_opt){
+    const auto create_request_opt = submission_dto::make_create_request_from_json(
+        *request_object_opt,
+        auth_identity_exp->user_id,
+        problem_id
+    );
+    if(!create_request_opt){
         return http_util::create_text_response(
             request,
             boost::beast::http::status::bad_request,
             "required fields: language, source_code\n"
         );
     }
-    submission_dto::create_request create_request_value;
-    create_request_value.user_id = auth_identity_exp->user_id;
-    create_request_value.problem_id = problem_id;
-    create_request_value.source_value = *source_opt;
 
     const auto create_submission_exp = submission_service::create_submission(
         db_connection_value,
-        create_request_value
+        *create_request_opt
     );
     if(!create_submission_exp){
         const auto code = create_submission_exp.error();

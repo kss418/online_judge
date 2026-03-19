@@ -2,15 +2,15 @@
 
 #include "http_server/http_util.hpp"
 
-std::optional<problem_dto::limits> problem_dto::make_limits(
-    const boost::json::object& request_object
+std::optional<problem_dto::limits> problem_dto::make_limits_from_json(
+    const boost::json::object& json
 ){
     const auto memory_limit_mb_opt = http_util::get_positive_int32_field(
-        request_object,
+        json,
         "memory_limit_mb"
     );
     const auto time_limit_ms_opt = http_util::get_positive_int32_field(
-        request_object,
+        json,
         "time_limit_ms"
     );
     if(!memory_limit_mb_opt || !time_limit_ms_opt){
@@ -23,19 +23,19 @@ std::optional<problem_dto::limits> problem_dto::make_limits(
     return limits_value;
 }
 
-std::optional<problem_dto::statement> problem_dto::make_statement(
-    const boost::json::object& request_object
+std::optional<problem_dto::statement> problem_dto::make_statement_from_json(
+    const boost::json::object& json
 ){
     const auto description_opt = http_util::get_non_empty_string_field(
-        request_object,
+        json,
         "description"
     );
     const auto input_format_opt = http_util::get_non_empty_string_field(
-        request_object,
+        json,
         "input_format"
     );
     const auto output_format_opt = http_util::get_non_empty_string_field(
-        request_object,
+        json,
         "output_format"
     );
     if(!description_opt || !input_format_opt || !output_format_opt){
@@ -47,7 +47,7 @@ std::optional<problem_dto::statement> problem_dto::make_statement(
     statement_value.input_format = std::string{*input_format_opt};
     statement_value.output_format = std::string{*output_format_opt};
 
-    const auto* note_value = request_object.if_contains("note");
+    const auto* note_value = json.if_contains("note");
     if(note_value != nullptr){
         if(note_value->is_null()){
             statement_value.note = std::nullopt;
@@ -64,11 +64,11 @@ std::optional<problem_dto::statement> problem_dto::make_statement(
     return statement_value;
 }
 
-std::optional<problem_dto::testcase> problem_dto::make_testcase(
-    const boost::json::object& request_object
+std::optional<problem_dto::testcase> problem_dto::make_testcase_from_json(
+    const boost::json::object& json
 ){
-    const auto input_opt = http_util::get_string_field(request_object, "testcase_input");
-    const auto output_opt = http_util::get_string_field(request_object, "testcase_output");
+    const auto input_opt = http_util::get_string_field(json, "testcase_input");
+    const auto output_opt = http_util::get_string_field(json, "testcase_output");
     if(!input_opt || !output_opt){
         return std::nullopt;
     }

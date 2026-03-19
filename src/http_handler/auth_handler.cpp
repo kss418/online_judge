@@ -20,7 +20,9 @@ auth_handler::response_type auth_handler::handle_sign_up_post(
         );
     }
 
-    const auto credentials_opt = auth_dto::make_credentials(*request_object_opt);
+    const auto credentials_opt = auth_dto::make_credentials_from_json(
+        *request_object_opt
+    );
     if(!credentials_opt){
         return http_util::create_text_response(
             request,
@@ -67,7 +69,9 @@ auth_handler::response_type auth_handler::handle_login_post(
         );
     }
 
-    const auto credentials_opt = auth_dto::make_credentials(*request_object_opt);
+    const auto credentials_opt = auth_dto::make_credentials_from_json(
+        *request_object_opt
+    );
     if(!credentials_opt){
         return http_util::create_text_response(
             request,

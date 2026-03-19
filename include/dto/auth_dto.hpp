@@ -36,7 +36,7 @@ namespace auth_dto{
         std::string token;
     };
 
-    std::optional<credentials> make_credentials(
-        const boost::json::object& request_object
+    std::optional<credentials> make_credentials_from_json(
+        const boost::json::object& json
     );
 }

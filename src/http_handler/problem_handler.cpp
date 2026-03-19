@@ -168,7 +168,7 @@ problem_handler::response_type problem_handler::handle_set_limits_put(
         );
     }
 
-    const auto limits_opt = problem_dto::make_limits(*request_object_opt);
+    const auto limits_opt = problem_dto::make_limits_from_json(*request_object_opt);
     if(!limits_opt){
         return http_util::create_text_response(
             request,
@@ -224,7 +224,9 @@ problem_handler::response_type problem_handler::handle_set_statement_put(
         );
     }
 
-    const auto statement_opt = problem_dto::make_statement(*request_object_opt);
+    const auto statement_opt = problem_dto::make_statement_from_json(
+        *request_object_opt
+    );
     if(!statement_opt){
         return http_util::create_text_response(
             request,
@@ -280,7 +282,9 @@ problem_handler::response_type problem_handler::handle_create_testcase_post(
         );
     }
 
-    const auto testcase_opt = problem_dto::make_testcase(*request_object_opt);
+    const auto testcase_opt = problem_dto::make_testcase_from_json(
+        *request_object_opt
+    );
     if(!testcase_opt){
         return http_util::create_text_response(
             request,

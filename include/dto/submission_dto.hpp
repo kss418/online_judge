@@ -75,5 +75,12 @@ namespace submission_dto{
         bool should_increase_accepted_count = false;
     };
 
-    std::optional<source> make_source(const boost::json::object& request_object);
+    std::optional<source> make_source_from_json(
+        const boost::json::object& json
+    );
+    std::optional<create_request> make_create_request_from_json(
+        const boost::json::object& json,
+        std::int64_t user_id,
+        std::int64_t problem_id
+    );
 }
