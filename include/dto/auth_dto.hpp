@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/error_code.hpp"
+#include "dto/dto_validation_error.hpp"
 
 #include <boost/json/fwd.hpp>
 
@@ -39,7 +40,7 @@ namespace auth_dto{
         std::string token;
     };
 
-    std::optional<credentials> make_credentials_from_json(
+    std::expected<credentials, dto_validation_error> make_credentials_from_json(
         const boost::json::object& json
     );
 

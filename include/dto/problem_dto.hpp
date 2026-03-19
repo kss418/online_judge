@@ -1,8 +1,11 @@
 #pragma once
 
+#include "dto/dto_validation_error.hpp"
+
 #include <boost/json/fwd.hpp>
 
 #include <cstdint>
+#include <expected>
 #include <optional>
 #include <string>
 
@@ -67,13 +70,13 @@ namespace problem_dto{
         std::int64_t accepted_count = 0;
     };
 
-    std::optional<limits> make_limits_from_json(
+    std::expected<limits, dto_validation_error> make_limits_from_json(
         const boost::json::object& json
     );
-    std::optional<statement> make_statement_from_json(
+    std::expected<statement, dto_validation_error> make_statement_from_json(
         const boost::json::object& json
     );
-    std::optional<testcase> make_testcase_from_json(
+    std::expected<testcase, dto_validation_error> make_testcase_from_json(
         const boost::json::object& json
     );
 }

@@ -16,31 +16,20 @@ submission_handler::response_type submission_handler::handle_create_submission_p
         return std::move(auth_identity_exp.error());
     }
 
-    const auto request_object_opt = http_util::parse_json_object(request);
-    if(!request_object_opt){
-        return http_util::create_text_response(
+    const auto create_request_exp =
+        http_util::parse_json_dto_or_400<submission_dto::create_request>(
             request,
-            boost::beast::http::status::bad_request,
-            "invalid json\n"
+            submission_dto::make_create_request_from_json,
+            auth_identity_exp->user_id,
+            problem_id
         );
-    }
-
-    const auto create_request_opt = submission_dto::make_create_request_from_json(
-        *request_object_opt,
-        auth_identity_exp->user_id,
-        problem_id
-    );
-    if(!create_request_opt){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::bad_request,
-            "required fields: language, source_code\n"
-        );
+    if(!create_request_exp){
+        return std::move(create_request_exp.error());
     }
 
     const auto create_submission_exp = submission_service::create_submission(
         db_connection_value,
-        *create_request_opt
+        *create_request_exp
     );
     if(!create_submission_exp){
         const auto code = create_submission_exp.error();

@@ -1,11 +1,13 @@
 #pragma once
 
 #include "common/submission_status.hpp"
+#include "dto/dto_validation_error.hpp"
 
 #include <boost/json/fwd.hpp>
 
 #include <chrono>
 #include <cstdint>
+#include <expected>
 #include <optional>
 #include <string>
 
@@ -75,10 +77,10 @@ namespace submission_dto{
         bool should_increase_accepted_count = false;
     };
 
-    std::optional<source> make_source_from_json(
+    std::expected<source, dto_validation_error> make_source_from_json(
         const boost::json::object& json
     );
-    std::optional<create_request> make_create_request_from_json(
+    std::expected<create_request, dto_validation_error> make_create_request_from_json(
         const boost::json::object& json,
         std::int64_t user_id,
         std::int64_t problem_id

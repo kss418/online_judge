@@ -11,29 +11,17 @@ auth_handler::response_type auth_handler::handle_sign_up_post(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto request_object_opt = http_util::parse_json_object(request);
-    if(!request_object_opt){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::bad_request,
-            "invalid json\n"
-        );
-    }
-
-    const auto credentials_opt = auth_dto::make_credentials_from_json(
-        *request_object_opt
+    const auto credentials_exp = http_util::parse_json_dto_or_400<auth_dto::credentials>(
+        request,
+        auth_dto::make_credentials_from_json
     );
-    if(!credentials_opt){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::bad_request,
-            "required fields: user_login_id, raw_password\n"
-        );
+    if(!credentials_exp){
+        return std::move(credentials_exp.error());
     }
 
     const auto sign_up_exp = login_service::sign_up(
         db_connection_value,
-        *credentials_opt
+        *credentials_exp
     );
     if(!sign_up_exp){
         const auto code = sign_up_exp.error();
@@ -60,29 +48,17 @@ auth_handler::response_type auth_handler::handle_login_post(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto request_object_opt = http_util::parse_json_object(request);
-    if(!request_object_opt){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::bad_request,
-            "invalid json\n"
-        );
-    }
-
-    const auto credentials_opt = auth_dto::make_credentials_from_json(
-        *request_object_opt
+    const auto credentials_exp = http_util::parse_json_dto_or_400<auth_dto::credentials>(
+        request,
+        auth_dto::make_credentials_from_json
     );
-    if(!credentials_opt){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::bad_request,
-            "required fields: user_login_id, raw_password\n"
-        );
+    if(!credentials_exp){
+        return std::move(credentials_exp.error());
     }
 
     const auto login_exp = login_service::login(
         db_connection_value,
-        *credentials_opt
+        *credentials_exp
     );
     if(!login_exp){
         const auto code = login_exp.error();

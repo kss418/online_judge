@@ -159,28 +159,18 @@ problem_handler::response_type problem_handler::handle_set_limits_put(
         return std::move(auth_identity_exp.error());
     }
 
-    const auto request_object_opt = http_util::parse_json_object(request);
-    if(!request_object_opt){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::bad_request,
-            "invalid json\n"
-        );
-    }
-
-    const auto limits_opt = problem_dto::make_limits_from_json(*request_object_opt);
-    if(!limits_opt){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::bad_request,
-            "required fields: memory_limit_mb, time_limit_ms\n"
-        );
+    const auto limits_exp = http_util::parse_json_dto_or_400<problem_dto::limits>(
+        request,
+        problem_dto::make_limits_from_json
+    );
+    if(!limits_exp){
+        return std::move(limits_exp.error());
     }
 
     const auto set_limits_exp = problem_core_service::set_limits(
         db_connection_value,
         problem_reference_value,
-        *limits_opt
+        *limits_exp
     );
     if(!set_limits_exp){
         const auto code = set_limits_exp.error();
@@ -215,30 +205,18 @@ problem_handler::response_type problem_handler::handle_set_statement_put(
         return std::move(auth_identity_exp.error());
     }
 
-    const auto request_object_opt = http_util::parse_json_object(request);
-    if(!request_object_opt){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::bad_request,
-            "invalid json\n"
-        );
-    }
-
-    const auto statement_opt = problem_dto::make_statement_from_json(
-        *request_object_opt
+    const auto statement_exp = http_util::parse_json_dto_or_400<problem_dto::statement>(
+        request,
+        problem_dto::make_statement_from_json
     );
-    if(!statement_opt){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::bad_request,
-            "required fields: description, input_format, output_format\n"
-        );
+    if(!statement_exp){
+        return std::move(statement_exp.error());
     }
 
     const auto set_statement_exp = problem_content_service::set_statement(
         db_connection_value,
         problem_reference_value,
-        *statement_opt
+        *statement_exp
     );
     if(!set_statement_exp){
         const auto code = set_statement_exp.error();
@@ -273,30 +251,18 @@ problem_handler::response_type problem_handler::handle_create_testcase_post(
         return std::move(auth_identity_exp.error());
     }
 
-    const auto request_object_opt = http_util::parse_json_object(request);
-    if(!request_object_opt){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::bad_request,
-            "invalid json\n"
-        );
-    }
-
-    const auto testcase_opt = problem_dto::make_testcase_from_json(
-        *request_object_opt
+    const auto testcase_exp = http_util::parse_json_dto_or_400<problem_dto::testcase>(
+        request,
+        problem_dto::make_testcase_from_json
     );
-    if(!testcase_opt){
-        return http_util::create_text_response(
-            request,
-            boost::beast::http::status::bad_request,
-            "required fields: testcase_input, testcase_output\n"
-        );
+    if(!testcase_exp){
+        return std::move(testcase_exp.error());
     }
 
     const auto create_testcase_exp = testcase_service::create_testcase(
         db_connection_value,
         problem_reference_value,
-        *testcase_opt
+        *testcase_exp
     );
     if(!create_testcase_exp){
         const auto code = create_testcase_exp.error();

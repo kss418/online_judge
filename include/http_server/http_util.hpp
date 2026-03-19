@@ -3,6 +3,7 @@
 #include "db_service/auth_service.hpp"
 #include "common/db_connection.hpp"
 #include "dto/auth_dto.hpp"
+#include "dto/dto_validation_error.hpp"
 
 #include <boost/json.hpp>
 #include <boost/beast/http/message.hpp>
@@ -11,9 +12,11 @@
 
 #include <cstdint>
 #include <expected>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace http_util{
@@ -43,6 +46,36 @@ namespace http_util{
     std::optional<boost::json::object> parse_json_object(
         const request_type& request
     );
+    template <typename dto_type, typename factory_type, typename... arg_types>
+    std::expected<dto_type, response_type> parse_json_dto_or_400(
+        const request_type& request,
+        factory_type&& factory,
+        arg_types&&... args
+    ){
+        const auto request_object_opt = parse_json_object(request);
+        if(!request_object_opt){
+            return std::unexpected(create_text_response(
+                request,
+                boost::beast::http::status::bad_request,
+                "invalid json\n"
+            ));
+        }
+
+        auto dto_exp = std::invoke(
+            std::forward<factory_type>(factory),
+            *request_object_opt,
+            std::forward<arg_types>(args)...
+        );
+        if(!dto_exp){
+            return std::unexpected(create_text_response(
+                request,
+                boost::beast::http::status::bad_request,
+                dto_exp.error().message + "\n"
+            ));
+        }
+
+        return std::move(*dto_exp);
+    }
     std::optional<std::string_view> get_string_field(
         const boost::json::object& object,
         std::string_view key
