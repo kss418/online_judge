@@ -1,8 +1,11 @@
 #pragma once
 
+#include "common/error_code.hpp"
+
 #include <boost/json/fwd.hpp>
 
 #include <cstdint>
+#include <expected>
 #include <optional>
 #include <string>
 
@@ -38,5 +41,9 @@ namespace auth_dto{
 
     std::optional<credentials> make_credentials_from_json(
         const boost::json::object& json
+    );
+
+    std::expected<hashed_credentials, error_code> hash_credentials(
+        const credentials& credentials_value
     );
 }
