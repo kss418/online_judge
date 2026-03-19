@@ -1,5 +1,6 @@
 #include "db_service/problem_core_service.hpp"
 #include "db_service/problem_statistics_service.hpp"
+#include "db_util/problem_statistics_util.hpp"
 #include "db_util/problem_util.hpp"
 
 #include <pqxx/pqxx>
@@ -115,7 +116,7 @@ std::expected<std::int64_t, error_code> problem_core_service::create_problem(db_
             return std::unexpected(error_code::create(errno_error::unknown_error));
         }
 
-        const auto create_problem_statistics_exp = problem_statistics_service::create_problem_statistics(
+        const auto create_problem_statistics_exp = problem_statistics_util::create_problem_statistics(
             transaction,
             problem_id
         );

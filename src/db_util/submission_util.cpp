@@ -1,5 +1,5 @@
 #include "db_util/submission_util.hpp"
-#include "db_service/problem_statistics_service.hpp"
+#include "db_util/problem_statistics_util.hpp"
 
 #include <pqxx/pqxx>
 
@@ -48,7 +48,7 @@ std::expected<std::int64_t, error_code> submission_util::create_submission(
         pqxx::params{submission_id}
     );
 
-    const auto increase_submission_count_exp = problem_statistics_service::increase_submission_count(
+    const auto increase_submission_count_exp = problem_statistics_util::increase_submission_count(
         transaction,
         problem_id
     );
@@ -199,7 +199,7 @@ std::expected<void, error_code> submission_util::finalize_submission(
         to_status == submission_status::accepted &&
         from_status != to_string(submission_status::accepted)
     ){
-        const auto increase_accepted_count_exp = problem_statistics_service::increase_accepted_count(
+        const auto increase_accepted_count_exp = problem_statistics_util::increase_accepted_count(
             transaction,
             problem_id
         );
