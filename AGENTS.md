@@ -28,6 +28,7 @@
 ## C++ Brace Style
 - Use `){` with no space between `)` and `{` (for function definitions, conditionals, loops, and lambdas).
 - Use `const{` with no space between `const` and `{` in function definitions.
+- When using a trailing return type, put a space before the opening brace: use `) -> return_type {` to avoid IntelliSense issues.
 
 ## C++ Namespace Implementation Style
 - In `.cpp` files, do not implement functions inside a `namespace ... { ... }` block.

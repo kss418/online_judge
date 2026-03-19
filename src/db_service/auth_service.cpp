@@ -1,9 +1,8 @@
 #include "db_service/auth_service.hpp"
+#include "db_service/db_service_util.hpp"
 #include "db_util/auth_util.hpp"
 #include "common/crypto_util.hpp"
 #include "common/token_util.hpp"
-
-#include <pqxx/pqxx>
 
 #include <chrono>
 
@@ -11,9 +10,6 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_service::auth_
     db_connection& connection_value,
     const auth_dto::token& token_value
 ){
-    if(!connection_value.is_connected()){
-        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
-    }
     if(token_value.value.empty()){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -25,42 +21,38 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_service::auth_
     auth_dto::hashed_token hashed_token_value;
     hashed_token_value.token_hash = *token_hash_exp;
 
-    try{
-        pqxx::work transaction(connection_value.connection());
-        const auto get_token_identity_exp = auth_util::get_token_identity(
-            transaction,
-            hashed_token_value
-        );
-        if(!get_token_identity_exp){
-            return std::unexpected(get_token_identity_exp.error());
-        }
-        if(!get_token_identity_exp->has_value()){
-            return std::nullopt;
-        }
+    return db_service_util::with_write_transaction(
+        connection_value,
+        [&](pqxx::work& transaction)
+            -> std::expected<std::optional<auth_dto::identity>, error_code> {
+            const auto get_token_identity_exp = auth_util::get_token_identity(
+                transaction,
+                hashed_token_value
+            );
+            if(!get_token_identity_exp){
+                return std::unexpected(get_token_identity_exp.error());
+            }
+            if(!get_token_identity_exp->has_value()){
+                return std::nullopt;
+            }
 
-        const auto update_last_used_at_exp = auth_util::update_last_used_at(
-            transaction,
-            hashed_token_value
-        );
-        if(!update_last_used_at_exp){
-            return std::unexpected(update_last_used_at_exp.error());
-        }
+            const auto update_last_used_at_exp = auth_util::update_last_used_at(
+                transaction,
+                hashed_token_value
+            );
+            if(!update_last_used_at_exp){
+                return std::unexpected(update_last_used_at_exp.error());
+            }
 
-        transaction.commit();
-        return get_token_identity_exp->value();
-    }
-    catch(const std::exception& exception){
-        return std::unexpected(error_code::map_psql_error_code(exception));
-    }
+            return get_token_identity_exp->value();
+        }
+    );
 }
 
 std::expected<bool, error_code> auth_service::renew_token(
     db_connection& connection_value,
     const auth_dto::token& token_value
 ){
-    if(!connection_value.is_connected()){
-        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
-    }
     if(token_value.value.empty()){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -72,35 +64,30 @@ std::expected<bool, error_code> auth_service::renew_token(
     auth_dto::hashed_token hashed_token_value;
     hashed_token_value.token_hash = *token_hash_exp;
 
-    try{
-        pqxx::work transaction(connection_value.connection());
-        const auto update_expires_at_exp = auth_util::update_expires_at(
-            transaction,
-            hashed_token_value,
-            token_util::TOKEN_TTL
-        );
-        if(!update_expires_at_exp){
-            return std::unexpected(update_expires_at_exp.error());
-        }
-        if(!update_expires_at_exp.value()){
-            return false;
-        }
+    return db_service_util::with_write_transaction(
+        connection_value,
+        [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
+            const auto update_expires_at_exp = auth_util::update_expires_at(
+                transaction,
+                hashed_token_value,
+                token_util::TOKEN_TTL
+            );
+            if(!update_expires_at_exp){
+                return std::unexpected(update_expires_at_exp.error());
+            }
+            if(!update_expires_at_exp.value()){
+                return false;
+            }
 
-        transaction.commit();
-        return true;
-    }
-    catch(const std::exception& exception){
-        return std::unexpected(error_code::map_psql_error_code(exception));
-    }
+            return true;
+        }
+    );
 }
 
 std::expected<bool, error_code> auth_service::revoke_token(
     db_connection& connection_value,
     const auth_dto::token& token_value
 ){
-    if(!connection_value.is_connected()){
-        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
-    }
     if(token_value.value.empty()){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
@@ -112,20 +99,21 @@ std::expected<bool, error_code> auth_service::revoke_token(
     auth_dto::hashed_token hashed_token_value;
     hashed_token_value.token_hash = *token_hash_exp;
 
-    try{
-        pqxx::work transaction(connection_value.connection());
-        const auto revoke_token_exp = auth_util::revoke_token(transaction, hashed_token_value);
-        if(!revoke_token_exp){
-            return std::unexpected(revoke_token_exp.error());
-        }
-        if(!revoke_token_exp.value()){
-            return false;
-        }
+    return db_service_util::with_write_transaction(
+        connection_value,
+        [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
+            const auto revoke_token_exp = auth_util::revoke_token(
+                transaction,
+                hashed_token_value
+            );
+            if(!revoke_token_exp){
+                return std::unexpected(revoke_token_exp.error());
+            }
+            if(!revoke_token_exp.value()){
+                return false;
+            }
 
-        transaction.commit();
-        return true;
-    }
-    catch(const std::exception& exception){
-        return std::unexpected(error_code::map_psql_error_code(exception));
-    }
+            return true;
+        }
+    );
 }
