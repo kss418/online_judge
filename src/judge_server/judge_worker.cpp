@@ -1,7 +1,7 @@
 #include "judge_server/judge_worker.hpp"
 
 #include "common/file_util.hpp"
-#include "db_service/submission_core_service.hpp"
+#include "db_service/submission_service.hpp"
 #include "judge_server/checker.hpp"
 #include "judge_server/judge_util.hpp"
 #include "judge_server/testcase_runner.hpp"
@@ -162,7 +162,7 @@ std::expected<void, error_code> judge_worker::run(){
                 return std::unexpected(save_source_code_exp.error());
             }
 
-            const auto update_submission_status_exp = submission_core_service::update_submission_status(
+            const auto update_submission_status_exp = submission_service::update_submission_status(
                 db_connection_,
                 queued_submission_value.submission_id,
                 submission_status::judging
@@ -215,7 +215,7 @@ std::expected<void, error_code> judge_worker::run(){
                 *run_all_testcases_exp
             );
 
-            const auto finalize_submission_exp = submission_core_service::finalize_submission(
+            const auto finalize_submission_exp = submission_service::finalize_submission(
                 db_connection_,
                 queued_submission_value.submission_id,
                 submission_status_value,
@@ -242,7 +242,7 @@ std::expected<void, error_code> judge_worker::run(){
 }
 
 std::expected<std::optional<submission_dto::queued_submission>, error_code> judge_worker::lease_submission(){
-    return submission_core_service::lease_submission(db_connection_, lease_duration_);
+    return submission_service::lease_submission(db_connection_, lease_duration_);
 }
 
 std::expected<void, error_code> judge_worker::save_source_code(

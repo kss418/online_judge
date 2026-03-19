@@ -1,6 +1,6 @@
 #include "http_handler/submission_handler.hpp"
 #include "common/submission_status.hpp"
-#include "db_service/submission_core_service.hpp"
+#include "db_service/submission_service.hpp"
 #include "dto/submission_dto.hpp"
 #include "http_server/http_util.hpp"
 #include "http_server/json_util.hpp"
@@ -34,7 +34,7 @@ submission_handler::response_type submission_handler::handle_create_submission_p
         );
     }
 
-    const auto create_submission_exp = submission_core_service::create_submission(
+    const auto create_submission_exp = submission_service::create_submission(
         db_connection_value,
         auth_identity_exp->user_id,
         problem_id,
@@ -99,7 +99,7 @@ submission_handler::response_type submission_handler::handle_list_submissions_ge
         }
     }
 
-    const auto submission_summary_values_exp = submission_core_service::list_submissions(
+    const auto submission_summary_values_exp = submission_service::list_submissions(
         db_connection_value,
         filter_value
     );

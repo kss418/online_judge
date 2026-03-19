@@ -1,4 +1,4 @@
-#include "db_service/submission_core_service.hpp"
+#include "db_service/submission_service.hpp"
 #include "db_util/problem_statistics_util.hpp"
 #include "db_util/submission_util.hpp"
 
@@ -11,7 +11,7 @@ static bool is_queue_empty_error(const error_code& code){
     return code == errno_error::resource_temporarily_unavailable;
 }
 
-std::expected<std::int64_t, error_code> submission_core_service::create_submission(
+std::expected<std::int64_t, error_code> submission_service::create_submission(
     db_connection& connection,
     std::int64_t user_id,
     std::int64_t problem_id,
@@ -57,7 +57,7 @@ std::expected<std::int64_t, error_code> submission_core_service::create_submissi
     }
 }
 
-std::expected<void, error_code> submission_core_service::update_submission_status(
+std::expected<void, error_code> submission_service::update_submission_status(
     db_connection& connection,
     std::int64_t submission_id,
     submission_status to_status,
@@ -88,7 +88,7 @@ std::expected<void, error_code> submission_core_service::update_submission_statu
 }
 
 std::expected<std::optional<submission_dto::queued_submission>, error_code>
-submission_core_service::lease_submission(
+submission_service::lease_submission(
     db_connection& connection,
     std::chrono::seconds lease_duration
 ){
@@ -115,7 +115,7 @@ submission_core_service::lease_submission(
     }
 }
 
-std::expected<void, error_code> submission_core_service::finalize_submission(
+std::expected<void, error_code> submission_service::finalize_submission(
     db_connection& connection,
     std::int64_t submission_id,
     submission_status to_status,
@@ -163,7 +163,7 @@ std::expected<void, error_code> submission_core_service::finalize_submission(
 }
 
 std::expected<std::vector<submission_dto::summary>, error_code>
-submission_core_service::list_submissions(
+submission_service::list_submissions(
     db_connection& connection,
     const submission_dto::list_filter& filter_value
 ){

@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-namespace submission_core_service{
+namespace submission_service{
     std::expected<std::int64_t, error_code> create_submission(
         db_connection& connection,
         std::int64_t user_id,
