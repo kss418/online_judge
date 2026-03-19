@@ -13,7 +13,9 @@
 #include <utility>
 #include <vector>
 
-std::expected<judge_worker, error_code> judge_worker::create(submission_service submission_service){
+std::expected<judge_worker, error_code> judge_worker::create(
+    submission_event_listener submission_event_listener
+){
     const auto source_directory_path_exp = judge_util::instance().make_source_directory_path();
     if(!source_directory_path_exp){
         return std::unexpected(source_directory_path_exp.error());
@@ -26,7 +28,7 @@ std::expected<judge_worker, error_code> judge_worker::create(submission_service 
         return std::unexpected(create_directories_exp.error());
     }
 
-    auto listen_submission_queue_exp = submission_service.listen_submission_queue();
+    auto listen_submission_queue_exp = submission_event_listener.listen_submission_queue();
     if(!listen_submission_queue_exp){
         return std::unexpected(listen_submission_queue_exp.error());
     }
@@ -49,18 +51,18 @@ std::expected<judge_worker, error_code> judge_worker::create(submission_service 
     }
 
     return judge_worker(
-        std::move(submission_service),
+        std::move(submission_event_listener),
         std::move(*db_connection_exp),
         std::move(*tc_downloader_exp)
     );
 }
 
 judge_worker::judge_worker(
-    submission_service submission_service,
+    submission_event_listener submission_event_listener,
     db_connection db_connection,
     tc_downloader tc_downloader
 ) :
-    submission_service_(std::move(submission_service)),
+    submission_event_listener_(std::move(submission_event_listener)),
     db_connection_(std::move(db_connection)),
     tc_downloader_(std::move(tc_downloader)){}
 
@@ -251,7 +253,7 @@ std::expected<void, error_code> judge_worker::run(){
             continue;
         }
 
-        auto wait_submission_notification_exp = submission_service_.wait_submission_notification(
+        auto wait_submission_notification_exp = submission_event_listener_.wait_submission_notification(
             notification_wait_timeout_
         );
         

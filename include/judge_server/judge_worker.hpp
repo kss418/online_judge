@@ -2,7 +2,7 @@
 
 #include "common/error_code.hpp"
 #include "common/db_connection.hpp"
-#include "db_service/submission_service.hpp"
+#include "db_event/submission_event_listener.hpp"
 #include "db_util/submission_util.hpp"
 #include "judge_server/testcase_downloader.hpp"
 #include "judge_server/judge_util.hpp"
@@ -18,7 +18,9 @@
 
 class judge_worker{
 public:
-    static std::expected<judge_worker, error_code> create(submission_service submission_service);
+    static std::expected<judge_worker, error_code> create(
+        submission_event_listener submission_event_listener
+    );
 
     std::expected<void, error_code> run();
     std::expected<std::optional<submission_dto::queued_submission>, error_code> lease_submission();
@@ -34,7 +36,7 @@ private:
     };
 
     judge_worker(
-        submission_service submission_service,
+        submission_event_listener submission_event_listener,
         db_connection db_connection,
         tc_downloader tc_downloader
     );
@@ -52,7 +54,7 @@ private:
     static constexpr std::chrono::seconds lease_duration_{900};
     static constexpr std::chrono::milliseconds notification_wait_timeout_{30000};
 
-    submission_service submission_service_;
+    submission_event_listener submission_event_listener_;
     db_connection db_connection_;
     tc_downloader tc_downloader_;
 };

@@ -1,25 +1,27 @@
 #include "common/env_util.hpp"
 #include "common/error_code.hpp"
 #include "common/db_connection.hpp"
-#include "db_service/submission_service.hpp"
+#include "db_event/submission_event_listener.hpp"
 #include "judge_server/judge_worker.hpp"
 
 #include <expected>
 #include <iostream>
 #include <utility>
 
-std::expected<submission_service, error_code> create_submission_service(){
+std::expected<submission_event_listener, error_code> create_submission_event_listener(){
     auto db_connection_exp = db_connection::create();
     if(!db_connection_exp){
         return std::unexpected(db_connection_exp.error());
     }
 
-    auto submission_service_exp = submission_service::create(std::move(*db_connection_exp));
-    if(!submission_service_exp){
-        return std::unexpected(submission_service_exp.error());
+    auto submission_event_listener_exp = submission_event_listener::create(
+        std::move(*db_connection_exp)
+    );
+    if(!submission_event_listener_exp){
+        return std::unexpected(submission_event_listener_exp.error());
     }
 
-    return std::move(*submission_service_exp);
+    return std::move(*submission_event_listener_exp);
 }
 
 int main(){
@@ -29,14 +31,14 @@ int main(){
         return 1;
     }
 
-    auto submission_service_exp = create_submission_service();
-    if(!submission_service_exp){
-        std::cerr << "failed to initialize submission_service: "
-                  << to_string(submission_service_exp.error()) << '\n';
+    auto submission_event_listener_exp = create_submission_event_listener();
+    if(!submission_event_listener_exp){
+        std::cerr << "failed to initialize submission_event_listener: "
+                  << to_string(submission_event_listener_exp.error()) << '\n';
         return 1;
     }
 
-    auto judge_worker_exp = judge_worker::create(std::move(*submission_service_exp));
+    auto judge_worker_exp = judge_worker::create(std::move(*submission_event_listener_exp));
     if(!judge_worker_exp){
         std::cerr << "failed to initialize judge_worker: " << to_string(judge_worker_exp.error()) << '\n';
         return 1;

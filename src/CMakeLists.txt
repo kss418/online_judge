@@ -2,6 +2,7 @@ add_library(lib STATIC)
 
 add_subdirectory(common)
 add_subdirectory(dto)
+add_subdirectory(db_event)
 add_subdirectory(db_service)
 add_subdirectory(db_util)
 add_subdirectory(http_handler)
