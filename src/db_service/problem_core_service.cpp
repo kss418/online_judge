@@ -1,11 +1,8 @@
 #include "db_service/problem_core_service.hpp"
-#include "db_service/problem_statistics_service.hpp"
 #include "db_util/problem_statistics_util.hpp"
 #include "db_util/problem_util.hpp"
 
 #include <pqxx/pqxx>
-
-#include <utility>
 
 std::expected<bool, error_code> problem_core_service::exists_problem(
     db_connection& connection,
@@ -37,24 +34,15 @@ std::expected<std::int32_t, error_code> problem_core_service::get_version(
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
-    if(problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
 
     try{
-        pqxx::work transaction(connection.connection());
-        const auto version_query_result = transaction.exec(
-            "SELECT version "
-            "FROM problems "
-            "WHERE problem_id = $1",
-            pqxx::params{problem_id}
-        );
-
-        if(version_query_result.empty()){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+        pqxx::read_transaction transaction(connection.connection());
+        const auto version_exp = problem_util::get_version(transaction, problem_id);
+        if(!version_exp){
+            return std::unexpected(version_exp.error());
         }
 
-        return version_query_result[0][0].as<std::int32_t>();
+        return *version_exp;
     }
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
@@ -68,34 +56,29 @@ std::expected<std::int64_t, error_code> problem_core_service::create_problem(db_
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto create_problem_result = transaction.exec(
-            "INSERT INTO problems(version) "
-            "VALUES($1) "
-            "RETURNING problem_id",
-            pqxx::params{1}
+        const auto problem_id_exp = problem_util::create_problem(
+            transaction
         );
-
-        if(create_problem_result.empty()){
-            return std::unexpected(error_code::create(errno_error::unknown_error));
+        if(!problem_id_exp){
+            return std::unexpected(problem_id_exp.error());
         }
 
-        const std::int64_t problem_id = create_problem_result[0][0].as<std::int64_t>();
-        const auto create_limits_result = transaction.exec(
-            "INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms, updated_at) "
-            "VALUES($1, $2, $3, NOW())",
-            pqxx::params{
-                problem_id,
-                problem_core_service::INITIAL_MEMORY_LIMIT_MB,
-                problem_core_service::INITIAL_TIME_LIMIT_MS
-            }
+        problem_dto::limits initial_limits_value;
+        initial_limits_value.memory_mb = problem_core_service::INITIAL_MEMORY_LIMIT_MB;
+        initial_limits_value.time_ms = problem_core_service::INITIAL_TIME_LIMIT_MS;
+
+        const auto set_limits_exp = problem_util::set_limits(
+            transaction,
+            *problem_id_exp,
+            initial_limits_value
         );
-        if(create_limits_result.affected_rows() == 0){
-            return std::unexpected(error_code::create(errno_error::unknown_error));
+        if(!set_limits_exp){
+            return std::unexpected(set_limits_exp.error());
         }
 
         const auto create_problem_statistics_exp = problem_statistics_util::create_problem_statistics(
             transaction,
-            problem_id
+            *problem_id_exp
         );
         if(!create_problem_statistics_exp){
             return std::unexpected(create_problem_statistics_exp.error());
@@ -103,14 +86,14 @@ std::expected<std::int64_t, error_code> problem_core_service::create_problem(db_
 
         const auto ensure_statement_exp = problem_util::ensure_statement_row(
             transaction,
-            problem_id
+            *problem_id_exp
         );
         if(!ensure_statement_exp){
             return std::unexpected(ensure_statement_exp.error());
         }
 
         transaction.commit();
-        return problem_id;
+        return *problem_id_exp;
     }
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
@@ -124,27 +107,15 @@ std::expected<problem_dto::limits, error_code> problem_core_service::get_limits(
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
-    if(problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
 
     try{
-        pqxx::work transaction(connection.connection());
-        const auto limits_query_result = transaction.exec(
-            "SELECT memory_limit_mb, time_limit_ms "
-            "FROM problem_limits "
-            "WHERE problem_id = $1",
-            pqxx::params{problem_id}
-        );
-
-        if(limits_query_result.empty()){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+        pqxx::read_transaction transaction(connection.connection());
+        const auto limits_exp = problem_util::get_limits(transaction, problem_id);
+        if(!limits_exp){
+            return std::unexpected(limits_exp.error());
         }
 
-        problem_dto::limits limits_value;
-        limits_value.memory_mb = limits_query_result[0][0].as<std::int32_t>();
-        limits_value.time_ms = limits_query_result[0][1].as<std::int32_t>();
-        return limits_value;
+        return *limits_exp;
     }
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
@@ -159,26 +130,17 @@ std::expected<void, error_code> problem_core_service::set_limits(
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
-    if(problem_id <= 0 || limits_value.memory_mb <= 0 || limits_value.time_ms <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
 
     try{
         pqxx::work transaction(connection.connection());
-        transaction.exec(
-            "INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms, updated_at) "
-            "VALUES($1, $2, $3, NOW()) "
-            "ON CONFLICT(problem_id) DO UPDATE "
-            "SET "
-            "memory_limit_mb = EXCLUDED.memory_limit_mb, "
-            "time_limit_ms = EXCLUDED.time_limit_ms, "
-            "updated_at = NOW()",
-            pqxx::params{
-                problem_id,
-                limits_value.memory_mb,
-                limits_value.time_ms
-            }
+        const auto set_limits_exp = problem_util::set_limits(
+            transaction,
+            problem_id,
+            limits_value
         );
+        if(!set_limits_exp){
+            return std::unexpected(set_limits_exp.error());
+        }
 
         const auto version_exp = problem_util::increase_version(transaction, problem_id);
         if(!version_exp){

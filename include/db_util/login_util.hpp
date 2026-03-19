@@ -7,7 +7,7 @@
 #include <string_view>
 
 namespace pqxx{
-class transaction_base;
+    class transaction_base;
 }
 
 namespace login_util{

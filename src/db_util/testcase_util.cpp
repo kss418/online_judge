@@ -1,20 +1,95 @@
 #include "db_util/testcase_util.hpp"
 
-#include "db_util/problem_util.hpp"
-
 #include <pqxx/pqxx>
 #include <utility>
+
+std::expected<problem_dto::testcase, error_code> testcase_util::create_testcase(
+    pqxx::transaction_base& transaction,
+    std::int64_t problem_id,
+    std::int32_t testcase_order,
+    const problem_dto::testcase& testcase_value
+){
+    if(problem_id <= 0 || testcase_order <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+    const auto create_testcase_result = transaction.exec(
+        "INSERT INTO problem_testcases(problem_id, testcase_order, testcase_input, testcase_output) "
+        "VALUES($1, $2, $3, $4) "
+        "RETURNING testcase_id",
+        pqxx::params{
+            problem_id,
+            testcase_order,
+            testcase_value.input,
+            testcase_value.output
+        }
+    );
+
+    if(create_testcase_result.empty()){
+        return std::unexpected(error_code::create(errno_error::unknown_error));
+    }
+
+    problem_dto::testcase created_testcase_value = testcase_value;
+    created_testcase_value.id = create_testcase_result[0][0].as<std::int64_t>();
+    created_testcase_value.order = testcase_order;
+    return created_testcase_value;
+}
+
+std::expected<problem_dto::testcase, error_code> testcase_util::get_testcase(
+    pqxx::transaction_base& transaction,
+    std::int64_t problem_id,
+    std::int32_t testcase_order
+){
+    if(problem_id <= 0 || testcase_order <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto testcase_query_result = transaction.exec(
+        "SELECT testcase_id, testcase_order, testcase_input, testcase_output "
+        "FROM problem_testcases "
+        "WHERE problem_id = $1 AND testcase_order = $2",
+        pqxx::params{problem_id, testcase_order}
+    );
+
+    if(testcase_query_result.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    problem_dto::testcase testcase_value;
+    testcase_value.id = testcase_query_result[0][0].as<std::int64_t>();
+    testcase_value.order = testcase_query_result[0][1].as<std::int32_t>();
+    testcase_value.input = testcase_query_result[0][2].as<std::string>();
+    testcase_value.output = testcase_query_result[0][3].as<std::string>();
+    return testcase_value;
+}
+
+std::expected<std::int32_t, error_code> testcase_util::get_testcase_count(
+    pqxx::transaction_base& transaction,
+    std::int64_t problem_id
+){
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto testcase_count_query_result = transaction.exec(
+        "SELECT COUNT(*) "
+        "FROM problem_testcases "
+        "WHERE problem_id = $1",
+        pqxx::params{problem_id}
+    );
+
+    if(testcase_count_query_result.empty()){
+        return std::unexpected(error_code::create(errno_error::unknown_error));
+    }
+
+    return testcase_count_query_result[0][0].as<std::int32_t>();
+}
 
 std::expected<std::int32_t, error_code> testcase_util::increase_testcase_count(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
 ){
-    const auto ensure_statement_exp = problem_util::ensure_statement_row(
-        transaction,
-        problem_id
-    );
-    if(!ensure_statement_exp){
-        return std::unexpected(ensure_statement_exp.error());
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
     const auto increase_result = transaction.exec(
@@ -108,11 +183,6 @@ std::expected<void, error_code> testcase_util::set_testcase(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    const auto version_exp = problem_util::increase_version(transaction, problem_id);
-    if(!version_exp){
-        return std::unexpected(version_exp.error());
-    }
-
     return {};
 }
 
@@ -138,16 +208,6 @@ std::expected<void, error_code> testcase_util::delete_testcase(
 
     if(delete_result.affected_rows() == 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    const auto testcase_count_exp = decrease_testcase_count(transaction, problem_id);
-    if(!testcase_count_exp){
-        return std::unexpected(testcase_count_exp.error());
-    }
-
-    const auto version_exp = problem_util::increase_version(transaction, problem_id);
-    if(!version_exp){
-        return std::unexpected(version_exp.error());
     }
 
     return {};

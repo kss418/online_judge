@@ -8,9 +8,10 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace pqxx{
-class transaction_base;
+    class transaction_base;
 }
 
 enum class submission_status{
@@ -31,6 +32,11 @@ std::optional<submission_status> parse_submission_status(std::string_view status
 namespace submission_util{
     inline constexpr std::string_view SUBMISSION_QUEUE_CHANNEL = "submission_queue";
 
+    struct finalize_result{
+        std::int64_t problem_id = 0;
+        bool should_increase_accepted_count = false;
+    };
+
     std::expected<std::int64_t, error_code> create_submission(
         pqxx::transaction_base& transaction,
         std::int64_t user_id,
@@ -50,7 +56,7 @@ namespace submission_util{
         std::chrono::seconds lease_duration
     );
 
-    std::expected<void, error_code> finalize_submission(
+    std::expected<finalize_result, error_code> finalize_submission(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id,
         submission_status to_status,
@@ -58,5 +64,10 @@ namespace submission_util{
         std::optional<std::string> compile_output_opt,
         std::optional<std::string> judge_output_opt,
         std::optional<std::string> reason_opt
+    );
+
+    std::expected<std::vector<submission_dto::summary>, error_code> list_submissions(
+        pqxx::transaction_base& transaction,
+        const submission_dto::list_filter& filter_value
     );
 }

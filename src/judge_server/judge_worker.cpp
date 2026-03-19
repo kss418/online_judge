@@ -1,6 +1,7 @@
 #include "judge_server/judge_worker.hpp"
 
 #include "common/file_util.hpp"
+#include "db_util/problem_statistics_util.hpp"
 #include "db_util/submission_util.hpp"
 #include "judge_server/checker.hpp"
 #include "judge_server/judge_util.hpp"
@@ -242,6 +243,17 @@ std::expected<void, error_code> judge_worker::run(){
                 );
                 if(!finalize_submission_exp){
                     return std::unexpected(finalize_submission_exp.error());
+                }
+
+                if(finalize_submission_exp->should_increase_accepted_count){
+                    const auto increase_accepted_count_exp =
+                        problem_statistics_util::increase_accepted_count(
+                            transaction,
+                            finalize_submission_exp->problem_id
+                        );
+                    if(!increase_accepted_count_exp){
+                        return std::unexpected(increase_accepted_count_exp.error());
+                    }
                 }
 
                 transaction.commit();

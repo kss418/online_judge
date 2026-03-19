@@ -5,8 +5,6 @@
 
 #include <pqxx/pqxx>
 
-#include <utility>
-
 std::expected<problem_dto::testcase, error_code> testcase_service::create_testcase(
     db_connection& connection,
     std::int64_t problem_id,
@@ -21,6 +19,14 @@ std::expected<problem_dto::testcase, error_code> testcase_service::create_testca
 
     try{
         pqxx::work transaction(connection.connection());
+        const auto ensure_statement_exp = problem_util::ensure_statement_row(
+            transaction,
+            problem_id
+        );
+        if(!ensure_statement_exp){
+            return std::unexpected(ensure_statement_exp.error());
+        }
+
         const auto testcase_order_exp = testcase_util::increase_testcase_count(
             transaction,
             problem_id
@@ -29,21 +35,14 @@ std::expected<problem_dto::testcase, error_code> testcase_service::create_testca
             return std::unexpected(testcase_order_exp.error());
         }
 
-        const std::int32_t testcase_order = testcase_order_exp.value();
-        const auto create_testcase_result = transaction.exec(
-            "INSERT INTO problem_testcases(problem_id, testcase_order, testcase_input, testcase_output) "
-            "VALUES($1, $2, $3, $4) "
-            "RETURNING testcase_id",
-            pqxx::params{
-                problem_id,
-                testcase_order,
-                testcase_value.input,
-                testcase_value.output
-            }
+        const auto created_testcase_exp = testcase_util::create_testcase(
+            transaction,
+            problem_id,
+            *testcase_order_exp,
+            testcase_value
         );
-
-        if(create_testcase_result.empty()){
-            return std::unexpected(error_code::create(errno_error::unknown_error));
+        if(!created_testcase_exp){
+            return std::unexpected(created_testcase_exp.error());
         }
 
         const auto version_exp = problem_util::increase_version(transaction, problem_id);
@@ -51,11 +50,8 @@ std::expected<problem_dto::testcase, error_code> testcase_service::create_testca
             return std::unexpected(version_exp.error());
         }
 
-        problem_dto::testcase created_testcase_value = testcase_value;
-        created_testcase_value.id = create_testcase_result[0][0].as<std::int64_t>();
-        created_testcase_value.order = testcase_order;
         transaction.commit();
-        return created_testcase_value;
+        return *created_testcase_exp;
     }
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
@@ -76,23 +72,17 @@ std::expected<problem_dto::testcase, error_code> testcase_service::get_testcase(
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto testcase_query_result = transaction.exec(
-            "SELECT testcase_id, testcase_order, testcase_input, testcase_output "
-            "FROM problem_testcases "
-            "WHERE problem_id = $1 AND testcase_order = $2",
-            pqxx::params{problem_id, testcase_order}
+        const auto testcase_exp = testcase_util::get_testcase(
+            transaction,
+            problem_id,
+            testcase_order
         );
-
-        if(testcase_query_result.empty()){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+        if(!testcase_exp){
+            return std::unexpected(testcase_exp.error());
         }
 
-        problem_dto::testcase testcase_value;
-        testcase_value.id = testcase_query_result[0][0].as<std::int64_t>();
-        testcase_value.order = testcase_query_result[0][1].as<std::int32_t>();
-        testcase_value.input = testcase_query_result[0][2].as<std::string>();
-        testcase_value.output = testcase_query_result[0][3].as<std::string>();
-        return testcase_value;
+        transaction.commit();
+        return *testcase_exp;
     }
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
@@ -112,18 +102,16 @@ std::expected<std::int32_t, error_code> testcase_service::get_testcase_count(
 
     try{
         pqxx::work transaction(connection.connection());
-        const auto testcase_count_query_result = transaction.exec(
-            "SELECT COUNT(*) "
-            "FROM problem_testcases "
-            "WHERE problem_id = $1",
-            pqxx::params{problem_id}
+        const auto testcase_count_exp = testcase_util::get_testcase_count(
+            transaction,
+            problem_id
         );
-
-        if(testcase_count_query_result.empty()){
-            return std::unexpected(error_code::create(errno_error::unknown_error));
+        if(!testcase_count_exp){
+            return std::unexpected(testcase_count_exp.error());
         }
 
-        return testcase_count_query_result[0][0].as<std::int32_t>();
+        transaction.commit();
+        return *testcase_count_exp;
     }
     catch(const std::exception& exception){
         return std::unexpected(error_code::map_psql_error_code(exception));
