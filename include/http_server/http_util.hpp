@@ -1,7 +1,7 @@
 #pragma once
 
-#include "db/auth_service.hpp"
-#include "db/db_connection.hpp"
+#include "db_service/auth_service.hpp"
+#include "common/db_connection.hpp"
 #include "dto/auth_dto.hpp"
 
 #include <boost/json.hpp>

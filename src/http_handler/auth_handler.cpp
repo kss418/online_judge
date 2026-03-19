@@ -1,6 +1,6 @@
 #include "http_handler/auth_handler.hpp"
-#include "db/auth_service.hpp"
-#include "db/login_service.hpp"
+#include "db_service/auth_service.hpp"
+#include "db_service/login_service.hpp"
 #include "dto/auth_dto.hpp"
 #include "http_server/json_util.hpp"
 #include "http_server/http_util.hpp"

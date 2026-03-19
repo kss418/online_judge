@@ -4,8 +4,8 @@
 #include "http_server/json_util.hpp"
 #include "http_server/http_util.hpp"
 
-#include "db/submission_core_service.hpp"
-#include "db/submission_util.hpp"
+#include "db_service/submission_core_service.hpp"
+#include "db_util/submission_util.hpp"
 
 submission_handler::response_type submission_handler::handle_create_submission_post(
     const request_type& request,

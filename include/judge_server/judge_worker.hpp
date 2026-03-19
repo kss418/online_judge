@@ -1,9 +1,9 @@
 #pragma once
 
 #include "common/error_code.hpp"
-#include "db/db_connection.hpp"
-#include "db/submission_service.hpp"
-#include "db/submission_util.hpp"
+#include "common/db_connection.hpp"
+#include "db_service/submission_service.hpp"
+#include "db_util/submission_util.hpp"
 #include "judge_server/testcase_downloader.hpp"
 #include "judge_server/judge_util.hpp"
 #include "judge_server/sandbox_runner.hpp"

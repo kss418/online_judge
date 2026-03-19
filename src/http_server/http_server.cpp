@@ -1,6 +1,6 @@
 #include "http_server/http_server.hpp"
 
-#include "db/db_connection.hpp"
+#include "common/db_connection.hpp"
 #include "http_server/http_dispatcher.hpp"
 
 #include <utility>

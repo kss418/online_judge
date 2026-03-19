@@ -5,7 +5,7 @@
 #include "http_router/submission_router.hpp"
 #include "http_router/system_router.hpp"
 #include "common/error_code.hpp"
-#include "db/db_connection.hpp"
+#include "common/db_connection.hpp"
 
 #include <expected>
 #include <optional>

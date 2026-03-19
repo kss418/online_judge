@@ -1,7 +1,7 @@
 #include "common/env_util.hpp"
 #include "common/error_code.hpp"
-#include "db/db_connection.hpp"
-#include "db/submission_service.hpp"
+#include "common/db_connection.hpp"
+#include "db_service/submission_service.hpp"
 #include "judge_server/judge_worker.hpp"
 
 #include <expected>

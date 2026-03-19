@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/error_code.hpp"
-#include "db/db_connection.hpp"
+#include "common/db_connection.hpp"
 
 #include <cstdint>
 #include <expected>

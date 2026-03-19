@@ -1,6 +1,6 @@
 #pragma once
 
-#include "db/db_connection.hpp"
+#include "common/db_connection.hpp"
 
 #include <boost/beast/http/field.hpp>
 #include <boost/beast/http/message.hpp>

@@ -3,10 +3,10 @@
 #include "http_server/json_util.hpp"
 #include "http_server/http_util.hpp"
 
-#include "db/problem_content_service.hpp"
-#include "db/problem_core_service.hpp"
-#include "db/problem_statistics_service.hpp"
-#include "db/testcase_service.hpp"
+#include "db_service/problem_content_service.hpp"
+#include "db_service/problem_core_service.hpp"
+#include "db_service/problem_statistics_service.hpp"
+#include "db_service/testcase_service.hpp"
 
 problem_handler::response_type problem_handler::handle_get_problem_get(
     const request_type& request,

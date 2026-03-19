@@ -1,8 +1,8 @@
 #include "judge_server/testcase_downloader.hpp"
 
 #include "common/file_util.hpp"
-#include "db/problem_core_service.hpp"
-#include "db/testcase_service.hpp"
+#include "db_service/problem_core_service.hpp"
+#include "db_service/testcase_service.hpp"
 #include "judge_server/tc_util.hpp"
 
 #include <charconv>

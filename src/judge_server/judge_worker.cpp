@@ -1,7 +1,7 @@
 #include "judge_server/judge_worker.hpp"
 
 #include "common/file_util.hpp"
-#include "db/submission_util.hpp"
+#include "db_util/submission_util.hpp"
 #include "judge_server/checker.hpp"
 #include "judge_server/judge_util.hpp"
 #include "judge_server/testcase_runner.hpp"

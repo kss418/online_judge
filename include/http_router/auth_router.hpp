@@ -1,6 +1,6 @@
 #pragma once
 
-#include "db/db_connection.hpp"
+#include "common/db_connection.hpp"
 #include "http_handler/auth_handler.hpp"
 
 #include <string_view>
