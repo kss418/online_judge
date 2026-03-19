@@ -33,6 +33,16 @@ namespace http_util{
         boost::beast::http::status status,
         std::string body
     );
+    response_type create_400_or_500_response(
+        const request_type& request,
+        std::string_view action,
+        const error_code& code
+    );
+    response_type create_404_or_500_response(
+        const request_type& request,
+        std::string_view action,
+        const error_code& code
+    );
     response_type create_bearer_unauthorized_response(
         const request_type& request,
         std::string body

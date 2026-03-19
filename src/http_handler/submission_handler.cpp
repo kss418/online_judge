@@ -32,16 +32,10 @@ submission_handler::response_type submission_handler::handle_create_submission_p
         *create_request_exp
     );
     if(!create_submission_exp){
-        const auto code = create_submission_exp.error();
-        const auto status =
-            code.is_bad_request_error()
-                ? boost::beast::http::status::bad_request
-                : boost::beast::http::status::internal_server_error;
-
-        return http_util::create_text_response(
+        return http_util::create_400_or_500_response(
             request,
-            status,
-            "failed to create submission: " + to_string(code) + "\n"
+            "create submission",
+            create_submission_exp.error()
         );
     }
 
@@ -91,16 +85,10 @@ submission_handler::response_type submission_handler::handle_list_submissions_ge
         filter_value
     );
     if(!submission_summary_values_exp){
-        const auto code = submission_summary_values_exp.error();
-        const auto status =
-            code.is_bad_request_error()
-                ? boost::beast::http::status::bad_request
-                : boost::beast::http::status::internal_server_error;
-
-        return http_util::create_text_response(
+        return http_util::create_400_or_500_response(
             request,
-            status,
-            "failed to list submissions: " + to_string(code) + "\n"
+            "list submissions",
+            submission_summary_values_exp.error()
         );
     }
 

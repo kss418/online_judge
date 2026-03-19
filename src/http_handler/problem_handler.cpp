@@ -51,15 +51,10 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         problem_reference_value
     );
     if(!limits_exp){
-        const auto status =
-            limits_exp.error().is_bad_request_error()
-                ? boost::beast::http::status::not_found
-                : boost::beast::http::status::internal_server_error;
-
-        return http_util::create_text_response(
+        return http_util::create_404_or_500_response(
             request,
-            status,
-            "failed to get problem limits: " + to_string(limits_exp.error()) + "\n"
+            "get problem limits",
+            limits_exp.error()
         );
     }
 
@@ -96,15 +91,10 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         problem_reference_value
     );
     if(!statistics_exp){
-        const auto status =
-            statistics_exp.error().is_bad_request_error()
-                ? boost::beast::http::status::not_found
-                : boost::beast::http::status::internal_server_error;
-
-        return http_util::create_text_response(
+        return http_util::create_404_or_500_response(
             request,
-            status,
-            "failed to get problem statistics: " + to_string(statistics_exp.error()) + "\n"
+            "get problem statistics",
+            statistics_exp.error()
         );
     }
 
@@ -173,16 +163,10 @@ problem_handler::response_type problem_handler::handle_set_limits_put(
         *limits_exp
     );
     if(!set_limits_exp){
-        const auto code = set_limits_exp.error();
-        const auto status =
-            code.is_bad_request_error()
-                ? boost::beast::http::status::bad_request
-                : boost::beast::http::status::internal_server_error;
-
-        return http_util::create_text_response(
+        return http_util::create_400_or_500_response(
             request,
-            status,
-            "failed to set problem limits: " + to_string(code) + "\n"
+            "set problem limits",
+            set_limits_exp.error()
         );
     }
 
@@ -219,16 +203,10 @@ problem_handler::response_type problem_handler::handle_set_statement_put(
         *statement_exp
     );
     if(!set_statement_exp){
-        const auto code = set_statement_exp.error();
-        const auto status =
-            code.is_bad_request_error()
-                ? boost::beast::http::status::bad_request
-                : boost::beast::http::status::internal_server_error;
-
-        return http_util::create_text_response(
+        return http_util::create_400_or_500_response(
             request,
-            status,
-            "failed to set problem statement: " + to_string(code) + "\n"
+            "set problem statement",
+            set_statement_exp.error()
         );
     }
 
@@ -265,16 +243,10 @@ problem_handler::response_type problem_handler::handle_create_testcase_post(
         *testcase_exp
     );
     if(!create_testcase_exp){
-        const auto code = create_testcase_exp.error();
-        const auto status =
-            code.is_bad_request_error()
-                ? boost::beast::http::status::bad_request
-                : boost::beast::http::status::internal_server_error;
-
-        return http_util::create_text_response(
+        return http_util::create_400_or_500_response(
             request,
-            status,
-            "failed to create testcase: " + to_string(code) + "\n"
+            "create testcase",
+            create_testcase_exp.error()
         );
     }
 

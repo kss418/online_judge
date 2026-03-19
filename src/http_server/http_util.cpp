@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <string>
 #include <utility>
 
 #include <boost/beast/core/string.hpp>
@@ -22,6 +23,38 @@ http_util::response_type http_util::create_text_response(
     response.body() = std::move(body);
     response.prepare_payload();
     return response;
+}
+
+http_util::response_type http_util::create_400_or_500_response(
+    const request_type& request,
+    std::string_view action,
+    const error_code& code
+){
+    const auto status = code.is_bad_request_error()
+        ? boost::beast::http::status::bad_request
+        : boost::beast::http::status::internal_server_error;
+
+    return create_text_response(
+        request,
+        status,
+        "failed to " + std::string{action} + ": " + to_string(code) + "\n"
+    );
+}
+
+http_util::response_type http_util::create_404_or_500_response(
+    const request_type& request,
+    std::string_view action,
+    const error_code& code
+){
+    const auto status = code.is_bad_request_error()
+        ? boost::beast::http::status::not_found
+        : boost::beast::http::status::internal_server_error;
+
+    return create_text_response(
+        request,
+        status,
+        "failed to " + std::string{action} + ": " + to_string(code) + "\n"
+    );
 }
 
 http_util::response_type http_util::create_bearer_unauthorized_response(

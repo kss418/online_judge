@@ -24,16 +24,10 @@ auth_handler::response_type auth_handler::handle_sign_up_post(
         *credentials_exp
     );
     if(!sign_up_exp){
-        const auto code = sign_up_exp.error();
-        const auto status =
-            code.is_bad_request_error()
-                ? boost::beast::http::status::bad_request
-                : boost::beast::http::status::internal_server_error;
-
-        return http_util::create_text_response(
+        return http_util::create_400_or_500_response(
             request,
-            status,
-            "failed to sign up: " + to_string(code) + "\n"
+            "sign up",
+            sign_up_exp.error()
         );
     }
 
@@ -61,15 +55,10 @@ auth_handler::response_type auth_handler::handle_login_post(
         *credentials_exp
     );
     if(!login_exp){
-        const auto code = login_exp.error();
-        const auto status = code.is_bad_request_error()
-            ? boost::beast::http::status::bad_request
-            : boost::beast::http::status::internal_server_error;
-
-        return http_util::create_text_response(
+        return http_util::create_400_or_500_response(
             request,
-            status,
-            "failed to login: " + to_string(code) + "\n"
+            "login",
+            login_exp.error()
         );
     }
     if(!login_exp->has_value()){
