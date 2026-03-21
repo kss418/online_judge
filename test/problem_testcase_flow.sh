@@ -10,6 +10,8 @@ source "${script_dir}/util.sh"
 source "${script_dir}/database_util.sh"
 # shellcheck disable=SC1091
 source "${script_dir}/http_server_util.sh"
+# shellcheck disable=SC1091
+source "${script_dir}/fixture_util.sh"
 
 if [[ -f "${project_root}/.env" ]]; then
     set -a
@@ -65,31 +67,6 @@ print_success_log(){
     append_log_line "${test_log_temp_file}" "${log_message}"
 }
 
-promote_admin(){
-    local user_id="$1"
-
-    require_db_env
-
-    if [[ -z "${user_id}" ]]; then
-        echo "missing user_id" >&2
-        return 1
-    fi
-
-    PGPASSWORD="${DB_PASSWORD}" psql \
-        -X \
-        -h "${DB_HOST}" \
-        -p "${DB_PORT}" \
-        -U "${DB_USER}" \
-        -d "${DB_NAME}" \
-        -v ON_ERROR_STOP=1 \
-        -qAt <<SQL | sed -n '1p'
-UPDATE users
-SET is_admin = TRUE, updated_at = NOW()
-WHERE user_id = ${user_id}
-RETURNING user_id;
-SQL
-}
-
 trap cleanup EXIT
 
 require_command curl
@@ -109,108 +86,13 @@ append_log_line "${test_log_temp_file}" "test_db_name=${test_db_name}"
 apply_test_database_migrations
 ensure_dedicated_http_server
 
-sign_up_request_body="$(
-    python3 - "${user_login_id}" "${raw_password}" <<'PY'
-import json
-import sys
-
-print(
-    json.dumps(
-        {
-            "user_login_id": sys.argv[1],
-            "raw_password": sys.argv[2],
-        }
-    )
-)
-PY
-)"
-
-sign_up_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${sign_up_response_file}" \
-        --write-out "%{http_code}" \
-        -H "Content-Type: application/json" \
-        -d "${sign_up_request_body}" \
-        "${base_url}/api/auth/sign-up"
-)"
-
-if [[ "${sign_up_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "sign-up failed: status=${sign_up_status_code}"
-    publish_failure_logs
-    echo "problem testcase flow sign-up failed: expected status 201, got ${sign_up_status_code}" >&2
-    echo "response body:" >&2
-    cat "${sign_up_response_file}" >&2
-    exit 1
-fi
-
 read -r sign_up_user_id sign_up_token < <(
-    python3 - "${sign_up_response_file}" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as response_file:
-    response = json.load(response_file)
-
-user_id = response.get("user_id")
-token = response.get("token")
-if not isinstance(user_id, int) or user_id <= 0:
-    raise SystemExit("invalid user_id in sign-up response")
-if not isinstance(token, str) or not token:
-    raise SystemExit("invalid token in sign-up response")
-
-print(user_id, token)
-PY
+    sign_up_user "${user_login_id}" "${raw_password}" "${sign_up_response_file}" "problem testcase flow"
 )
-
-promoted_user_id="$(promote_admin "${sign_up_user_id}")"
-if [[ "${promoted_user_id}" != "${sign_up_user_id}" ]]; then
-    append_log_line "${test_log_temp_file}" "admin promotion failed: user_id=${sign_up_user_id}"
-    publish_failure_logs
-    echo "problem testcase flow admin promotion failed" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "admin promotion succeeded: user_id=${sign_up_user_id}"
-
-create_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${create_problem_response_file}" \
-        --write-out "%{http_code}" \
-        -X POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/problem"
-)"
-
-if [[ "${create_problem_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "problem create failed: status=${create_problem_status_code}"
-    publish_failure_logs
-    echo "problem testcase flow create problem failed: expected status 201, got ${create_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${create_problem_response_file}" >&2
-    exit 1
-fi
-
+promote_admin_user "${sign_up_user_id}" "problem testcase flow" >/dev/null
 problem_id="$(
-    python3 - "${create_problem_response_file}" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as response_file:
-    response = json.load(response_file)
-
-problem_id = response.get("problem_id")
-if not isinstance(problem_id, int) or problem_id <= 0:
-    raise SystemExit("invalid problem_id in create problem response")
-
-print(problem_id)
-PY
+    create_problem_via_api "${sign_up_token}" "${create_problem_response_file}" "problem testcase flow"
 )"
-
-append_log_line "${test_log_temp_file}" "problem created: problem_id=${problem_id}"
 
 testcase_request_body="$(
     python3 <<'PY'

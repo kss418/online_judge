@@ -10,6 +10,8 @@ source "${script_dir}/util.sh"
 source "${script_dir}/database_util.sh"
 # shellcheck disable=SC1091
 source "${script_dir}/http_server_util.sh"
+# shellcheck disable=SC1091
+source "${script_dir}/fixture_util.sh"
 
 if [[ -f "${project_root}/.env" ]]; then
     set -a
@@ -84,44 +86,10 @@ append_log_line "${test_log_temp_file}" "test_db_name=${test_db_name}"
 apply_test_database_migrations
 ensure_dedicated_http_server
 
-request_body="$(
-    python3 - "${user_login_id}" "${raw_password}" <<'PY'
-import json
-import sys
-
-print(
-    json.dumps(
-        {
-            "user_login_id": sys.argv[1],
-            "raw_password": sys.argv[2],
-        }
-    )
-)
-PY
-)"
-
-sign_up_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${sign_up_response_file}" \
-        --write-out "%{http_code}" \
-        -H "Content-Type: application/json" \
-        -d "${request_body}" \
-        "${base_url}/api/auth/sign-up"
-)"
-
-if [[ "${sign_up_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "sign-up failed: status=${sign_up_status_code}"
-    publish_failure_logs
-    echo "sign-up test failed: expected status 201, got ${sign_up_status_code}" >&2
-    echo "response body:" >&2
-    cat "${sign_up_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "sign-up passed: status=${sign_up_status_code}"
+sign_up_user "${user_login_id}" "${raw_password}" "${sign_up_response_file}" "auth flow" >/dev/null
 print_success_log "sign-up success"
+
+request_body="$(make_sign_up_request_body "${user_login_id}" "${raw_password}")"
 
 login_status_code="$(
     curl \

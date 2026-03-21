@@ -10,6 +10,8 @@ source "${script_dir}/util.sh"
 source "${script_dir}/database_util.sh"
 # shellcheck disable=SC1091
 source "${script_dir}/http_server_util.sh"
+# shellcheck disable=SC1091
+source "${script_dir}/fixture_util.sh"
 
 if [[ -f "${project_root}/.env" ]]; then
     set -a
@@ -82,29 +84,6 @@ print_success_log(){
     append_log_line "${test_log_temp_file}" "${log_message}"
 }
 
-create_problem(){
-    require_db_env
-
-    PGPASSWORD="${DB_PASSWORD}" psql \
-        -X \
-        -h "${DB_HOST}" \
-        -p "${DB_PORT}" \
-        -U "${DB_USER}" \
-        -d "${DB_NAME}" \
-        -v ON_ERROR_STOP=1 \
-        -qAt <<'SQL' | sed -n '1p'
-WITH created_problem AS (
-    INSERT INTO problems(version)
-    VALUES(1)
-    RETURNING problem_id
-)
-INSERT INTO problem_statistics(problem_id)
-SELECT problem_id
-FROM created_problem
-RETURNING problem_id;
-SQL
-}
-
 trap cleanup EXIT
 
 require_command curl
@@ -124,86 +103,12 @@ append_log_line "${test_log_temp_file}" "test_db_name=${test_db_name}"
 apply_test_database_migrations
 ensure_dedicated_http_server
 
-sign_up_request_body="$(
-    python3 - "${user_login_id}" "${raw_password}" <<'PY'
-import json
-import sys
-
-print(
-    json.dumps(
-        {
-            "user_login_id": sys.argv[1],
-            "raw_password": sys.argv[2],
-        }
-    )
+read -r sign_up_user_id sign_up_token < <(
+    sign_up_user "${user_login_id}" "${raw_password}" "${sign_up_response_file}" "submission flow"
 )
-PY
-)"
-
-sign_up_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${sign_up_response_file}" \
-        --write-out "%{http_code}" \
-        -H "Content-Type: application/json" \
-        -d "${sign_up_request_body}" \
-        "${base_url}/api/auth/sign-up"
-)"
-
-if [[ "${sign_up_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "sign-up failed: status=${sign_up_status_code}"
-    publish_failure_logs
-    echo "sign-up test failed: expected status 201, got ${sign_up_status_code}" >&2
-    echo "response body:" >&2
-    cat "${sign_up_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "sign-up passed: status=${sign_up_status_code}"
 print_success_log "sign-up success"
 
-sign_up_user_id="$(
-    python3 - "${sign_up_response_file}" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as response_file:
-    sign_up_response = json.load(response_file)
-
-user_id = sign_up_response.get("user_id")
-if not isinstance(user_id, int) or user_id <= 0:
-    raise SystemExit("invalid user_id in sign-up response")
-
-print(user_id)
-PY
-)"
-
-sign_up_token="$(
-    python3 - "${sign_up_response_file}" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as response_file:
-    sign_up_response = json.load(response_file)
-
-token = sign_up_response.get("token")
-if not isinstance(token, str) or not token:
-    raise SystemExit("missing token in sign-up response")
-
-print(token)
-PY
-)"
-
-problem_id="$(create_problem)"
-if [[ -z "${problem_id}" ]]; then
-    append_log_line "${test_log_temp_file}" "problem create failed"
-    publish_failure_logs
-    echo "problem create test failed" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "problem created: problem_id=${problem_id}"
+problem_id="$(create_problem_in_db "submission flow")"
 print_success_log "problem create success"
 
 submission_request_body="$(
