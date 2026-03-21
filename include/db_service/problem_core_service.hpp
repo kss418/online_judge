@@ -15,13 +15,21 @@ namespace problem_core_service{
         db_connection& connection,
         const problem_dto::reference& problem_reference_value
     );
+
+    std::expected<problem_dto::title, error_code> get_title(
+        db_connection& connection,
+        const problem_dto::reference& problem_reference_value
+    );
     
     std::expected<problem_dto::version, error_code> get_version(
         db_connection& connection,
         const problem_dto::reference& problem_reference_value
     );
 
-    std::expected<problem_dto::created, error_code> create_problem(db_connection& connection);
+    std::expected<problem_dto::created, error_code> create_problem(
+        db_connection& connection,
+        const problem_dto::create_request& create_request_value
+    );
     std::expected<problem_dto::limits, error_code> get_limits(
         db_connection& connection,
         const problem_dto::reference& problem_reference_value

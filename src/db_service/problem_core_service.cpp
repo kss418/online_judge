@@ -20,6 +20,22 @@ std::expected<problem_dto::existence, error_code> problem_core_service::exists_p
     );
 }
 
+std::expected<problem_dto::title, error_code> problem_core_service::get_title(
+    db_connection& connection,
+    const problem_dto::reference& problem_reference_value
+){
+    return db_service_util::with_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<problem_dto::title, error_code> {
+            return problem_core_util::get_title(
+                transaction,
+                problem_reference_value
+            );
+        }
+    );
+}
+
 std::expected<problem_dto::version, error_code> problem_core_service::get_version(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
@@ -37,14 +53,16 @@ std::expected<problem_dto::version, error_code> problem_core_service::get_versio
 }
 
 std::expected<problem_dto::created, error_code> problem_core_service::create_problem(
-    db_connection& connection
+    db_connection& connection,
+    const problem_dto::create_request& create_request_value
 ){
     return db_service_util::with_write_transaction(
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<problem_dto::created, error_code> {
             const auto created_exp = problem_core_util::create_problem(
-                transaction
+                transaction,
+                create_request_value
             );
             if(!created_exp){
                 return std::unexpected(created_exp.error());

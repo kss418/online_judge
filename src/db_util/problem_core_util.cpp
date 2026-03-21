@@ -29,6 +29,31 @@ std::expected<problem_dto::existence, error_code> problem_core_util::exists_prob
     return existence_value;
 }
 
+std::expected<problem_dto::title, error_code> problem_core_util::get_title(
+    pqxx::transaction_base& transaction,
+    const problem_dto::reference& problem_reference_value
+){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto title_query_result = transaction.exec(
+        "SELECT title "
+        "FROM problems "
+        "WHERE problem_id = $1",
+        pqxx::params{problem_id}
+    );
+
+    if(title_query_result.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    problem_dto::title title_value;
+    title_value.value = title_query_result[0][0].as<std::string>();
+    return title_value;
+}
+
 std::expected<problem_dto::version, error_code> problem_core_util::get_version(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
@@ -55,13 +80,18 @@ std::expected<problem_dto::version, error_code> problem_core_util::get_version(
 }
 
 std::expected<problem_dto::created, error_code> problem_core_util::create_problem(
-    pqxx::transaction_base& transaction
+    pqxx::transaction_base& transaction,
+    const problem_dto::create_request& create_request_value
 ){
+    if(create_request_value.title.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
     const auto create_problem_result = transaction.exec(
-        "INSERT INTO problems(version) "
-        "VALUES($1) "
+        "INSERT INTO problems(version, title) "
+        "VALUES($1, $2) "
         "RETURNING problem_id",
-        pqxx::params{1}
+        pqxx::params{1, create_request_value.title}
     );
 
     if(create_problem_result.empty()){

@@ -16,13 +16,19 @@ namespace problem_core_util{
         const problem_dto::reference& problem_reference_value
     );
 
+    std::expected<problem_dto::title, error_code> get_title(
+        pqxx::transaction_base& transaction,
+        const problem_dto::reference& problem_reference_value
+    );
+
     std::expected<problem_dto::version, error_code> get_version(
         pqxx::transaction_base& transaction,
         const problem_dto::reference& problem_reference_value
     );
 
     std::expected<problem_dto::created, error_code> create_problem(
-        pqxx::transaction_base& transaction
+        pqxx::transaction_base& transaction,
+        const problem_dto::create_request& create_request_value
     );
 
     std::expected<problem_dto::limits, error_code> get_limits(

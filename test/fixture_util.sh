@@ -39,6 +39,21 @@ print(
 PY
 }
 
+make_create_problem_request_body(){
+    python3 - "$1" <<'PY'
+import json
+import sys
+
+print(
+    json.dumps(
+        {
+            "title": sys.argv[1],
+        }
+    )
+)
+PY
+}
+
 read_auth_response_user_id_and_token(){
     local response_file_path="$1"
 
@@ -156,10 +171,13 @@ create_problem_via_api(){
     local auth_token="$1"
     local response_file_path="$2"
     local failure_context="${3:-fixture}"
+    local problem_title="${4:-fixture problem}"
+    local create_problem_request_body=""
     local create_problem_status_code=""
     local problem_id=""
 
     require_fixture_test_env
+    create_problem_request_body="$(make_create_problem_request_body "${problem_title}")"
 
     create_problem_status_code="$(
         curl \
@@ -169,6 +187,8 @@ create_problem_via_api(){
             --write-out "%{http_code}" \
             --request POST \
             -H "Authorization: Bearer ${auth_token}" \
+            -H "Content-Type: application/json" \
+            -d "${create_problem_request_body}" \
             "${base_url}/api/problem"
     )"
 
@@ -182,12 +202,15 @@ create_problem_via_api(){
     fi
 
     problem_id="$(read_problem_id_from_create_problem_response "${response_file_path}")"
-    append_log_line "${test_log_temp_file}" "problem created: problem_id=${problem_id}"
+    append_log_line \
+        "${test_log_temp_file}" \
+        "problem created: problem_id=${problem_id}, title=${problem_title}"
     printf '%s\n' "${problem_id}"
 }
 
 create_problem_in_db(){
     local failure_context="${1:-fixture}"
+    local problem_title="${2:-fixture problem}"
     local problem_id=""
 
     require_db_env
@@ -199,11 +222,12 @@ create_problem_in_db(){
             -p "${DB_PORT}" \
             -U "${DB_USER}" \
             -d "${DB_NAME}" \
+            -v problem_title="${problem_title}" \
             -v ON_ERROR_STOP=1 \
             -qAt <<'SQL' | sed -n '1p'
 WITH created_problem AS (
-    INSERT INTO problems(version)
-    VALUES(1)
+    INSERT INTO problems(version, title)
+    VALUES(1, :'problem_title')
     RETURNING problem_id
 )
 INSERT INTO problem_statistics(problem_id)
@@ -220,6 +244,8 @@ SQL
         exit 1
     fi
 
-    append_log_line "${test_log_temp_file}" "problem created: problem_id=${problem_id}"
+    append_log_line \
+        "${test_log_temp_file}" \
+        "problem created: problem_id=${problem_id}, title=${problem_title}"
     printf '%s\n' "${problem_id}"
 }

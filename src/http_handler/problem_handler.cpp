@@ -33,6 +33,18 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         );
     }
 
+    const auto title_exp = problem_core_service::get_title(
+        db_connection_value,
+        problem_reference_value
+    );
+    if(!title_exp){
+        return http_util::create_404_or_500_response(
+            request,
+            "get problem title",
+            title_exp.error()
+        );
+    }
+
     const auto version_exp = problem_core_service::get_version(
         db_connection_value,
         problem_reference_value
@@ -102,6 +114,7 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         boost::beast::http::status::ok,
         json_util::make_problem_detail_object(
             problem_reference_value,
+            *title_exp,
             *version_exp,
             *limits_exp,
             statement_opt,
@@ -116,7 +129,19 @@ problem_handler::response_type problem_handler::handle_create_problem_post(
     db_connection& db_connection_value
 ){
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto create_problem_exp = problem_core_service::create_problem(db_connection_value);
+        const auto create_request_exp =
+            http_util::parse_json_dto_or_400<problem_dto::create_request>(
+                request,
+                problem_dto::make_create_request_from_json
+            );
+        if(!create_request_exp){
+            return std::move(create_request_exp.error());
+        }
+
+        const auto create_problem_exp = problem_core_service::create_problem(
+            db_connection_value,
+            *create_request_exp
+        );
         if(!create_problem_exp){
             return http_util::create_text_response(
                 request,

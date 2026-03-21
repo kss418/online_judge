@@ -175,6 +175,7 @@ boost::json::object json_util::make_problem_statistics_object(
 
 boost::json::object json_util::make_problem_detail_object(
     const problem_dto::reference& problem_reference_value,
+    const problem_dto::title& title_value,
     const problem_dto::version& version_value,
     const problem_dto::limits& limits_value,
     const std::optional<problem_dto::statement>& statement_opt,
@@ -183,6 +184,7 @@ boost::json::object json_util::make_problem_detail_object(
 ){
     boost::json::object response_object;
     response_object["problem_id"] = problem_reference_value.problem_id;
+    response_object["title"] = title_value.value;
     response_object["version"] = version_value.version;
     response_object["limits"] = make_problem_limits_object(limits_value);
     response_object["sample_count"] = static_cast<std::int64_t>(sample_values.size());

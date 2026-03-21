@@ -26,6 +26,7 @@ Get a public problem detail view. This endpoint returns visible metadata, limits
 | field | type | note |
 |---|---|---|
 | `problem_id` | `int64` | requested problem id |
+| `title` | `string` | problem title |
 | `version` | `int32` | current problem version |
 | `limits` | `object` | current execution limits |
 | `limits.memory_limit_mb` | `int32` | memory limit in megabytes |
@@ -49,6 +50,7 @@ Example:
 ```json
 {
   "problem_id": 1000,
+  "title": "A + B",
   "version": 3,
   "limits": {
     "memory_limit_mb": 256,
@@ -94,14 +96,26 @@ Create a new problem and return the generated problem number. The problem number
 
 #### request
 
-- request body: none
+- content-type: `application/json`
 - required header:
 
 | header | required | note |
 |---|---|---|
 | `Authorization` | yes | format: `Bearer <admin-token>` |
 
+- body fields:
+
+| field | type | required | note |
+|---|---|---|---|
+| `title` | `string` | yes | must be non-empty |
+
 Example:
+
+```json
+{
+  "title": "A + B"
+}
+```
 
 ```text
 Authorization: Bearer ...
@@ -130,6 +144,8 @@ Example:
 - missing or malformed bearer token: `401 Unauthorized`
 - invalid, expired, or revoked token: `401 Unauthorized`
 - authenticated but not admin: `401 Unauthorized`
+- invalid json: `400 Bad Request`
+- missing required fields: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
 Error bodies are currently returned as plain text.

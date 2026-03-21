@@ -71,8 +71,8 @@ create_full_problem(){
         -v ON_ERROR_STOP=1 \
         -qAt <<'SQL' | sed -n '1p'
 WITH created_problem AS (
-    INSERT INTO problems(version)
-    VALUES(3)
+    INSERT INTO problems(version, title)
+    VALUES(3, 'A + B')
     RETURNING problem_id
 ), inserted_limits AS (
     INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms, updated_at)
@@ -135,8 +135,8 @@ create_blank_problem(){
         -v ON_ERROR_STOP=1 \
         -qAt <<'SQL' | sed -n '1p'
 WITH created_problem AS (
-    INSERT INTO problems(version)
-    VALUES(1)
+    INSERT INTO problems(version, title)
+    VALUES(1, 'Blank Problem')
     RETURNING problem_id
 ), inserted_limits AS (
     INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms, updated_at)
@@ -208,6 +208,9 @@ with open(response_file_path, encoding="utf-8") as response_file:
 
 if response.get("problem_id") != expected_problem_id:
     raise SystemExit("problem_id mismatch")
+
+if response.get("title") != "A + B":
+    raise SystemExit("title mismatch")
 
 if response.get("version") != 3:
     raise SystemExit("version mismatch")
@@ -289,6 +292,9 @@ with open(response_file_path, encoding="utf-8") as response_file:
 
 if response.get("problem_id") != expected_problem_id:
     raise SystemExit("blank problem_id mismatch")
+
+if response.get("title") != "Blank Problem":
+    raise SystemExit("blank title mismatch")
 
 if response.get("version") != 1:
     raise SystemExit("blank version mismatch")

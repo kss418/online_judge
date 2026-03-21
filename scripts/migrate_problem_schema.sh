@@ -47,9 +47,50 @@ CREATE TABLE IF NOT EXISTS schema_migrations(
 
 CREATE TABLE IF NOT EXISTS problems(
     problem_id BIGSERIAL PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT 'untitled problem',
     version INTEGER NOT NULL DEFAULT 1,
-    CONSTRAINT problems_version_check CHECK(version > 0)
+    CONSTRAINT problems_version_check CHECK(version > 0),
+    CONSTRAINT problems_title_check CHECK(char_length(title) > 0)
 );
+
+DO $do$
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM information_schema.columns
+        WHERE
+            table_schema = 'public' AND
+            table_name = 'problems' AND
+            column_name = 'title'
+    ) THEN
+        ALTER TABLE problems
+            ADD COLUMN title TEXT;
+    END IF;
+END
+$do$;
+
+UPDATE problems
+SET title = 'problem ' || problem_id::text
+WHERE title IS NULL OR title = '';
+
+ALTER TABLE problems
+    ALTER COLUMN title SET NOT NULL;
+
+DO $do$
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM pg_constraint
+        WHERE
+            conrelid = 'problems'::regclass AND
+            conname = 'problems_title_check'
+    ) THEN
+        ALTER TABLE problems
+            ADD CONSTRAINT problems_title_check
+            CHECK(char_length(title) > 0);
+    END IF;
+END
+$do$;
 
 CREATE TABLE IF NOT EXISTS problem_limits(
     problem_id BIGINT PRIMARY KEY REFERENCES problems(problem_id) ON DELETE CASCADE,
@@ -174,7 +215,7 @@ END
 $do$;
 
 INSERT INTO schema_migrations(version)
-VALUES('problem_schema_v10')
+VALUES('problem_schema_v11')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

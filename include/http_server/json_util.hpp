@@ -58,6 +58,7 @@ namespace json_util{
     );
     boost::json::object make_problem_detail_object(
         const problem_dto::reference& problem_reference_value,
+        const problem_dto::title& title_value,
         const problem_dto::version& version_value,
         const problem_dto::limits& limits_value,
         const std::optional<problem_dto::statement>& statement_opt,

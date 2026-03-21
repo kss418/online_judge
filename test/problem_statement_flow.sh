@@ -93,7 +93,11 @@ read -r sign_up_user_id sign_up_token < <(
 )
 promote_admin_user "${sign_up_user_id}" "problem statement flow" >/dev/null
 problem_id="$(
-    create_problem_via_api "${sign_up_token}" "${create_problem_response_file}" "problem statement flow"
+    create_problem_via_api \
+        "${sign_up_token}" \
+        "${create_problem_response_file}" \
+        "problem statement flow" \
+        "Problem Statement Flow"
 )"
 
 statement_request_body="$(
@@ -175,6 +179,9 @@ with open(response_file_path, encoding="utf-8") as response_file:
 
 if response.get("problem_id") != expected_problem_id:
     raise SystemExit("problem_id mismatch after first statement update")
+
+if response.get("title") != "Problem Statement Flow":
+    raise SystemExit("title mismatch after first statement update")
 
 if response.get("version") != 2:
     raise SystemExit("version mismatch after first statement update")
@@ -283,6 +290,9 @@ with open(response_file_path, encoding="utf-8") as response_file:
 
 if response.get("problem_id") != expected_problem_id:
     raise SystemExit("problem_id mismatch after second statement update")
+
+if response.get("title") != "Problem Statement Flow":
+    raise SystemExit("title mismatch after second statement update")
 
 if response.get("version") != 3:
     raise SystemExit("version mismatch after second statement update")

@@ -2,6 +2,22 @@
 
 #include "http_server/http_util.hpp"
 
+std::expected<problem_dto::create_request, dto_validation_error>
+problem_dto::make_create_request_from_json(const boost::json::object& json){
+    const auto title_opt = http_util::get_non_empty_string_field(json, "title");
+    if(!title_opt){
+        return std::unexpected(dto_validation_error{
+            .code = "missing_field",
+            .message = "required field: title",
+            .field_opt = "title"
+        });
+    }
+
+    create_request create_request_value;
+    create_request_value.title = std::string{*title_opt};
+    return create_request_value;
+}
+
 std::expected<problem_dto::limits, dto_validation_error> problem_dto::make_limits_from_json(
     const boost::json::object& json
 ){

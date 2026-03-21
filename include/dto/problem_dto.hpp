@@ -14,8 +14,16 @@ namespace problem_dto{
         std::int64_t problem_id = 0;
     };
 
+    struct title{
+        std::string value;
+    };
+
     struct existence{
         bool exists = false;
+    };
+
+    struct create_request{
+        std::string title;
     };
 
     struct created{
@@ -70,6 +78,9 @@ namespace problem_dto{
         std::int64_t accepted_count = 0;
     };
 
+    std::expected<create_request, dto_validation_error> make_create_request_from_json(
+        const boost::json::object& json
+    );
     std::expected<limits, dto_validation_error> make_limits_from_json(
         const boost::json::object& json
     );

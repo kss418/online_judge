@@ -91,7 +91,11 @@ read -r sign_up_user_id sign_up_token < <(
 )
 promote_admin_user "${sign_up_user_id}" "problem testcase flow" >/dev/null
 problem_id="$(
-    create_problem_via_api "${sign_up_token}" "${create_problem_response_file}" "problem testcase flow"
+    create_problem_via_api \
+        "${sign_up_token}" \
+        "${create_problem_response_file}" \
+        "problem testcase flow" \
+        "Problem Testcase Flow"
 )"
 
 testcase_request_body="$(
@@ -230,6 +234,8 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
 problem_id = int(sys.argv[2])
 if response.get("problem_id") != problem_id:
     raise SystemExit("problem_id mismatch after testcase create")
+if response.get("title") != "Problem Testcase Flow":
+    raise SystemExit("title mismatch after testcase create")
 if response.get("version") != 3:
     raise SystemExit("version mismatch after testcase create")
 if response.get("limits") != {"memory_limit_mb": 256, "time_limit_ms": 1000}:
