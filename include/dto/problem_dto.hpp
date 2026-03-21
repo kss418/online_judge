@@ -8,6 +8,11 @@
 #include <expected>
 #include <optional>
 #include <string>
+#include <vector>
+
+namespace http_util{
+    struct query_param;
+}
 
 namespace problem_dto{
     struct reference{
@@ -28,6 +33,12 @@ namespace problem_dto{
 
     struct created{
         std::int64_t problem_id = 0;
+    };
+
+    struct summary{
+        std::int64_t problem_id = 0;
+        std::string title;
+        std::int32_t version = 0;
     };
 
     struct version{
@@ -78,8 +89,15 @@ namespace problem_dto{
         std::int64_t accepted_count = 0;
     };
 
+    struct list_filter{
+        std::optional<std::string> title_opt = std::nullopt;
+    };
+
     std::expected<create_request, dto_validation_error> make_create_request_from_json(
         const boost::json::object& json
+    );
+    std::expected<list_filter, dto_validation_error> make_list_filter_from_query_params(
+        const std::vector<http_util::query_param>& query_params
     );
     std::expected<limits, dto_validation_error> make_limits_from_json(
         const boost::json::object& json

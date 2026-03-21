@@ -2,6 +2,9 @@
 
 #include <pqxx/pqxx>
 
+#include <string>
+#include <utility>
+
 std::expected<problem_dto::existence, error_code> problem_core_util::exists_problem(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
@@ -101,6 +104,50 @@ std::expected<problem_dto::created, error_code> problem_core_util::create_proble
     problem_dto::created created_value;
     created_value.problem_id = create_problem_result[0][0].as<std::int64_t>();
     return created_value;
+}
+
+std::expected<std::vector<problem_dto::summary>, error_code> problem_core_util::list_problems(
+    pqxx::transaction_base& transaction,
+    const problem_dto::list_filter& filter_value
+){
+    if(filter_value.title_opt && filter_value.title_opt->empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    std::string problem_list_query =
+        "SELECT "
+        "problem_id, "
+        "title, "
+        "version "
+        "FROM problems "
+        "WHERE 1 = 1";
+    pqxx::params query_params;
+    int query_param_index = 1;
+
+    if(filter_value.title_opt){
+        problem_list_query +=
+            " AND title ILIKE $" + std::to_string(query_param_index++);
+        query_params.append("%" + *filter_value.title_opt + "%");
+    }
+
+    problem_list_query += " ORDER BY problem_id DESC";
+
+    const auto problem_summary_query = transaction.exec(
+        problem_list_query,
+        query_params
+    );
+
+    std::vector<problem_dto::summary> summary_values;
+    summary_values.reserve(problem_summary_query.size());
+    for(const auto& problem_summary_row : problem_summary_query){
+        problem_dto::summary summary_value;
+        summary_value.problem_id = problem_summary_row[0].as<std::int64_t>();
+        summary_value.title = problem_summary_row[1].as<std::string>();
+        summary_value.version = problem_summary_row[2].as<std::int32_t>();
+        summary_values.push_back(std::move(summary_value));
+    }
+
+    return summary_values;
 }
 
 std::expected<problem_dto::limits, error_code> problem_core_util::get_limits(

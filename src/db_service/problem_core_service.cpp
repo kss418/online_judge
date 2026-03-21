@@ -104,6 +104,19 @@ std::expected<problem_dto::created, error_code> problem_core_service::create_pro
     );
 }
 
+std::expected<std::vector<problem_dto::summary>, error_code> problem_core_service::list_problems(
+    db_connection& connection,
+    const problem_dto::list_filter& filter_value
+){
+    return db_service_util::with_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<std::vector<problem_dto::summary>, error_code> {
+            return problem_core_util::list_problems(transaction, filter_value);
+        }
+    );
+}
+
 std::expected<problem_dto::limits, error_code> problem_core_service::get_limits(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value

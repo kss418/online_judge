@@ -8,6 +8,34 @@
 #include "db_service/problem_statistics_service.hpp"
 #include "db_service/testcase_service.hpp"
 
+problem_handler::response_type problem_handler::handle_list_problems_get(
+    const request_type& request,
+    db_connection& db_connection_value
+){
+    const auto filter_exp = http_util::parse_problem_list_filter_or_400(request);
+    if(!filter_exp){
+        return std::move(filter_exp.error());
+    }
+
+    const auto summary_values_exp = problem_core_service::list_problems(
+        db_connection_value,
+        *filter_exp
+    );
+    if(!summary_values_exp){
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::internal_server_error,
+            "failed to list problems: " + to_string(summary_values_exp.error()) + "\n"
+        );
+    }
+
+    return json_util::create_json_response(
+        request,
+        boost::beast::http::status::ok,
+        json_util::make_problem_list_object(*summary_values_exp)
+    );
+}
+
 problem_handler::response_type problem_handler::handle_get_problem_get(
     const request_type& request,
     db_connection& db_connection_value,

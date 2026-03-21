@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <expected>
+#include <vector>
 
 namespace pqxx{
     class transaction_base;
@@ -29,6 +30,11 @@ namespace problem_core_util{
     std::expected<problem_dto::created, error_code> create_problem(
         pqxx::transaction_base& transaction,
         const problem_dto::create_request& create_request_value
+    );
+
+    std::expected<std::vector<problem_dto::summary>, error_code> list_problems(
+        pqxx::transaction_base& transaction,
+        const problem_dto::list_filter& filter_value
     );
 
     std::expected<problem_dto::limits, error_code> get_limits(

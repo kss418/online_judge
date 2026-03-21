@@ -18,6 +18,43 @@ problem_dto::make_create_request_from_json(const boost::json::object& json){
     return create_request_value;
 }
 
+std::expected<problem_dto::list_filter, dto_validation_error>
+problem_dto::make_list_filter_from_query_params(
+    const std::vector<http_util::query_param>& query_params
+){
+    list_filter filter_value;
+    for(const auto& query_param : query_params){
+        if(query_param.key == "title"){
+            if(filter_value.title_opt){
+                return std::unexpected(dto_validation_error{
+                    .code = "duplicate_query_parameter",
+                    .message = "duplicate query parameter: title",
+                    .field_opt = "title"
+                });
+            }
+
+            if(query_param.value.empty()){
+                return std::unexpected(dto_validation_error{
+                    .code = "invalid_query_parameter",
+                    .message = "invalid query parameter: title",
+                    .field_opt = "title"
+                });
+            }
+
+            filter_value.title_opt = std::string{query_param.value};
+            continue;
+        }
+
+        return std::unexpected(dto_validation_error{
+            .code = "unsupported_query_parameter",
+            .message = "unsupported query parameter: " + std::string{query_param.key},
+            .field_opt = std::string{query_param.key}
+        });
+    }
+
+    return filter_value;
+}
+
 std::expected<problem_dto::limits, dto_validation_error> problem_dto::make_limits_from_json(
     const boost::json::object& json
 ){

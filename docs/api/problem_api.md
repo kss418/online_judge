@@ -4,6 +4,78 @@ HTTP API handled by `problem_router`.
 
 ## endpoint
 
+### `GET /api/problem`
+
+List problems using an optional title filter. This endpoint is public and does not require authentication.
+
+#### request
+
+- required header: none
+- supported query parameters:
+
+| field | type | required | note |
+|---|---|---|---|
+| `title` | `string` | no | case-insensitive substring match |
+
+If `title` is omitted, the endpoint returns the full problem list ordered by `problem_id` descending.
+
+Example:
+
+```text
+GET /api/problem?title=A%20%2B%20B
+```
+
+```text
+GET /api/problem
+```
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `problem_count` | `int64` | number of returned problems |
+| `problems` | `array<object>` | problem summaries ordered by `problem_id` descending |
+
+Each problem summary contains:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | problem id |
+| `title` | `string` | problem title |
+| `version` | `int32` | current problem version |
+
+Example:
+
+```json
+{
+  "problem_count": 2,
+  "problems": [
+    {
+      "problem_id": 1001,
+      "title": "Multiply",
+      "version": 1
+    },
+    {
+      "problem_id": 1000,
+      "title": "A + B",
+      "version": 3
+    }
+  ]
+}
+```
+
+#### error response
+
+- invalid query string or duplicate query parameter: `400 Bad Request`
+- unsupported query parameter: `400 Bad Request`
+- unexpected internal failure: `500 Internal Server Error`
+
+If no problems match the filter, the endpoint returns `200 OK` with an empty `problems` array.
+
 ### `GET /api/problem/{problem_id}`
 
 Get a public problem detail view. This endpoint returns visible metadata, limits, statement content when present, public samples, and aggregate submission statistics. Hidden testcases are not exposed.

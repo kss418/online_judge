@@ -294,6 +294,36 @@ http_util::parse_submission_list_filter_or_400(
     return *filter_exp;
 }
 
+std::expected<problem_dto::list_filter, http_util::response_type>
+http_util::parse_problem_list_filter_or_400(
+    const request_type& request
+){
+    const std::string_view target{
+        request.target().data(),
+        request.target().size()
+    };
+    const auto query_opt = get_target_query(target);
+    const auto query_params_opt = parse_query_params(query_opt.value_or(""));
+    if(!query_params_opt){
+        return std::unexpected(create_text_response(
+            request,
+            boost::beast::http::status::bad_request,
+            "invalid query string\n"
+        ));
+    }
+
+    const auto filter_exp = problem_dto::make_list_filter_from_query_params(*query_params_opt);
+    if(!filter_exp){
+        return std::unexpected(create_text_response(
+            request,
+            boost::beast::http::status::bad_request,
+            filter_exp.error().message + "\n"
+        ));
+    }
+
+    return *filter_exp;
+}
+
 std::expected<auth_dto::token, http_util::response_type> http_util::parse_bearer_token_or_401(
     const request_type& request
 ){

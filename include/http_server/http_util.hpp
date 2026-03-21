@@ -4,6 +4,7 @@
 #include "common/db_connection.hpp"
 #include "dto/auth_dto.hpp"
 #include "dto/dto_validation_error.hpp"
+#include "dto/problem_dto.hpp"
 #include "dto/submission_dto.hpp"
 
 #include <boost/json.hpp>
@@ -114,6 +115,10 @@ namespace http_util{
     );
     std::expected<submission_dto::list_filter, response_type>
     parse_submission_list_filter_or_400(
+        const request_type& request
+    );
+    std::expected<problem_dto::list_filter, response_type>
+    parse_problem_list_filter_or_400(
         const request_type& request
     );
     std::expected<auth_dto::token, response_type> parse_bearer_token_or_401(

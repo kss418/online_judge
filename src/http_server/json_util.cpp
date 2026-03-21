@@ -118,6 +118,36 @@ boost::json::object json_util::make_problem_created_object(
     return response_object;
 }
 
+boost::json::object json_util::make_problem_summary_object(
+    const problem_dto::summary& summary_value
+){
+    boost::json::object response_object;
+    response_object["problem_id"] = summary_value.problem_id;
+    response_object["title"] = summary_value.title;
+    response_object["version"] = summary_value.version;
+    return response_object;
+}
+
+boost::json::array json_util::make_problem_summary_array(
+    const std::vector<problem_dto::summary>& summary_values
+){
+    boost::json::array response_array;
+    response_array.reserve(summary_values.size());
+    for(const auto& summary_value : summary_values){
+        response_array.push_back(make_problem_summary_object(summary_value));
+    }
+    return response_array;
+}
+
+boost::json::object json_util::make_problem_list_object(
+    const std::vector<problem_dto::summary>& summary_values
+){
+    boost::json::object response_object;
+    response_object["problem_count"] = static_cast<std::int64_t>(summary_values.size());
+    response_object["problems"] = make_problem_summary_array(summary_values);
+    return response_object;
+}
+
 boost::json::object json_util::make_problem_testcase_created_object(
     const problem_dto::testcase& testcase_value
 ){

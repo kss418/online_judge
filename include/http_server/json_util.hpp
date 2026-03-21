@@ -43,6 +43,13 @@ namespace json_util{
     );
 
     boost::json::object make_problem_created_object(const problem_dto::created& created_value);
+    boost::json::object make_problem_summary_object(const problem_dto::summary& summary_value);
+    boost::json::array make_problem_summary_array(
+        const std::vector<problem_dto::summary>& summary_values
+    );
+    boost::json::object make_problem_list_object(
+        const std::vector<problem_dto::summary>& summary_values
+    );
     boost::json::object make_problem_testcase_created_object(
         const problem_dto::testcase& testcase_value
     );

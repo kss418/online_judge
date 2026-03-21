@@ -17,7 +17,7 @@ problem_router::response_type problem_router::route(
 
     const auto& path_segments = *path_segments_opt;
     if(path_segments.empty()){
-        return handle_create_problem(request);
+        return handle_problems(request);
     }
 
     if(path_segments.size() == 1){
@@ -59,9 +59,11 @@ problem_router::response_type problem_router::route(
     return http_util::not_found_response(request);
 }
 
-problem_router::response_type problem_router::handle_create_problem(
-    const request_type& request
-){
+problem_router::response_type problem_router::handle_problems(const request_type& request){
+    if(request.method() == boost::beast::http::verb::get){
+        return problem_handler::handle_list_problems_get(request, db_connection_);
+    }
+
     if(request.method() == boost::beast::http::verb::post){
         return problem_handler::handle_create_problem_post(request, db_connection_);
     }

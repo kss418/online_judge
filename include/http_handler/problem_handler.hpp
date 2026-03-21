@@ -13,6 +13,10 @@ namespace problem_handler{
     using request_type = boost::beast::http::request<boost::beast::http::string_body>;
     using response_type = boost::beast::http::response<boost::beast::http::string_body>;
 
+    response_type handle_list_problems_get(
+        const request_type& request,
+        db_connection& db_connection_value
+    );
     response_type handle_get_problem_get(
         const request_type& request,
         db_connection& db_connection_value,
