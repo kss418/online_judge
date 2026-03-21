@@ -4,6 +4,54 @@
 
 #include <string>
 
+std::expected<submission_dto::detail, error_code> submission_util::get_submission_detail(
+    pqxx::transaction_base& transaction,
+    std::int64_t submission_id
+){
+    if(submission_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto submission_detail_result = transaction.exec(
+        "SELECT "
+        "submission_id, "
+        "user_id, "
+        "problem_id, "
+        "language, "
+        "status::text, "
+        "score, "
+        "compile_output, "
+        "judge_output, "
+        "created_at::text, "
+        "updated_at::text "
+        "FROM submissions "
+        "WHERE submission_id = $1",
+        pqxx::params{submission_id}
+    );
+    if(submission_detail_result.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    submission_dto::detail detail_value;
+    detail_value.submission_id = submission_detail_result[0][0].as<std::int64_t>();
+    detail_value.user_id = submission_detail_result[0][1].as<std::int64_t>();
+    detail_value.problem_id = submission_detail_result[0][2].as<std::int64_t>();
+    detail_value.language = submission_detail_result[0][3].as<std::string>();
+    detail_value.status = submission_detail_result[0][4].as<std::string>();
+    if(!submission_detail_result[0][5].is_null()){
+        detail_value.score_opt = submission_detail_result[0][5].as<std::int16_t>();
+    }
+    if(!submission_detail_result[0][6].is_null()){
+        detail_value.compile_output_opt = submission_detail_result[0][6].as<std::string>();
+    }
+    if(!submission_detail_result[0][7].is_null()){
+        detail_value.judge_output_opt = submission_detail_result[0][7].as<std::string>();
+    }
+    detail_value.created_at = submission_detail_result[0][8].as<std::string>();
+    detail_value.updated_at = submission_detail_result[0][9].as<std::string>();
+    return detail_value;
+}
+
 std::expected<submission_dto::created, error_code> submission_util::create_submission(
     pqxx::transaction_base& transaction,
     const submission_dto::create_request& create_request_value
@@ -273,7 +321,7 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_util:
         summary_value.language = submission_summary_row[3].as<std::string>();
         summary_value.status = submission_summary_row[4].as<std::string>();
         if(!submission_summary_row[5].is_null()){
-            summary_value.score = submission_summary_row[5].as<std::int16_t>();
+            summary_value.score_opt = submission_summary_row[5].as<std::int16_t>();
         }
         summary_value.created_at = submission_summary_row[6].as<std::string>();
         summary_value.updated_at = submission_summary_row[7].as<std::string>();

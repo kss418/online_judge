@@ -44,11 +44,47 @@ boost::json::object json_util::make_submission_summary_object(
     response_object["created_at"] = summary_value.created_at;
     response_object["updated_at"] = summary_value.updated_at;
 
-    if(summary_value.score){
-        response_object["score"] = *summary_value.score;
+    if(summary_value.score_opt){
+        response_object["score"] = *summary_value.score_opt;
     }
     else{
         response_object["score"] = nullptr;
+    }
+
+    return response_object;
+}
+
+boost::json::object json_util::make_submission_detail_object(
+    const submission_dto::detail& detail_value
+){
+    boost::json::object response_object;
+    response_object["submission_id"] = detail_value.submission_id;
+    response_object["user_id"] = detail_value.user_id;
+    response_object["problem_id"] = detail_value.problem_id;
+    response_object["language"] = detail_value.language;
+    response_object["status"] = detail_value.status;
+    response_object["created_at"] = detail_value.created_at;
+    response_object["updated_at"] = detail_value.updated_at;
+
+    if(detail_value.score_opt){
+        response_object["score"] = *detail_value.score_opt;
+    }
+    else{
+        response_object["score"] = nullptr;
+    }
+
+    if(detail_value.compile_output_opt){
+        response_object["compile_output"] = *detail_value.compile_output_opt;
+    }
+    else{
+        response_object["compile_output"] = nullptr;
+    }
+
+    if(detail_value.judge_output_opt){
+        response_object["judge_output"] = *detail_value.judge_output_opt;
+    }
+    else{
+        response_object["judge_output"] = nullptr;
     }
 
     return response_object;

@@ -32,6 +32,9 @@ namespace json_util{
     boost::json::object make_submission_summary_object(
         const submission_dto::summary& summary_value
     );
+    boost::json::object make_submission_detail_object(
+        const submission_dto::detail& detail_value
+    );
     boost::json::array make_submission_summary_array(
         const std::vector<submission_dto::summary>& summary_values
     );

@@ -35,7 +35,8 @@ int main(){
 }
 }"
 all_submission_response_file="$(mktemp)"
-removed_submission_response_file="$(mktemp)"
+submission_detail_response_file="$(mktemp)"
+missing_submission_response_file="$(mktemp)"
 list_submission_response_file="$(mktemp)"
 top_submission_response_file="$(mktemp)"
 test_log_path=""
@@ -55,7 +56,8 @@ cleanup(){
         "${sign_up_response_file}" \
         "${submission_response_file}" \
         "${all_submission_response_file}" \
-        "${removed_submission_response_file}" \
+        "${submission_detail_response_file}" \
+        "${missing_submission_response_file}" \
         "${list_submission_response_file}" \
         "${top_submission_response_file}"
 
@@ -317,28 +319,51 @@ print(submission_id)
 PY
 )"
 
-removed_submission_status_code="$(
+missing_submission_id=$((second_submission_id + 999999))
+
+submission_detail_status_code="$(
     curl \
         --silent \
         --show-error \
-        --output "${removed_submission_response_file}" \
+        --output "${submission_detail_response_file}" \
         --write-out "%{http_code}" \
         --request GET \
-        -H "Authorization: Bearer ${sign_up_token}" \
         "${base_url}/api/submission/${submission_id}"
 )"
 
-if [[ "${removed_submission_status_code}" != "405" ]]; then
-    append_log_line "${test_log_temp_file}" "removed submission get failed: status=${removed_submission_status_code}"
+if [[ "${submission_detail_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "submission detail get failed: status=${submission_detail_status_code}"
     publish_failure_logs
-    echo "removed submission get test failed: expected status 405, got ${removed_submission_status_code}" >&2
+    echo "submission detail get test failed: expected status 200, got ${submission_detail_status_code}" >&2
     echo "response body:" >&2
-    cat "${removed_submission_response_file}" >&2
+    cat "${submission_detail_response_file}" >&2
     exit 1
 fi
 
-append_log_line "${test_log_temp_file}" "removed submission get passed: status=${removed_submission_status_code}"
-print_success_log "removed submission get success"
+append_log_line "${test_log_temp_file}" "submission detail get passed: status=${submission_detail_status_code}"
+print_success_log "submission detail get success"
+
+missing_submission_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${missing_submission_response_file}" \
+        --write-out "%{http_code}" \
+        --request GET \
+        "${base_url}/api/submission/${missing_submission_id}"
+)"
+
+if [[ "${missing_submission_status_code}" != "404" ]]; then
+    append_log_line "${test_log_temp_file}" "missing submission get failed: status=${missing_submission_status_code}"
+    publish_failure_logs
+    echo "missing submission get test failed: expected status 404, got ${missing_submission_status_code}" >&2
+    echo "response body:" >&2
+    cat "${missing_submission_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "missing submission get passed: status=${missing_submission_status_code}"
+print_success_log "missing submission get success"
 
 all_submission_status_code="$(
     curl \
@@ -467,11 +492,62 @@ then
     exit 1
 fi
 
-removed_submission_response_body="$(cat "${removed_submission_response_file}")"
-if [[ "${removed_submission_response_body}" != "method not allowed" && "${removed_submission_response_body}" != "method not allowed"$'\n' ]]; then
-    append_log_line "${test_log_temp_file}" "removed submission get validation failed"
+if ! python3 \
+    - "${submission_detail_response_file}" \
+    "${submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "${submission_language}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    submission_detail = json.load(response_file)
+
+expected_submission_id = int(sys.argv[2])
+expected_user_id = int(sys.argv[3])
+expected_problem_id = int(sys.argv[4])
+expected_language = sys.argv[5]
+
+if submission_detail.get("submission_id") != expected_submission_id:
+    raise SystemExit("submission_id mismatch in submission detail response")
+
+if submission_detail.get("user_id") != expected_user_id:
+    raise SystemExit("user_id mismatch in submission detail response")
+
+if submission_detail.get("problem_id") != expected_problem_id:
+    raise SystemExit("problem_id mismatch in submission detail response")
+
+if submission_detail.get("language") != expected_language:
+    raise SystemExit("language mismatch in submission detail response")
+
+if submission_detail.get("status") != "queued":
+    raise SystemExit("expected submission detail status to be queued")
+
+if submission_detail.get("score", "missing") is not None:
+    raise SystemExit("expected submission detail score to be null before judging")
+
+if submission_detail.get("compile_output", "missing") is not None:
+    raise SystemExit("expected compile_output to be null before judging")
+
+if submission_detail.get("judge_output", "missing") is not None:
+    raise SystemExit("expected judge_output to be null before judging")
+
+created_at = submission_detail.get("created_at")
+updated_at = submission_detail.get("updated_at")
+
+if not isinstance(created_at, str) or not created_at:
+    raise SystemExit("missing created_at in submission detail response")
+
+if not isinstance(updated_at, str) or not updated_at:
+    raise SystemExit("missing updated_at in submission detail response")
+
+if "source_code" in submission_detail:
+    raise SystemExit("submission detail response must not expose source_code")
+PY
+then
+    append_log_line "${test_log_temp_file}" "submission detail validation failed"
     publish_failure_logs
-    echo "unexpected removed submission get response body: ${removed_submission_response_body}" >&2
     exit 1
 fi
 

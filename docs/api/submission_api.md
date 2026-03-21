@@ -80,6 +80,71 @@ required fields: language, source_code
 failed to create submission: foreign key violation
 ```
 
+### `GET /api/submission/{submission_id}`
+
+Get a single submission detail view. This endpoint is public and does not require authentication.
+
+#### request
+
+- request body: none
+- required header: none
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `submission_id` | `int64` | must be positive |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `submission_id` | `int64` | submission id |
+| `user_id` | `int64` | submitter user id |
+| `problem_id` | `int64` | related problem id |
+| `language` | `string` | submitted language |
+| `status` | `string` | current submission status |
+| `score` | `int16 \| null` | score, null before judging finishes |
+| `compile_output` | `string \| null` | compiler stderr when compilation fails |
+| `judge_output` | `string \| null` | runtime or judge stderr when available |
+| `created_at` | `string` | creation timestamp |
+| `updated_at` | `string` | last update timestamp |
+
+The detail response does not expose `source_code`.
+
+Example:
+
+```json
+{
+  "submission_id": 12,
+  "user_id": 7,
+  "problem_id": 3,
+  "language": "cpp",
+  "status": "compile_error",
+  "score": 0,
+  "compile_output": "main.cpp: In function ...",
+  "judge_output": null,
+  "created_at": "2026-03-19 14:02:11.123456+09",
+  "updated_at": "2026-03-19 14:02:12.123456+09"
+}
+```
+
+#### error response
+
+- unknown `submission_id`: `404 Not Found`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are currently returned as plain text.
+
+Example:
+
+```text
+failed to get submission detail: invalid argument
+```
+
 ### `GET /api/submission?user_id=...&problem_id=...&status=...`
 
 List submissions using optional filters. This endpoint is public and does not require authentication.

@@ -13,6 +13,10 @@
 #include <vector>
 
 namespace submission_service{
+    std::expected<submission_dto::detail, error_code> get_submission_detail(
+        db_connection& connection,
+        std::int64_t submission_id
+    );
     std::expected<submission_dto::created, error_code> create_submission(
         db_connection& connection,
         const submission_dto::create_request& create_request_value

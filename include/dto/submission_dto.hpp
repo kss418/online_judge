@@ -39,7 +39,20 @@ namespace submission_dto{
         std::int64_t problem_id = 0;
         std::string language;
         std::string status;
-        std::optional<std::int16_t> score = std::nullopt;
+        std::optional<std::int16_t> score_opt = std::nullopt;
+        std::string created_at;
+        std::string updated_at;
+    };
+
+    struct detail{
+        std::int64_t submission_id = 0;
+        std::int64_t user_id = 0;
+        std::int64_t problem_id = 0;
+        std::string language;
+        std::string status;
+        std::optional<std::int16_t> score_opt = std::nullopt;
+        std::optional<std::string> compile_output_opt = std::nullopt;
+        std::optional<std::string> judge_output_opt = std::nullopt;
         std::string created_at;
         std::string updated_at;
     };

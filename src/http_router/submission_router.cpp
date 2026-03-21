@@ -49,6 +49,14 @@ submission_router::response_type submission_router::handle_submission(
     const request_type& request,
     std::int64_t resource_id
 ){
+    if(request.method() == boost::beast::http::verb::get){
+        return submission_handler::handle_get_submission_get(
+            request,
+            db_connection_,
+            resource_id
+        );
+    }
+
     if(request.method() == boost::beast::http::verb::post){
         return submission_handler::handle_create_submission_post(
             request,

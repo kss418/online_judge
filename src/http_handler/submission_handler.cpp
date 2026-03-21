@@ -5,6 +5,30 @@
 #include "http_server/http_util.hpp"
 #include "http_server/json_util.hpp"
 
+submission_handler::response_type submission_handler::handle_get_submission_get(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t submission_id
+){
+    const auto submission_detail_exp = submission_service::get_submission_detail(
+        db_connection_value,
+        submission_id
+    );
+    if(!submission_detail_exp){
+        return http_util::create_404_or_500_response(
+            request,
+            "get submission detail",
+            submission_detail_exp.error()
+        );
+    }
+
+    return json_util::create_json_response(
+        request,
+        boost::beast::http::status::ok,
+        json_util::make_submission_detail_object(*submission_detail_exp)
+    );
+}
+
 submission_handler::response_type submission_handler::handle_create_submission_post(
     const request_type& request,
     db_connection& db_connection_value,

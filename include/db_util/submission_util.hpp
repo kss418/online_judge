@@ -15,6 +15,11 @@ namespace pqxx{
 }
 
 namespace submission_util{
+    std::expected<submission_dto::detail, error_code> get_submission_detail(
+        pqxx::transaction_base& transaction,
+        std::int64_t submission_id
+    );
+
     std::expected<submission_dto::created, error_code> create_submission(
         pqxx::transaction_base& transaction,
         const submission_dto::create_request& create_request_value
