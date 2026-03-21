@@ -7,6 +7,8 @@ project_root="$(cd "${script_dir}/.." && pwd)"
 # shellcheck disable=SC1091
 source "${script_dir}/util.sh"
 # shellcheck disable=SC1091
+source "${script_dir}/database_util.sh"
+# shellcheck disable=SC1091
 source "${script_dir}/http_server_util.sh"
 
 if [[ -f "${project_root}/.env" ]]; then
@@ -16,9 +18,11 @@ if [[ -f "${project_root}/.env" ]]; then
     set +a
 fi
 
-http_port="${HTTP_PORT:-18080}"
+http_port="${PROBLEM_GET_FLOW_TEST_HTTP_PORT:-18081}"
 base_url="${PROBLEM_GET_FLOW_TEST_BASE_URL:-http://127.0.0.1:${http_port}}"
 http_server_bin="${PROBLEM_GET_FLOW_TEST_HTTP_SERVER_BIN:-${project_root}/http_server}"
+test_db_name="problem_get_flow_test_$$_$(date +%s)"
+test_database_created="0"
 test_log_path=""
 server_log_path=""
 server_pid=""
@@ -31,6 +35,9 @@ blank_problem_response_file="$(mktemp)"
 missing_problem_response_file="$(mktemp)"
 
 cleanup(){
+    cleanup_http_server
+    drop_test_database
+
     rm -f \
         "${test_log_temp_file}" \
         "${server_log_temp_file}" \
@@ -38,7 +45,6 @@ cleanup(){
         "${blank_problem_response_file}" \
         "${missing_problem_response_file}"
 
-    cleanup_http_server
 }
 
 print_success_log(){
@@ -54,10 +60,7 @@ print_success_log(){
 }
 
 create_full_problem(){
-    if [[ -z "${DB_HOST:-}" || -z "${DB_PORT:-}" || -z "${DB_USER:-}" || -z "${DB_PASSWORD:-}" || -z "${DB_NAME:-}" ]]; then
-        echo "missing required db envs" >&2
-        return 1
-    fi
+    require_db_env
 
     PGPASSWORD="${DB_PASSWORD}" psql \
         -X \
@@ -121,10 +124,7 @@ SQL
 }
 
 create_blank_problem(){
-    if [[ -z "${DB_HOST:-}" || -z "${DB_PORT:-}" || -z "${DB_USER:-}" || -z "${DB_PASSWORD:-}" || -z "${DB_NAME:-}" ]]; then
-        echo "missing required db envs" >&2
-        return 1
-    fi
+    require_db_env
 
     PGPASSWORD="${DB_PASSWORD}" psql \
         -X \
@@ -158,9 +158,17 @@ require_command curl
 require_command psql
 require_command python3
 
-append_log_line "${test_log_temp_file}" "base_url=${base_url}"
+export DB_ADMIN_USER="${DB_ADMIN_USER:-${DB_USER:-postgres}}"
+export DB_ADMIN_PASSWORD="${DB_ADMIN_PASSWORD:-${DB_PASSWORD:-postgres}}"
+test_database_url="postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${test_db_name}"
+create_test_database
+export DB_NAME="${test_db_name}"
 
-ensure_http_server
+append_log_line "${test_log_temp_file}" "base_url=${base_url}"
+append_log_line "${test_log_temp_file}" "test_db_name=${test_db_name}"
+
+apply_test_database_migrations
+ensure_dedicated_http_server
 
 full_problem_id="$(create_full_problem)"
 blank_problem_id="$(create_blank_problem)"

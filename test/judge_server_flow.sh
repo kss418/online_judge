@@ -7,6 +7,8 @@ project_root="$(cd "${script_dir}/.." && pwd)"
 # shellcheck disable=SC1091
 source "${script_dir}/util.sh"
 # shellcheck disable=SC1091
+source "${script_dir}/database_util.sh"
+# shellcheck disable=SC1091
 source "${script_dir}/http_server_util.sh"
 
 if [[ -f "${project_root}/.env" ]]; then
@@ -16,7 +18,7 @@ if [[ -f "${project_root}/.env" ]]; then
     set +a
 fi
 
-http_port="${JUDGE_SERVER_FLOW_TEST_HTTP_PORT:-18080}"
+http_port="${JUDGE_SERVER_FLOW_TEST_HTTP_PORT:-18085}"
 base_url="${JUDGE_SERVER_FLOW_TEST_BASE_URL:-http://127.0.0.1:${http_port}}"
 http_server_bin="${JUDGE_SERVER_FLOW_TEST_HTTP_SERVER_BIN:-${project_root}/http_server}"
 judge_server_bin="${JUDGE_SERVER_FLOW_TEST_JUDGE_SERVER_BIN:-${project_root}/judge_server}"
@@ -110,81 +112,6 @@ print_success_log(){
     append_log_line "${test_log_temp_file}" "${log_message}"
 }
 
-require_db_env(){
-    if [[ -z "${DB_HOST:-}" || -z "${DB_PORT:-}" || -z "${DB_USER:-}" || -z "${DB_PASSWORD:-}" || -z "${DB_NAME:-}" ]]; then
-        echo "missing required db envs" >&2
-        exit 1
-    fi
-}
-
-require_db_admin_env(){
-    if [[ -z "${DB_ADMIN_USER:-}" || -z "${DB_ADMIN_PASSWORD:-}" ]]; then
-        echo "missing required db admin envs" >&2
-        exit 1
-    fi
-}
-
-create_test_database(){
-    require_db_env
-    require_db_admin_env
-
-    PGPASSWORD="${DB_ADMIN_PASSWORD}" psql \
-        -X \
-        -h "${DB_HOST}" \
-        -p "${DB_PORT}" \
-        -U "${DB_ADMIN_USER}" \
-        -d postgres \
-        -v ON_ERROR_STOP=1 <<SQL >/dev/null
-CREATE DATABASE "${test_db_name}" OWNER "${DB_USER}";
-SQL
-
-    test_database_created="1"
-}
-
-drop_test_database(){
-    if [[ "${test_database_created}" != "1" ]]; then
-        return 0
-    fi
-
-    if [[ -z "${DB_HOST:-}" || -z "${DB_PORT:-}" || -z "${DB_ADMIN_USER:-}" || -z "${DB_ADMIN_PASSWORD:-}" ]]; then
-        return 0
-    fi
-
-    PGPASSWORD="${DB_ADMIN_PASSWORD}" psql \
-        -X \
-        -h "${DB_HOST}" \
-        -p "${DB_PORT}" \
-        -U "${DB_ADMIN_USER}" \
-        -d postgres \
-        -v ON_ERROR_STOP=1 <<SQL >/dev/null 2>&1 || true
-SELECT pg_terminate_backend(pid)
-FROM pg_stat_activity
-WHERE datname = '${test_db_name}' AND pid <> pg_backend_pid();
-
-DROP DATABASE IF EXISTS "${test_db_name}";
-SQL
-}
-
-run_schema_migration(){
-    local migration_script_path="$1"
-    local migration_name="$2"
-
-    if ! DATABASE_URL="${test_database_url}" bash "${migration_script_path}" >>"${test_log_temp_file}" 2>&1; then
-        append_log_line "${test_log_temp_file}" "migration failed: ${migration_name}"
-        publish_all_failure_logs
-        echo "failed to apply ${migration_name}" >&2
-        return 1
-    fi
-
-    append_log_line "${test_log_temp_file}" "migration applied: ${migration_name}"
-}
-
-apply_test_database_migrations(){
-    run_schema_migration "${project_root}/scripts/migrate_auth_schema.sh" "auth_schema"
-    run_schema_migration "${project_root}/scripts/migrate_problem_schema.sh" "problem_schema"
-    run_schema_migration "${project_root}/scripts/migrate_submission_schema.sh" "submission_schema"
-}
-
 publish_judge_server_failure_log(){
     if [[ -z "${judge_server_log_path:-}" ]] && [[ -n "${judge_server_pid:-}" || -s "${judge_server_log_temp_file}" ]]; then
         judge_server_log_path="$(
@@ -232,39 +159,6 @@ ensure_judge_server(){
     done
 
     return 0
-}
-
-ensure_dedicated_http_server(){
-    require_http_server_test_env
-
-    if health_check; then
-        echo "http_server is already listening on ${base_url}" >&2
-        append_log_line "${test_log_temp_file}" "refusing to reuse existing http_server: base_url=${base_url}"
-        publish_failure_logs
-        echo "set JUDGE_SERVER_FLOW_TEST_HTTP_PORT to an unused port and retry" >&2
-        return 1
-    fi
-
-    if [[ ! -x "${http_server_bin}" ]]; then
-        echo "http_server binary not found or not executable: ${http_server_bin}" >&2
-        append_log_line "${test_log_temp_file}" "http_server binary not found: ${http_server_bin}"
-        publish_failure_logs
-        echo "hint: run 'cmake --build ${project_root}/build'" >&2
-        return 1
-    fi
-
-    append_log_line "${test_log_temp_file}" "starting dedicated http_server"
-    HTTP_PORT="${http_port}" "${http_server_bin}" >"${server_log_temp_file}" 2>&1 &
-    server_pid="$!"
-
-    if ! wait_for_health; then
-        echo "failed to start dedicated http_server" >&2
-        append_log_line "${test_log_temp_file}" "failed to start dedicated http_server"
-        publish_failure_logs
-        echo "server log:" >&2
-        cat "${server_log_temp_file}" >&2
-        return 1
-    fi
 }
 
 make_sign_up_request_body(){

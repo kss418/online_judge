@@ -86,3 +86,36 @@ ensure_http_server(){
         append_log_line "${test_log_temp_file}" "reusing existing http_server"
     fi
 }
+
+ensure_dedicated_http_server(){
+    require_http_server_test_env
+
+    if health_check; then
+        echo "http_server is already listening on ${base_url}" >&2
+        append_log_line "${test_log_temp_file}" "refusing to reuse existing http_server: base_url=${base_url}"
+        publish_failure_logs
+        echo "choose a different test port or stop the existing server" >&2
+        return 1
+    fi
+
+    if [[ ! -x "${http_server_bin}" ]]; then
+        echo "http_server binary not found or not executable: ${http_server_bin}" >&2
+        append_log_line "${test_log_temp_file}" "http_server binary not found: ${http_server_bin}"
+        publish_failure_logs
+        echo "hint: run 'cmake --build ${project_root}/build'" >&2
+        return 1
+    fi
+
+    append_log_line "${test_log_temp_file}" "starting dedicated http_server"
+    HTTP_PORT="${http_port}" "${http_server_bin}" >"${server_log_temp_file}" 2>&1 &
+    server_pid="$!"
+
+    if ! wait_for_health; then
+        echo "failed to start dedicated http_server" >&2
+        append_log_line "${test_log_temp_file}" "failed to start dedicated http_server"
+        publish_failure_logs
+        echo "server log:" >&2
+        cat "${server_log_temp_file}" >&2
+        return 1
+    fi
+}

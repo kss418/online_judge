@@ -7,6 +7,8 @@ project_root="$(cd "${script_dir}/.." && pwd)"
 # shellcheck disable=SC1091
 source "${script_dir}/util.sh"
 # shellcheck disable=SC1091
+source "${script_dir}/database_util.sh"
+# shellcheck disable=SC1091
 source "${script_dir}/http_server_util.sh"
 
 if [[ -f "${project_root}/.env" ]]; then
@@ -16,11 +18,13 @@ if [[ -f "${project_root}/.env" ]]; then
     set +a
 fi
 
-http_port="${HTTP_PORT:-18080}"
+http_port="${PROBLEM_TESTCASE_FLOW_TEST_HTTP_PORT:-18083}"
 base_url="${PROBLEM_TESTCASE_FLOW_TEST_BASE_URL:-http://127.0.0.1:${http_port}}"
 http_server_bin="${PROBLEM_TESTCASE_FLOW_TEST_HTTP_SERVER_BIN:-${project_root}/http_server}"
 user_login_id="${PROBLEM_TESTCASE_FLOW_TEST_LOGIN_ID:-problem_testcase_flow_test_$(date +%s)_$$}"
 raw_password="${PROBLEM_TESTCASE_FLOW_TEST_PASSWORD:-password123}"
+test_db_name="problem_testcase_flow_test_$$_$(date +%s)"
+test_database_created="0"
 test_log_path=""
 server_log_path=""
 server_pid=""
@@ -35,6 +39,9 @@ create_empty_testcase_response_file="$(mktemp)"
 get_problem_response_file="$(mktemp)"
 
 cleanup(){
+    cleanup_http_server
+    drop_test_database
+
     rm -f \
         "${test_log_temp_file}" \
         "${server_log_temp_file}" \
@@ -44,7 +51,6 @@ cleanup(){
         "${create_empty_testcase_response_file}" \
         "${get_problem_response_file}"
 
-    cleanup_http_server
 }
 
 print_success_log(){
@@ -57,13 +63,6 @@ print_success_log(){
 
     printf '%s\n' "${log_message}"
     append_log_line "${test_log_temp_file}" "${log_message}"
-}
-
-require_db_env(){
-    if [[ -z "${DB_HOST:-}" || -z "${DB_PORT:-}" || -z "${DB_USER:-}" || -z "${DB_PASSWORD:-}" || -z "${DB_NAME:-}" ]]; then
-        echo "missing required db envs" >&2
-        exit 1
-    fi
 }
 
 promote_admin(){
@@ -97,10 +96,18 @@ require_command curl
 require_command psql
 require_command python3
 
+export DB_ADMIN_USER="${DB_ADMIN_USER:-${DB_USER:-postgres}}"
+export DB_ADMIN_PASSWORD="${DB_ADMIN_PASSWORD:-${DB_PASSWORD:-postgres}}"
+test_database_url="postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${test_db_name}"
+create_test_database
+export DB_NAME="${test_db_name}"
+
 append_log_line "${test_log_temp_file}" "base_url=${base_url}"
 append_log_line "${test_log_temp_file}" "user_login_id=${user_login_id}"
+append_log_line "${test_log_temp_file}" "test_db_name=${test_db_name}"
 
-ensure_http_server
+apply_test_database_migrations
+ensure_dedicated_http_server
 
 sign_up_request_body="$(
     python3 - "${user_login_id}" "${raw_password}" <<'PY'
