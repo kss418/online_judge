@@ -347,6 +347,53 @@ problem statement updated
 
 Error bodies are currently returned as plain text.
 
+### `GET /api/problem/{problem_id}/testcases`
+
+List hidden testcases for an existing problem. This endpoint is admin-only.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `testcase_count` | `int64` | number of returned hidden testcases |
+| `testcases` | `array<object>` | hidden testcase list ordered by `testcase_order` ascending |
+
+Each testcase object contains:
+
+| field | type | note |
+|---|---|---|
+| `testcase_id` | `int64` | testcase id |
+| `testcase_order` | `int32` | testcase order starting from 1 |
+| `testcase_input` | `string` | hidden testcase input |
+| `testcase_output` | `string` | hidden testcase output |
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- unknown `problem_id`: `404 Not Found`
+- unexpected internal failure: `500 Internal Server Error`
+
 ### `POST /api/problem/{problem_id}/testcases`
 
 Append one hidden testcase to an existing problem. The created testcase is not returned by the public problem detail endpoint, but the problem version is incremented so judge-side testcase sync can detect the update.
@@ -413,6 +460,93 @@ Example:
 - unexpected internal failure: `500 Internal Server Error`
 
 Error bodies are currently returned as plain text.
+
+### `PUT /api/problem/{problem_id}/testcases/{testcase_order}`
+
+Replace one hidden testcase of an existing problem. This endpoint is admin-only.
+
+#### request
+
+- content-type: `application/json`
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+| `testcase_order` | `int32` | must be positive |
+
+- body fields:
+
+| field | type | required | note |
+|---|---|---|---|
+| `testcase_input` | `string` | yes | may be empty |
+| `testcase_output` | `string` | yes | may be empty |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `testcase_id` | `int64` | updated testcase id |
+| `testcase_order` | `int32` | updated testcase order |
+| `testcase_input` | `string` | updated testcase input |
+| `testcase_output` | `string` | updated testcase output |
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- invalid json: `400 Bad Request`
+- missing required fields: `400 Bad Request`
+- unknown `problem_id` or `testcase_order`: `400 Bad Request`
+- unexpected internal failure: `500 Internal Server Error`
+
+### `DELETE /api/problem/{problem_id}/testcases`
+
+Delete the last hidden testcase of an existing problem. This endpoint is admin-only.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `text/plain; charset=utf-8`
+- body:
+
+```text
+problem testcase deleted
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- no testcase to delete or invalid `problem_id`: `400 Bad Request`
+- unexpected internal failure: `500 Internal Server Error`
 
 Examples:
 

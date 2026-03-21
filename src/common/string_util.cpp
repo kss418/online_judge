@@ -2,6 +2,7 @@
 
 #include <charconv>
 #include <cctype>
+#include <limits>
 
 static bool is_whitespace(char character){
     return std::isspace(static_cast<unsigned char>(character)) != 0;
@@ -21,6 +22,18 @@ std::string_view string_util::trim_right_whitespace(std::string_view value){
     }
 
     return value;
+}
+
+std::optional<std::int32_t> string_util::parse_positive_int32(std::string_view value){
+    const auto int64_value_opt = parse_positive_int64(value);
+    if(
+        !int64_value_opt ||
+        *int64_value_opt > std::numeric_limits<std::int32_t>::max()
+    ){
+        return std::nullopt;
+    }
+
+    return static_cast<std::int32_t>(*int64_value_opt);
 }
 
 std::optional<std::int64_t> string_util::parse_positive_int64(std::string_view value){

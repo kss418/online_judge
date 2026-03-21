@@ -148,6 +148,37 @@ boost::json::object json_util::make_problem_list_object(
     return response_object;
 }
 
+boost::json::object json_util::make_problem_testcase_object(
+    const problem_dto::testcase& testcase_value
+){
+    boost::json::object response_object;
+    response_object["testcase_id"] = testcase_value.id;
+    response_object["testcase_order"] = testcase_value.order;
+    response_object["testcase_input"] = testcase_value.input;
+    response_object["testcase_output"] = testcase_value.output;
+    return response_object;
+}
+
+boost::json::array json_util::make_problem_testcase_array(
+    const std::vector<problem_dto::testcase>& testcase_values
+){
+    boost::json::array response_array;
+    response_array.reserve(testcase_values.size());
+    for(const auto& testcase_value : testcase_values){
+        response_array.push_back(make_problem_testcase_object(testcase_value));
+    }
+    return response_array;
+}
+
+boost::json::object json_util::make_problem_testcase_list_object(
+    const std::vector<problem_dto::testcase>& testcase_values
+){
+    boost::json::object response_object;
+    response_object["testcase_count"] = static_cast<std::int64_t>(testcase_values.size());
+    response_object["testcases"] = make_problem_testcase_array(testcase_values);
+    return response_object;
+}
+
 boost::json::object json_util::make_problem_testcase_created_object(
     const problem_dto::testcase& testcase_value
 ){

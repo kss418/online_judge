@@ -53,7 +53,17 @@ problem_router::response_type problem_router::route(
             return http_util::not_found_response(request);
         }
 
-        return handle_create_testcases(request, *problem_id_opt);
+        return handle_testcases(request, *problem_id_opt);
+    }
+
+    if(path_segments.size() == 3 && path_segments[1] == "testcases"){
+        const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
+        const auto testcase_order_opt = string_util::parse_positive_int32(path_segments[2]);
+        if(!problem_id_opt || !testcase_order_opt){
+            return http_util::not_found_response(request);
+        }
+
+        return handle_testcase(request, *problem_id_opt, *testcase_order_opt);
     }
 
     return http_util::not_found_response(request);
@@ -116,15 +126,48 @@ problem_router::response_type problem_router::handle_set_statement(
     return http_util::method_not_allowed_response(request);
 }
 
-problem_router::response_type problem_router::handle_create_testcases(
+problem_router::response_type problem_router::handle_testcases(
     const request_type& request,
     std::int64_t problem_id
 ){
+    if(request.method() == boost::beast::http::verb::get){
+        return problem_handler::handle_list_testcases_get(
+            request,
+            db_connection_,
+            problem_id
+        );
+    }
+
     if(request.method() == boost::beast::http::verb::post){
         return problem_handler::handle_create_testcase_post(
             request,
             db_connection_,
             problem_id
+        );
+    }
+
+    if(request.method() == boost::beast::http::verb::delete_){
+        return problem_handler::handle_delete_testcase_delete(
+            request,
+            db_connection_,
+            problem_id
+        );
+    }
+
+    return http_util::method_not_allowed_response(request);
+}
+
+problem_router::response_type problem_router::handle_testcase(
+    const request_type& request,
+    std::int64_t problem_id,
+    std::int32_t testcase_order
+){
+    if(request.method() == boost::beast::http::verb::put){
+        return problem_handler::handle_set_testcase_put(
+            request,
+            db_connection_,
+            problem_id,
+            testcase_order
         );
     }
 

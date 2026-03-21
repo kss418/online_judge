@@ -192,6 +192,58 @@ problem_handler::response_type problem_handler::handle_create_problem_post(
     );
 }
 
+problem_handler::response_type problem_handler::handle_list_testcases_get(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t problem_id
+){
+    problem_dto::reference problem_reference_value{problem_id};
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto exists_problem_exp = problem_core_service::exists_problem(
+            db_connection_value,
+            problem_reference_value
+        );
+        if(!exists_problem_exp){
+            return http_util::create_text_response(
+                request,
+                boost::beast::http::status::internal_server_error,
+                "failed to check problem: " + to_string(exists_problem_exp.error()) + "\n"
+            );
+        }
+        if(!exists_problem_exp->exists){
+            return http_util::create_text_response(
+                request,
+                boost::beast::http::status::not_found,
+                "problem not found\n"
+            );
+        }
+
+        const auto testcase_values_exp = testcase_service::list_testcases(
+            db_connection_value,
+            problem_reference_value
+        );
+        if(!testcase_values_exp){
+            return http_util::create_text_response(
+                request,
+                boost::beast::http::status::internal_server_error,
+                "failed to list testcases: " + to_string(testcase_values_exp.error()) + "\n"
+            );
+        }
+
+        return json_util::create_json_response(
+            request,
+            boost::beast::http::status::ok,
+            json_util::make_problem_testcase_list_object(*testcase_values_exp)
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
 problem_handler::response_type problem_handler::handle_set_limits_put(
     const request_type& request,
     db_connection& db_connection_value,
@@ -308,6 +360,116 @@ problem_handler::response_type problem_handler::handle_create_testcase_post(
             request,
             boost::beast::http::status::created,
             json_util::make_problem_testcase_created_object(*create_testcase_exp)
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
+problem_handler::response_type problem_handler::handle_set_testcase_put(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t problem_id,
+    std::int32_t testcase_order
+){
+    problem_dto::testcase_ref testcase_reference_value{
+        .problem_id = problem_id,
+        .testcase_order = testcase_order
+    };
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto testcase_exp = http_util::parse_json_dto_or_400<problem_dto::testcase>(
+            request,
+            problem_dto::make_testcase_from_json
+        );
+        if(!testcase_exp){
+            return std::move(testcase_exp.error());
+        }
+
+        const auto set_testcase_exp = testcase_service::set_testcase(
+            db_connection_value,
+            testcase_reference_value,
+            *testcase_exp
+        );
+        if(!set_testcase_exp){
+            return http_util::create_400_or_500_response(
+                request,
+                "set testcase",
+                set_testcase_exp.error()
+            );
+        }
+
+        const auto updated_testcase_exp = testcase_service::get_testcase(
+            db_connection_value,
+            testcase_reference_value
+        );
+        if(!updated_testcase_exp){
+            return http_util::create_400_or_500_response(
+                request,
+                "get testcase",
+                updated_testcase_exp.error()
+            );
+        }
+
+        return json_util::create_json_response(
+            request,
+            boost::beast::http::status::ok,
+            json_util::make_problem_testcase_object(*updated_testcase_exp)
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
+problem_handler::response_type problem_handler::handle_delete_testcase_delete(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t problem_id
+){
+    problem_dto::reference problem_reference_value{problem_id};
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto testcase_count_exp = testcase_service::get_testcase_count(
+            db_connection_value,
+            problem_reference_value
+        );
+        if(!testcase_count_exp){
+            return http_util::create_400_or_500_response(
+                request,
+                "get testcase count",
+                testcase_count_exp.error()
+            );
+        }
+        if(testcase_count_exp->testcase_count <= 0){
+            return http_util::create_text_response(
+                request,
+                boost::beast::http::status::bad_request,
+                "failed to delete testcase: invalid argument\n"
+            );
+        }
+
+        const auto delete_testcase_exp = testcase_service::delete_testcase(
+            db_connection_value,
+            problem_reference_value
+        );
+        if(!delete_testcase_exp){
+            return http_util::create_400_or_500_response(
+                request,
+                "delete testcase",
+                delete_testcase_exp.error()
+            );
+        }
+
+        return http_util::create_text_response(
+            request,
+            boost::beast::http::status::ok,
+            "problem testcase deleted\n"
         );
     };
 

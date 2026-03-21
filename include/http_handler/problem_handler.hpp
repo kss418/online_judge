@@ -26,6 +26,11 @@ namespace problem_handler{
         const request_type& request,
         db_connection& db_connection_value
     );
+    response_type handle_list_testcases_get(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t problem_id
+    );
     response_type handle_set_limits_put(
         const request_type& request,
         db_connection& db_connection_value,
@@ -37,6 +42,17 @@ namespace problem_handler{
         std::int64_t problem_id
     );
     response_type handle_create_testcase_post(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t problem_id
+    );
+    response_type handle_set_testcase_put(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t problem_id,
+        std::int32_t testcase_order
+    );
+    response_type handle_delete_testcase_delete(
         const request_type& request,
         db_connection& db_connection_value,
         std::int64_t problem_id

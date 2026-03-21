@@ -50,6 +50,15 @@ namespace json_util{
     boost::json::object make_problem_list_object(
         const std::vector<problem_dto::summary>& summary_values
     );
+    boost::json::object make_problem_testcase_object(
+        const problem_dto::testcase& testcase_value
+    );
+    boost::json::array make_problem_testcase_array(
+        const std::vector<problem_dto::testcase>& testcase_values
+    );
+    boost::json::object make_problem_testcase_list_object(
+        const std::vector<problem_dto::testcase>& testcase_values
+    );
     boost::json::object make_problem_testcase_created_object(
         const problem_dto::testcase& testcase_value
     );
