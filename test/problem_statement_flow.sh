@@ -5,9 +5,9 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd "${script_dir}/.." && pwd)"
 
 # shellcheck disable=SC1091
-source "${script_dir}/test_util.sh"
+source "${script_dir}/util.sh"
 # shellcheck disable=SC1091
-source "${script_dir}/http_server_test_util.sh"
+source "${script_dir}/http_server_util.sh"
 
 if [[ -f "${project_root}/.env" ]]; then
     set -a
