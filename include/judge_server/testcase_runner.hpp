@@ -11,6 +11,11 @@
 #include <vector>
 
 namespace testcase_runner{
+    struct run_batch{
+        std::vector<sandbox_runner::run_result> run_results;
+        bool compile_failed = false;
+    };
+
     std::expected<problem_dto::limits, error_code> read_problem_limits(std::int64_t problem_id);
 
     std::expected<sandbox_runner::run_result, error_code> run_one_testcase(
@@ -19,7 +24,7 @@ namespace testcase_runner{
         const problem_dto::limits& problem_limits_value
     );
 
-    std::expected<std::vector<sandbox_runner::run_result>, error_code> run_all_testcases(
+    std::expected<run_batch, error_code> run_all_testcases(
         const std::filesystem::path& source_file_path,
         std::int64_t problem_id
     );

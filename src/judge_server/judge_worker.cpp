@@ -120,13 +120,17 @@ judge_worker::finalize_submission_data judge_worker::make_finalize_submission_da
 }
 
 std::expected<judge_result, error_code> judge_worker::judge_submission(
-    const submission_dto::queued_submission& queued_submission_value,
-    const std::vector<sandbox_runner::run_result>& run_results
+    std::int64_t problem_id,
+    const testcase_runner::run_batch& run_batch_value
 ){
     std::vector<std::vector<std::string>> output_lines;
-    output_lines.reserve(run_results.size());
+    output_lines.reserve(run_batch_value.run_results.size());
 
-    for(const auto& run_result : run_results){
+    if(run_batch_value.compile_failed){
+        return judge_result::compile_error;
+    }
+
+    for(const auto& run_result : run_batch_value.run_results){
         if(run_result.time_limit_exceeded_){
             return judge_result::time_limit_exceeded;
         }
@@ -134,17 +138,13 @@ std::expected<judge_result, error_code> judge_worker::judge_submission(
             return judge_result::memory_limit_exceeded;
         }
         if(run_result.exit_code_ != 0){
-            if(queued_submission_value.language == "cpp"){
-                return judge_result::compile_error;
-            }
-
             return judge_result::runtime_error;
         }
 
         output_lines.push_back(run_result.output_lines_);
     }
 
-    return checker::check_all(output_lines, queued_submission_value.problem_id);
+    return checker::check_all(output_lines, problem_id);
 }
 
 std::expected<void, error_code> judge_worker::run(){
@@ -201,7 +201,8 @@ std::expected<void, error_code> judge_worker::run(){
             }
 
             const auto judge_result_exp = judge_submission(
-                queued_submission_value, *run_all_testcases_exp
+                queued_submission_value.problem_id,
+                *run_all_testcases_exp
             );
 
             if(!judge_result_exp){
@@ -214,7 +215,7 @@ std::expected<void, error_code> judge_worker::run(){
 
             const finalize_submission_data finalize_submission_data_value = make_finalize_submission_data(
                 submission_status_value,
-                *run_all_testcases_exp
+                run_all_testcases_exp->run_results
             );
 
             submission_dto::finalize_request finalize_request_value;

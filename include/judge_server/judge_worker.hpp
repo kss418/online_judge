@@ -6,6 +6,7 @@
 #include "db_event/submission_event_listener.hpp"
 #include "dto/submission_dto.hpp"
 #include "judge_server/testcase_downloader.hpp"
+#include "judge_server/testcase_runner.hpp"
 #include "judge_server/judge_util.hpp"
 #include "judge_server/sandbox_runner.hpp"
 
@@ -48,8 +49,8 @@ private:
         const std::vector<sandbox_runner::run_result>& run_results
     );
     std::expected<judge_result, error_code> judge_submission(
-        const submission_dto::queued_submission& queued_submission_value,
-        const std::vector<sandbox_runner::run_result>& run_results
+        std::int64_t problem_id,
+        const testcase_runner::run_batch& run_batch_value
     );
     static constexpr std::chrono::seconds lease_duration_{900};
     static constexpr std::chrono::milliseconds notification_wait_timeout_{30000};

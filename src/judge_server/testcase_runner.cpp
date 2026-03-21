@@ -60,7 +60,7 @@ std::expected<sandbox_runner::run_result, error_code> testcase_runner::run_one_t
     );
 }
 
-std::expected<std::vector<sandbox_runner::run_result>, error_code> testcase_runner::run_all_testcases(
+std::expected<testcase_runner::run_batch, error_code> testcase_runner::run_all_testcases(
     const std::filesystem::path& source_file_path,
     std::int64_t problem_id
 ){
@@ -83,9 +83,10 @@ std::expected<std::vector<sandbox_runner::run_result>, error_code> testcase_runn
     }
 
     if(!prepare_source_exp->is_runnable()){
-        std::vector<sandbox_runner::run_result> run_results;
-        run_results.push_back(*prepare_source_exp->compile_failed_run_result_);
-        return run_results;
+        run_batch run_batch_value;
+        run_batch_value.compile_failed = true;
+        run_batch_value.run_results.push_back(*prepare_source_exp->compile_failed_run_result_);
+        return run_batch_value;
     }
 
     const auto problem_limits_exp = read_problem_limits(problem_id);
@@ -93,8 +94,8 @@ std::expected<std::vector<sandbox_runner::run_result>, error_code> testcase_runn
         return std::unexpected(problem_limits_exp.error());
     }
 
-    std::vector<sandbox_runner::run_result> run_results;
-    run_results.reserve(static_cast<std::size_t>(*validated_testcase_count_exp));
+    run_batch run_batch_value;
+    run_batch_value.run_results.reserve(static_cast<std::size_t>(*validated_testcase_count_exp));
 
     for(std::int32_t order = 1; order <= *validated_testcase_count_exp; ++order){
         const auto input_path_exp = testcase_util::instance().make_testcase_input_path(problem_id, order);
@@ -111,8 +112,8 @@ std::expected<std::vector<sandbox_runner::run_result>, error_code> testcase_runn
             return std::unexpected(run_one_testcase_exp.error());
         }
 
-        run_results.push_back(std::move(*run_one_testcase_exp));
+        run_batch_value.run_results.push_back(std::move(*run_one_testcase_exp));
     }
 
-    return run_results;
+    return run_batch_value;
 }

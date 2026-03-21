@@ -51,6 +51,20 @@ int main(){
     return 0;
 }
 }"
+runtime_error_source_code="${JUDGE_SERVER_FLOW_TEST_RUNTIME_ERROR_SOURCE_CODE:-#include <cstdlib>
+#include <iostream>
+int main(){
+    std::cerr << \"runtime boom\\n\";
+    std::abort();
+}
+}"
+time_limit_exceeded_source_code="${JUDGE_SERVER_FLOW_TEST_TIME_LIMIT_EXCEEDED_SOURCE_CODE:-#include <chrono>
+#include <thread>
+int main(){
+    std::this_thread::sleep_for(std::chrono::milliseconds(4000));
+    return 0;
+}
+}"
 judge_source_root="$(mktemp -d)"
 testcase_root="$(mktemp -d)"
 test_log_path=""
@@ -72,6 +86,8 @@ submission_response_file="$(mktemp)"
 accepted_submission_detail_response_file="$(mktemp)"
 wrong_answer_submission_detail_response_file="$(mktemp)"
 compile_error_submission_detail_response_file="$(mktemp)"
+runtime_error_submission_detail_response_file="$(mktemp)"
+time_limit_exceeded_submission_detail_response_file="$(mktemp)"
 problem_response_file="$(mktemp)"
 
 cleanup_judge_server(){
@@ -99,6 +115,8 @@ cleanup(){
         "${accepted_submission_detail_response_file}" \
         "${wrong_answer_submission_detail_response_file}" \
         "${compile_error_submission_detail_response_file}" \
+        "${runtime_error_submission_detail_response_file}" \
+        "${time_limit_exceeded_submission_detail_response_file}" \
         "${problem_response_file}"
 }
 
@@ -717,6 +735,130 @@ validate_submission_detail \
 validate_submission_status_history "${compile_error_submission_id}" "compile_error"
 print_success_log "compile_error submission judged successfully"
 
+runtime_error_submission_request_body="$(
+    make_submission_request_body "cpp" "${runtime_error_source_code}"
+)"
+runtime_error_submission_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${submission_response_file}" \
+        --write-out "%{http_code}" \
+        --request POST \
+        -H "Authorization: Bearer ${sign_up_token}" \
+        -H "Content-Type: application/json" \
+        -d "${runtime_error_submission_request_body}" \
+        "${base_url}/api/submission/${problem_id}"
+)"
+
+if [[ "${runtime_error_submission_status_code}" != "201" ]]; then
+    append_log_line "${test_log_temp_file}" "runtime_error submission create failed: status=${runtime_error_submission_status_code}"
+    publish_all_failure_logs
+    echo "runtime_error submission create failed: expected status 201, got ${runtime_error_submission_status_code}" >&2
+    echo "response body:" >&2
+    cat "${submission_response_file}" >&2
+    exit 1
+fi
+
+runtime_error_submission_id="$(
+    python3 - "${submission_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+submission_id = response.get("submission_id")
+status = response.get("status")
+if not isinstance(submission_id, int) or submission_id <= 0:
+    raise SystemExit("invalid submission_id in runtime_error submission response")
+if status != "queued":
+    raise SystemExit("expected runtime_error submission status to be queued")
+
+print(submission_id)
+PY
+)"
+
+append_log_line "${test_log_temp_file}" "runtime_error submission created: submission_id=${runtime_error_submission_id}"
+wait_for_submission_final_status \
+    "${runtime_error_submission_id}" \
+    "runtime_error" \
+    "${runtime_error_submission_detail_response_file}"
+validate_submission_detail \
+    "${runtime_error_submission_detail_response_file}" \
+    "${runtime_error_submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "cpp" \
+    "runtime_error" \
+    "0" \
+    "null" \
+    "non_empty"
+validate_submission_status_history "${runtime_error_submission_id}" "runtime_error"
+print_success_log "runtime_error submission judged successfully"
+
+time_limit_exceeded_submission_request_body="$(
+    make_submission_request_body "cpp" "${time_limit_exceeded_source_code}"
+)"
+time_limit_exceeded_submission_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${submission_response_file}" \
+        --write-out "%{http_code}" \
+        --request POST \
+        -H "Authorization: Bearer ${sign_up_token}" \
+        -H "Content-Type: application/json" \
+        -d "${time_limit_exceeded_submission_request_body}" \
+        "${base_url}/api/submission/${problem_id}"
+)"
+
+if [[ "${time_limit_exceeded_submission_status_code}" != "201" ]]; then
+    append_log_line "${test_log_temp_file}" "time_limit_exceeded submission create failed: status=${time_limit_exceeded_submission_status_code}"
+    publish_all_failure_logs
+    echo "time_limit_exceeded submission create failed: expected status 201, got ${time_limit_exceeded_submission_status_code}" >&2
+    echo "response body:" >&2
+    cat "${submission_response_file}" >&2
+    exit 1
+fi
+
+time_limit_exceeded_submission_id="$(
+    python3 - "${submission_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+submission_id = response.get("submission_id")
+status = response.get("status")
+if not isinstance(submission_id, int) or submission_id <= 0:
+    raise SystemExit("invalid submission_id in time_limit_exceeded submission response")
+if status != "queued":
+    raise SystemExit("expected time_limit_exceeded submission status to be queued")
+
+print(submission_id)
+PY
+)"
+
+append_log_line "${test_log_temp_file}" "time_limit_exceeded submission created: submission_id=${time_limit_exceeded_submission_id}"
+wait_for_submission_final_status \
+    "${time_limit_exceeded_submission_id}" \
+    "time_limit_exceeded" \
+    "${time_limit_exceeded_submission_detail_response_file}"
+validate_submission_detail \
+    "${time_limit_exceeded_submission_detail_response_file}" \
+    "${time_limit_exceeded_submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "cpp" \
+    "time_limit_exceeded" \
+    "0" \
+    "null" \
+    "null"
+validate_submission_status_history "${time_limit_exceeded_submission_id}" "time_limit_exceeded"
+print_success_log "time_limit_exceeded submission judged successfully"
+
 problem_status_code="$(
     curl \
         --silent \
@@ -748,10 +890,10 @@ if response.get("problem_id") != problem_id:
     raise SystemExit("problem_id mismatch in problem detail response")
 
 statistics = response.get("statistics")
-if statistics != {"submission_count": 3, "accepted_count": 1}:
+if statistics != {"submission_count": 5, "accepted_count": 1}:
     raise SystemExit("problem statistics mismatch after judge flow")
 PY
 
 print_success_log "problem statistics validated"
 append_log_line "${test_log_temp_file}" "judge server flow test passed"
-print_success_log "judge server flow test passed: problem_id=${problem_id}, accepted_submission_id=${accepted_submission_id}, wrong_answer_submission_id=${wrong_answer_submission_id}, compile_error_submission_id=${compile_error_submission_id}"
+print_success_log "judge server flow test passed: problem_id=${problem_id}, accepted_submission_id=${accepted_submission_id}, wrong_answer_submission_id=${wrong_answer_submission_id}, compile_error_submission_id=${compile_error_submission_id}, runtime_error_submission_id=${runtime_error_submission_id}, time_limit_exceeded_submission_id=${time_limit_exceeded_submission_id}"
