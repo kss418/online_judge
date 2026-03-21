@@ -90,6 +90,38 @@ CREATE TABLE IF NOT EXISTS problem_statements(
     CONSTRAINT problem_statements_testcase_count_check CHECK(testcase_count >= 0)
 );
 
+DO $do$
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM information_schema.columns
+        WHERE
+            table_schema = 'public' AND
+            table_name = 'problem_statements' AND
+            column_name = 'testcase_count'
+    ) THEN
+        ALTER TABLE problem_statements
+            ADD COLUMN testcase_count INTEGER NOT NULL DEFAULT 0;
+    END IF;
+END
+$do$;
+
+DO $do$
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM pg_constraint
+        WHERE
+            conrelid = 'problem_statements'::regclass AND
+            conname = 'problem_statements_testcase_count_check'
+    ) THEN
+        ALTER TABLE problem_statements
+            ADD CONSTRAINT problem_statements_testcase_count_check
+            CHECK(testcase_count >= 0);
+    END IF;
+END
+$do$;
+
 CREATE TABLE IF NOT EXISTS problem_samples(
     sample_id BIGSERIAL PRIMARY KEY,
     problem_id BIGINT NOT NULL REFERENCES problems(problem_id) ON DELETE CASCADE,
