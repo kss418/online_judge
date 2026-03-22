@@ -18,6 +18,7 @@ namespace json_util{
         std::string_view message,
         std::optional<std::string> field_opt = std::nullopt
     );
+    boost::json::object make_message_object(std::string_view message);
 
     boost::json::object make_auth_session_object(const auth_dto::session& session_value);
 

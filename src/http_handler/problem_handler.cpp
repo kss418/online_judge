@@ -22,10 +22,11 @@ problem_handler::response_type problem_handler::handle_list_problems_get(
         *filter_exp
     );
     if(!summary_values_exp){
-        return http_response_util::create_text(
+        return http_response_util::create_error(
             request,
             boost::beast::http::status::internal_server_error,
-            "failed to list problems: " + to_string(summary_values_exp.error()) + "\n"
+            "internal_server_error",
+            "failed to list problems: " + to_string(summary_values_exp.error())
         );
     }
 
@@ -47,17 +48,19 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         problem_reference_value
     );
     if(!exists_problem_exp){
-        return http_response_util::create_text(
+        return http_response_util::create_error(
             request,
             boost::beast::http::status::internal_server_error,
-            "failed to check problem: " + to_string(exists_problem_exp.error()) + "\n"
+            "internal_server_error",
+            "failed to check problem: " + to_string(exists_problem_exp.error())
         );
     }
     if(!exists_problem_exp->exists){
-        return http_response_util::create_text(
+        return http_response_util::create_error(
             request,
             boost::beast::http::status::not_found,
-            "problem not found\n"
+            "problem_not_found",
+            "problem not found"
         );
     }
 
@@ -78,10 +81,11 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         problem_reference_value
     );
     if(!version_exp){
-        return http_response_util::create_text(
+        return http_response_util::create_error(
             request,
             boost::beast::http::status::internal_server_error,
-            "failed to get problem version: " + to_string(version_exp.error()) + "\n"
+            "internal_server_error",
+            "failed to get problem version: " + to_string(version_exp.error())
         );
     }
 
@@ -106,10 +110,11 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         statement_opt = statement_exp.value();
     }
     else if(statement_exp.error() != errno_error::invalid_argument){
-        return http_response_util::create_text(
+        return http_response_util::create_error(
             request,
             boost::beast::http::status::internal_server_error,
-            "failed to get problem statement: " + to_string(statement_exp.error()) + "\n"
+            "internal_server_error",
+            "failed to get problem statement: " + to_string(statement_exp.error())
         );
     }
 
@@ -118,10 +123,11 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         problem_reference_value
     );
     if(!samples_exp){
-        return http_response_util::create_text(
+        return http_response_util::create_error(
             request,
             boost::beast::http::status::internal_server_error,
-            "failed to list problem samples: " + to_string(samples_exp.error()) + "\n"
+            "internal_server_error",
+            "failed to list problem samples: " + to_string(samples_exp.error())
         );
     }
 
@@ -171,10 +177,11 @@ problem_handler::response_type problem_handler::handle_create_problem_post(
             *create_request_exp
         );
         if(!create_problem_exp){
-            return http_response_util::create_text(
+            return http_response_util::create_error(
                 request,
                 boost::beast::http::status::internal_server_error,
-                "failed to create problem: " + to_string(create_problem_exp.error()) + "\n"
+                "internal_server_error",
+                "failed to create problem: " + to_string(create_problem_exp.error())
             );
         }
 
@@ -204,17 +211,19 @@ problem_handler::response_type problem_handler::handle_list_testcases_get(
             problem_reference_value
         );
         if(!exists_problem_exp){
-            return http_response_util::create_text(
+            return http_response_util::create_error(
                 request,
                 boost::beast::http::status::internal_server_error,
-                "failed to check problem: " + to_string(exists_problem_exp.error()) + "\n"
+                "internal_server_error",
+                "failed to check problem: " + to_string(exists_problem_exp.error())
             );
         }
         if(!exists_problem_exp->exists){
-            return http_response_util::create_text(
+            return http_response_util::create_error(
                 request,
                 boost::beast::http::status::not_found,
-                "problem not found\n"
+                "problem_not_found",
+                "problem not found"
             );
         }
 
@@ -223,10 +232,11 @@ problem_handler::response_type problem_handler::handle_list_testcases_get(
             problem_reference_value
         );
         if(!testcase_values_exp){
-            return http_response_util::create_text(
+            return http_response_util::create_error(
                 request,
                 boost::beast::http::status::internal_server_error,
-                "failed to list testcases: " + to_string(testcase_values_exp.error()) + "\n"
+                "internal_server_error",
+                "failed to list testcases: " + to_string(testcase_values_exp.error())
             );
         }
 
@@ -272,10 +282,10 @@ problem_handler::response_type problem_handler::handle_set_limits_put(
             );
         }
 
-        return http_response_util::create_text(
+        return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            "problem limits updated\n"
+            json_util::make_message_object("problem limits updated")
         );
     };
 
@@ -314,10 +324,10 @@ problem_handler::response_type problem_handler::handle_set_statement_put(
             );
         }
 
-        return http_response_util::create_text(
+        return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            "problem statement updated\n"
+            json_util::make_message_object("problem statement updated")
         );
     };
 
@@ -447,10 +457,11 @@ problem_handler::response_type problem_handler::handle_delete_testcase_delete(
             );
         }
         if(testcase_count_exp->testcase_count <= 0){
-            return http_response_util::create_text(
+            return http_response_util::create_error(
                 request,
                 boost::beast::http::status::bad_request,
-                "failed to delete testcase: invalid argument\n"
+                "invalid_testcase_delete_request",
+                "failed to delete testcase: invalid argument"
             );
         }
 
@@ -466,10 +477,10 @@ problem_handler::response_type problem_handler::handle_delete_testcase_delete(
             );
         }
 
-        return http_response_util::create_text(
+        return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            "problem testcase deleted\n"
+            json_util::make_message_object("problem testcase deleted")
         );
     };
 

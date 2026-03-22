@@ -194,19 +194,23 @@ http_util::parse_submission_list_filter_or_400(
     const auto query_opt = get_target_query(target);
     const auto query_params_opt = parse_query_params(query_opt.value_or(""));
     if(!query_params_opt){
-        return std::unexpected(http_response_util::create_text(
+        return std::unexpected(http_response_util::create_error(
             request,
             boost::beast::http::status::bad_request,
-            "invalid query string\n"
+            "invalid_query_string",
+            "invalid query string"
         ));
     }
 
     const auto filter_exp = submission_dto::make_list_filter_from_query_params(*query_params_opt);
     if(!filter_exp){
-        return std::unexpected(http_response_util::create_text(
+        const auto& validation_error = filter_exp.error();
+        return std::unexpected(http_response_util::create_error(
             request,
             boost::beast::http::status::bad_request,
-            filter_exp.error().message + "\n"
+            validation_error.code,
+            validation_error.message,
+            validation_error.field_opt
         ));
     }
 
@@ -224,19 +228,23 @@ http_util::parse_problem_list_filter_or_400(
     const auto query_opt = get_target_query(target);
     const auto query_params_opt = parse_query_params(query_opt.value_or(""));
     if(!query_params_opt){
-        return std::unexpected(http_response_util::create_text(
+        return std::unexpected(http_response_util::create_error(
             request,
             boost::beast::http::status::bad_request,
-            "invalid query string\n"
+            "invalid_query_string",
+            "invalid query string"
         ));
     }
 
     const auto filter_exp = problem_dto::make_list_filter_from_query_params(*query_params_opt);
     if(!filter_exp){
-        return std::unexpected(http_response_util::create_text(
+        const auto& validation_error = filter_exp.error();
+        return std::unexpected(http_response_util::create_error(
             request,
             boost::beast::http::status::bad_request,
-            filter_exp.error().message + "\n"
+            validation_error.code,
+            validation_error.message,
+            validation_error.field_opt
         ));
     }
 
@@ -248,9 +256,10 @@ std::expected<auth_dto::token, http_util::response_type> http_util::parse_bearer
 ){
     const auto token_opt = get_bearer_token(request);
     if(!token_opt){
-        return std::unexpected(http_response_util::create_bearer_unauthorized(
+        return std::unexpected(http_response_util::create_bearer_error(
             request,
-            "missing or invalid bearer token\n"
+            "missing_or_invalid_bearer_token",
+            "missing or invalid bearer token"
         ));
     }
 
@@ -272,22 +281,25 @@ std::expected<auth_dto::identity, http_util::response_type> http_util::try_auth_
     if(!auth_identity_exp){
         const auto code = auth_identity_exp.error();
         if(code == errno_error::invalid_argument){
-            return std::unexpected(http_response_util::create_bearer_unauthorized(
+            return std::unexpected(http_response_util::create_bearer_error(
                 request,
-                "missing or invalid bearer token\n"
+                "missing_or_invalid_bearer_token",
+                "missing or invalid bearer token"
             ));
         }
 
-        return std::unexpected(http_response_util::create_text(
+        return std::unexpected(http_response_util::create_error(
             request,
             boost::beast::http::status::internal_server_error,
-            "failed to authenticate token: " + to_string(code) + "\n"
+            "internal_server_error",
+            "failed to authenticate token: " + to_string(code)
         ));
     }
     if(!auth_identity_exp->has_value()){
-        return std::unexpected(http_response_util::create_bearer_unauthorized(
+        return std::unexpected(http_response_util::create_bearer_error(
             request,
-            "invalid, expired, or revoked token\n"
+            "invalid_or_expired_token",
+            "invalid, expired, or revoked token"
         ));
     }
 
@@ -303,9 +315,10 @@ std::expected<auth_dto::identity, http_util::response_type> http_util::try_admin
         return std::unexpected(std::move(auth_identity_exp.error()));
     }
     if(!auth_identity_exp->is_admin){
-        return std::unexpected(http_response_util::create_bearer_unauthorized(
+        return std::unexpected(http_response_util::create_bearer_error(
             request,
-            "admin bearer token required\n"
+            "admin_bearer_token_required",
+            "admin bearer token required"
         ));
     }
 

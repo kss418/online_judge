@@ -19,6 +19,12 @@ boost::json::object json_util::make_error_object(
     return response_object;
 }
 
+boost::json::object json_util::make_message_object(std::string_view message){
+    boost::json::object response_object;
+    response_object["message"] = message;
+    return response_object;
+}
+
 boost::json::object json_util::make_auth_session_object(const auth_dto::session& session_value){
     boost::json::object response_object;
     response_object["user_id"] = session_value.user_id;

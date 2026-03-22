@@ -15,9 +15,17 @@ Health check endpoint.
 #### success response
 
 - status: `200 OK`
-- content-type: `text/plain; charset=utf-8`
-- body:
+- content-type: `application/json; charset=utf-8`
+- body fields:
 
-```text
-ok
+| field | type | note |
+|---|---|---|
+| `message` | `string` | always `ok` |
+
+Example:
+
+```json
+{
+  "message": "ok"
+}
 ```

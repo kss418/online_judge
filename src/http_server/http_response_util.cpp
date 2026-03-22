@@ -1,5 +1,6 @@
 #include "http_server/http_response_util.hpp"
 
+#include "common/string_util.hpp"
 #include "http_server/json_util.hpp"
 
 #include <utility>
@@ -72,11 +73,15 @@ http_response_util::response_type http_response_util::create_400_or_500(
     const auto status = code.is_bad_request_error()
         ? boost::beast::http::status::bad_request
         : boost::beast::http::status::internal_server_error;
+    const auto error_code_text = code.is_bad_request_error()
+        ? "bad_request"
+        : "internal_server_error";
 
-    return create_text(
+    return create_error(
         request,
         status,
-        "failed to " + std::string{action} + ": " + to_string(code) + "\n"
+        error_code_text,
+        "failed to " + std::string{action} + ": " + to_string(code)
     );
 }
 
@@ -88,11 +93,15 @@ http_response_util::response_type http_response_util::create_404_or_500(
     const auto status = code.is_bad_request_error()
         ? boost::beast::http::status::not_found
         : boost::beast::http::status::internal_server_error;
+    const auto error_code_text = code.is_bad_request_error()
+        ? "not_found"
+        : "internal_server_error";
 
-    return create_text(
+    return create_error(
         request,
         status,
-        "failed to " + std::string{action} + ": " + to_string(code) + "\n"
+        error_code_text,
+        "failed to " + std::string{action} + ": " + to_string(code)
     );
 }
 
@@ -100,31 +109,33 @@ http_response_util::response_type http_response_util::create_bearer_unauthorized
     const request_type& request,
     std::string body
 ){
-    auto response = create_text(
+    const auto message = string_util::trim_right_whitespace(body);
+    auto response = create_bearer_error(
         request,
-        boost::beast::http::status::unauthorized,
-        std::move(body)
+        "unauthorized",
+        message
     );
-    response.set(boost::beast::http::field::www_authenticate, "Bearer");
     return response;
 }
 
 http_response_util::response_type http_response_util::create_method_not_allowed(
     const request_type& request
 ){
-    return create_text(
+    return create_error(
         request,
         boost::beast::http::status::method_not_allowed,
-        "method not allowed\n"
+        "method_not_allowed",
+        "method not allowed"
     );
 }
 
 http_response_util::response_type http_response_util::create_not_found(
     const request_type& request
 ){
-    return create_text(
+    return create_error(
         request,
         boost::beast::http::status::not_found,
-        "not found\n"
+        "not_found",
+        "not found"
     );
 }

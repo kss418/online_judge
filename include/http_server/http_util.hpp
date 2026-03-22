@@ -40,10 +40,11 @@ namespace http_util{
     ){
         const auto request_object_opt = parse_json_object(request);
         if(!request_object_opt){
-            return std::unexpected(http_response_util::create_text(
+            return std::unexpected(http_response_util::create_error(
                 request,
                 boost::beast::http::status::bad_request,
-                "invalid json\n"
+                "invalid_json",
+                "invalid json"
             ));
         }
 
@@ -53,10 +54,13 @@ namespace http_util{
             std::forward<arg_types>(args)...
         );
         if(!dto_exp){
-            return std::unexpected(http_response_util::create_text(
+            const auto& validation_error = dto_exp.error();
+            return std::unexpected(http_response_util::create_error(
                 request,
                 boost::beast::http::status::bad_request,
-                dto_exp.error().message + "\n"
+                validation_error.code,
+                validation_error.message,
+                validation_error.field_opt
             ));
         }
 
