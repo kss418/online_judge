@@ -10,7 +10,7 @@ system_router::response_type system_router::route(
         return handle_health(request);
     }
 
-    return http_util::not_found_response(request);
+    return http_response_util::create_not_found(request);
 }
 
 system_router::response_type system_router::handle_health(const request_type& request){
@@ -18,5 +18,5 @@ system_router::response_type system_router::handle_health(const request_type& re
         return system_handler_.handle_health_get(request);
     }
 
-    return http_util::method_not_allowed_response(request);
+    return http_response_util::create_method_not_allowed(request);
 }

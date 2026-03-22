@@ -24,14 +24,14 @@ auth_handler::response_type auth_handler::handle_sign_up_post(
         *credentials_exp
     );
     if(!sign_up_exp){
-        return http_util::create_400_or_500_response(
+        return http_response_util::create_400_or_500(
             request,
             "sign up",
             sign_up_exp.error()
         );
     }
 
-    return json_util::create_json_response(
+    return http_response_util::create_json(
         request,
         boost::beast::http::status::created,
         json_util::make_auth_session_object(*sign_up_exp)
@@ -55,21 +55,21 @@ auth_handler::response_type auth_handler::handle_login_post(
         *credentials_exp
     );
     if(!login_exp){
-        return http_util::create_400_or_500_response(
+        return http_response_util::create_400_or_500(
             request,
             "login",
             login_exp.error()
         );
     }
     if(!login_exp->has_value()){
-        return http_util::create_text_response(
+        return http_response_util::create_text(
             request,
             boost::beast::http::status::unauthorized,
             "invalid credentials\n"
         );
     }
 
-    return json_util::create_json_response(
+    return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
         json_util::make_auth_session_object(login_exp->value())
@@ -92,26 +92,26 @@ auth_handler::response_type auth_handler::handle_token_renew_post(
     if(!renew_token_exp){
         const auto code = renew_token_exp.error();
         if(code == errno_error::invalid_argument){
-            return http_util::create_bearer_unauthorized_response(
+            return http_response_util::create_bearer_unauthorized(
                 request,
                 "missing or invalid bearer token\n"
             );
         }
 
-        return http_util::create_text_response(
+        return http_response_util::create_text(
             request,
             boost::beast::http::status::internal_server_error,
             "failed to renew token: " + to_string(code) + "\n"
         );
     }
     if(!renew_token_exp.value()){
-        return http_util::create_bearer_unauthorized_response(
+        return http_response_util::create_bearer_unauthorized(
             request,
             "invalid, expired, or revoked token\n"
         );
     }
 
-    return http_util::create_text_response(
+    return http_response_util::create_text(
         request,
         boost::beast::http::status::ok,
         "token renewed\n"
@@ -134,26 +134,26 @@ auth_handler::response_type auth_handler::handle_logout_post(
     if(!revoke_token_exp){
         const auto code = revoke_token_exp.error();
         if(code == errno_error::invalid_argument){
-            return http_util::create_bearer_unauthorized_response(
+            return http_response_util::create_bearer_unauthorized(
                 request,
                 "missing or invalid bearer token\n"
             );
         }
 
-        return http_util::create_text_response(
+        return http_response_util::create_text(
             request,
             boost::beast::http::status::internal_server_error,
             "failed to logout: " + to_string(code) + "\n"
         );
     }
     if(!revoke_token_exp.value()){
-        return http_util::create_bearer_unauthorized_response(
+        return http_response_util::create_bearer_unauthorized(
             request,
             "invalid, expired, or revoked token\n"
         );
     }
 
-    return http_util::create_text_response(
+    return http_response_util::create_text(
         request,
         boost::beast::http::status::ok,
         "logged out\n"

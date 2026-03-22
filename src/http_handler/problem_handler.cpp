@@ -22,14 +22,14 @@ problem_handler::response_type problem_handler::handle_list_problems_get(
         *filter_exp
     );
     if(!summary_values_exp){
-        return http_util::create_text_response(
+        return http_response_util::create_text(
             request,
             boost::beast::http::status::internal_server_error,
             "failed to list problems: " + to_string(summary_values_exp.error()) + "\n"
         );
     }
 
-    return json_util::create_json_response(
+    return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
         json_util::make_problem_list_object(*summary_values_exp)
@@ -47,14 +47,14 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         problem_reference_value
     );
     if(!exists_problem_exp){
-        return http_util::create_text_response(
+        return http_response_util::create_text(
             request,
             boost::beast::http::status::internal_server_error,
             "failed to check problem: " + to_string(exists_problem_exp.error()) + "\n"
         );
     }
     if(!exists_problem_exp->exists){
-        return http_util::create_text_response(
+        return http_response_util::create_text(
             request,
             boost::beast::http::status::not_found,
             "problem not found\n"
@@ -66,7 +66,7 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         problem_reference_value
     );
     if(!title_exp){
-        return http_util::create_404_or_500_response(
+        return http_response_util::create_404_or_500(
             request,
             "get problem title",
             title_exp.error()
@@ -78,7 +78,7 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         problem_reference_value
     );
     if(!version_exp){
-        return http_util::create_text_response(
+        return http_response_util::create_text(
             request,
             boost::beast::http::status::internal_server_error,
             "failed to get problem version: " + to_string(version_exp.error()) + "\n"
@@ -90,7 +90,7 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         problem_reference_value
     );
     if(!limits_exp){
-        return http_util::create_404_or_500_response(
+        return http_response_util::create_404_or_500(
             request,
             "get problem limits",
             limits_exp.error()
@@ -106,7 +106,7 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         statement_opt = statement_exp.value();
     }
     else if(statement_exp.error() != errno_error::invalid_argument){
-        return http_util::create_text_response(
+        return http_response_util::create_text(
             request,
             boost::beast::http::status::internal_server_error,
             "failed to get problem statement: " + to_string(statement_exp.error()) + "\n"
@@ -118,7 +118,7 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         problem_reference_value
     );
     if(!samples_exp){
-        return http_util::create_text_response(
+        return http_response_util::create_text(
             request,
             boost::beast::http::status::internal_server_error,
             "failed to list problem samples: " + to_string(samples_exp.error()) + "\n"
@@ -130,14 +130,14 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
         problem_reference_value
     );
     if(!statistics_exp){
-        return http_util::create_404_or_500_response(
+        return http_response_util::create_404_or_500(
             request,
             "get problem statistics",
             statistics_exp.error()
         );
     }
 
-    return json_util::create_json_response(
+    return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
         json_util::make_problem_detail_object(
@@ -171,14 +171,14 @@ problem_handler::response_type problem_handler::handle_create_problem_post(
             *create_request_exp
         );
         if(!create_problem_exp){
-            return http_util::create_text_response(
+            return http_response_util::create_text(
                 request,
                 boost::beast::http::status::internal_server_error,
                 "failed to create problem: " + to_string(create_problem_exp.error()) + "\n"
             );
         }
 
-        return json_util::create_json_response(
+        return http_response_util::create_json(
             request,
             boost::beast::http::status::created,
             json_util::make_problem_created_object(*create_problem_exp)
@@ -204,14 +204,14 @@ problem_handler::response_type problem_handler::handle_list_testcases_get(
             problem_reference_value
         );
         if(!exists_problem_exp){
-            return http_util::create_text_response(
+            return http_response_util::create_text(
                 request,
                 boost::beast::http::status::internal_server_error,
                 "failed to check problem: " + to_string(exists_problem_exp.error()) + "\n"
             );
         }
         if(!exists_problem_exp->exists){
-            return http_util::create_text_response(
+            return http_response_util::create_text(
                 request,
                 boost::beast::http::status::not_found,
                 "problem not found\n"
@@ -223,14 +223,14 @@ problem_handler::response_type problem_handler::handle_list_testcases_get(
             problem_reference_value
         );
         if(!testcase_values_exp){
-            return http_util::create_text_response(
+            return http_response_util::create_text(
                 request,
                 boost::beast::http::status::internal_server_error,
                 "failed to list testcases: " + to_string(testcase_values_exp.error()) + "\n"
             );
         }
 
-        return json_util::create_json_response(
+        return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
             json_util::make_problem_testcase_list_object(*testcase_values_exp)
@@ -265,14 +265,14 @@ problem_handler::response_type problem_handler::handle_set_limits_put(
             *limits_exp
         );
         if(!set_limits_exp){
-            return http_util::create_400_or_500_response(
+            return http_response_util::create_400_or_500(
                 request,
                 "set problem limits",
                 set_limits_exp.error()
             );
         }
 
-        return http_util::create_text_response(
+        return http_response_util::create_text(
             request,
             boost::beast::http::status::ok,
             "problem limits updated\n"
@@ -307,14 +307,14 @@ problem_handler::response_type problem_handler::handle_set_statement_put(
             *statement_exp
         );
         if(!set_statement_exp){
-            return http_util::create_400_or_500_response(
+            return http_response_util::create_400_or_500(
                 request,
                 "set problem statement",
                 set_statement_exp.error()
             );
         }
 
-        return http_util::create_text_response(
+        return http_response_util::create_text(
             request,
             boost::beast::http::status::ok,
             "problem statement updated\n"
@@ -349,14 +349,14 @@ problem_handler::response_type problem_handler::handle_create_testcase_post(
             *testcase_exp
         );
         if(!create_testcase_exp){
-            return http_util::create_400_or_500_response(
+            return http_response_util::create_400_or_500(
                 request,
                 "create testcase",
                 create_testcase_exp.error()
             );
         }
 
-        return json_util::create_json_response(
+        return http_response_util::create_json(
             request,
             boost::beast::http::status::created,
             json_util::make_problem_testcase_created_object(*create_testcase_exp)
@@ -395,7 +395,7 @@ problem_handler::response_type problem_handler::handle_set_testcase_put(
             *testcase_exp
         );
         if(!set_testcase_exp){
-            return http_util::create_400_or_500_response(
+            return http_response_util::create_400_or_500(
                 request,
                 "set testcase",
                 set_testcase_exp.error()
@@ -407,14 +407,14 @@ problem_handler::response_type problem_handler::handle_set_testcase_put(
             testcase_reference_value
         );
         if(!updated_testcase_exp){
-            return http_util::create_400_or_500_response(
+            return http_response_util::create_400_or_500(
                 request,
                 "get testcase",
                 updated_testcase_exp.error()
             );
         }
 
-        return json_util::create_json_response(
+        return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
             json_util::make_problem_testcase_object(*updated_testcase_exp)
@@ -440,14 +440,14 @@ problem_handler::response_type problem_handler::handle_delete_testcase_delete(
             problem_reference_value
         );
         if(!testcase_count_exp){
-            return http_util::create_400_or_500_response(
+            return http_response_util::create_400_or_500(
                 request,
                 "get testcase count",
                 testcase_count_exp.error()
             );
         }
         if(testcase_count_exp->testcase_count <= 0){
-            return http_util::create_text_response(
+            return http_response_util::create_text(
                 request,
                 boost::beast::http::status::bad_request,
                 "failed to delete testcase: invalid argument\n"
@@ -459,14 +459,14 @@ problem_handler::response_type problem_handler::handle_delete_testcase_delete(
             problem_reference_value
         );
         if(!delete_testcase_exp){
-            return http_util::create_400_or_500_response(
+            return http_response_util::create_400_or_500(
                 request,
                 "delete testcase",
                 delete_testcase_exp.error()
             );
         }
 
-        return http_util::create_text_response(
+        return http_response_util::create_text(
             request,
             boost::beast::http::status::ok,
             "problem testcase deleted\n"

@@ -80,5 +80,5 @@ http_dispatcher::response_type http_dispatcher::handle(const request_type& reque
         return std::move(response_opt.value());
     }
 
-    return http_util::not_found_response(request);
+    return http_response_util::create_not_found(request);
 }

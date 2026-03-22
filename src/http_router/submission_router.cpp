@@ -12,7 +12,7 @@ submission_router::response_type submission_router::route(
 ){
     const auto path_segments_opt = http_util::parse_path("", path);
     if(!path_segments_opt){
-        return http_util::not_found_response(request);
+        return http_response_util::create_not_found(request);
     }
 
     const auto& path_segments = *path_segments_opt;
@@ -23,13 +23,13 @@ submission_router::response_type submission_router::route(
     if(path_segments.size() == 1){
         const auto resource_id_opt = string_util::parse_positive_int64(path_segments[0]);
         if(!resource_id_opt){
-            return http_util::not_found_response(request);
+            return http_response_util::create_not_found(request);
         }
 
         return handle_submission(request, *resource_id_opt);
     }
 
-    return http_util::not_found_response(request);
+    return http_response_util::create_not_found(request);
 }
 
 submission_router::response_type submission_router::handle_submissions(
@@ -42,7 +42,7 @@ submission_router::response_type submission_router::handle_submissions(
         );
     }
 
-    return http_util::method_not_allowed_response(request);
+    return http_response_util::create_method_not_allowed(request);
 }
 
 submission_router::response_type submission_router::handle_submission(
@@ -65,5 +65,5 @@ submission_router::response_type submission_router::handle_submission(
         );
     }
 
-    return http_util::method_not_allowed_response(request);
+    return http_response_util::create_method_not_allowed(request);
 }

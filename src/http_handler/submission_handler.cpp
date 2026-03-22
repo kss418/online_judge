@@ -15,14 +15,14 @@ submission_handler::response_type submission_handler::handle_get_submission_get(
         submission_id
     );
     if(!submission_detail_exp){
-        return http_util::create_404_or_500_response(
+        return http_response_util::create_404_or_500(
             request,
             "get submission detail",
             submission_detail_exp.error()
         );
     }
 
-    return json_util::create_json_response(
+    return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
         json_util::make_submission_detail_object(*submission_detail_exp)
@@ -52,14 +52,14 @@ submission_handler::response_type submission_handler::handle_create_submission_p
                 *create_request_exp
             );
             if(!create_submission_exp){
-                return http_util::create_400_or_500_response(
+                return http_response_util::create_400_or_500(
                     request,
                     "create submission",
                     create_submission_exp.error()
                 );
             }
 
-            return json_util::create_json_response(
+            return http_response_util::create_json(
                 request,
                 boost::beast::http::status::created,
                 json_util::make_submission_created_object(*create_submission_exp)
@@ -87,14 +87,14 @@ submission_handler::response_type submission_handler::handle_list_submissions_ge
         *filter_exp
     );
     if(!submission_summary_values_exp){
-        return http_util::create_400_or_500_response(
+        return http_response_util::create_400_or_500(
             request,
             "list submissions",
             submission_summary_values_exp.error()
         );
     }
 
-    return json_util::create_json_response(
+    return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
         json_util::make_submission_list_object(*submission_summary_values_exp)

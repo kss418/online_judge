@@ -9,87 +9,6 @@
 
 #include <boost/beast/core/string.hpp>
 #include <boost/beast/http/field.hpp>
-#include <boost/beast/version.hpp>
-
-http_util::response_type http_util::create_text_response(
-    const request_type& request,
-    boost::beast::http::status status,
-    std::string body
-){
-    response_type response{status, request.version()};
-    response.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
-    response.set(boost::beast::http::field::content_type, "text/plain; charset=utf-8");
-    response.keep_alive(request.keep_alive());
-    response.body() = std::move(body);
-    response.prepare_payload();
-    return response;
-}
-
-http_util::response_type http_util::create_400_or_500_response(
-    const request_type& request,
-    std::string_view action,
-    const error_code& code
-){
-    const auto status = code.is_bad_request_error()
-        ? boost::beast::http::status::bad_request
-        : boost::beast::http::status::internal_server_error;
-
-    return create_text_response(
-        request,
-        status,
-        "failed to " + std::string{action} + ": " + to_string(code) + "\n"
-    );
-}
-
-http_util::response_type http_util::create_404_or_500_response(
-    const request_type& request,
-    std::string_view action,
-    const error_code& code
-){
-    const auto status = code.is_bad_request_error()
-        ? boost::beast::http::status::not_found
-        : boost::beast::http::status::internal_server_error;
-
-    return create_text_response(
-        request,
-        status,
-        "failed to " + std::string{action} + ": " + to_string(code) + "\n"
-    );
-}
-
-http_util::response_type http_util::create_bearer_unauthorized_response(
-    const request_type& request,
-    std::string body
-){
-    auto response = create_text_response(
-        request,
-        boost::beast::http::status::unauthorized,
-        std::move(body)
-    );
-    response.set(boost::beast::http::field::www_authenticate, "Bearer");
-    return response;
-}
-
-http_util::response_type http_util::method_not_allowed_response(
-    const request_type& request
-){
-    return create_text_response(
-        request,
-        boost::beast::http::status::method_not_allowed,
-        "method not allowed\n"
-    );
-}
-
-http_util::response_type http_util::not_found_response(
-    const request_type& request
-){
-    return create_text_response(
-        request,
-        boost::beast::http::status::not_found,
-        "not found\n"
-    );
-}
-
 std::optional<boost::json::object> http_util::parse_json_object(
     const request_type& request
 ){
@@ -275,7 +194,7 @@ http_util::parse_submission_list_filter_or_400(
     const auto query_opt = get_target_query(target);
     const auto query_params_opt = parse_query_params(query_opt.value_or(""));
     if(!query_params_opt){
-        return std::unexpected(create_text_response(
+        return std::unexpected(http_response_util::create_text(
             request,
             boost::beast::http::status::bad_request,
             "invalid query string\n"
@@ -284,7 +203,7 @@ http_util::parse_submission_list_filter_or_400(
 
     const auto filter_exp = submission_dto::make_list_filter_from_query_params(*query_params_opt);
     if(!filter_exp){
-        return std::unexpected(create_text_response(
+        return std::unexpected(http_response_util::create_text(
             request,
             boost::beast::http::status::bad_request,
             filter_exp.error().message + "\n"
@@ -305,7 +224,7 @@ http_util::parse_problem_list_filter_or_400(
     const auto query_opt = get_target_query(target);
     const auto query_params_opt = parse_query_params(query_opt.value_or(""));
     if(!query_params_opt){
-        return std::unexpected(create_text_response(
+        return std::unexpected(http_response_util::create_text(
             request,
             boost::beast::http::status::bad_request,
             "invalid query string\n"
@@ -314,7 +233,7 @@ http_util::parse_problem_list_filter_or_400(
 
     const auto filter_exp = problem_dto::make_list_filter_from_query_params(*query_params_opt);
     if(!filter_exp){
-        return std::unexpected(create_text_response(
+        return std::unexpected(http_response_util::create_text(
             request,
             boost::beast::http::status::bad_request,
             filter_exp.error().message + "\n"
@@ -329,7 +248,7 @@ std::expected<auth_dto::token, http_util::response_type> http_util::parse_bearer
 ){
     const auto token_opt = get_bearer_token(request);
     if(!token_opt){
-        return std::unexpected(create_bearer_unauthorized_response(
+        return std::unexpected(http_response_util::create_bearer_unauthorized(
             request,
             "missing or invalid bearer token\n"
         ));
@@ -353,20 +272,20 @@ std::expected<auth_dto::identity, http_util::response_type> http_util::try_auth_
     if(!auth_identity_exp){
         const auto code = auth_identity_exp.error();
         if(code == errno_error::invalid_argument){
-            return std::unexpected(create_bearer_unauthorized_response(
+            return std::unexpected(http_response_util::create_bearer_unauthorized(
                 request,
                 "missing or invalid bearer token\n"
             ));
         }
 
-        return std::unexpected(create_text_response(
+        return std::unexpected(http_response_util::create_text(
             request,
             boost::beast::http::status::internal_server_error,
             "failed to authenticate token: " + to_string(code) + "\n"
         ));
     }
     if(!auth_identity_exp->has_value()){
-        return std::unexpected(create_bearer_unauthorized_response(
+        return std::unexpected(http_response_util::create_bearer_unauthorized(
             request,
             "invalid, expired, or revoked token\n"
         ));
@@ -384,7 +303,7 @@ std::expected<auth_dto::identity, http_util::response_type> http_util::try_admin
         return std::unexpected(std::move(auth_identity_exp.error()));
     }
     if(!auth_identity_exp->is_admin){
-        return std::unexpected(create_bearer_unauthorized_response(
+        return std::unexpected(http_response_util::create_bearer_unauthorized(
             request,
             "admin bearer token required\n"
         ));

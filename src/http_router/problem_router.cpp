@@ -12,7 +12,7 @@ problem_router::response_type problem_router::route(
 ){
     const auto path_segments_opt = http_util::parse_path("", path);
     if(!path_segments_opt){
-        return http_util::not_found_response(request);
+        return http_response_util::create_not_found(request);
     }
 
     const auto& path_segments = *path_segments_opt;
@@ -23,7 +23,7 @@ problem_router::response_type problem_router::route(
     if(path_segments.size() == 1){
         const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
         if(!problem_id_opt){
-            return http_util::not_found_response(request);
+            return http_response_util::create_not_found(request);
         }
 
         return handle_get_problem(request, *problem_id_opt);
@@ -32,7 +32,7 @@ problem_router::response_type problem_router::route(
     if(path_segments.size() == 2 && path_segments[1] == "limits"){
         const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
         if(!problem_id_opt){
-            return http_util::not_found_response(request);
+            return http_response_util::create_not_found(request);
         }
 
         return handle_set_limits(request, *problem_id_opt);
@@ -41,7 +41,7 @@ problem_router::response_type problem_router::route(
     if(path_segments.size() == 2 && path_segments[1] == "statement"){
         const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
         if(!problem_id_opt){
-            return http_util::not_found_response(request);
+            return http_response_util::create_not_found(request);
         }
 
         return handle_set_statement(request, *problem_id_opt);
@@ -50,7 +50,7 @@ problem_router::response_type problem_router::route(
     if(path_segments.size() == 2 && path_segments[1] == "testcases"){
         const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
         if(!problem_id_opt){
-            return http_util::not_found_response(request);
+            return http_response_util::create_not_found(request);
         }
 
         return handle_testcases(request, *problem_id_opt);
@@ -60,13 +60,13 @@ problem_router::response_type problem_router::route(
         const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
         const auto testcase_order_opt = string_util::parse_positive_int32(path_segments[2]);
         if(!problem_id_opt || !testcase_order_opt){
-            return http_util::not_found_response(request);
+            return http_response_util::create_not_found(request);
         }
 
         return handle_testcase(request, *problem_id_opt, *testcase_order_opt);
     }
 
-    return http_util::not_found_response(request);
+    return http_response_util::create_not_found(request);
 }
 
 problem_router::response_type problem_router::handle_problems(const request_type& request){
@@ -78,7 +78,7 @@ problem_router::response_type problem_router::handle_problems(const request_type
         return problem_handler::handle_create_problem_post(request, db_connection_);
     }
 
-    return http_util::method_not_allowed_response(request);
+    return http_response_util::create_method_not_allowed(request);
 }
 
 problem_router::response_type problem_router::handle_get_problem(
@@ -93,7 +93,7 @@ problem_router::response_type problem_router::handle_get_problem(
         );
     }
 
-    return http_util::method_not_allowed_response(request);
+    return http_response_util::create_method_not_allowed(request);
 }
 
 problem_router::response_type problem_router::handle_set_limits(
@@ -108,7 +108,7 @@ problem_router::response_type problem_router::handle_set_limits(
         );
     }
 
-    return http_util::method_not_allowed_response(request);
+    return http_response_util::create_method_not_allowed(request);
 }
 
 problem_router::response_type problem_router::handle_set_statement(
@@ -123,7 +123,7 @@ problem_router::response_type problem_router::handle_set_statement(
         );
     }
 
-    return http_util::method_not_allowed_response(request);
+    return http_response_util::create_method_not_allowed(request);
 }
 
 problem_router::response_type problem_router::handle_testcases(
@@ -154,7 +154,7 @@ problem_router::response_type problem_router::handle_testcases(
         );
     }
 
-    return http_util::method_not_allowed_response(request);
+    return http_response_util::create_method_not_allowed(request);
 }
 
 problem_router::response_type problem_router::handle_testcase(
@@ -171,5 +171,5 @@ problem_router::response_type problem_router::handle_testcase(
         );
     }
 
-    return http_util::method_not_allowed_response(request);
+    return http_response_util::create_method_not_allowed(request);
 }

@@ -25,7 +25,7 @@ auth_router::response_type auth_router::route(
         return handle_logout(request);
     }
 
-    return http_util::not_found_response(request);
+    return http_response_util::create_not_found(request);
 }
 
 auth_router::response_type auth_router::handle_sign_up(const request_type& request){
@@ -33,7 +33,7 @@ auth_router::response_type auth_router::handle_sign_up(const request_type& reque
         return auth_handler::handle_sign_up_post(request, db_connection_);
     }
 
-    return http_util::method_not_allowed_response(request);
+    return http_response_util::create_method_not_allowed(request);
 }
 
 auth_router::response_type auth_router::handle_login(const request_type& request){
@@ -41,7 +41,7 @@ auth_router::response_type auth_router::handle_login(const request_type& request
         return auth_handler::handle_login_post(request, db_connection_);
     }
 
-    return http_util::method_not_allowed_response(request);
+    return http_response_util::create_method_not_allowed(request);
 }
 
 auth_router::response_type auth_router::handle_token_renew(const request_type& request){
@@ -49,7 +49,7 @@ auth_router::response_type auth_router::handle_token_renew(const request_type& r
         return auth_handler::handle_token_renew_post(request, db_connection_);
     }
 
-    return http_util::method_not_allowed_response(request);
+    return http_response_util::create_method_not_allowed(request);
 }
 
 auth_router::response_type auth_router::handle_logout(const request_type& request){
@@ -57,5 +57,5 @@ auth_router::response_type auth_router::handle_logout(const request_type& reques
         return auth_handler::handle_logout_post(request, db_connection_);
     }
 
-    return http_util::method_not_allowed_response(request);
+    return http_response_util::create_method_not_allowed(request);
 }

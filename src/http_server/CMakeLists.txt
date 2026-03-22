@@ -1,6 +1,7 @@
 target_sources(lib
     PRIVATE
         http_dispatcher.cpp
+        http_response_util.cpp
         json_util.cpp
         http_util.cpp
         http_server.cpp

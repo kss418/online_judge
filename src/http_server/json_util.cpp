@@ -1,18 +1,22 @@
 #include "http_server/json_util.hpp"
-#include "http_server/http_util.hpp"
 
-json_util::response_type json_util::create_json_response(
-    const request_type& request,
-    boost::beast::http::status status,
-    const boost::json::value& response_value
+#include <utility>
+
+boost::json::object json_util::make_error_object(
+    std::string_view code,
+    std::string_view message,
+    std::optional<std::string> field_opt
 ){
-    auto response = http_util::create_text_response(
-        request,
-        status,
-        boost::json::serialize(response_value) + "\n"
-    );
-    response.set(boost::beast::http::field::content_type, "application/json; charset=utf-8");
-    return response;
+    boost::json::object error_object;
+    error_object["code"] = code;
+    error_object["message"] = message;
+    if(field_opt){
+        error_object["field"] = *field_opt;
+    }
+
+    boost::json::object response_object;
+    response_object["error"] = std::move(error_object);
+    return response_object;
 }
 
 boost::json::object json_util::make_auth_session_object(const auth_dto::session& session_value){
