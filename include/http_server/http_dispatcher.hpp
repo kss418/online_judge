@@ -4,6 +4,7 @@
 #include "http_router/problem_router.hpp"
 #include "http_router/submission_router.hpp"
 #include "http_router/system_router.hpp"
+#include "http_router/user_router.hpp"
 #include "common/error_code.hpp"
 #include "common/db_connection.hpp"
 
@@ -36,10 +37,12 @@ private:
     static constexpr std::string_view auth_path_prefix_ = "/api/auth";
     static constexpr std::string_view submission_path_prefix_ = "/api/submission";
     static constexpr std::string_view problem_path_prefix_ = "/api/problem";
+    static constexpr std::string_view user_path_prefix_ = "/api/user";
 
     db_connection db_connection_;
     auth_router auth_router_;
     problem_router problem_router_;
     submission_router submission_router_;
     system_router system_router_;
+    user_router user_router_;
 };

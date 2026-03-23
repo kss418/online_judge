@@ -24,6 +24,7 @@ http_port="${AUTH_FLOW_TEST_HTTP_PORT:-18080}"
 base_url="${AUTH_FLOW_TEST_BASE_URL:-http://127.0.0.1:${http_port}}"
 http_server_bin="${AUTH_FLOW_TEST_HTTP_SERVER_BIN:-${project_root}/http_server}"
 user_login_id="${AUTH_FLOW_TEST_LOGIN_ID:-auth_flow_test_$(date +%s)_$$}"
+second_user_login_id="${AUTH_FLOW_TEST_SECOND_LOGIN_ID:-${user_login_id}_second}"
 raw_password="${AUTH_FLOW_TEST_PASSWORD:-password123}"
 test_db_name="auth_flow_test_$$_$(date +%s)"
 test_database_created="0"
@@ -39,6 +40,10 @@ login_response_file="$(mktemp)"
 renew_response_file="$(mktemp)"
 logout_response_file="$(mktemp)"
 second_logout_response_file="$(mktemp)"
+second_sign_up_response_file="$(mktemp)"
+second_login_response_file="$(mktemp)"
+promote_admin_response_file="$(mktemp)"
+unauthorized_promote_response_file="$(mktemp)"
 
 cleanup(){
     cleanup_http_server
@@ -51,7 +56,11 @@ cleanup(){
         "${login_response_file}" \
         "${renew_response_file}" \
         "${logout_response_file}" \
-        "${second_logout_response_file}"
+        "${second_logout_response_file}" \
+        "${second_sign_up_response_file}" \
+        "${second_login_response_file}" \
+        "${promote_admin_response_file}" \
+        "${unauthorized_promote_response_file}"
 
 }
 
@@ -196,6 +205,124 @@ if not isinstance(login_token, str) or not login_token:
 print(login_token)
 PY
 )"
+
+read -r second_user_id second_user_token < <(
+    sign_up_user "${second_user_login_id}" "${raw_password}" "${second_sign_up_response_file}" "auth flow"
+)
+print_success_log "second sign-up success"
+
+unauthorized_promote_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${unauthorized_promote_response_file}" \
+        --write-out "%{http_code}" \
+        --request PUT \
+        -H "Authorization: Bearer ${second_user_token}" \
+        "${base_url}/api/user/${login_user_id}/admin"
+)"
+
+if [[ "${unauthorized_promote_status_code}" != "401" ]]; then
+    append_log_line "${test_log_temp_file}" "unauthorized promote failed: status=${unauthorized_promote_status_code}"
+    publish_failure_logs
+    echo "unauthorized promote test failed: expected status 401, got ${unauthorized_promote_status_code}" >&2
+    echo "response body:" >&2
+    cat "${unauthorized_promote_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "unauthorized promote passed: status=${unauthorized_promote_status_code}"
+print_success_log "unauthorized promote success"
+
+promote_admin_user "${login_user_id}" "auth flow" >/dev/null
+print_success_log "bootstrap admin promote success"
+
+promote_admin_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${promote_admin_response_file}" \
+        --write-out "%{http_code}" \
+        --request PUT \
+        -H "Authorization: Bearer ${login_token}" \
+        "${base_url}/api/user/${second_user_id}/admin"
+)"
+
+if [[ "${promote_admin_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "promote admin failed: status=${promote_admin_status_code}"
+    publish_failure_logs
+    echo "promote admin test failed: expected status 200, got ${promote_admin_status_code}" >&2
+    echo "response body:" >&2
+    cat "${promote_admin_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "promote admin passed: status=${promote_admin_status_code}"
+print_success_log "promote admin success"
+
+second_login_request_body="$(make_sign_up_request_body "${second_user_login_id}" "${raw_password}")"
+second_login_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${second_login_response_file}" \
+        --write-out "%{http_code}" \
+        -H "Content-Type: application/json" \
+        -d "${second_login_request_body}" \
+        "${base_url}/api/auth/login"
+)"
+
+if [[ "${second_login_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "second login failed: status=${second_login_status_code}"
+    publish_failure_logs
+    echo "second login test failed: expected status 200, got ${second_login_status_code}" >&2
+    echo "response body:" >&2
+    cat "${second_login_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "second login passed: status=${second_login_status_code}"
+print_success_log "second login success"
+
+if ! python3 \
+    - "${unauthorized_promote_response_file}" \
+    "${promote_admin_response_file}" \
+    "${second_login_response_file}" \
+    "${second_user_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    unauthorized_promote_response = json.load(response_file)
+
+with open(sys.argv[2], encoding="utf-8") as response_file:
+    promote_admin_response = json.load(response_file)
+
+with open(sys.argv[3], encoding="utf-8") as response_file:
+    second_login_response = json.load(response_file)
+
+expected_second_user_id = int(sys.argv[4])
+
+if unauthorized_promote_response.get("error", {}).get("code") != "admin_bearer_token_required":
+    raise SystemExit("unexpected error code for unauthorized promote response")
+
+if promote_admin_response.get("user_id") != expected_second_user_id:
+    raise SystemExit("promote admin response user_id mismatch")
+
+if promote_admin_response.get("is_admin") is not True:
+    raise SystemExit("expected promoted user to be admin in promote admin response")
+
+if second_login_response.get("user_id") != expected_second_user_id:
+    raise SystemExit("second login response user_id mismatch")
+
+if second_login_response.get("is_admin") is not True:
+    raise SystemExit("expected second login response is_admin to be true after promotion")
+PY
+then
+    append_log_line "${test_log_temp_file}" "admin promote validation failed"
+    publish_failure_logs
+    exit 1
+fi
 
 renew_status_code="$(
     curl \

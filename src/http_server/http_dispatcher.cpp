@@ -17,14 +17,16 @@ http_dispatcher::http_dispatcher(db_connection db_connection) :
     auth_router_(db_connection_),
     problem_router_(db_connection_),
     submission_router_(db_connection_),
-    system_router_(){}
+    system_router_(),
+    user_router_(db_connection_){}
 
 http_dispatcher::http_dispatcher(http_dispatcher&& other) noexcept :
     db_connection_(std::move(other.db_connection_)),
     auth_router_(db_connection_),
     problem_router_(db_connection_),
     submission_router_(db_connection_),
-    system_router_(){}
+    system_router_(),
+    user_router_(db_connection_){}
 
 std::optional<std::string_view> http_dispatcher::strip_path_prefix(
     std::string_view prefix_path,
@@ -69,6 +71,11 @@ std::optional<http_dispatcher::response_type> http_dispatcher::try_handle_route(
     const auto problem_path_opt = strip_path_prefix(problem_path_prefix_, path);
     if(problem_path_opt){
         return problem_router_.route(request, *problem_path_opt);
+    }
+
+    const auto user_path_opt = strip_path_prefix(user_path_prefix_, path);
+    if(user_path_opt){
+        return user_router_.route(request, *user_path_opt);
     }
 
     return std::nullopt;

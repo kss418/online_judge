@@ -6,4 +6,5 @@ target_sources(lib
         submission_handler.cpp
         system_handler.cpp
         testcase_handler.cpp
+        user_handler.cpp
 )

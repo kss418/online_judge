@@ -117,3 +117,29 @@ std::expected<bool, error_code> auth_service::revoke_token(
         }
     );
 }
+
+std::expected<bool, error_code> auth_service::update_admin_status(
+    db_connection& connection_value,
+    std::int64_t user_id,
+    bool is_admin
+){
+    if(user_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return db_service_util::with_write_transaction(
+        connection_value,
+        [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
+            const auto update_admin_status_exp = auth_util::update_admin_status(
+                transaction,
+                user_id,
+                is_admin
+            );
+            if(!update_admin_status_exp){
+                return std::unexpected(update_admin_status_exp.error());
+            }
+
+            return *update_admin_status_exp;
+        }
+    );
+}

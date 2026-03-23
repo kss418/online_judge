@@ -4,4 +4,5 @@ target_sources(lib
         problem_router.cpp
         submission_router.cpp
         system_router.cpp
+        user_router.cpp
 )
