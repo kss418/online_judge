@@ -139,7 +139,17 @@ if [[ "${set_statement_status_code}" != "200" ]]; then
     exit 1
 fi
 
-if [[ "$(cat "${set_statement_response_file}")" != "problem statement updated" ]]; then
+if ! python3 - "${set_statement_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response != {"message": "problem statement updated"}:
+    raise SystemExit("unexpected statement update response body")
+PY
+then
     append_log_line "${test_log_temp_file}" "set statement body mismatch"
     publish_failure_logs
     echo "problem statement update failed: unexpected response body" >&2
@@ -252,7 +262,17 @@ if [[ "${clear_statement_status_code}" != "200" ]]; then
     exit 1
 fi
 
-if [[ "$(cat "${clear_statement_response_file}")" != "problem statement updated" ]]; then
+if ! python3 - "${clear_statement_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response != {"message": "problem statement updated"}:
+    raise SystemExit("unexpected statement clear response body")
+PY
+then
     append_log_line "${test_log_temp_file}" "clear statement body mismatch"
     publish_failure_logs
     echo "problem statement clear failed: unexpected response body" >&2

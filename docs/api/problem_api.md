@@ -385,6 +385,226 @@ Example:
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
+### `GET /api/problem/{problem_id}/samples`
+
+List public samples for an existing problem. Samples are managed as statement content, but this admin endpoint exposes sample ids and full editable payloads.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `sample_count` | `int64` | number of returned public samples |
+| `samples` | `array<object>` | editable sample list ordered by `sample_order` ascending |
+
+Each sample object contains:
+
+| field | type | note |
+|---|---|---|
+| `sample_id` | `int64` | sample id |
+| `sample_order` | `int32` | sample order starting from 1 |
+| `sample_input` | `string` | public sample input |
+| `sample_output` | `string` | public sample output |
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- unknown `problem_id`: `404 Not Found`
+- unexpected internal failure: `500 Internal Server Error`
+
+### `POST /api/problem/{problem_id}/samples`
+
+Append one public sample to an existing problem. Samples are part of the statement content and are also returned by the public problem detail endpoint. Creating a sample increments the problem version.
+
+#### request
+
+- content-type: `application/json`
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+
+- body fields:
+
+| field | type | required | note |
+|---|---|---|---|
+| `sample_input` | `string` | yes | may be empty for no-input examples |
+| `sample_output` | `string` | yes | may be empty for empty-output examples |
+
+Example:
+
+```json
+{
+  "sample_input": "1 2\n",
+  "sample_output": "3\n"
+}
+```
+
+#### success response
+
+- status: `201 Created`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `sample_id` | `int64` | created sample id |
+| `sample_order` | `int32` | assigned sample order |
+
+Example:
+
+```json
+{
+  "sample_id": 1,
+  "sample_order": 1
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- invalid json: `400 Bad Request`
+- missing required fields: `400 Bad Request`
+- unknown `problem_id`: `400 Bad Request`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
+### `PUT /api/problem/{problem_id}/samples/{sample_order}`
+
+Replace one public sample of an existing problem. This endpoint is admin-only and increments the problem version.
+
+#### request
+
+- content-type: `application/json`
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameters:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+| `sample_order` | `int32` | must be positive |
+
+- body fields:
+
+| field | type | required | note |
+|---|---|---|---|
+| `sample_input` | `string` | yes | may be empty |
+| `sample_output` | `string` | yes | may be empty |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `sample_id` | `int64` | updated sample id |
+| `sample_order` | `int32` | updated sample order |
+| `sample_input` | `string` | updated sample input |
+| `sample_output` | `string` | updated sample output |
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- invalid json: `400 Bad Request`
+- missing required fields: `400 Bad Request`
+- unknown `problem_id` or `sample_order`: `400 Bad Request`
+- unexpected internal failure: `500 Internal Server Error`
+
+### `DELETE /api/problem/{problem_id}/samples`
+
+Delete the last public sample of an existing problem. Samples are part of the statement content, so this also changes the public problem detail payload and increments the problem version.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `message` | `string` | always `problem sample deleted` |
+
+Example:
+
+```json
+{
+  "message": "problem sample deleted"
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- unknown `problem_id` or missing sample to delete: `400 Bad Request`
+- unexpected internal failure: `500 Internal Server Error`
+
+Example:
+
+```json
+{
+  "error": {
+    "code": "invalid_sample_delete_request",
+    "message": "failed to delete sample: invalid argument"
+  }
+}
+```
+
 ### `GET /api/problem/{problem_id}/testcases`
 
 List hidden testcases for an existing problem. This endpoint is admin-only.

@@ -1,6 +1,7 @@
 #include "http_router/problem_router.hpp"
 
 #include "common/string_util.hpp"
+#include "http_handler/problem_content_handler.hpp"
 #include "http_handler/testcase_handler.hpp"
 #include "http_server/http_util.hpp"
 
@@ -45,7 +46,26 @@ problem_router::response_type problem_router::route(
             return http_response_util::create_not_found(request);
         }
 
-        return handle_set_statement(request, *problem_id_opt);
+        return handle_statement(request, *problem_id_opt);
+    }
+
+    if(path_segments.size() == 2 && path_segments[1] == "samples"){
+        const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
+        if(!problem_id_opt){
+            return http_response_util::create_not_found(request);
+        }
+
+        return handle_samples(request, *problem_id_opt);
+    }
+
+    if(path_segments.size() == 3 && path_segments[1] == "samples"){
+        const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
+        const auto sample_order_opt = string_util::parse_positive_int32(path_segments[2]);
+        if(!problem_id_opt || !sample_order_opt){
+            return http_response_util::create_not_found(request);
+        }
+
+        return handle_sample(request, *problem_id_opt, *sample_order_opt);
     }
 
     if(path_segments.size() == 2 && path_segments[1] == "testcases"){
@@ -102,7 +122,7 @@ problem_router::response_type problem_router::handle_set_limits(
     std::int64_t problem_id
 ){
     if(request.method() == boost::beast::http::verb::put){
-        return problem_handler::handle_set_limits_put(
+        return problem_content_handler::handle_set_limits_put(
             request,
             db_connection_,
             problem_id
@@ -112,15 +132,63 @@ problem_router::response_type problem_router::handle_set_limits(
     return http_response_util::create_method_not_allowed(request);
 }
 
-problem_router::response_type problem_router::handle_set_statement(
+problem_router::response_type problem_router::handle_statement(
     const request_type& request,
     std::int64_t problem_id
 ){
     if(request.method() == boost::beast::http::verb::put){
-        return problem_handler::handle_set_statement_put(
+        return problem_content_handler::handle_set_statement_put(
             request,
             db_connection_,
             problem_id
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
+problem_router::response_type problem_router::handle_samples(
+    const request_type& request,
+    std::int64_t problem_id
+){
+    if(request.method() == boost::beast::http::verb::get){
+        return problem_content_handler::handle_list_samples_get(
+            request,
+            db_connection_,
+            problem_id
+        );
+    }
+
+    if(request.method() == boost::beast::http::verb::post){
+        return problem_content_handler::handle_create_sample_post(
+            request,
+            db_connection_,
+            problem_id
+        );
+    }
+
+    if(request.method() == boost::beast::http::verb::delete_){
+        return problem_content_handler::handle_delete_sample_delete(
+            request,
+            db_connection_,
+            problem_id
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
+problem_router::response_type problem_router::handle_sample(
+    const request_type& request,
+    std::int64_t problem_id,
+    std::int32_t sample_order
+){
+    if(request.method() == boost::beast::http::verb::put){
+        return problem_content_handler::handle_set_sample_put(
+            request,
+            db_connection_,
+            problem_id,
+            sample_order
         );
     }
 

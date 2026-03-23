@@ -29,9 +29,18 @@ private:
         const request_type& request,
         std::int64_t problem_id
     );
-    response_type handle_set_statement(
+    response_type handle_statement(
         const request_type& request,
         std::int64_t problem_id
+    );
+    response_type handle_samples(
+        const request_type& request,
+        std::int64_t problem_id
+    );
+    response_type handle_sample(
+        const request_type& request,
+        std::int64_t problem_id,
+        std::int32_t sample_order
     );
     response_type handle_testcases(
         const request_type& request,

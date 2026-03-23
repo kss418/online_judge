@@ -26,14 +26,4 @@ namespace problem_handler{
         const request_type& request,
         db_connection& db_connection_value
     );
-    response_type handle_set_limits_put(
-        const request_type& request,
-        db_connection& db_connection_value,
-        std::int64_t problem_id
-    );
-    response_type handle_set_statement_put(
-        const request_type& request,
-        db_connection& db_connection_value,
-        std::int64_t problem_id
-    );
 }

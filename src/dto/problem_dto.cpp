@@ -179,3 +179,30 @@ std::expected<problem_dto::testcase, dto_validation_error> problem_dto::make_tes
     testcase_value.output = std::string{*output_opt};
     return testcase_value;
 }
+
+std::expected<problem_dto::sample, dto_validation_error> problem_dto::make_sample_from_json(
+    const boost::json::object& json
+){
+    const auto input_opt = http_util::get_string_field(json, "sample_input");
+    if(!input_opt){
+        return std::unexpected(dto_validation_error{
+            .code = "missing_field",
+            .message = "required field: sample_input",
+            .field_opt = "sample_input"
+        });
+    }
+
+    const auto output_opt = http_util::get_string_field(json, "sample_output");
+    if(!output_opt){
+        return std::unexpected(dto_validation_error{
+            .code = "missing_field",
+            .message = "required field: sample_output",
+            .field_opt = "sample_output"
+        });
+    }
+
+    sample sample_value;
+    sample_value.input = std::string{*input_opt};
+    sample_value.output = std::string{*output_opt};
+    return sample_value;
+}

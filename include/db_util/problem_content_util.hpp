@@ -32,6 +32,10 @@ namespace problem_content_util{
         pqxx::transaction_base& transaction,
         const problem_dto::reference& problem_reference_value
     );
+    std::expected<problem_dto::sample, error_code> get_sample(
+        pqxx::transaction_base& transaction,
+        const problem_dto::sample_ref& sample_reference_value
+    );
 
     std::expected<problem_dto::sample_count, error_code> increase_sample_count(
         pqxx::transaction_base& transaction,
@@ -51,13 +55,12 @@ namespace problem_content_util{
 
     std::expected<void, error_code> set_sample(
         pqxx::transaction_base& transaction,
-        const problem_dto::reference& problem_reference_value,
+        const problem_dto::sample_ref& sample_reference_value,
         const problem_dto::sample& sample_value
     );
 
     std::expected<void, error_code> delete_sample(
         pqxx::transaction_base& transaction,
-        const problem_dto::reference& problem_reference_value,
-        const problem_dto::sample& sample_value
+        const problem_dto::sample_ref& sample_reference_value
     );
 }

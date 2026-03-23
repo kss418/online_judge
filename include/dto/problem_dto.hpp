@@ -73,6 +73,11 @@ namespace problem_dto{
         std::optional<std::string> note = std::nullopt;
     };
 
+    struct sample_ref{
+        std::int64_t problem_id = 0;
+        std::int32_t sample_order = 0;
+    };
+
     struct sample{
         std::int64_t id = 0;
         std::int32_t order = 0;
@@ -103,6 +108,9 @@ namespace problem_dto{
         const boost::json::object& json
     );
     std::expected<statement, dto_validation_error> make_statement_from_json(
+        const boost::json::object& json
+    );
+    std::expected<sample, dto_validation_error> make_sample_from_json(
         const boost::json::object& json
     );
     std::expected<testcase, dto_validation_error> make_testcase_from_json(

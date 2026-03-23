@@ -220,6 +220,46 @@ boost::json::object json_util::make_problem_statement_object(
     return statement_object;
 }
 
+boost::json::object json_util::make_problem_sample_object(
+    const problem_dto::sample& sample_value
+){
+    boost::json::object response_object;
+    response_object["sample_id"] = sample_value.id;
+    response_object["sample_order"] = sample_value.order;
+    response_object["sample_input"] = sample_value.input;
+    response_object["sample_output"] = sample_value.output;
+    return response_object;
+}
+
+boost::json::array json_util::make_problem_sample_array(
+    const std::vector<problem_dto::sample>& sample_values
+){
+    boost::json::array response_array;
+    response_array.reserve(sample_values.size());
+    for(const auto& sample_value : sample_values){
+        response_array.push_back(make_problem_sample_object(sample_value));
+    }
+    return response_array;
+}
+
+boost::json::object json_util::make_problem_sample_list_object(
+    const std::vector<problem_dto::sample>& sample_values
+){
+    boost::json::object response_object;
+    response_object["sample_count"] = static_cast<std::int64_t>(sample_values.size());
+    response_object["samples"] = make_problem_sample_array(sample_values);
+    return response_object;
+}
+
+boost::json::object json_util::make_problem_sample_created_object(
+    const problem_dto::sample& sample_value
+){
+    boost::json::object response_object;
+    response_object["sample_id"] = sample_value.id;
+    response_object["sample_order"] = sample_value.order;
+    return response_object;
+}
+
 boost::json::array json_util::make_problem_samples_array(
     const std::vector<problem_dto::sample>& sample_values
 ){
