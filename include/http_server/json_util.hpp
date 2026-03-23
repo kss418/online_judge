@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dto/auth_dto.hpp"
+#include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
 #include "dto/submission_dto.hpp"
 
@@ -58,33 +59,37 @@ namespace json_util{
     boost::json::object make_problem_testcase_created_object(
         const problem_dto::testcase& testcase_value
     );
-    boost::json::object make_problem_limits_object(const problem_dto::limits& limits_value);
-    boost::json::object make_problem_statement_object(
-        const problem_dto::statement& statement_value
+    boost::json::object make_problem_limits_object(
+        const problem_content_dto::limits& limits_value
     );
-    boost::json::object make_problem_sample_object(const problem_dto::sample& sample_value);
+    boost::json::object make_problem_statement_object(
+        const problem_content_dto::statement& statement_value
+    );
+    boost::json::object make_problem_sample_object(
+        const problem_content_dto::sample& sample_value
+    );
     boost::json::array make_problem_sample_array(
-        const std::vector<problem_dto::sample>& sample_values
+        const std::vector<problem_content_dto::sample>& sample_values
     );
     boost::json::object make_problem_sample_list_object(
-        const std::vector<problem_dto::sample>& sample_values
+        const std::vector<problem_content_dto::sample>& sample_values
     );
     boost::json::object make_problem_sample_created_object(
-        const problem_dto::sample& sample_value
+        const problem_content_dto::sample& sample_value
     );
     boost::json::array make_problem_samples_array(
-        const std::vector<problem_dto::sample>& sample_values
+        const std::vector<problem_content_dto::sample>& sample_values
     );
     boost::json::object make_problem_statistics_object(
-        const problem_dto::statistics& statistics_value
+        const problem_content_dto::statistics& statistics_value
     );
     boost::json::object make_problem_detail_object(
         const problem_dto::reference& problem_reference_value,
         const problem_dto::title& title_value,
         const problem_dto::version& version_value,
-        const problem_dto::limits& limits_value,
-        const std::optional<problem_dto::statement>& statement_opt,
-        const std::vector<problem_dto::sample>& sample_values,
-        const problem_dto::statistics& statistics_value
+        const problem_content_dto::limits& limits_value,
+        const std::optional<problem_content_dto::statement>& statement_opt,
+        const std::vector<problem_content_dto::sample>& sample_values,
+        const problem_content_dto::statistics& statistics_value
     );
 }

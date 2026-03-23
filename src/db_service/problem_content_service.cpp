@@ -5,14 +5,60 @@
 
 #include <utility>
 
-std::expected<problem_dto::statement, error_code> problem_content_service::get_statement(
+std::expected<problem_content_dto::limits, error_code> problem_content_service::get_limits(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
     return db_service_util::with_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<problem_dto::statement, error_code> {
+            -> std::expected<problem_content_dto::limits, error_code> {
+            return problem_core_util::get_limits(
+                transaction,
+                problem_reference_value
+            );
+        }
+    );
+}
+
+std::expected<void, error_code> problem_content_service::set_limits(
+    db_connection& connection,
+    const problem_dto::reference& problem_reference_value,
+    const problem_content_dto::limits& limits_value
+){
+    return db_service_util::with_write_transaction(
+        connection,
+        [&](pqxx::work& transaction) -> std::expected<void, error_code> {
+            const auto set_limits_exp = problem_core_util::set_limits(
+                transaction,
+                problem_reference_value,
+                limits_value
+            );
+            if(!set_limits_exp){
+                return std::unexpected(set_limits_exp.error());
+            }
+
+            const auto version_exp = problem_core_util::increase_version(
+                transaction,
+                problem_reference_value
+            );
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
+            }
+
+            return {};
+        }
+    );
+}
+
+std::expected<problem_content_dto::statement, error_code> problem_content_service::get_statement(
+    db_connection& connection,
+    const problem_dto::reference& problem_reference_value
+){
+    return db_service_util::with_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<problem_content_dto::statement, error_code> {
             return problem_content_util::get_statement(
                 transaction,
                 problem_reference_value
@@ -24,7 +70,7 @@ std::expected<problem_dto::statement, error_code> problem_content_service::get_s
 std::expected<void, error_code> problem_content_service::set_statement(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value,
-    const problem_dto::statement& statement
+    const problem_content_dto::statement& statement
 ){
     return db_service_util::with_write_transaction(
         connection,
@@ -51,10 +97,10 @@ std::expected<void, error_code> problem_content_service::set_statement(
     );
 }
 
-std::expected<problem_dto::sample, error_code> problem_content_service::create_sample(
+std::expected<problem_content_dto::sample, error_code> problem_content_service::create_sample(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value,
-    const problem_dto::sample& sample_value
+    const problem_content_dto::sample& sample_value
 ){
     if(problem_reference_value.problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
@@ -63,7 +109,7 @@ std::expected<problem_dto::sample, error_code> problem_content_service::create_s
     return db_service_util::with_write_transaction(
         connection,
         [&](pqxx::work& transaction)
-            -> std::expected<problem_dto::sample, error_code> {
+            -> std::expected<problem_content_dto::sample, error_code> {
             const auto created_sample_exp = problem_content_util::create_sample(
                 transaction,
                 problem_reference_value,
@@ -86,9 +132,9 @@ std::expected<problem_dto::sample, error_code> problem_content_service::create_s
     );
 }
 
-std::expected<problem_dto::sample, error_code> problem_content_service::get_sample(
+std::expected<problem_content_dto::sample, error_code> problem_content_service::get_sample(
     db_connection& connection,
-    const problem_dto::sample_ref& sample_reference_value
+    const problem_content_dto::sample_ref& sample_reference_value
 ){
     if(sample_reference_value.problem_id <= 0 || sample_reference_value.sample_order <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
@@ -97,7 +143,7 @@ std::expected<problem_dto::sample, error_code> problem_content_service::get_samp
     return db_service_util::with_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<problem_dto::sample, error_code> {
+            -> std::expected<problem_content_dto::sample, error_code> {
             return problem_content_util::get_sample(
                 transaction,
                 sample_reference_value
@@ -106,7 +152,8 @@ std::expected<problem_dto::sample, error_code> problem_content_service::get_samp
     );
 }
 
-std::expected<std::vector<problem_dto::sample>, error_code> problem_content_service::list_samples(
+std::expected<std::vector<problem_content_dto::sample>, error_code>
+problem_content_service::list_samples(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
@@ -117,7 +164,7 @@ std::expected<std::vector<problem_dto::sample>, error_code> problem_content_serv
     return db_service_util::with_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<std::vector<problem_dto::sample>, error_code> {
+            -> std::expected<std::vector<problem_content_dto::sample>, error_code> {
             return problem_content_util::list_samples(
                 transaction,
                 problem_reference_value
@@ -128,8 +175,8 @@ std::expected<std::vector<problem_dto::sample>, error_code> problem_content_serv
 
 std::expected<void, error_code> problem_content_service::set_sample(
     db_connection& connection,
-    const problem_dto::sample_ref& sample_reference_value,
-    const problem_dto::sample& sample_value
+    const problem_content_dto::sample_ref& sample_reference_value,
+    const problem_content_dto::sample& sample_value
 ){
     if(sample_reference_value.problem_id <= 0 || sample_reference_value.sample_order <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
@@ -185,7 +232,7 @@ std::expected<void, error_code> problem_content_service::delete_sample(
                 return std::unexpected(error_code::create(errno_error::invalid_argument));
             }
 
-            problem_dto::sample_ref sample_reference_value{
+            problem_content_dto::sample_ref sample_reference_value{
                 .problem_id = problem_reference_value.problem_id,
                 .sample_order = sample_values_exp->back().order
             };

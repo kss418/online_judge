@@ -1,5 +1,6 @@
 #include "http_handler/problem_content_handler.hpp"
 
+#include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_server/json_util.hpp"
 #include "http_server/http_util.hpp"
@@ -16,15 +17,16 @@ problem_content_handler::response_type problem_content_handler::put_limits(
 ){
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto limits_exp = http_util::parse_json_dto_or_400<problem_dto::limits>(
-            request,
-            problem_dto::make_limits_from_json
-        );
+        const auto limits_exp =
+            http_util::parse_json_dto_or_400<problem_content_dto::limits>(
+                request,
+                problem_content_dto::make_limits_from_json
+            );
         if(!limits_exp){
             return std::move(limits_exp.error());
         }
 
-        const auto set_limits_exp = problem_core_service::set_limits(
+        const auto set_limits_exp = problem_content_service::set_limits(
             db_connection_value,
             problem_reference_value,
             *limits_exp
@@ -58,10 +60,11 @@ problem_content_handler::response_type problem_content_handler::put_statement(
 ){
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto statement_exp = http_util::parse_json_dto_or_400<problem_dto::statement>(
-            request,
-            problem_dto::make_statement_from_json
-        );
+        const auto statement_exp =
+            http_util::parse_json_dto_or_400<problem_content_dto::statement>(
+                request,
+                problem_content_dto::make_statement_from_json
+            );
         if(!statement_exp){
             return std::move(statement_exp.error());
         }
@@ -147,10 +150,11 @@ problem_content_handler::response_type problem_content_handler::post_sample(
 ){
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto sample_exp = http_util::parse_json_dto_or_400<problem_dto::sample>(
-            request,
-            problem_dto::make_sample_from_json
-        );
+        const auto sample_exp =
+            http_util::parse_json_dto_or_400<problem_content_dto::sample>(
+                request,
+                problem_content_dto::make_sample_from_json
+            );
         if(!sample_exp){
             return std::move(sample_exp.error());
         }
@@ -188,15 +192,16 @@ problem_content_handler::response_type problem_content_handler::put_sample(
     std::int64_t problem_id,
     std::int32_t sample_order
 ){
-    problem_dto::sample_ref sample_reference_value{
+    problem_content_dto::sample_ref sample_reference_value{
         .problem_id = problem_id,
         .sample_order = sample_order
     };
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto sample_exp = http_util::parse_json_dto_or_400<problem_dto::sample>(
-            request,
-            problem_dto::make_sample_from_json
-        );
+        const auto sample_exp =
+            http_util::parse_json_dto_or_400<problem_content_dto::sample>(
+                request,
+                problem_content_dto::make_sample_from_json
+            );
         if(!sample_exp){
             return std::move(sample_exp.error());
         }

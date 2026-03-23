@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/error_code.hpp"
+#include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
 
 #include <cstdint>
@@ -11,7 +12,7 @@ namespace pqxx{
 }
 
 namespace problem_statistics_util{
-    std::expected<problem_dto::statistics, error_code> get_statistics(
+    std::expected<problem_content_dto::statistics, error_code> get_statistics(
         pqxx::transaction_base& transaction,
         const problem_dto::reference& problem_reference_value
     );

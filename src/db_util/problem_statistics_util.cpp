@@ -2,7 +2,8 @@
 
 #include <pqxx/pqxx>
 
-std::expected<problem_dto::statistics, error_code> problem_statistics_util::get_statistics(
+std::expected<problem_content_dto::statistics, error_code>
+problem_statistics_util::get_statistics(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -22,7 +23,7 @@ std::expected<problem_dto::statistics, error_code> problem_statistics_util::get_
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    problem_dto::statistics statistics_value;
+    problem_content_dto::statistics statistics_value;
     statistics_value.submission_count = statistics_query_result[0][0].as<std::int64_t>();
     statistics_value.accepted_count = statistics_query_result[0][1].as<std::int64_t>();
     return statistics_value;

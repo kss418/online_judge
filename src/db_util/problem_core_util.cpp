@@ -150,7 +150,7 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_util::
     return summary_values;
 }
 
-std::expected<problem_dto::limits, error_code> problem_core_util::get_limits(
+std::expected<problem_content_dto::limits, error_code> problem_core_util::get_limits(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -170,7 +170,7 @@ std::expected<problem_dto::limits, error_code> problem_core_util::get_limits(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    problem_dto::limits limits_value;
+    problem_content_dto::limits limits_value;
     limits_value.memory_mb = limits_query_result[0][0].as<std::int32_t>();
     limits_value.time_ms = limits_query_result[0][1].as<std::int32_t>();
     return limits_value;
@@ -179,7 +179,7 @@ std::expected<problem_dto::limits, error_code> problem_core_util::get_limits(
 std::expected<void, error_code> problem_core_util::set_limits(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value,
-    const problem_dto::limits& limits_value
+    const problem_content_dto::limits& limits_value
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0 || limits_value.memory_mb <= 0 || limits_value.time_ms <= 0){

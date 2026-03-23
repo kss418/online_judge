@@ -1,14 +1,13 @@
 #include "judge_server/testcase_runner.hpp"
 
 #include "common/file_util.hpp"
-#include "dto/problem_dto.hpp"
 #include "judge_server/testcase_util.hpp"
 
 #include <chrono>
 #include <utility>
 #include <vector>
 
-std::expected<problem_dto::limits, error_code> testcase_runner::read_problem_limits(
+std::expected<problem_content_dto::limits, error_code> testcase_runner::read_problem_limits(
     std::int64_t problem_id
 ){
     const auto time_limit_file_path_exp = testcase_util::instance().make_testcase_time_limit_file_path(
@@ -37,7 +36,7 @@ std::expected<problem_dto::limits, error_code> testcase_runner::read_problem_lim
         return std::unexpected(memory_limit_mb_exp.error());
     }
 
-    problem_dto::limits problem_limits_value;
+    problem_content_dto::limits problem_limits_value;
     problem_limits_value.memory_mb = *memory_limit_mb_exp;
     problem_limits_value.time_ms = *time_limit_ms_exp;
     return problem_limits_value;
@@ -46,7 +45,7 @@ std::expected<problem_dto::limits, error_code> testcase_runner::read_problem_lim
 std::expected<sandbox_runner::run_result, error_code> testcase_runner::run_one_testcase(
     const pl_runner_util::prepared_source& prepared_source_value,
     const std::filesystem::path& input_path,
-    const problem_dto::limits& problem_limits_value
+    const problem_content_dto::limits& problem_limits_value
 ){
     if(!prepared_source_value.is_runnable()){
         return *prepared_source_value.compile_failed_run_result_;

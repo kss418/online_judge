@@ -35,14 +35,4 @@ namespace problem_core_service{
         db_connection& connection,
         const problem_dto::list_filter& filter_value
     );
-    std::expected<problem_dto::limits, error_code> get_limits(
-        db_connection& connection,
-        const problem_dto::reference& problem_reference_value
-    );
-
-    std::expected<void, error_code> set_limits(
-        db_connection& connection,
-        const problem_dto::reference& problem_reference_value,
-        const problem_dto::limits& limits_value
-    );
 }

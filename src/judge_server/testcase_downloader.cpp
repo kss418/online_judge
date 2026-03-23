@@ -1,6 +1,7 @@
 #include "judge_server/testcase_downloader.hpp"
 
 #include "common/file_util.hpp"
+#include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"
 #include "db_service/testcase_service.hpp"
 #include "judge_server/testcase_util.hpp"
@@ -154,7 +155,7 @@ std::expected<void, error_code> testcase_downloader::sync_version_file(std::int6
 
 std::expected<void, error_code> testcase_downloader::sync_limit_file(std::int64_t problem_id){
     const problem_dto::reference problem_reference_value{problem_id};
-    const auto limits_exp = problem_core_service::get_limits(
+    const auto limits_exp = problem_content_service::get_limits(
         connection_,
         problem_reference_value
     );

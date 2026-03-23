@@ -1,4 +1,5 @@
 #include "http_handler/problem_handler.hpp"
+#include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_server/json_util.hpp"
 #include "http_server/http_util.hpp"
@@ -88,7 +89,7 @@ problem_handler::response_type problem_handler::get_problem(
         );
     }
 
-    const auto limits_exp = problem_core_service::get_limits(
+    const auto limits_exp = problem_content_service::get_limits(
         db_connection_value,
         problem_reference_value
     );
@@ -100,7 +101,7 @@ problem_handler::response_type problem_handler::get_problem(
         );
     }
 
-    std::optional<problem_dto::statement> statement_opt = std::nullopt;
+    std::optional<problem_content_dto::statement> statement_opt = std::nullopt;
     const auto statement_exp = problem_content_service::get_statement(
         db_connection_value,
         problem_reference_value

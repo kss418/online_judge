@@ -25,7 +25,7 @@ std::expected<void, error_code> problem_content_util::ensure_statement_row(
     return {};
 }
 
-std::expected<problem_dto::statement, error_code> problem_content_util::get_statement(
+std::expected<problem_content_dto::statement, error_code> problem_content_util::get_statement(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -45,7 +45,7 @@ std::expected<problem_dto::statement, error_code> problem_content_util::get_stat
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    problem_dto::statement statement_value;
+    problem_content_dto::statement statement_value;
     statement_value.description = statement_query_result[0][0].as<std::string>();
     statement_value.input_format = statement_query_result[0][1].as<std::string>();
     statement_value.output_format = statement_query_result[0][2].as<std::string>();
@@ -68,7 +68,7 @@ std::expected<problem_dto::statement, error_code> problem_content_util::get_stat
 std::expected<void, error_code> problem_content_util::set_statement(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value,
-    const problem_dto::statement& statement_value
+    const problem_content_dto::statement& statement_value
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0){
@@ -99,7 +99,8 @@ std::expected<void, error_code> problem_content_util::set_statement(
     return {};
 }
 
-std::expected<std::vector<problem_dto::sample>, error_code> problem_content_util::list_samples(
+std::expected<std::vector<problem_content_dto::sample>, error_code>
+problem_content_util::list_samples(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -116,10 +117,10 @@ std::expected<std::vector<problem_dto::sample>, error_code> problem_content_util
         pqxx::params{problem_id}
     );
 
-    std::vector<problem_dto::sample> sample_values;
+    std::vector<problem_content_dto::sample> sample_values;
     sample_values.reserve(samples_query_result.size());
     for(const auto& row : samples_query_result){
-        problem_dto::sample sample_value;
+        problem_content_dto::sample sample_value;
         sample_value.id = row[0].as<std::int64_t>();
         sample_value.order = row[1].as<std::int32_t>();
         sample_value.input = row[2].as<std::string>();
@@ -130,9 +131,9 @@ std::expected<std::vector<problem_dto::sample>, error_code> problem_content_util
     return sample_values;
 }
 
-std::expected<problem_dto::sample, error_code> problem_content_util::get_sample(
+std::expected<problem_content_dto::sample, error_code> problem_content_util::get_sample(
     pqxx::transaction_base& transaction,
-    const problem_dto::sample_ref& sample_reference_value
+    const problem_content_dto::sample_ref& sample_reference_value
 ){
     const std::int64_t problem_id = sample_reference_value.problem_id;
     const std::int32_t sample_order = sample_reference_value.sample_order;
@@ -151,7 +152,7 @@ std::expected<problem_dto::sample, error_code> problem_content_util::get_sample(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    problem_dto::sample sample_value;
+    problem_content_dto::sample sample_value;
     sample_value.id = sample_query_result[0][0].as<std::int64_t>();
     sample_value.order = sample_query_result[0][1].as<std::int32_t>();
     sample_value.input = sample_query_result[0][2].as<std::string>();
@@ -159,7 +160,8 @@ std::expected<problem_dto::sample, error_code> problem_content_util::get_sample(
     return sample_value;
 }
 
-std::expected<problem_dto::sample_count, error_code> problem_content_util::increase_sample_count(
+std::expected<problem_content_dto::sample_count, error_code>
+problem_content_util::increase_sample_count(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -180,12 +182,13 @@ std::expected<problem_dto::sample_count, error_code> problem_content_util::incre
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    problem_dto::sample_count sample_count_value;
+    problem_content_dto::sample_count sample_count_value;
     sample_count_value.sample_count = increase_result[0][0].as<std::int32_t>();
     return sample_count_value;
 }
 
-std::expected<problem_dto::sample_count, error_code> problem_content_util::decrease_sample_count(
+std::expected<problem_content_dto::sample_count, error_code>
+problem_content_util::decrease_sample_count(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -201,15 +204,15 @@ std::expected<problem_dto::sample_count, error_code> problem_content_util::decre
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    problem_dto::sample_count sample_count_value;
+    problem_content_dto::sample_count sample_count_value;
     sample_count_value.sample_count = decrease_result[0][0].as<std::int32_t>();
     return sample_count_value;
 }
 
-std::expected<problem_dto::sample, error_code> problem_content_util::create_sample(
+std::expected<problem_content_dto::sample, error_code> problem_content_util::create_sample(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value,
-    const problem_dto::sample& sample_value
+    const problem_content_dto::sample& sample_value
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
     if(problem_id <= 0){
@@ -238,7 +241,7 @@ std::expected<problem_dto::sample, error_code> problem_content_util::create_samp
         return std::unexpected(error_code::create(errno_error::unknown_error));
     }
 
-    problem_dto::sample created_sample_value = sample_value;
+    problem_content_dto::sample created_sample_value = sample_value;
     created_sample_value.id = create_sample_result[0][0].as<std::int64_t>();
     created_sample_value.order = sample_order;
     return created_sample_value;
@@ -246,8 +249,8 @@ std::expected<problem_dto::sample, error_code> problem_content_util::create_samp
 
 std::expected<void, error_code> problem_content_util::set_sample(
     pqxx::transaction_base& transaction,
-    const problem_dto::sample_ref& sample_reference_value,
-    const problem_dto::sample& sample_value
+    const problem_content_dto::sample_ref& sample_reference_value,
+    const problem_content_dto::sample& sample_value
 ){
     const std::int64_t problem_id = sample_reference_value.problem_id;
     const std::int32_t sample_order = sample_reference_value.sample_order;
@@ -278,7 +281,7 @@ std::expected<void, error_code> problem_content_util::set_sample(
 
 std::expected<void, error_code> problem_content_util::delete_sample(
     pqxx::transaction_base& transaction,
-    const problem_dto::sample_ref& sample_reference_value
+    const problem_content_dto::sample_ref& sample_reference_value
 ){
     const std::int64_t problem_id = sample_reference_value.problem_id;
     const std::int32_t sample_order = sample_reference_value.sample_order;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/error_code.hpp"
+#include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
 
 #include <cstdint>
@@ -37,7 +38,7 @@ namespace problem_core_util{
         const problem_dto::list_filter& filter_value
     );
 
-    std::expected<problem_dto::limits, error_code> get_limits(
+    std::expected<problem_content_dto::limits, error_code> get_limits(
         pqxx::transaction_base& transaction,
         const problem_dto::reference& problem_reference_value
     );
@@ -45,7 +46,7 @@ namespace problem_core_util{
     std::expected<void, error_code> set_limits(
         pqxx::transaction_base& transaction,
         const problem_dto::reference& problem_reference_value,
-        const problem_dto::limits& limits_value
+        const problem_content_dto::limits& limits_value
     );
 
     std::expected<void, error_code> increase_version(
