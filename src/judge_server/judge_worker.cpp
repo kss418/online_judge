@@ -187,81 +187,77 @@ std::expected<void, error_code> judge_worker::run(){
             continue;
         }
 
-        const auto process_submission_exp = process_submission(
-            queued_submission_opt_exp->value()
+        const submission_dto::queued_submission& queued_submission_value =
+            queued_submission_opt_exp->value();
+        const auto source_file_path_exp = prepare_submission(queued_submission_value);
+        if(!source_file_path_exp){
+            return std::unexpected(source_file_path_exp.error());
+        }
+
+        const auto mark_judging_exp = mark_judging(queued_submission_value.submission_id);
+        if(!mark_judging_exp){
+            return std::unexpected(mark_judging_exp.error());
+        }
+
+        auto process_submission_exp = process_submission(
+            *source_file_path_exp,
+            queued_submission_value.problem_id
         );
         if(!process_submission_exp){
             return std::unexpected(process_submission_exp.error());
         }
+
+        const auto finalize_submission_exp = finalize_submission(
+            queued_submission_value.submission_id,
+            process_submission_exp->judge_result_value,
+            process_submission_exp->run_results
+        );
+        if(!finalize_submission_exp){
+            return std::unexpected(finalize_submission_exp.error());
+        }
     }
 }
 
-std::expected<void, error_code> judge_worker::process_submission(
-    const submission_dto::queued_submission& queued_submission_value
+std::expected<judge_worker::process_submission_data, error_code> judge_worker::process_submission(
+    const std::filesystem::path& source_file_path,
+    std::int64_t problem_id
 ){
-    const auto save_source_code_exp = save_source_code(queued_submission_value);
-    if(!save_source_code_exp){
-        return std::unexpected(save_source_code_exp.error());
-    }
-
-    const submission_dto::status_update status_update_value =
-        submission_dto::make_status_update(
-            queued_submission_value.submission_id,
-            submission_status::judging
-        );
-    const auto update_submission_status_exp = submission_service::update_submission_status(
-        db_connection_,
-        status_update_value
-    );
-    if(!update_submission_status_exp){
-        return std::unexpected(update_submission_status_exp.error());
-    }
-
-    const auto source_file_path_exp = judge_util::instance().make_source_file_path(
-        queued_submission_value.submission_id,
-        queued_submission_value.language
-    );
-    if(!source_file_path_exp){
-        return std::unexpected(source_file_path_exp.error());
-    }
-
-    const auto sync_testcases_exp = testcase_downloader_.sync_testcases(
-        queued_submission_value.problem_id
-    );
-    if(!sync_testcases_exp){
-        return std::unexpected(sync_testcases_exp.error());
-    }
-
-    const std::filesystem::path source_file_path = *source_file_path_exp;
     auto run_all_testcases_exp = testcase_runner::run_all_testcases(
         source_file_path,
-        queued_submission_value.problem_id
+        problem_id
     );
     if(!run_all_testcases_exp){
         return std::unexpected(run_all_testcases_exp.error());
     }
 
     const auto judge_result_exp = judge_submission(
-        queued_submission_value.problem_id,
+        problem_id,
         *run_all_testcases_exp
     );
     if(!judge_result_exp){
         return std::unexpected(judge_result_exp.error());
     }
 
-    const submission_status submission_status_value = to_submission_status(
-        *judge_result_exp
-    );
+    process_submission_data process_submission_data_value;
+    process_submission_data_value.judge_result_value = *judge_result_exp;
+    process_submission_data_value.run_results = std::move(run_all_testcases_exp->run_results);
+    return process_submission_data_value;
+}
 
+std::expected<void, error_code> judge_worker::finalize_submission(
+    std::int64_t submission_id,
+    judge_result result,
+    const std::vector<sandbox_runner::run_result>& run_results
+){
+    const submission_status submission_status_value = to_submission_status(result);
     const finalize_submission_data finalize_submission_data_value =
         make_finalize_submission_data(
             submission_status_value,
-            run_all_testcases_exp->run_results
+            run_results
         );
-
     const submission_dto::finalize_request finalize_request_value =
         submission_dto::make_finalize_request(
-            queued_submission_value.submission_id,
+            submission_id,
             submission_status_value,
             finalize_submission_data_value.score,
             finalize_submission_data_value.compile_output,
@@ -280,13 +276,24 @@ std::expected<void, error_code> judge_worker::process_submission(
     return {};
 }
 
-std::expected<std::optional<submission_dto::queued_submission>, error_code> judge_worker::lease_submission(){
-    submission_dto::lease_request lease_request_value;
-    lease_request_value.lease_duration = lease_duration_;
-    return submission_service::lease_submission(db_connection_, lease_request_value);
+std::expected<void, error_code> judge_worker::mark_judging(std::int64_t submission_id){
+    const submission_dto::status_update status_update_value =
+        submission_dto::make_status_update(
+            submission_id,
+            submission_status::judging
+        );
+    const auto update_submission_status_exp = submission_service::update_submission_status(
+        db_connection_,
+        status_update_value
+    );
+    if(!update_submission_status_exp){
+        return std::unexpected(update_submission_status_exp.error());
+    }
+
+    return {};
 }
 
-std::expected<void, error_code> judge_worker::save_source_code(
+std::expected<std::filesystem::path, error_code> judge_worker::prepare_submission(
     const submission_dto::queued_submission& queued_submission_value
 ){
     const auto source_file_path_exp = judge_util::instance().make_source_file_path(
@@ -296,16 +303,27 @@ std::expected<void, error_code> judge_worker::save_source_code(
     if(!source_file_path_exp){
         return std::unexpected(source_file_path_exp.error());
     }
-    const auto source_file_path = *source_file_path_exp;
-    
+
     auto create_file_exp = file_util::create_file(
-        source_file_path,
+        *source_file_path_exp,
         queued_submission_value.source_code
     );
-
     if(!create_file_exp){
         return std::unexpected(create_file_exp.error());
     }
 
-    return {};
+    const auto sync_testcases_exp = testcase_downloader_.sync_testcases(
+        queued_submission_value.problem_id
+    );
+    if(!sync_testcases_exp){
+        return std::unexpected(sync_testcases_exp.error());
+    }
+
+    return *source_file_path_exp;
+}
+
+std::expected<std::optional<submission_dto::queued_submission>, error_code> judge_worker::lease_submission(){
+    submission_dto::lease_request lease_request_value;
+    lease_request_value.lease_duration = lease_duration_;
+    return submission_service::lease_submission(db_connection_, lease_request_value);
 }

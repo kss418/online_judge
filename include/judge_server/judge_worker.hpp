@@ -26,9 +26,6 @@ public:
 
     std::expected<void, error_code> run();
     std::expected<std::optional<submission_dto::queued_submission>, error_code> lease_submission();
-    std::expected<void, error_code> save_source_code(
-        const submission_dto::queued_submission& queued_submission_value
-    );
 
 private:
     struct finalize_submission_data{
@@ -37,6 +34,10 @@ private:
         std::optional<std::string> judge_output = std::nullopt;
         std::optional<std::int64_t> elapsed_ms_opt = std::nullopt;
         std::optional<std::int64_t> max_rss_kb_opt = std::nullopt;
+    };
+    struct process_submission_data{
+        judge_result judge_result_value = judge_result::wrong_answer;
+        std::vector<sandbox_runner::run_result> run_results;
     };
 
     judge_worker(
@@ -50,8 +51,18 @@ private:
         submission_status submission_status_value,
         const std::vector<sandbox_runner::run_result>& run_results
     );
-    std::expected<void, error_code> process_submission(
+    std::expected<void, error_code> finalize_submission(
+        std::int64_t submission_id,
+        judge_result result,
+        const std::vector<sandbox_runner::run_result>& run_results
+    );
+    std::expected<void, error_code> mark_judging(std::int64_t submission_id);
+    std::expected<std::filesystem::path, error_code> prepare_submission(
         const submission_dto::queued_submission& queued_submission_value
+    );
+    std::expected<process_submission_data, error_code> process_submission(
+        const std::filesystem::path& source_file_path,
+        std::int64_t problem_id
     );
     std::expected<judge_result, error_code> judge_submission(
         std::int64_t problem_id,
