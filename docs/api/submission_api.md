@@ -126,7 +126,7 @@ Get a single submission detail view. This endpoint is public and does not requir
 | `created_at` | `string` | creation timestamp |
 | `updated_at` | `string` | last update timestamp |
 
-The detail response does not expose `source_code`.
+The detail response does not expose `source_code`. Use `GET /api/submission/{submission_id}/source` for owner/admin-only source access.
 
 Example:
 
@@ -161,6 +161,81 @@ Example:
   "error": {
     "code": "not_found",
     "message": "failed to get submission detail: invalid argument"
+  }
+}
+```
+
+### `GET /api/submission/{submission_id}/source`
+
+Get the submitted source code for a single submission. This endpoint requires a bearer token, and only the submission owner or an admin can access it.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `submission_id` | `int64` | must be positive |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `submission_id` | `int64` | submission id |
+| `user_id` | `int64` | submitter user id |
+| `problem_id` | `int64` | related problem id |
+| `language` | `string` | submitted language |
+| `source_code` | `string` | exact submitted source code |
+
+Example:
+
+```json
+{
+  "submission_id": 12,
+  "user_id": 7,
+  "problem_id": 3,
+  "language": "cpp",
+  "source_code": "#include <iostream>\nint main(){ return 0; }\n"
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not owner/admin: `403 Forbidden`
+- unknown `submission_id`: `404 Not Found`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
+Examples:
+
+```json
+{
+  "error": {
+    "code": "missing_or_invalid_bearer_token",
+    "message": "missing or invalid bearer token"
+  }
+}
+```
+
+```json
+{
+  "error": {
+    "code": "forbidden",
+    "message": "submission source access denied"
   }
 }
 ```

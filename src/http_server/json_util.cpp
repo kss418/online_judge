@@ -42,6 +42,18 @@ boost::json::object json_util::make_submission_created_object(
     return response_object;
 }
 
+boost::json::object json_util::make_submission_source_object(
+    const submission_dto::source_detail& source_detail_value
+){
+    boost::json::object response_object;
+    response_object["submission_id"] = source_detail_value.submission_id;
+    response_object["user_id"] = source_detail_value.user_id;
+    response_object["problem_id"] = source_detail_value.problem_id;
+    response_object["language"] = source_detail_value.language;
+    response_object["source_code"] = source_detail_value.source_code;
+    return response_object;
+}
+
 boost::json::object json_util::make_submission_summary_object(
     const submission_dto::summary& summary_value
 ){

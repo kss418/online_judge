@@ -4,6 +4,38 @@
 
 #include <string>
 
+std::expected<submission_dto::source_detail, error_code> submission_util::get_submission_source(
+    pqxx::transaction_base& transaction,
+    std::int64_t submission_id
+){
+    if(submission_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto submission_source_query = transaction.exec(
+        "SELECT "
+        "submission_id, "
+        "user_id, "
+        "problem_id, "
+        "language, "
+        "source_code "
+        "FROM submissions "
+        "WHERE submission_id = $1",
+        pqxx::params{submission_id}
+    );
+    if(submission_source_query.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    submission_dto::source_detail source_detail_value;
+    source_detail_value.submission_id = submission_source_query[0][0].as<std::int64_t>();
+    source_detail_value.user_id = submission_source_query[0][1].as<std::int64_t>();
+    source_detail_value.problem_id = submission_source_query[0][2].as<std::int64_t>();
+    source_detail_value.language = submission_source_query[0][3].as<std::string>();
+    source_detail_value.source_code = submission_source_query[0][4].as<std::string>();
+    return source_detail_value;
+}
+
 std::expected<submission_dto::detail, error_code> submission_util::get_submission_detail(
     pqxx::transaction_base& transaction,
     std::int64_t submission_id

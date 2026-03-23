@@ -10,6 +10,19 @@ static bool is_queue_empty_error(const error_code& code){
     return code == errno_error::resource_temporarily_unavailable;
 }
 
+std::expected<submission_dto::source_detail, error_code> submission_service::get_submission_source(
+    db_connection& connection,
+    std::int64_t submission_id
+){
+    return db_service_util::with_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<submission_dto::source_detail, error_code> {
+            return submission_util::get_submission_source(transaction, submission_id);
+        }
+    );
+}
+
 std::expected<submission_dto::detail, error_code> submission_service::get_submission_detail(
     db_connection& connection,
     std::int64_t submission_id

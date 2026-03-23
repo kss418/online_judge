@@ -22,6 +22,14 @@ namespace submission_dto{
         std::string source_code;
     };
 
+    struct source_detail{
+        std::int64_t submission_id = 0;
+        std::int64_t user_id = 0;
+        std::int64_t problem_id = 0;
+        std::string language;
+        std::string source_code;
+    };
+
     struct create_request{
         std::int64_t user_id = 0;
         std::int64_t problem_id = 0;

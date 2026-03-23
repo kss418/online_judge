@@ -110,6 +110,10 @@ namespace http_util{
         const request_type& request,
         db_connection& db_connection
     );
+    bool is_owner_or_admin(
+        const auth_dto::identity& auth_identity_value,
+        std::int64_t owner_user_id
+    );
     template <typename callback_type>
     response_type with_auth_bearer(
         const request_type& request,

@@ -325,6 +325,14 @@ std::expected<auth_dto::identity, http_util::response_type> http_util::try_admin
     return *auth_identity_exp;
 }
 
+bool http_util::is_owner_or_admin(
+    const auth_dto::identity& auth_identity_value,
+    std::int64_t owner_user_id
+){
+    return auth_identity_value.is_admin ||
+        auth_identity_value.user_id == owner_user_id;
+}
+
 std::optional<std::string_view> http_util::get_bearer_token(
     const request_type& request
 ){

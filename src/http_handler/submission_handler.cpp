@@ -5,6 +5,51 @@
 #include "http_server/http_util.hpp"
 #include "http_server/json_util.hpp"
 
+submission_handler::response_type submission_handler::get_submission_source(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t submission_id
+){
+    const auto handle_authenticated =
+        [&](const auth_dto::identity& auth_identity_value) -> response_type {
+            const auto submission_source_exp = submission_service::get_submission_source(
+                db_connection_value,
+                submission_id
+            );
+            if(!submission_source_exp){
+                return http_response_util::create_404_or_500(
+                    request,
+                    "get submission source",
+                    submission_source_exp.error()
+                );
+            }
+
+            if(!http_util::is_owner_or_admin(
+                auth_identity_value,
+                submission_source_exp->user_id
+            )){
+                return http_response_util::create_error(
+                    request,
+                    boost::beast::http::status::forbidden,
+                    "forbidden",
+                    "submission source access denied"
+                );
+            }
+
+            return http_response_util::create_json(
+                request,
+                boost::beast::http::status::ok,
+                json_util::make_submission_source_object(*submission_source_exp)
+            );
+        };
+
+    return http_util::with_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
 submission_handler::response_type submission_handler::get_submission(
     const request_type& request,
     db_connection& db_connection_value,

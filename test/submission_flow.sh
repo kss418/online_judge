@@ -24,6 +24,8 @@ http_port="${SUBMISSION_FLOW_TEST_HTTP_PORT:-18084}"
 base_url="${SUBMISSION_FLOW_TEST_BASE_URL:-http://127.0.0.1:${http_port}}"
 http_server_bin="${SUBMISSION_FLOW_TEST_HTTP_SERVER_BIN:-${project_root}/http_server}"
 user_login_id="${SUBMISSION_FLOW_TEST_LOGIN_ID:-submission_flow_test_$(date +%s)_$$}"
+other_user_login_id="${SUBMISSION_FLOW_TEST_OTHER_LOGIN_ID:-${user_login_id}_other}"
+admin_user_login_id="${SUBMISSION_FLOW_TEST_ADMIN_LOGIN_ID:-${user_login_id}_admin}"
 raw_password="${SUBMISSION_FLOW_TEST_PASSWORD:-password123}"
 test_db_name="submission_flow_test_$$_$(date +%s)"
 test_database_created="0"
@@ -45,6 +47,11 @@ submission_detail_response_file="$(mktemp)"
 missing_submission_response_file="$(mktemp)"
 list_submission_response_file="$(mktemp)"
 top_submission_response_file="$(mktemp)"
+submission_source_response_file="$(mktemp)"
+unauthorized_source_response_file="$(mktemp)"
+forbidden_source_response_file="$(mktemp)"
+admin_source_response_file="$(mktemp)"
+missing_source_response_file="$(mktemp)"
 test_log_path=""
 server_log_path=""
 server_pid=""
@@ -68,7 +75,12 @@ cleanup(){
         "${submission_detail_response_file}" \
         "${missing_submission_response_file}" \
         "${list_submission_response_file}" \
-        "${top_submission_response_file}"
+        "${top_submission_response_file}" \
+        "${submission_source_response_file}" \
+        "${unauthorized_source_response_file}" \
+        "${forbidden_source_response_file}" \
+        "${admin_source_response_file}" \
+        "${missing_source_response_file}"
 
 }
 
@@ -107,6 +119,19 @@ read -r sign_up_user_id sign_up_token < <(
     sign_up_user "${user_login_id}" "${raw_password}" "${sign_up_response_file}" "submission flow"
 )
 print_success_log "sign-up success"
+
+read -r other_user_id other_user_token < <(
+    sign_up_user "${other_user_login_id}" "${raw_password}" "${sign_up_response_file}" "submission flow"
+)
+print_success_log "other user sign-up success"
+
+read -r admin_user_id admin_user_token < <(
+    sign_up_user "${admin_user_login_id}" "${raw_password}" "${sign_up_response_file}" "submission flow"
+)
+print_success_log "admin user sign-up success"
+
+promote_admin_user "${admin_user_id}" "submission flow" >/dev/null
+print_success_log "admin user promote success"
 
 problem_id="$(create_problem_in_db "submission flow")"
 print_success_log "problem create success"
@@ -281,6 +306,120 @@ fi
 append_log_line "${test_log_temp_file}" "missing submission get passed: status=${missing_submission_status_code}"
 print_success_log "missing submission get success"
 
+submission_source_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${submission_source_response_file}" \
+        --write-out "%{http_code}" \
+        --request GET \
+        -H "Authorization: Bearer ${sign_up_token}" \
+        "${base_url}/api/submission/${submission_id}/source"
+)"
+
+if [[ "${submission_source_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "submission source get failed: status=${submission_source_status_code}"
+    publish_failure_logs
+    echo "submission source get test failed: expected status 200, got ${submission_source_status_code}" >&2
+    echo "response body:" >&2
+    cat "${submission_source_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "submission source get passed: status=${submission_source_status_code}"
+print_success_log "submission source get success"
+
+unauthorized_source_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${unauthorized_source_response_file}" \
+        --write-out "%{http_code}" \
+        --request GET \
+        "${base_url}/api/submission/${submission_id}/source"
+)"
+
+if [[ "${unauthorized_source_status_code}" != "401" ]]; then
+    append_log_line "${test_log_temp_file}" "unauthorized submission source get failed: status=${unauthorized_source_status_code}"
+    publish_failure_logs
+    echo "unauthorized submission source get test failed: expected status 401, got ${unauthorized_source_status_code}" >&2
+    echo "response body:" >&2
+    cat "${unauthorized_source_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "unauthorized submission source get passed: status=${unauthorized_source_status_code}"
+print_success_log "unauthorized submission source get success"
+
+forbidden_source_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${forbidden_source_response_file}" \
+        --write-out "%{http_code}" \
+        --request GET \
+        -H "Authorization: Bearer ${other_user_token}" \
+        "${base_url}/api/submission/${submission_id}/source"
+)"
+
+if [[ "${forbidden_source_status_code}" != "403" ]]; then
+    append_log_line "${test_log_temp_file}" "forbidden submission source get failed: status=${forbidden_source_status_code}"
+    publish_failure_logs
+    echo "forbidden submission source get test failed: expected status 403, got ${forbidden_source_status_code}" >&2
+    echo "response body:" >&2
+    cat "${forbidden_source_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "forbidden submission source get passed: status=${forbidden_source_status_code}"
+print_success_log "forbidden submission source get success"
+
+admin_source_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${admin_source_response_file}" \
+        --write-out "%{http_code}" \
+        --request GET \
+        -H "Authorization: Bearer ${admin_user_token}" \
+        "${base_url}/api/submission/${submission_id}/source"
+)"
+
+if [[ "${admin_source_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "admin submission source get failed: status=${admin_source_status_code}"
+    publish_failure_logs
+    echo "admin submission source get test failed: expected status 200, got ${admin_source_status_code}" >&2
+    echo "response body:" >&2
+    cat "${admin_source_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "admin submission source get passed: status=${admin_source_status_code}"
+print_success_log "admin submission source get success"
+
+missing_source_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${missing_source_response_file}" \
+        --write-out "%{http_code}" \
+        --request GET \
+        -H "Authorization: Bearer ${sign_up_token}" \
+        "${base_url}/api/submission/${missing_submission_id}/source"
+)"
+
+if [[ "${missing_source_status_code}" != "404" ]]; then
+    append_log_line "${test_log_temp_file}" "missing submission source get failed: status=${missing_source_status_code}"
+    publish_failure_logs
+    echo "missing submission source get test failed: expected status 404, got ${missing_source_status_code}" >&2
+    echo "response body:" >&2
+    cat "${missing_source_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "missing submission source get passed: status=${missing_source_status_code}"
+print_success_log "missing submission source get success"
+
 all_submission_status_code="$(
     curl \
         --silent \
@@ -346,6 +485,117 @@ fi
 
 append_log_line "${test_log_temp_file}" "submission top list passed: status=${top_submission_status_code}"
 print_success_log "submission top list success"
+
+if ! python3 \
+    - "${submission_source_response_file}" \
+    "${submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "${submission_language}" \
+    "${submission_source_code}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    submission_source = json.load(response_file)
+
+expected_submission_id = int(sys.argv[2])
+expected_user_id = int(sys.argv[3])
+expected_problem_id = int(sys.argv[4])
+expected_language = sys.argv[5]
+expected_source_code = sys.argv[6]
+
+if submission_source.get("submission_id") != expected_submission_id:
+    raise SystemExit("submission_id mismatch in submission source response")
+
+if submission_source.get("user_id") != expected_user_id:
+    raise SystemExit("user_id mismatch in submission source response")
+
+if submission_source.get("problem_id") != expected_problem_id:
+    raise SystemExit("problem_id mismatch in submission source response")
+
+if submission_source.get("language") != expected_language:
+    raise SystemExit("language mismatch in submission source response")
+
+if submission_source.get("source_code") != expected_source_code:
+    raise SystemExit("source_code mismatch in submission source response")
+PY
+then
+    append_log_line "${test_log_temp_file}" "submission source validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 \
+    - "${unauthorized_source_response_file}" \
+    "${forbidden_source_response_file}" \
+    "${missing_source_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    unauthorized_response = json.load(response_file)
+
+with open(sys.argv[2], encoding="utf-8") as response_file:
+    forbidden_response = json.load(response_file)
+
+with open(sys.argv[3], encoding="utf-8") as response_file:
+    missing_response = json.load(response_file)
+
+if unauthorized_response.get("error", {}).get("code") != "missing_or_invalid_bearer_token":
+    raise SystemExit("unexpected error code for unauthorized source response")
+
+if forbidden_response.get("error", {}).get("code") != "forbidden":
+    raise SystemExit("unexpected error code for forbidden source response")
+
+if missing_response.get("error", {}).get("code") != "not_found":
+    raise SystemExit("unexpected error code for missing source response")
+PY
+then
+    append_log_line "${test_log_temp_file}" "submission source error validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 \
+    - "${admin_source_response_file}" \
+    "${submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "${submission_language}" \
+    "${submission_source_code}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    submission_source = json.load(response_file)
+
+expected_submission_id = int(sys.argv[2])
+expected_user_id = int(sys.argv[3])
+expected_problem_id = int(sys.argv[4])
+expected_language = sys.argv[5]
+expected_source_code = sys.argv[6]
+
+if submission_source.get("submission_id") != expected_submission_id:
+    raise SystemExit("submission_id mismatch in admin submission source response")
+
+if submission_source.get("user_id") != expected_user_id:
+    raise SystemExit("user_id mismatch in admin submission source response")
+
+if submission_source.get("problem_id") != expected_problem_id:
+    raise SystemExit("problem_id mismatch in admin submission source response")
+
+if submission_source.get("language") != expected_language:
+    raise SystemExit("language mismatch in admin submission source response")
+
+if submission_source.get("source_code") != expected_source_code:
+    raise SystemExit("source_code mismatch in admin submission source response")
+PY
+then
+    append_log_line "${test_log_temp_file}" "admin submission source validation failed"
+    publish_failure_logs
+    exit 1
+fi
 
 if ! python3 \
     - "${all_submission_response_file}" \
