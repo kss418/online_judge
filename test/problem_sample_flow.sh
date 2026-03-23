@@ -225,7 +225,6 @@ list_samples_status_code="$(
         --show-error \
         --output "${list_samples_response_file}" \
         --write-out "%{http_code}" \
-        -H "Authorization: Bearer ${sign_up_token}" \
         "${base_url}/api/problem/${problem_id}/samples"
 )"
 
@@ -402,7 +401,6 @@ list_updated_samples_status_code="$(
         --show-error \
         --output "${updated_samples_response_file}" \
         --write-out "%{http_code}" \
-        -H "Authorization: Bearer ${sign_up_token}" \
         "${base_url}/api/problem/${problem_id}/samples"
 )"
 
@@ -544,7 +542,6 @@ remaining_samples_status_code="$(
         --show-error \
         --output "${remaining_samples_response_file}" \
         --write-out "%{http_code}" \
-        -H "Authorization: Bearer ${sign_up_token}" \
         "${base_url}/api/problem/${problem_id}/samples"
 )"
 

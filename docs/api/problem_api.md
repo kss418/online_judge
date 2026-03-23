@@ -387,16 +387,11 @@ Error bodies are returned as JSON with an `error` object containing `code`, `mes
 
 ### `GET /api/problem/{problem_id}/samples`
 
-List public samples for an existing problem. Samples are managed as statement content, but this admin endpoint exposes sample ids and full editable payloads.
+List public samples for an existing problem. Samples are managed as statement content, and this endpoint exposes sample ids and full sample payloads.
 
 #### request
 
 - request body: none
-- required header:
-
-| header | required | note |
-|---|---|---|
-| `Authorization` | yes | format: `Bearer <admin-token>` |
 
 - path parameter:
 
@@ -426,9 +421,6 @@ Each sample object contains:
 
 #### error response
 
-- missing or malformed bearer token: `401 Unauthorized`
-- invalid, expired, or revoked token: `401 Unauthorized`
-- authenticated but not admin: `401 Unauthorized`
 - unknown `problem_id`: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 

@@ -99,52 +99,44 @@ problem_content_handler::response_type problem_content_handler::handle_list_samp
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto exists_problem_exp = problem_core_service::exists_problem(
-            db_connection_value,
-            problem_reference_value
-        );
-        if(!exists_problem_exp){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::internal_server_error,
-                "internal_server_error",
-                "failed to check problem: " + to_string(exists_problem_exp.error())
-            );
-        }
-        if(!exists_problem_exp->exists){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "problem_not_found",
-                "problem not found"
-            );
-        }
-
-        const auto sample_values_exp = problem_content_service::list_samples(
-            db_connection_value,
-            problem_reference_value
-        );
-        if(!sample_values_exp){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::internal_server_error,
-                "internal_server_error",
-                "failed to list samples: " + to_string(sample_values_exp.error())
-            );
-        }
-
-        return http_response_util::create_json(
-            request,
-            boost::beast::http::status::ok,
-            json_util::make_problem_sample_list_object(*sample_values_exp)
-        );
-    };
-
-    return http_util::with_admin_auth_bearer(
-        request,
+    const auto exists_problem_exp = problem_core_service::exists_problem(
         db_connection_value,
-        handle_authenticated
+        problem_reference_value
+    );
+    if(!exists_problem_exp){
+        return http_response_util::create_error(
+            request,
+            boost::beast::http::status::internal_server_error,
+            "internal_server_error",
+            "failed to check problem: " + to_string(exists_problem_exp.error())
+        );
+    }
+    if(!exists_problem_exp->exists){
+        return http_response_util::create_error(
+            request,
+            boost::beast::http::status::not_found,
+            "problem_not_found",
+            "problem not found"
+        );
+    }
+
+    const auto sample_values_exp = problem_content_service::list_samples(
+        db_connection_value,
+        problem_reference_value
+    );
+    if(!sample_values_exp){
+        return http_response_util::create_error(
+            request,
+            boost::beast::http::status::internal_server_error,
+            "internal_server_error",
+            "failed to list samples: " + to_string(sample_values_exp.error())
+        );
+    }
+
+    return http_response_util::create_json(
+        request,
+        boost::beast::http::status::ok,
+        json_util::make_problem_sample_list_object(*sample_values_exp)
     );
 }
 
