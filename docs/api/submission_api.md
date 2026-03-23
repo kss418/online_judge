@@ -121,6 +121,8 @@ Get a single submission detail view. This endpoint is public and does not requir
 | `score` | `int16 \| null` | score, null before judging finishes |
 | `compile_output` | `string \| null` | compiler stderr when compilation fails |
 | `judge_output` | `string \| null` | runtime or judge stderr when available |
+| `elapsed_ms` | `int64 \| null` | max elapsed wall-clock time among executed testcases; `null` before execution starts or when compilation fails |
+| `max_rss_kb` | `int64 \| null` | max resident set size among executed testcases in kilobytes; `null` before execution starts or when compilation fails |
 | `created_at` | `string` | creation timestamp |
 | `updated_at` | `string` | last update timestamp |
 
@@ -138,6 +140,8 @@ Example:
   "score": 0,
   "compile_output": "main.cpp: In function ...",
   "judge_output": null,
+  "elapsed_ms": null,
+  "max_rss_kb": null,
   "created_at": "2026-03-19 14:02:11.123456+09",
   "updated_at": "2026-03-19 14:02:12.123456+09"
 }

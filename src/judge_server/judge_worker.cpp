@@ -6,6 +6,7 @@
 #include "judge_server/judge_util.hpp"
 #include "judge_server/testcase_runner.hpp"
 
+#include <algorithm>
 #include <optional>
 #include <string>
 #include <utility>
@@ -96,7 +97,28 @@ judge_worker::finalize_submission_data judge_worker::make_finalize_submission_da
 
     if(submission_status_value == submission_status::accepted){
         finalize_submission_data_value.score = std::int16_t{100};
-        return finalize_submission_data_value;
+    }
+
+    if(
+        submission_status_value != submission_status::compile_error &&
+        !run_results.empty()
+    ){
+        std::int64_t max_elapsed_ms = 0;
+        std::int64_t max_rss_kb = 0;
+
+        for(const auto& run_result : run_results){
+            max_elapsed_ms = std::max(
+                max_elapsed_ms,
+                static_cast<std::int64_t>(run_result.elapsed_ms_)
+            );
+            max_rss_kb = std::max(
+                max_rss_kb,
+                static_cast<std::int64_t>(run_result.max_rss_kb_)
+            );
+        }
+
+        finalize_submission_data_value.elapsed_ms_opt = max_elapsed_ms;
+        finalize_submission_data_value.max_rss_kb_opt = max_rss_kb;
     }
 
     if(run_results.empty() || run_results.front().stderr_text_.empty()){
@@ -225,6 +247,10 @@ std::expected<void, error_code> judge_worker::run(){
             finalize_request_value.compile_output_opt =
                 finalize_submission_data_value.compile_output;
             finalize_request_value.judge_output_opt = finalize_submission_data_value.judge_output;
+            finalize_request_value.elapsed_ms_opt =
+                finalize_submission_data_value.elapsed_ms_opt;
+            finalize_request_value.max_rss_kb_opt =
+                finalize_submission_data_value.max_rss_kb_opt;
             const auto finalize_submission_exp = submission_service::finalize_submission(
                 db_connection_,
                 finalize_request_value

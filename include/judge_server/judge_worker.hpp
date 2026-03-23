@@ -35,6 +35,8 @@ private:
         std::optional<std::int16_t> score = std::nullopt;
         std::optional<std::string> compile_output = std::nullopt;
         std::optional<std::string> judge_output = std::nullopt;
+        std::optional<std::int64_t> elapsed_ms_opt = std::nullopt;
+        std::optional<std::int64_t> max_rss_kb_opt = std::nullopt;
     };
 
     judge_worker(

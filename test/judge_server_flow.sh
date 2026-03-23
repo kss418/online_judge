@@ -307,6 +307,8 @@ validate_submission_detail(){
     local expected_score="$7"
     local compile_output_expectation="$8"
     local judge_output_expectation="$9"
+    local elapsed_ms_expectation="${10}"
+    local max_rss_kb_expectation="${11}"
 
     python3 \
         - "${response_file_path}" \
@@ -317,7 +319,9 @@ validate_submission_detail(){
         "${expected_status}" \
         "${expected_score}" \
         "${compile_output_expectation}" \
-        "${judge_output_expectation}" <<'PY'
+        "${judge_output_expectation}" \
+        "${elapsed_ms_expectation}" \
+        "${max_rss_kb_expectation}" <<'PY'
 import json
 import sys
 
@@ -332,6 +336,8 @@ expected_status = sys.argv[6]
 expected_score = int(sys.argv[7])
 compile_output_expectation = sys.argv[8]
 judge_output_expectation = sys.argv[9]
+elapsed_ms_expectation = sys.argv[10]
+max_rss_kb_expectation = sys.argv[11]
 
 if response.get("submission_id") != expected_submission_id:
     raise SystemExit("submission_id mismatch")
@@ -348,6 +354,8 @@ if response.get("score") != expected_score:
 
 compile_output = response.get("compile_output", "__missing__")
 judge_output = response.get("judge_output", "__missing__")
+elapsed_ms = response.get("elapsed_ms", "__missing__")
+max_rss_kb = response.get("max_rss_kb", "__missing__")
 
 if compile_output_expectation == "null":
     if compile_output is not None:
@@ -366,6 +374,24 @@ elif judge_output_expectation == "non_empty":
         raise SystemExit("expected judge_output to be a non-empty string")
 else:
     raise SystemExit("invalid judge_output expectation")
+
+if elapsed_ms_expectation == "null":
+    if elapsed_ms is not None:
+        raise SystemExit("expected elapsed_ms to be null")
+elif elapsed_ms_expectation == "non_negative_int":
+    if not isinstance(elapsed_ms, int) or elapsed_ms < 0:
+        raise SystemExit("expected elapsed_ms to be a non-negative integer")
+else:
+    raise SystemExit("invalid elapsed_ms expectation")
+
+if max_rss_kb_expectation == "null":
+    if max_rss_kb is not None:
+        raise SystemExit("expected max_rss_kb to be null")
+elif max_rss_kb_expectation == "non_negative_int":
+    if not isinstance(max_rss_kb, int) or max_rss_kb < 0:
+        raise SystemExit("expected max_rss_kb to be a non-negative integer")
+else:
+    raise SystemExit("invalid max_rss_kb expectation")
 
 created_at = response.get("created_at")
 updated_at = response.get("updated_at")
@@ -607,7 +633,9 @@ validate_submission_detail \
     "accepted" \
     "100" \
     "null" \
-    "null"
+    "null" \
+    "non_negative_int" \
+    "non_negative_int"
 validate_submission_status_history "${accepted_submission_id}" "accepted"
 print_success_log "accepted submission judged successfully"
 
@@ -669,7 +697,9 @@ validate_submission_detail \
     "wrong_answer" \
     "0" \
     "null" \
-    "null"
+    "null" \
+    "non_negative_int" \
+    "non_negative_int"
 validate_submission_status_history "${wrong_answer_submission_id}" "wrong_answer"
 print_success_log "wrong_answer submission judged successfully"
 
@@ -731,6 +761,8 @@ validate_submission_detail \
     "compile_error" \
     "0" \
     "non_empty" \
+    "null" \
+    "null" \
     "null"
 validate_submission_status_history "${compile_error_submission_id}" "compile_error"
 print_success_log "compile_error submission judged successfully"
@@ -793,7 +825,9 @@ validate_submission_detail \
     "runtime_error" \
     "0" \
     "null" \
-    "non_empty"
+    "non_empty" \
+    "non_negative_int" \
+    "non_negative_int"
 validate_submission_status_history "${runtime_error_submission_id}" "runtime_error"
 print_success_log "runtime_error submission judged successfully"
 
@@ -855,7 +889,9 @@ validate_submission_detail \
     "time_limit_exceeded" \
     "0" \
     "null" \
-    "null"
+    "null" \
+    "non_negative_int" \
+    "non_negative_int"
 validate_submission_status_history "${time_limit_exceeded_submission_id}" "time_limit_exceeded"
 print_success_log "time_limit_exceeded submission judged successfully"
 

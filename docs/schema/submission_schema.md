@@ -31,6 +31,8 @@ Base migration: `scripts/migrate_submission_schema.sh`
 | `score` | `smallint` | yes | | `0..100` check |
 | `compile_output` | `text` | yes | |  |
 | `judge_output` | `text` | yes | |  |
+| `elapsed_ms` | `bigint` | yes | | max elapsed wall-clock time among executed testcases, `>= 0` |
+| `max_rss_kb` | `bigint` | yes | | max resident set size among executed testcases in kilobytes, `>= 0` |
 | `created_at` | `timestamptz` | no | `now()` |  |
 | `updated_at` | `timestamptz` | no | `now()` |  |
 
@@ -38,6 +40,8 @@ Constraints:
 
 - `submissions_pkey`
 - `submissions_score_range_check`
+- `submissions_elapsed_ms_check`
+- `submissions_max_rss_kb_check`
 - `submissions_user_id_fkey` (added when auth schema is already applied)
 - `submissions_problem_id_fkey` (added when problem schema is already applied)
 

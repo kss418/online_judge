@@ -77,11 +77,55 @@ CREATE TABLE IF NOT EXISTS submissions(
     score SMALLINT,
     compile_output TEXT,
     judge_output TEXT,
+    elapsed_ms BIGINT,
+    max_rss_kb BIGINT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT submissions_score_range_check
-        CHECK(score IS NULL OR (score >= 0 AND score <= 100))
+        CHECK(score IS NULL OR (score >= 0 AND score <= 100)),
+    CONSTRAINT submissions_elapsed_ms_check
+        CHECK(elapsed_ms IS NULL OR elapsed_ms >= 0),
+    CONSTRAINT submissions_max_rss_kb_check
+        CHECK(max_rss_kb IS NULL OR max_rss_kb >= 0)
 );
+
+ALTER TABLE submissions
+    ADD COLUMN IF NOT EXISTS elapsed_ms BIGINT;
+
+ALTER TABLE submissions
+    ADD COLUMN IF NOT EXISTS max_rss_kb BIGINT;
+
+DO $do$
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM pg_constraint
+        WHERE
+            conrelid = 'submissions'::regclass AND
+            conname = 'submissions_elapsed_ms_check'
+    ) THEN
+        ALTER TABLE submissions
+            ADD CONSTRAINT submissions_elapsed_ms_check
+            CHECK(elapsed_ms IS NULL OR elapsed_ms >= 0);
+    END IF;
+END
+$do$;
+
+DO $do$
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM pg_constraint
+        WHERE
+            conrelid = 'submissions'::regclass AND
+            conname = 'submissions_max_rss_kb_check'
+    ) THEN
+        ALTER TABLE submissions
+            ADD CONSTRAINT submissions_max_rss_kb_check
+            CHECK(max_rss_kb IS NULL OR max_rss_kb >= 0);
+    END IF;
+END
+$do$;
 
 CREATE TABLE IF NOT EXISTS submission_status_history(
     history_id BIGSERIAL PRIMARY KEY,
@@ -166,6 +210,10 @@ CREATE INDEX IF NOT EXISTS submission_queue_leased_until_idx
 
 INSERT INTO schema_migrations(version)
 VALUES('submission_schema_v1')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('submission_schema_v2')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

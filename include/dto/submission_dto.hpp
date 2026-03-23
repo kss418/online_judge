@@ -53,6 +53,8 @@ namespace submission_dto{
         std::optional<std::int16_t> score_opt = std::nullopt;
         std::optional<std::string> compile_output_opt = std::nullopt;
         std::optional<std::string> judge_output_opt = std::nullopt;
+        std::optional<std::int64_t> elapsed_ms_opt = std::nullopt;
+        std::optional<std::int64_t> max_rss_kb_opt = std::nullopt;
         std::string created_at;
         std::string updated_at;
     };
@@ -87,6 +89,8 @@ namespace submission_dto{
         std::optional<std::int16_t> score_opt = std::nullopt;
         std::optional<std::string> compile_output_opt = std::nullopt;
         std::optional<std::string> judge_output_opt = std::nullopt;
+        std::optional<std::int64_t> elapsed_ms_opt = std::nullopt;
+        std::optional<std::int64_t> max_rss_kb_opt = std::nullopt;
         std::optional<std::string> reason_opt = std::nullopt;
     };
 

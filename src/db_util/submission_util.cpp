@@ -22,6 +22,8 @@ std::expected<submission_dto::detail, error_code> submission_util::get_submissio
         "score, "
         "compile_output, "
         "judge_output, "
+        "elapsed_ms, "
+        "max_rss_kb, "
         "created_at::text, "
         "updated_at::text "
         "FROM submissions "
@@ -47,8 +49,14 @@ std::expected<submission_dto::detail, error_code> submission_util::get_submissio
     if(!submission_detail_result[0][7].is_null()){
         detail_value.judge_output_opt = submission_detail_result[0][7].as<std::string>();
     }
-    detail_value.created_at = submission_detail_result[0][8].as<std::string>();
-    detail_value.updated_at = submission_detail_result[0][9].as<std::string>();
+    if(!submission_detail_result[0][8].is_null()){
+        detail_value.elapsed_ms_opt = submission_detail_result[0][8].as<std::int64_t>();
+    }
+    if(!submission_detail_result[0][9].is_null()){
+        detail_value.max_rss_kb_opt = submission_detail_result[0][9].as<std::int64_t>();
+    }
+    detail_value.created_at = submission_detail_result[0][10].as<std::string>();
+    detail_value.updated_at = submission_detail_result[0][11].as<std::string>();
     return detail_value;
 }
 
@@ -222,6 +230,8 @@ std::expected<submission_dto::finalize_result, error_code> submission_util::fina
         "score = $3, "
         "compile_output = $4, "
         "judge_output = $5, "
+        "elapsed_ms = $6, "
+        "max_rss_kb = $7, "
         "updated_at = NOW() "
         "WHERE submission_id = $1",
         pqxx::params{
@@ -229,7 +239,9 @@ std::expected<submission_dto::finalize_result, error_code> submission_util::fina
             to_string(finalize_request_value.to_status),
             finalize_request_value.score_opt,
             finalize_request_value.compile_output_opt,
-            finalize_request_value.judge_output_opt
+            finalize_request_value.judge_output_opt,
+            finalize_request_value.elapsed_ms_opt,
+            finalize_request_value.max_rss_kb_opt
         }
     );
 

@@ -449,6 +449,12 @@ if submission_detail.get("compile_output", "missing") is not None:
 if submission_detail.get("judge_output", "missing") is not None:
     raise SystemExit("expected judge_output to be null before judging")
 
+if submission_detail.get("elapsed_ms", "missing") is not None:
+    raise SystemExit("expected elapsed_ms to be null before judging")
+
+if submission_detail.get("max_rss_kb", "missing") is not None:
+    raise SystemExit("expected max_rss_kb to be null before judging")
+
 created_at = submission_detail.get("created_at")
 updated_at = submission_detail.get("updated_at")
 
