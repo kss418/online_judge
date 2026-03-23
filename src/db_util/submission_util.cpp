@@ -4,6 +4,49 @@
 
 #include <string>
 
+std::expected<submission_dto::history_list, error_code> submission_util::get_submission_history(
+    pqxx::transaction_base& transaction,
+    std::int64_t submission_id
+){
+    if(submission_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto submission_history_query = transaction.exec(
+        "SELECT "
+        "history_id, "
+        "from_status::text, "
+        "to_status::text, "
+        "reason, "
+        "created_at::text "
+        "FROM submission_status_history "
+        "WHERE submission_id = $1 "
+        "ORDER BY history_id ASC",
+        pqxx::params{submission_id}
+    );
+    if(submission_history_query.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    submission_dto::history_list history_values;
+    history_values.reserve(submission_history_query.size());
+    for(const auto& submission_history_row : submission_history_query){
+        submission_dto::history history_value;
+        history_value.history_id = submission_history_row[0].as<std::int64_t>();
+        if(!submission_history_row[1].is_null()){
+            history_value.from_status_opt = submission_history_row[1].as<std::string>();
+        }
+        history_value.to_status = submission_history_row[2].as<std::string>();
+        if(!submission_history_row[3].is_null()){
+            history_value.reason_opt = submission_history_row[3].as<std::string>();
+        }
+        history_value.created_at = submission_history_row[4].as<std::string>();
+        history_values.push_back(std::move(history_value));
+    }
+
+    return history_values;
+}
+
 std::expected<submission_dto::source_detail, error_code> submission_util::get_submission_source(
     pqxx::transaction_base& transaction,
     std::int64_t submission_id

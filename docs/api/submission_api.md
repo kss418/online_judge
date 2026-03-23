@@ -244,6 +244,92 @@ Examples:
 }
 ```
 
+### `GET /api/submission/{submission_id}/history`
+
+Get the status transition history for a single submission. This endpoint is public and does not require authentication.
+
+#### request
+
+- request body: none
+- required header: none
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `submission_id` | `int64` | must be positive |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `submission_id` | `int64` | submission id |
+| `history_count` | `int64` | number of history rows |
+| `histories` | `array` | oldest-first status transition rows |
+
+Each history row contains:
+
+| field | type | note |
+|---|---|---|
+| `history_id` | `int64` | history row id |
+| `from_status` | `string \| null` | previous status; `null` for the first row |
+| `to_status` | `string` | next status |
+| `reason` | `string \| null` | optional transition reason |
+| `created_at` | `string` | transition timestamp |
+
+Example:
+
+```json
+{
+  "submission_id": 12,
+  "history_count": 3,
+  "histories": [
+    {
+      "history_id": 41,
+      "from_status": null,
+      "to_status": "queued",
+      "reason": null,
+      "created_at": "2026-03-23 14:00:00.000000+09"
+    },
+    {
+      "history_id": 42,
+      "from_status": "queued",
+      "to_status": "judging",
+      "reason": null,
+      "created_at": "2026-03-23 14:00:01.000000+09"
+    },
+    {
+      "history_id": 43,
+      "from_status": "judging",
+      "to_status": "accepted",
+      "reason": null,
+      "created_at": "2026-03-23 14:00:02.000000+09"
+    }
+  ]
+}
+```
+
+#### error response
+
+- unknown `submission_id`: `404 Not Found`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
+Example:
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "failed to get submission history: invalid argument"
+  }
+}
+```
+
 ### `GET /api/submission?user_id=...&problem_id=...&status=...`
 
 List submissions using optional filters. This endpoint is public and does not require authentication.

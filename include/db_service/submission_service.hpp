@@ -13,6 +13,10 @@
 #include <vector>
 
 namespace submission_service{
+    std::expected<submission_dto::history_list, error_code> get_submission_history(
+        db_connection& connection,
+        std::int64_t submission_id
+    );
     std::expected<submission_dto::source_detail, error_code> get_submission_source(
         db_connection& connection,
         std::int64_t submission_id

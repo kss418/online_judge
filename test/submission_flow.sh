@@ -47,6 +47,8 @@ submission_detail_response_file="$(mktemp)"
 missing_submission_response_file="$(mktemp)"
 list_submission_response_file="$(mktemp)"
 top_submission_response_file="$(mktemp)"
+submission_history_response_file="$(mktemp)"
+missing_history_response_file="$(mktemp)"
 submission_source_response_file="$(mktemp)"
 unauthorized_source_response_file="$(mktemp)"
 forbidden_source_response_file="$(mktemp)"
@@ -76,6 +78,8 @@ cleanup(){
         "${missing_submission_response_file}" \
         "${list_submission_response_file}" \
         "${top_submission_response_file}" \
+        "${submission_history_response_file}" \
+        "${missing_history_response_file}" \
         "${submission_source_response_file}" \
         "${unauthorized_source_response_file}" \
         "${forbidden_source_response_file}" \
@@ -306,6 +310,50 @@ fi
 append_log_line "${test_log_temp_file}" "missing submission get passed: status=${missing_submission_status_code}"
 print_success_log "missing submission get success"
 
+submission_history_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${submission_history_response_file}" \
+        --write-out "%{http_code}" \
+        --request GET \
+        "${base_url}/api/submission/${submission_id}/history"
+)"
+
+if [[ "${submission_history_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "submission history get failed: status=${submission_history_status_code}"
+    publish_failure_logs
+    echo "submission history get test failed: expected status 200, got ${submission_history_status_code}" >&2
+    echo "response body:" >&2
+    cat "${submission_history_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "submission history get passed: status=${submission_history_status_code}"
+print_success_log "submission history get success"
+
+missing_history_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${missing_history_response_file}" \
+        --write-out "%{http_code}" \
+        --request GET \
+        "${base_url}/api/submission/${missing_submission_id}/history"
+)"
+
+if [[ "${missing_history_status_code}" != "404" ]]; then
+    append_log_line "${test_log_temp_file}" "missing submission history get failed: status=${missing_history_status_code}"
+    publish_failure_logs
+    echo "missing submission history get test failed: expected status 404, got ${missing_history_status_code}" >&2
+    echo "response body:" >&2
+    cat "${missing_history_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "missing submission history get passed: status=${missing_history_status_code}"
+print_success_log "missing submission history get success"
+
 submission_source_status_code="$(
     curl \
         --silent \
@@ -485,6 +533,69 @@ fi
 
 append_log_line "${test_log_temp_file}" "submission top list passed: status=${top_submission_status_code}"
 print_success_log "submission top list success"
+
+if ! python3 \
+    - "${submission_history_response_file}" \
+    "${submission_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    submission_history = json.load(response_file)
+
+expected_submission_id = int(sys.argv[2])
+
+if submission_history.get("submission_id") != expected_submission_id:
+    raise SystemExit("submission_id mismatch in submission history response")
+
+if submission_history.get("history_count") != 1:
+    raise SystemExit("expected history_count to be 1 in submission history response")
+
+histories = submission_history.get("histories")
+if not isinstance(histories, list) or len(histories) != 1:
+    raise SystemExit("expected exactly one history row in submission history response")
+
+history = histories[0]
+
+history_id = history.get("history_id")
+if not isinstance(history_id, int) or history_id <= 0:
+    raise SystemExit("invalid history_id in submission history response")
+
+if history.get("from_status", "missing") is not None:
+    raise SystemExit("expected from_status to be null in submission history response")
+
+if history.get("to_status") != "queued":
+    raise SystemExit("expected to_status to be queued in submission history response")
+
+if history.get("reason", "missing") is not None:
+    raise SystemExit("expected reason to be null in submission history response")
+
+created_at = history.get("created_at")
+if not isinstance(created_at, str) or not created_at:
+    raise SystemExit("missing created_at in submission history response")
+PY
+then
+    append_log_line "${test_log_temp_file}" "submission history validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 \
+    - "${missing_history_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("error", {}).get("code") != "not_found":
+    raise SystemExit("unexpected error code for missing submission history response")
+PY
+then
+    append_log_line "${test_log_temp_file}" "submission history error validation failed"
+    publish_failure_logs
+    exit 1
+fi
 
 if ! python3 \
     - "${submission_source_response_file}" \

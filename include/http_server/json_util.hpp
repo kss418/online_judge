@@ -26,6 +26,16 @@ namespace json_util{
     boost::json::object make_submission_created_object(
         const submission_dto::created& created_value
     );
+    boost::json::object make_submission_history_object(
+        const submission_dto::history& history_value
+    );
+    boost::json::array make_submission_history_array(
+        const submission_dto::history_list& history_values
+    );
+    boost::json::object make_submission_history_list_object(
+        std::int64_t submission_id,
+        const submission_dto::history_list& history_values
+    );
     boost::json::object make_submission_source_object(
         const submission_dto::source_detail& source_detail_value
     );

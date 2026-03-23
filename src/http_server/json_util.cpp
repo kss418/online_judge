@@ -42,6 +42,50 @@ boost::json::object json_util::make_submission_created_object(
     return response_object;
 }
 
+boost::json::object json_util::make_submission_history_object(
+    const submission_dto::history& history_value
+){
+    boost::json::object response_object;
+    response_object["history_id"] = history_value.history_id;
+    if(history_value.from_status_opt){
+        response_object["from_status"] = *history_value.from_status_opt;
+    }
+    else{
+        response_object["from_status"] = nullptr;
+    }
+    response_object["to_status"] = history_value.to_status;
+    if(history_value.reason_opt){
+        response_object["reason"] = *history_value.reason_opt;
+    }
+    else{
+        response_object["reason"] = nullptr;
+    }
+    response_object["created_at"] = history_value.created_at;
+    return response_object;
+}
+
+boost::json::array json_util::make_submission_history_array(
+    const submission_dto::history_list& history_values
+){
+    boost::json::array response_array;
+    response_array.reserve(history_values.size());
+    for(const auto& history_value : history_values){
+        response_array.push_back(make_submission_history_object(history_value));
+    }
+    return response_array;
+}
+
+boost::json::object json_util::make_submission_history_list_object(
+    std::int64_t submission_id,
+    const submission_dto::history_list& history_values
+){
+    boost::json::object response_object;
+    response_object["submission_id"] = submission_id;
+    response_object["history_count"] = static_cast<std::int64_t>(history_values.size());
+    response_object["histories"] = make_submission_history_array(history_values);
+    return response_object;
+}
+
 boost::json::object json_util::make_submission_source_object(
     const submission_dto::source_detail& source_detail_value
 ){

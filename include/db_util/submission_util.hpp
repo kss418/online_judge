@@ -15,6 +15,10 @@ namespace pqxx{
 }
 
 namespace submission_util{
+    std::expected<submission_dto::history_list, error_code> get_submission_history(
+        pqxx::transaction_base& transaction,
+        std::int64_t submission_id
+    );
     std::expected<submission_dto::source_detail, error_code> get_submission_source(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id

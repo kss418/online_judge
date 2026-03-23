@@ -90,6 +90,7 @@ runtime_error_submission_detail_response_file="$(mktemp)"
 time_limit_exceeded_submission_detail_response_file="$(mktemp)"
 problem_response_file="$(mktemp)"
 submission_source_response_file="$(mktemp)"
+submission_history_response_file="$(mktemp)"
 
 cleanup_judge_server(){
     if [[ -n "${judge_server_pid:-}" ]]; then
@@ -119,7 +120,8 @@ cleanup(){
         "${runtime_error_submission_detail_response_file}" \
         "${time_limit_exceeded_submission_detail_response_file}" \
         "${problem_response_file}" \
-        "${submission_source_response_file}"
+        "${submission_source_response_file}" \
+        "${submission_history_response_file}"
 }
 
 print_success_log(){
@@ -411,41 +413,72 @@ validate_submission_status_history(){
     local submission_id="$1"
     local expected_final_status="$2"
 
-    local actual_history=""
-    actual_history="$(
-        PGPASSWORD="${DB_PASSWORD}" psql \
-            -X \
-            -h "${DB_HOST}" \
-            -p "${DB_PORT}" \
-            -U "${DB_USER}" \
-            -d "${DB_NAME}" \
-            -v ON_ERROR_STOP=1 \
-            -qAt <<SQL
-SELECT COALESCE(from_status::text, 'null') || '->' || to_status::text
-FROM submission_status_history
-WHERE submission_id = ${submission_id}
-ORDER BY history_id ASC;
-SQL
+    local submission_history_status_code=""
+    submission_history_status_code="$(
+        curl \
+            --silent \
+            --show-error \
+            --output "${submission_history_response_file}" \
+            --write-out "%{http_code}" \
+            --request GET \
+            "${base_url}/api/submission/${submission_id}/history"
     )"
 
-    python3 - "${expected_final_status}" "${actual_history}" <<'PY'
+    if [[ "${submission_history_status_code}" != "200" ]]; then
+        append_log_line "${test_log_temp_file}" "submission history get failed: submission_id=${submission_id}, status=${submission_history_status_code}"
+        publish_all_failure_logs
+        echo "submission history get failed for submission ${submission_id}: expected status 200, got ${submission_history_status_code}" >&2
+        echo "response body:" >&2
+        cat "${submission_history_response_file}" >&2
+        exit 1
+    fi
+
+    python3 \
+        - "${submission_history_response_file}" \
+        "${submission_id}" \
+        "${expected_final_status}" <<'PY'
+import json
 import sys
 
-expected_final_status = sys.argv[1]
-actual_lines = [line for line in sys.argv[2].splitlines() if line]
-expected_lines = [
-    "null->queued",
-    "queued->judging",
-    f"judging->{expected_final_status}",
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+expected_submission_id = int(sys.argv[2])
+expected_final_status = sys.argv[3]
+
+if response.get("submission_id") != expected_submission_id:
+    raise SystemExit("submission_id mismatch in submission history response")
+
+if response.get("history_count") != 3:
+    raise SystemExit("expected history_count to be 3 in submission history response")
+
+histories = response.get("histories")
+if not isinstance(histories, list) or len(histories) != 3:
+    raise SystemExit("expected three history rows in submission history response")
+
+expected_pairs = [
+    (None, "queued"),
+    ("queued", "judging"),
+    ("judging", expected_final_status),
 ]
 
-if actual_lines != expected_lines:
-    raise SystemExit(
-        "unexpected submission status history: "
-        + repr(actual_lines)
-        + " != "
-        + repr(expected_lines)
-    )
+for history, expected_pair in zip(histories, expected_pairs):
+    history_id = history.get("history_id")
+    if not isinstance(history_id, int) or history_id <= 0:
+        raise SystemExit("invalid history_id in submission history response")
+
+    if history.get("from_status", "missing") != expected_pair[0]:
+        raise SystemExit("from_status mismatch in submission history response")
+
+    if history.get("to_status") != expected_pair[1]:
+        raise SystemExit("to_status mismatch in submission history response")
+
+    if history.get("reason", "missing") is not None:
+        raise SystemExit("expected reason to be null in submission history response")
+
+    created_at = history.get("created_at")
+    if not isinstance(created_at, str) or not created_at:
+        raise SystemExit("missing created_at in submission history response")
 PY
 }
 

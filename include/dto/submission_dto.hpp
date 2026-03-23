@@ -17,6 +17,14 @@ namespace http_util{
 }
 
 namespace submission_dto{
+    struct history{
+        std::int64_t history_id = 0;
+        std::optional<std::string> from_status_opt = std::nullopt;
+        std::string to_status;
+        std::optional<std::string> reason_opt = std::nullopt;
+        std::string created_at;
+    };
+
     struct source{
         std::string language;
         std::string source_code;
@@ -110,6 +118,8 @@ namespace submission_dto{
         std::int64_t problem_id = 0;
         bool should_increase_accepted_count = false;
     };
+
+    using history_list = std::vector<history>;
 
     std::expected<source, dto_validation_error> make_source_from_json(
         const boost::json::object& json

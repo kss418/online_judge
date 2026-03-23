@@ -11,6 +11,11 @@ namespace submission_handler{
     using request_type = boost::beast::http::request<boost::beast::http::string_body>;
     using response_type = boost::beast::http::response<boost::beast::http::string_body>;
 
+    response_type get_submission_history(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t submission_id
+    );
     response_type get_submission_source(
         const request_type& request,
         db_connection& db_connection_value,
