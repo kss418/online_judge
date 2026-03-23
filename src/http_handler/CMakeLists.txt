@@ -4,4 +4,5 @@ target_sources(lib
         problem_handler.cpp
         submission_handler.cpp
         system_handler.cpp
+        testcase_handler.cpp
 )

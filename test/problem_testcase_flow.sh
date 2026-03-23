@@ -471,7 +471,17 @@ if [[ "${delete_testcase_status_code}" != "200" ]]; then
     exit 1
 fi
 
-if [[ "$(cat "${delete_testcase_response_file}")" != "problem testcase deleted" ]]; then
+if ! python3 - "${delete_testcase_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("message") != "problem testcase deleted":
+    raise SystemExit("unexpected delete testcase message")
+PY
+then
     append_log_line "${test_log_temp_file}" "delete testcase body mismatch"
     publish_failure_logs
     echo "problem testcase flow delete failed: unexpected response body" >&2

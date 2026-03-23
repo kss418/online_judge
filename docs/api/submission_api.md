@@ -68,16 +68,27 @@ Example:
 - invalid `problem_id` or unknown problem: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
-Error bodies are currently returned as plain text.
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
 Examples:
 
-```text
-required fields: language, source_code
+```json
+{
+  "error": {
+    "code": "missing_field",
+    "message": "required field: language",
+    "field": "language"
+  }
+}
 ```
 
-```text
-failed to create submission: foreign key violation
+```json
+{
+  "error": {
+    "code": "bad_request",
+    "message": "failed to create submission: invalid argument"
+  }
+}
 ```
 
 ### `GET /api/submission/{submission_id}`
@@ -137,12 +148,17 @@ Example:
 - unknown `submission_id`: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 
-Error bodies are currently returned as plain text.
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
 Example:
 
-```text
-failed to get submission detail: invalid argument
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "failed to get submission detail: invalid argument"
+  }
+}
 ```
 
 ### `GET /api/submission?user_id=...&problem_id=...&status=...`

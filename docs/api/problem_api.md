@@ -154,12 +154,17 @@ Example:
 - unknown `problem_id`: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 
-Error bodies are currently returned as plain text.
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
 Examples:
 
-```text
-problem not found
+```json
+{
+  "error": {
+    "code": "problem_not_found",
+    "message": "problem not found"
+  }
+}
 ```
 
 ### `POST /api/problem`
@@ -220,12 +225,17 @@ Example:
 - missing required fields: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
-Error bodies are currently returned as plain text.
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
 Examples:
 
-```text
-admin bearer token required
+```json
+{
+  "error": {
+    "code": "admin_bearer_token_required",
+    "message": "admin bearer token required"
+  }
+}
 ```
 
 ### `PUT /api/problem/{problem_id}/limits`
@@ -266,11 +276,19 @@ Example:
 #### success response
 
 - status: `200 OK`
-- content-type: `text/plain; charset=utf-8`
-- body:
+- content-type: `application/json; charset=utf-8`
+- body fields:
 
-```text
-problem limits updated
+| field | type | note |
+|---|---|---|
+| `message` | `string` | always `problem limits updated` |
+
+Example:
+
+```json
+{
+  "message": "problem limits updated"
+}
 ```
 
 #### error response
@@ -284,7 +302,19 @@ problem limits updated
 - invalid limit values: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
-Error bodies are currently returned as plain text.
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
+Example:
+
+```json
+{
+  "error": {
+    "code": "invalid_field",
+    "message": "memory_limit_mb must be a positive integer",
+    "field": "memory_limit_mb"
+  }
+}
+```
 
 ### `PUT /api/problem/{problem_id}/statement`
 
@@ -328,11 +358,19 @@ Example:
 #### success response
 
 - status: `200 OK`
-- content-type: `text/plain; charset=utf-8`
-- body:
+- content-type: `application/json; charset=utf-8`
+- body fields:
 
-```text
-problem statement updated
+| field | type | note |
+|---|---|---|
+| `message` | `string` | always `problem statement updated` |
+
+Example:
+
+```json
+{
+  "message": "problem statement updated"
+}
 ```
 
 #### error response
@@ -345,7 +383,7 @@ problem statement updated
 - unknown `problem_id`: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
-Error bodies are currently returned as plain text.
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
 ### `GET /api/problem/{problem_id}/testcases`
 
@@ -459,7 +497,7 @@ Example:
 - unknown `problem_id`: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
-Error bodies are currently returned as plain text.
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
 ### `PUT /api/problem/{problem_id}/testcases/{testcase_order}`
 
@@ -533,11 +571,19 @@ Delete the last hidden testcase of an existing problem. This endpoint is admin-o
 #### success response
 
 - status: `200 OK`
-- content-type: `text/plain; charset=utf-8`
-- body:
+- content-type: `application/json; charset=utf-8`
+- body fields:
 
-```text
-problem testcase deleted
+| field | type | note |
+|---|---|---|
+| `message` | `string` | always `problem testcase deleted` |
+
+Example:
+
+```json
+{
+  "message": "problem testcase deleted"
+}
 ```
 
 #### error response
@@ -550,6 +596,11 @@ problem testcase deleted
 
 Examples:
 
-```text
-required fields: testcase_input, testcase_output
+```json
+{
+  "error": {
+    "code": "invalid_testcase_delete_request",
+    "message": "failed to delete testcase: invalid argument"
+  }
+}
 ```

@@ -56,20 +56,36 @@ Example:
 - duplicate `user_login_id`: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
-Error bodies are currently returned as plain text.
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
 Examples:
 
-```text
-invalid json
+```json
+{
+  "error": {
+    "code": "invalid_json",
+    "message": "invalid json"
+  }
+}
 ```
 
-```text
-required fields: user_login_id, raw_password
+```json
+{
+  "error": {
+    "code": "missing_field",
+    "message": "required field: user_login_id",
+    "field": "user_login_id"
+  }
+}
 ```
 
-```text
-failed to sign up: invalid argument
+```json
+{
+  "error": {
+    "code": "bad_request",
+    "message": "failed to sign up: invalid argument"
+  }
+}
 ```
 
 ### `POST /api/auth/login`
@@ -124,12 +140,17 @@ Example:
 - wrong `user_login_id` or `raw_password`: `401 Unauthorized`
 - unexpected internal failure: `500 Internal Server Error`
 
-Error bodies are currently returned as plain text.
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
 Examples:
 
-```text
-invalid credentials
+```json
+{
+  "error": {
+    "code": "invalid_credentials",
+    "message": "invalid credentials"
+  }
+}
 ```
 
 ### `POST /api/auth/logout`
@@ -154,11 +175,19 @@ Authorization: Bearer ...
 #### success response
 
 - status: `200 OK`
-- content-type: `text/plain; charset=utf-8`
-- body:
+- content-type: `application/json; charset=utf-8`
+- body fields:
 
-```text
-logged out
+| field | type | note |
+|---|---|---|
+| `message` | `string` | always `logged out` |
+
+Example:
+
+```json
+{
+  "message": "logged out"
+}
 ```
 
 #### error response
@@ -167,16 +196,26 @@ logged out
 - invalid, expired, or revoked token: `401 Unauthorized`
 - unexpected internal failure: `500 Internal Server Error`
 
-Error bodies are currently returned as plain text.
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
 Examples:
 
-```text
-missing or invalid bearer token
+```json
+{
+  "error": {
+    "code": "missing_or_invalid_bearer_token",
+    "message": "missing or invalid bearer token"
+  }
+}
 ```
 
-```text
-invalid, expired, or revoked token
+```json
+{
+  "error": {
+    "code": "invalid_or_expired_token",
+    "message": "invalid, expired, or revoked token"
+  }
+}
 ```
 
 ### `POST /api/auth/token/renew`
@@ -201,11 +240,19 @@ Authorization: Bearer ...
 #### success response
 
 - status: `200 OK`
-- content-type: `text/plain; charset=utf-8`
-- body:
+- content-type: `application/json; charset=utf-8`
+- body fields:
 
-```text
-token renewed
+| field | type | note |
+|---|---|---|
+| `message` | `string` | always `token renewed` |
+
+Example:
+
+```json
+{
+  "message": "token renewed"
+}
 ```
 
 #### error response
@@ -214,14 +261,24 @@ token renewed
 - invalid, expired, or revoked token: `401 Unauthorized`
 - unexpected internal failure: `500 Internal Server Error`
 
-Error bodies are currently returned as plain text.
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
 Examples:
 
-```text
-missing or invalid bearer token
+```json
+{
+  "error": {
+    "code": "missing_or_invalid_bearer_token",
+    "message": "missing or invalid bearer token"
+  }
+}
 ```
 
-```text
-invalid, expired, or revoked token
+```json
+{
+  "error": {
+    "code": "invalid_or_expired_token",
+    "message": "invalid, expired, or revoked token"
+  }
+}
 ```

@@ -1,6 +1,7 @@
 #include "http_router/problem_router.hpp"
 
 #include "common/string_util.hpp"
+#include "http_handler/testcase_handler.hpp"
 #include "http_server/http_util.hpp"
 
 problem_router::problem_router(db_connection& db_connection) :
@@ -131,7 +132,7 @@ problem_router::response_type problem_router::handle_testcases(
     std::int64_t problem_id
 ){
     if(request.method() == boost::beast::http::verb::get){
-        return problem_handler::handle_list_testcases_get(
+        return testcase_handler::handle_list_testcases_get(
             request,
             db_connection_,
             problem_id
@@ -139,7 +140,7 @@ problem_router::response_type problem_router::handle_testcases(
     }
 
     if(request.method() == boost::beast::http::verb::post){
-        return problem_handler::handle_create_testcase_post(
+        return testcase_handler::handle_create_testcase_post(
             request,
             db_connection_,
             problem_id
@@ -147,7 +148,7 @@ problem_router::response_type problem_router::handle_testcases(
     }
 
     if(request.method() == boost::beast::http::verb::delete_){
-        return problem_handler::handle_delete_testcase_delete(
+        return testcase_handler::handle_delete_testcase_delete(
             request,
             db_connection_,
             problem_id
@@ -163,7 +164,7 @@ problem_router::response_type problem_router::handle_testcase(
     std::int32_t testcase_order
 ){
     if(request.method() == boost::beast::http::verb::put){
-        return problem_handler::handle_set_testcase_put(
+        return testcase_handler::handle_set_testcase_put(
             request,
             db_connection_,
             problem_id,
