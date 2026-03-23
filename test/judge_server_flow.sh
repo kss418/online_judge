@@ -89,6 +89,7 @@ compile_error_submission_detail_response_file="$(mktemp)"
 runtime_error_submission_detail_response_file="$(mktemp)"
 time_limit_exceeded_submission_detail_response_file="$(mktemp)"
 problem_response_file="$(mktemp)"
+submission_source_response_file="$(mktemp)"
 
 cleanup_judge_server(){
     if [[ -n "${judge_server_pid:-}" ]]; then
@@ -117,7 +118,8 @@ cleanup(){
         "${compile_error_submission_detail_response_file}" \
         "${runtime_error_submission_detail_response_file}" \
         "${time_limit_exceeded_submission_detail_response_file}" \
-        "${problem_response_file}"
+        "${problem_response_file}" \
+        "${submission_source_response_file}"
 }
 
 print_success_log(){
@@ -447,6 +449,73 @@ if actual_lines != expected_lines:
 PY
 }
 
+validate_submission_source(){
+    local response_file_path="$1"
+    local expected_submission_id="$2"
+    local expected_user_id="$3"
+    local expected_problem_id="$4"
+    local expected_language="$5"
+    local expected_source_code="$6"
+    local compile_output_expectation="$7"
+    local judge_output_expectation="$8"
+
+    python3 \
+        - "${response_file_path}" \
+        "${expected_submission_id}" \
+        "${expected_user_id}" \
+        "${expected_problem_id}" \
+        "${expected_language}" \
+        "${expected_source_code}" \
+        "${compile_output_expectation}" \
+        "${judge_output_expectation}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+expected_submission_id = int(sys.argv[2])
+expected_user_id = int(sys.argv[3])
+expected_problem_id = int(sys.argv[4])
+expected_language = sys.argv[5]
+expected_source_code = sys.argv[6]
+compile_output_expectation = sys.argv[7]
+judge_output_expectation = sys.argv[8]
+
+if response.get("submission_id") != expected_submission_id:
+    raise SystemExit("submission_id mismatch in submission source response")
+if response.get("user_id") != expected_user_id:
+    raise SystemExit("user_id mismatch in submission source response")
+if response.get("problem_id") != expected_problem_id:
+    raise SystemExit("problem_id mismatch in submission source response")
+if response.get("language") != expected_language:
+    raise SystemExit("language mismatch in submission source response")
+if response.get("source_code") != expected_source_code:
+    raise SystemExit("source_code mismatch in submission source response")
+
+compile_output = response.get("compile_output", "__missing__")
+judge_output = response.get("judge_output", "__missing__")
+
+if compile_output_expectation == "null":
+    if compile_output is not None:
+        raise SystemExit("expected compile_output to be null in submission source response")
+elif compile_output_expectation == "non_empty":
+    if not isinstance(compile_output, str) or not compile_output:
+        raise SystemExit("expected compile_output to be a non-empty string in submission source response")
+else:
+    raise SystemExit("invalid compile_output expectation for submission source response")
+
+if judge_output_expectation == "null":
+    if judge_output is not None:
+        raise SystemExit("expected judge_output to be null in submission source response")
+elif judge_output_expectation == "non_empty":
+    if not isinstance(judge_output, str) or not judge_output:
+        raise SystemExit("expected judge_output to be a non-empty string in submission source response")
+else:
+    raise SystemExit("invalid judge_output expectation for submission source response")
+PY
+}
+
 trap cleanup EXIT
 
 require_command curl
@@ -765,6 +834,36 @@ validate_submission_detail \
     "null" \
     "null"
 validate_submission_status_history "${compile_error_submission_id}" "compile_error"
+
+compile_error_submission_source_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${submission_source_response_file}" \
+        --write-out "%{http_code}" \
+        --request GET \
+        -H "Authorization: Bearer ${sign_up_token}" \
+        "${base_url}/api/submission/${compile_error_submission_id}/source"
+)"
+
+if [[ "${compile_error_submission_source_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "compile_error submission source get failed: status=${compile_error_submission_source_status_code}"
+    publish_all_failure_logs
+    echo "compile_error submission source get failed: expected status 200, got ${compile_error_submission_source_status_code}" >&2
+    echo "response body:" >&2
+    cat "${submission_source_response_file}" >&2
+    exit 1
+fi
+
+validate_submission_source \
+    "${submission_source_response_file}" \
+    "${compile_error_submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "cpp" \
+    "${compile_error_source_code}" \
+    "non_empty" \
+    "null"
 print_success_log "compile_error submission judged successfully"
 
 runtime_error_submission_request_body="$(
@@ -829,6 +928,36 @@ validate_submission_detail \
     "non_negative_int" \
     "non_negative_int"
 validate_submission_status_history "${runtime_error_submission_id}" "runtime_error"
+
+runtime_error_submission_source_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${submission_source_response_file}" \
+        --write-out "%{http_code}" \
+        --request GET \
+        -H "Authorization: Bearer ${sign_up_token}" \
+        "${base_url}/api/submission/${runtime_error_submission_id}/source"
+)"
+
+if [[ "${runtime_error_submission_source_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "runtime_error submission source get failed: status=${runtime_error_submission_source_status_code}"
+    publish_all_failure_logs
+    echo "runtime_error submission source get failed: expected status 200, got ${runtime_error_submission_source_status_code}" >&2
+    echo "response body:" >&2
+    cat "${submission_source_response_file}" >&2
+    exit 1
+fi
+
+validate_submission_source \
+    "${submission_source_response_file}" \
+    "${runtime_error_submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "cpp" \
+    "${runtime_error_source_code}" \
+    "null" \
+    "non_empty"
 print_success_log "runtime_error submission judged successfully"
 
 time_limit_exceeded_submission_request_body="$(

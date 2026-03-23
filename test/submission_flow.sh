@@ -519,6 +519,12 @@ if submission_source.get("language") != expected_language:
 
 if submission_source.get("source_code") != expected_source_code:
     raise SystemExit("source_code mismatch in submission source response")
+
+if submission_source.get("compile_output", "missing") is not None:
+    raise SystemExit("expected compile_output to be null in submission source response")
+
+if submission_source.get("judge_output", "missing") is not None:
+    raise SystemExit("expected judge_output to be null in submission source response")
 PY
 then
     append_log_line "${test_log_temp_file}" "submission source validation failed"
@@ -590,6 +596,12 @@ if submission_source.get("language") != expected_language:
 
 if submission_source.get("source_code") != expected_source_code:
     raise SystemExit("source_code mismatch in admin submission source response")
+
+if submission_source.get("compile_output", "missing") is not None:
+    raise SystemExit("expected compile_output to be null in admin submission source response")
+
+if submission_source.get("judge_output", "missing") is not None:
+    raise SystemExit("expected judge_output to be null in admin submission source response")
 PY
 then
     append_log_line "${test_log_temp_file}" "admin submission source validation failed"

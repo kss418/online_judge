@@ -51,6 +51,18 @@ boost::json::object json_util::make_submission_source_object(
     response_object["problem_id"] = source_detail_value.problem_id;
     response_object["language"] = source_detail_value.language;
     response_object["source_code"] = source_detail_value.source_code;
+    if(source_detail_value.compile_output_opt){
+        response_object["compile_output"] = *source_detail_value.compile_output_opt;
+    }
+    else{
+        response_object["compile_output"] = nullptr;
+    }
+    if(source_detail_value.judge_output_opt){
+        response_object["judge_output"] = *source_detail_value.judge_output_opt;
+    }
+    else{
+        response_object["judge_output"] = nullptr;
+    }
     return response_object;
 }
 

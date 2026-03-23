@@ -28,6 +28,8 @@ namespace submission_dto{
         std::int64_t problem_id = 0;
         std::string language;
         std::string source_code;
+        std::optional<std::string> compile_output_opt = std::nullopt;
+        std::optional<std::string> judge_output_opt = std::nullopt;
     };
 
     struct create_request{

@@ -197,6 +197,8 @@ Get the submitted source code for a single submission. This endpoint requires a 
 | `problem_id` | `int64` | related problem id |
 | `language` | `string` | submitted language |
 | `source_code` | `string` | exact submitted source code |
+| `compile_output` | `string \| null` | compiler stderr when compilation fails |
+| `judge_output` | `string \| null` | runtime or judge stderr when available |
 
 Example:
 
@@ -206,7 +208,9 @@ Example:
   "user_id": 7,
   "problem_id": 3,
   "language": "cpp",
-  "source_code": "#include <iostream>\nint main(){ return 0; }\n"
+  "source_code": "#include <iostream>\nint main(){ return 0; }\n",
+  "compile_output": null,
+  "judge_output": null
 }
 ```
 

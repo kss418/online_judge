@@ -18,7 +18,9 @@ std::expected<submission_dto::source_detail, error_code> submission_util::get_su
         "user_id, "
         "problem_id, "
         "language, "
-        "source_code "
+        "source_code, "
+        "compile_output, "
+        "judge_output "
         "FROM submissions "
         "WHERE submission_id = $1",
         pqxx::params{submission_id}
@@ -33,6 +35,14 @@ std::expected<submission_dto::source_detail, error_code> submission_util::get_su
     source_detail_value.problem_id = submission_source_query[0][2].as<std::int64_t>();
     source_detail_value.language = submission_source_query[0][3].as<std::string>();
     source_detail_value.source_code = submission_source_query[0][4].as<std::string>();
+    if(!submission_source_query[0][5].is_null()){
+        source_detail_value.compile_output_opt =
+            submission_source_query[0][5].as<std::string>();
+    }
+    if(!submission_source_query[0][6].is_null()){
+        source_detail_value.judge_output_opt =
+            submission_source_query[0][6].as<std::string>();
+    }
     return source_detail_value;
 }
 
