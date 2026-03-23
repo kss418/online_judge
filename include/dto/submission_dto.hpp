@@ -132,4 +132,19 @@ namespace submission_dto{
         std::int64_t user_id,
         std::int64_t problem_id
     );
+    status_update make_status_update(
+        std::int64_t submission_id,
+        submission_status to_status,
+        std::optional<std::string> reason_opt = std::nullopt
+    );
+    finalize_request make_finalize_request(
+        std::int64_t submission_id,
+        submission_status to_status,
+        std::optional<std::int16_t> score_opt = std::nullopt,
+        std::optional<std::string> compile_output_opt = std::nullopt,
+        std::optional<std::string> judge_output_opt = std::nullopt,
+        std::optional<std::int64_t> elapsed_ms_opt = std::nullopt,
+        std::optional<std::int64_t> max_rss_kb_opt = std::nullopt,
+        std::optional<std::string> reason_opt = std::nullopt
+    );
 }

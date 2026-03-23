@@ -169,3 +169,37 @@ submission_dto::make_create_request_from_json(
     create_request_value.source_value = std::move(*source_exp);
     return create_request_value;
 }
+
+submission_dto::status_update submission_dto::make_status_update(
+    std::int64_t submission_id,
+    submission_status to_status,
+    std::optional<std::string> reason_opt
+){
+    status_update status_update_value;
+    status_update_value.submission_id = submission_id;
+    status_update_value.to_status = to_status;
+    status_update_value.reason_opt = std::move(reason_opt);
+    return status_update_value;
+}
+
+submission_dto::finalize_request submission_dto::make_finalize_request(
+    std::int64_t submission_id,
+    submission_status to_status,
+    std::optional<std::int16_t> score_opt,
+    std::optional<std::string> compile_output_opt,
+    std::optional<std::string> judge_output_opt,
+    std::optional<std::int64_t> elapsed_ms_opt,
+    std::optional<std::int64_t> max_rss_kb_opt,
+    std::optional<std::string> reason_opt
+){
+    finalize_request finalize_request_value;
+    finalize_request_value.submission_id = submission_id;
+    finalize_request_value.to_status = to_status;
+    finalize_request_value.score_opt = std::move(score_opt);
+    finalize_request_value.compile_output_opt = std::move(compile_output_opt);
+    finalize_request_value.judge_output_opt = std::move(judge_output_opt);
+    finalize_request_value.elapsed_ms_opt = std::move(elapsed_ms_opt);
+    finalize_request_value.max_rss_kb_opt = std::move(max_rss_kb_opt);
+    finalize_request_value.reason_opt = std::move(reason_opt);
+    return finalize_request_value;
+}

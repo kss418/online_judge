@@ -50,6 +50,9 @@ private:
         submission_status submission_status_value,
         const std::vector<sandbox_runner::run_result>& run_results
     );
+    std::expected<void, error_code> process_submission(
+        const submission_dto::queued_submission& queued_submission_value
+    );
     std::expected<judge_result, error_code> judge_submission(
         std::int64_t problem_id,
         const testcase_runner::run_batch& run_batch_value
