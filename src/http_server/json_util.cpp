@@ -61,6 +61,20 @@ boost::json::object json_util::make_submission_summary_object(
         response_object["score"] = nullptr;
     }
 
+    if(summary_value.elapsed_ms_opt){
+        response_object["elapsed_ms"] = *summary_value.elapsed_ms_opt;
+    }
+    else{
+        response_object["elapsed_ms"] = nullptr;
+    }
+
+    if(summary_value.max_rss_kb_opt){
+        response_object["max_rss_kb"] = *summary_value.max_rss_kb_opt;
+    }
+    else{
+        response_object["max_rss_kb"] = nullptr;
+    }
+
     return response_object;
 }
 

@@ -399,6 +399,12 @@ for submission in (latest_submission, older_submission):
     if submission.get("score", "missing") is not None:
         raise SystemExit("expected unfiltered submission list score to be null before judging")
 
+    if submission.get("elapsed_ms", "missing") is not None:
+        raise SystemExit("expected unfiltered submission list elapsed_ms to be null before judging")
+
+    if submission.get("max_rss_kb", "missing") is not None:
+        raise SystemExit("expected unfiltered submission list max_rss_kb to be null before judging")
+
     if "source_code" in submission:
         raise SystemExit("unfiltered submission list response must not expose source_code")
 PY
@@ -524,6 +530,12 @@ for submission in submissions:
     if submission.get("score", "missing") is not None:
         raise SystemExit("expected submission list score to be null before judging")
 
+    if submission.get("elapsed_ms", "missing") is not None:
+        raise SystemExit("expected submission list elapsed_ms to be null before judging")
+
+    if submission.get("max_rss_kb", "missing") is not None:
+        raise SystemExit("expected submission list max_rss_kb to be null before judging")
+
     created_at = submission.get("created_at")
     updated_at = submission.get("updated_at")
 
@@ -585,6 +597,12 @@ if submission.get("status") != "queued":
 
 if submission.get("score", "missing") is not None:
     raise SystemExit("expected top filtered submission list score to be null before judging")
+
+if submission.get("elapsed_ms", "missing") is not None:
+    raise SystemExit("expected top filtered submission list elapsed_ms to be null before judging")
+
+if submission.get("max_rss_kb", "missing") is not None:
+    raise SystemExit("expected top filtered submission list max_rss_kb to be null before judging")
 
 if "source_code" in submission:
     raise SystemExit("top filtered submission list response must not expose source_code")

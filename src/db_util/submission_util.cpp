@@ -288,6 +288,8 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_util:
         "language, "
         "status::text, "
         "score, "
+        "elapsed_ms, "
+        "max_rss_kb, "
         "created_at::text, "
         "updated_at::text "
         "FROM submissions "
@@ -335,8 +337,14 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_util:
         if(!submission_summary_row[5].is_null()){
             summary_value.score_opt = submission_summary_row[5].as<std::int16_t>();
         }
-        summary_value.created_at = submission_summary_row[6].as<std::string>();
-        summary_value.updated_at = submission_summary_row[7].as<std::string>();
+        if(!submission_summary_row[6].is_null()){
+            summary_value.elapsed_ms_opt = submission_summary_row[6].as<std::int64_t>();
+        }
+        if(!submission_summary_row[7].is_null()){
+            summary_value.max_rss_kb_opt = submission_summary_row[7].as<std::int64_t>();
+        }
+        summary_value.created_at = submission_summary_row[8].as<std::string>();
+        summary_value.updated_at = submission_summary_row[9].as<std::string>();
         summary_values.push_back(std::move(summary_value));
     }
 

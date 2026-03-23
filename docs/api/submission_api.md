@@ -216,6 +216,8 @@ Each submission summary contains:
 | `language` | `string` | submitted language |
 | `status` | `string` | current submission status |
 | `score` | `int16 \| null` | score, null before judging finishes |
+| `elapsed_ms` | `int64 \| null` | max elapsed wall-clock time among executed testcases; `null` before execution starts or when compilation fails |
+| `max_rss_kb` | `int64 \| null` | max resident set size among executed testcases in kilobytes; `null` before execution starts or when compilation fails |
 | `created_at` | `string` | creation timestamp |
 | `updated_at` | `string` | last update timestamp |
 
@@ -232,6 +234,8 @@ Example:
       "language": "cpp",
       "status": "accepted",
       "score": 100,
+      "elapsed_ms": 612,
+      "max_rss_kb": 18432,
       "created_at": "2026-03-19 14:02:11.123456+09",
       "updated_at": "2026-03-19 14:02:12.123456+09"
     },
@@ -242,6 +246,8 @@ Example:
       "language": "python",
       "status": "accepted",
       "score": 100,
+      "elapsed_ms": 31,
+      "max_rss_kb": 12288,
       "created_at": "2026-03-19 13:58:44.000000+09",
       "updated_at": "2026-03-19 13:58:45.000000+09"
     }
