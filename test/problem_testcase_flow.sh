@@ -137,7 +137,7 @@ create_testcase_status_code="$(
         -H "Authorization: Bearer ${sign_up_token}" \
         -H "Content-Type: application/json" \
         -d "${testcase_request_body}" \
-        "${base_url}/api/problem/${problem_id}/testcases"
+        "${base_url}/api/problem/${problem_id}/testcase"
 )"
 
 if [[ "${create_testcase_status_code}" != "201" ]]; then
@@ -191,7 +191,7 @@ create_empty_testcase_status_code="$(
         -H "Authorization: Bearer ${sign_up_token}" \
         -H "Content-Type: application/json" \
         -d "${empty_testcase_request_body}" \
-        "${base_url}/api/problem/${problem_id}/testcases"
+        "${base_url}/api/problem/${problem_id}/testcase"
 )"
 
 if [[ "${create_empty_testcase_status_code}" != "201" ]]; then
@@ -227,7 +227,7 @@ list_testcases_status_code="$(
         --output "${list_testcases_response_file}" \
         --write-out "%{http_code}" \
         -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/problem/${problem_id}/testcases"
+        "${base_url}/api/problem/${problem_id}/testcase"
 )"
 
 if [[ "${list_testcases_status_code}" != "200" ]]; then
@@ -345,7 +345,7 @@ update_testcase_status_code="$(
         -H "Authorization: Bearer ${sign_up_token}" \
         -H "Content-Type: application/json" \
         -d "${update_testcase_request_body}" \
-        "${base_url}/api/problem/${problem_id}/testcases/1"
+        "${base_url}/api/problem/${problem_id}/testcase/1"
 )"
 
 if [[ "${update_testcase_status_code}" != "200" ]]; then
@@ -384,7 +384,7 @@ updated_testcases_status_code="$(
         --output "${updated_testcases_response_file}" \
         --write-out "%{http_code}" \
         -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/problem/${problem_id}/testcases"
+        "${base_url}/api/problem/${problem_id}/testcase"
 )"
 
 if [[ "${updated_testcases_status_code}" != "200" ]]; then
@@ -459,7 +459,7 @@ delete_testcase_status_code="$(
         --write-out "%{http_code}" \
         -X DELETE \
         -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/problem/${problem_id}/testcases"
+        "${base_url}/api/problem/${problem_id}/testcase"
 )"
 
 if [[ "${delete_testcase_status_code}" != "200" ]]; then
@@ -498,7 +498,7 @@ remaining_testcases_status_code="$(
         --output "${remaining_testcases_response_file}" \
         --write-out "%{http_code}" \
         -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/problem/${problem_id}/testcases"
+        "${base_url}/api/problem/${problem_id}/testcase"
 )"
 
 if [[ "${remaining_testcases_status_code}" != "200" ]]; then

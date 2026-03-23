@@ -385,7 +385,7 @@ Example:
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
-### `GET /api/problem/{problem_id}/samples`
+### `GET /api/problem/{problem_id}/sample`
 
 List public samples for an existing problem. Samples are managed as statement content, and this endpoint exposes sample ids and full sample payloads.
 
@@ -424,7 +424,7 @@ Each sample object contains:
 - unknown `problem_id`: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 
-### `POST /api/problem/{problem_id}/samples`
+### `POST /api/problem/{problem_id}/sample`
 
 Append one public sample to an existing problem. Samples are part of the statement content and are also returned by the public problem detail endpoint. Creating a sample increments the problem version.
 
@@ -491,7 +491,7 @@ Example:
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
-### `PUT /api/problem/{problem_id}/samples/{sample_order}`
+### `PUT /api/problem/{problem_id}/sample/{sample_order}`
 
 Replace one public sample of an existing problem. This endpoint is admin-only and increments the problem version.
 
@@ -541,7 +541,7 @@ Replace one public sample of an existing problem. This endpoint is admin-only an
 - unknown `problem_id` or `sample_order`: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
-### `DELETE /api/problem/{problem_id}/samples`
+### `DELETE /api/problem/{problem_id}/sample`
 
 Delete the last public sample of an existing problem. Samples are part of the statement content, so this also changes the public problem detail payload and increments the problem version.
 
@@ -597,7 +597,7 @@ Example:
 }
 ```
 
-### `GET /api/problem/{problem_id}/testcases`
+### `GET /api/problem/{problem_id}/testcase`
 
 List hidden testcases for an existing problem. This endpoint is admin-only.
 
@@ -644,7 +644,7 @@ Each testcase object contains:
 - unknown `problem_id`: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 
-### `POST /api/problem/{problem_id}/testcases`
+### `POST /api/problem/{problem_id}/testcase`
 
 Append one hidden testcase to an existing problem. The created testcase is not returned by the public problem detail endpoint, but the problem version is incremented so judge-side testcase sync can detect the update.
 
@@ -711,7 +711,7 @@ Example:
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
-### `PUT /api/problem/{problem_id}/testcases/{testcase_order}`
+### `PUT /api/problem/{problem_id}/testcase/{testcase_order}`
 
 Replace one hidden testcase of an existing problem. This endpoint is admin-only.
 
@@ -761,7 +761,7 @@ Replace one hidden testcase of an existing problem. This endpoint is admin-only.
 - unknown `problem_id` or `testcase_order`: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
-### `DELETE /api/problem/{problem_id}/testcases`
+### `DELETE /api/problem/{problem_id}/testcase`
 
 Delete the last hidden testcase of an existing problem. This endpoint is admin-only.
 

@@ -13,33 +13,33 @@ namespace problem_content_handler{
     using request_type = boost::beast::http::request<boost::beast::http::string_body>;
     using response_type = boost::beast::http::response<boost::beast::http::string_body>;
 
-    response_type handle_set_limits_put(
+    response_type put_limits(
         const request_type& request,
         db_connection& db_connection_value,
         std::int64_t problem_id
     );
-    response_type handle_set_statement_put(
+    response_type put_statement(
         const request_type& request,
         db_connection& db_connection_value,
         std::int64_t problem_id
     );
-    response_type handle_list_samples_get(
+    response_type get_samples(
         const request_type& request,
         db_connection& db_connection_value,
         std::int64_t problem_id
     );
-    response_type handle_create_sample_post(
+    response_type post_sample(
         const request_type& request,
         db_connection& db_connection_value,
         std::int64_t problem_id
     );
-    response_type handle_set_sample_put(
+    response_type put_sample(
         const request_type& request,
         db_connection& db_connection_value,
         std::int64_t problem_id,
         std::int32_t sample_order
     );
-    response_type handle_delete_sample_delete(
+    response_type delete_sample(
         const request_type& request,
         db_connection& db_connection_value,
         std::int64_t problem_id

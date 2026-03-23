@@ -7,7 +7,7 @@
 
 #include <string>
 
-auth_handler::response_type auth_handler::handle_sign_up_post(
+auth_handler::response_type auth_handler::post_sign_up(
     const request_type& request,
     db_connection& db_connection_value
 ){
@@ -38,7 +38,7 @@ auth_handler::response_type auth_handler::handle_sign_up_post(
     );
 }
 
-auth_handler::response_type auth_handler::handle_login_post(
+auth_handler::response_type auth_handler::post_login(
     const request_type& request,
     db_connection& db_connection_value
 ){
@@ -77,7 +77,7 @@ auth_handler::response_type auth_handler::handle_login_post(
     );
 }
 
-auth_handler::response_type auth_handler::handle_token_renew_post(
+auth_handler::response_type auth_handler::post_token_renew(
     const request_type& request,
     db_connection& db_connection_value
 ){
@@ -122,7 +122,7 @@ auth_handler::response_type auth_handler::handle_token_renew_post(
     );
 }
 
-auth_handler::response_type auth_handler::handle_logout_post(
+auth_handler::response_type auth_handler::post_logout(
     const request_type& request,
     db_connection& db_connection_value
 ){

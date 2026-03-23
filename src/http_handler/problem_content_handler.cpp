@@ -9,7 +9,7 @@
 
 #include <utility>
 
-problem_content_handler::response_type problem_content_handler::handle_set_limits_put(
+problem_content_handler::response_type problem_content_handler::put_limits(
     const request_type& request,
     db_connection& db_connection_value,
     std::int64_t problem_id
@@ -51,7 +51,7 @@ problem_content_handler::response_type problem_content_handler::handle_set_limit
     );
 }
 
-problem_content_handler::response_type problem_content_handler::handle_set_statement_put(
+problem_content_handler::response_type problem_content_handler::put_statement(
     const request_type& request,
     db_connection& db_connection_value,
     std::int64_t problem_id
@@ -93,7 +93,7 @@ problem_content_handler::response_type problem_content_handler::handle_set_state
     );
 }
 
-problem_content_handler::response_type problem_content_handler::handle_list_samples_get(
+problem_content_handler::response_type problem_content_handler::get_samples(
     const request_type& request,
     db_connection& db_connection_value,
     std::int64_t problem_id
@@ -140,7 +140,7 @@ problem_content_handler::response_type problem_content_handler::handle_list_samp
     );
 }
 
-problem_content_handler::response_type problem_content_handler::handle_create_sample_post(
+problem_content_handler::response_type problem_content_handler::post_sample(
     const request_type& request,
     db_connection& db_connection_value,
     std::int64_t problem_id
@@ -182,7 +182,7 @@ problem_content_handler::response_type problem_content_handler::handle_create_sa
     );
 }
 
-problem_content_handler::response_type problem_content_handler::handle_set_sample_put(
+problem_content_handler::response_type problem_content_handler::put_sample(
     const request_type& request,
     db_connection& db_connection_value,
     std::int64_t problem_id,
@@ -240,7 +240,7 @@ problem_content_handler::response_type problem_content_handler::handle_set_sampl
     );
 }
 
-problem_content_handler::response_type problem_content_handler::handle_delete_sample_delete(
+problem_content_handler::response_type problem_content_handler::delete_sample(
     const request_type& request,
     db_connection& db_connection_value,
     std::int64_t problem_id

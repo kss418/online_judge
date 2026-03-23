@@ -519,7 +519,7 @@ create_testcase_status_code="$(
         -H "Authorization: Bearer ${sign_up_token}" \
         -H "Content-Type: application/json" \
         -d "${testcase_request_body}" \
-        "${base_url}/api/problem/${problem_id}/testcases"
+        "${base_url}/api/problem/${problem_id}/testcase"
 )"
 
 if [[ "${create_testcase_status_code}" != "201" ]]; then

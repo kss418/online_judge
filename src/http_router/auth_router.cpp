@@ -30,7 +30,7 @@ auth_router::response_type auth_router::route(
 
 auth_router::response_type auth_router::handle_sign_up(const request_type& request){
     if(request.method() == boost::beast::http::verb::post){
-        return auth_handler::handle_sign_up_post(request, db_connection_);
+        return auth_handler::post_sign_up(request, db_connection_);
     }
 
     return http_response_util::create_method_not_allowed(request);
@@ -38,7 +38,7 @@ auth_router::response_type auth_router::handle_sign_up(const request_type& reque
 
 auth_router::response_type auth_router::handle_login(const request_type& request){
     if(request.method() == boost::beast::http::verb::post){
-        return auth_handler::handle_login_post(request, db_connection_);
+        return auth_handler::post_login(request, db_connection_);
     }
 
     return http_response_util::create_method_not_allowed(request);
@@ -46,7 +46,7 @@ auth_router::response_type auth_router::handle_login(const request_type& request
 
 auth_router::response_type auth_router::handle_token_renew(const request_type& request){
     if(request.method() == boost::beast::http::verb::post){
-        return auth_handler::handle_token_renew_post(request, db_connection_);
+        return auth_handler::post_token_renew(request, db_connection_);
     }
 
     return http_response_util::create_method_not_allowed(request);
@@ -54,7 +54,7 @@ auth_router::response_type auth_router::handle_token_renew(const request_type& r
 
 auth_router::response_type auth_router::handle_logout(const request_type& request){
     if(request.method() == boost::beast::http::verb::post){
-        return auth_handler::handle_logout_post(request, db_connection_);
+        return auth_handler::post_logout(request, db_connection_);
     }
 
     return http_response_util::create_method_not_allowed(request);

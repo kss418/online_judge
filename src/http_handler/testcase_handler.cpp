@@ -9,7 +9,7 @@
 
 #include <utility>
 
-testcase_handler::response_type testcase_handler::handle_list_testcases_get(
+testcase_handler::response_type testcase_handler::get_testcases(
     const request_type& request,
     db_connection& db_connection_value,
     std::int64_t problem_id
@@ -64,7 +64,7 @@ testcase_handler::response_type testcase_handler::handle_list_testcases_get(
     );
 }
 
-testcase_handler::response_type testcase_handler::handle_create_testcase_post(
+testcase_handler::response_type testcase_handler::post_testcase(
     const request_type& request,
     db_connection& db_connection_value,
     std::int64_t problem_id
@@ -106,7 +106,7 @@ testcase_handler::response_type testcase_handler::handle_create_testcase_post(
     );
 }
 
-testcase_handler::response_type testcase_handler::handle_set_testcase_put(
+testcase_handler::response_type testcase_handler::put_testcase(
     const request_type& request,
     db_connection& db_connection_value,
     std::int64_t problem_id,
@@ -164,7 +164,7 @@ testcase_handler::response_type testcase_handler::handle_set_testcase_put(
     );
 }
 
-testcase_handler::response_type testcase_handler::handle_delete_testcase_delete(
+testcase_handler::response_type testcase_handler::delete_testcase(
     const request_type& request,
     db_connection& db_connection_value,
     std::int64_t problem_id

@@ -49,7 +49,7 @@ problem_router::response_type problem_router::route(
         return handle_statement(request, *problem_id_opt);
     }
 
-    if(path_segments.size() == 2 && path_segments[1] == "samples"){
+    if(path_segments.size() == 2 && path_segments[1] == "sample"){
         const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
         if(!problem_id_opt){
             return http_response_util::create_not_found(request);
@@ -58,7 +58,7 @@ problem_router::response_type problem_router::route(
         return handle_samples(request, *problem_id_opt);
     }
 
-    if(path_segments.size() == 3 && path_segments[1] == "samples"){
+    if(path_segments.size() == 3 && path_segments[1] == "sample"){
         const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
         const auto sample_order_opt = string_util::parse_positive_int32(path_segments[2]);
         if(!problem_id_opt || !sample_order_opt){
@@ -68,7 +68,7 @@ problem_router::response_type problem_router::route(
         return handle_sample(request, *problem_id_opt, *sample_order_opt);
     }
 
-    if(path_segments.size() == 2 && path_segments[1] == "testcases"){
+    if(path_segments.size() == 2 && path_segments[1] == "testcase"){
         const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
         if(!problem_id_opt){
             return http_response_util::create_not_found(request);
@@ -77,7 +77,7 @@ problem_router::response_type problem_router::route(
         return handle_testcases(request, *problem_id_opt);
     }
 
-    if(path_segments.size() == 3 && path_segments[1] == "testcases"){
+    if(path_segments.size() == 3 && path_segments[1] == "testcase"){
         const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
         const auto testcase_order_opt = string_util::parse_positive_int32(path_segments[2]);
         if(!problem_id_opt || !testcase_order_opt){
@@ -92,11 +92,11 @@ problem_router::response_type problem_router::route(
 
 problem_router::response_type problem_router::handle_problems(const request_type& request){
     if(request.method() == boost::beast::http::verb::get){
-        return problem_handler::handle_list_problems_get(request, db_connection_);
+        return problem_handler::get_problems(request, db_connection_);
     }
 
     if(request.method() == boost::beast::http::verb::post){
-        return problem_handler::handle_create_problem_post(request, db_connection_);
+        return problem_handler::post_problem(request, db_connection_);
     }
 
     return http_response_util::create_method_not_allowed(request);
@@ -107,7 +107,7 @@ problem_router::response_type problem_router::handle_get_problem(
     std::int64_t problem_id
 ){
     if(request.method() == boost::beast::http::verb::get){
-        return problem_handler::handle_get_problem_get(
+        return problem_handler::get_problem(
             request,
             db_connection_,
             problem_id
@@ -122,7 +122,7 @@ problem_router::response_type problem_router::handle_set_limits(
     std::int64_t problem_id
 ){
     if(request.method() == boost::beast::http::verb::put){
-        return problem_content_handler::handle_set_limits_put(
+        return problem_content_handler::put_limits(
             request,
             db_connection_,
             problem_id
@@ -137,7 +137,7 @@ problem_router::response_type problem_router::handle_statement(
     std::int64_t problem_id
 ){
     if(request.method() == boost::beast::http::verb::put){
-        return problem_content_handler::handle_set_statement_put(
+        return problem_content_handler::put_statement(
             request,
             db_connection_,
             problem_id
@@ -152,7 +152,7 @@ problem_router::response_type problem_router::handle_samples(
     std::int64_t problem_id
 ){
     if(request.method() == boost::beast::http::verb::get){
-        return problem_content_handler::handle_list_samples_get(
+        return problem_content_handler::get_samples(
             request,
             db_connection_,
             problem_id
@@ -160,7 +160,7 @@ problem_router::response_type problem_router::handle_samples(
     }
 
     if(request.method() == boost::beast::http::verb::post){
-        return problem_content_handler::handle_create_sample_post(
+        return problem_content_handler::post_sample(
             request,
             db_connection_,
             problem_id
@@ -168,7 +168,7 @@ problem_router::response_type problem_router::handle_samples(
     }
 
     if(request.method() == boost::beast::http::verb::delete_){
-        return problem_content_handler::handle_delete_sample_delete(
+        return problem_content_handler::delete_sample(
             request,
             db_connection_,
             problem_id
@@ -184,7 +184,7 @@ problem_router::response_type problem_router::handle_sample(
     std::int32_t sample_order
 ){
     if(request.method() == boost::beast::http::verb::put){
-        return problem_content_handler::handle_set_sample_put(
+        return problem_content_handler::put_sample(
             request,
             db_connection_,
             problem_id,
@@ -200,7 +200,7 @@ problem_router::response_type problem_router::handle_testcases(
     std::int64_t problem_id
 ){
     if(request.method() == boost::beast::http::verb::get){
-        return testcase_handler::handle_list_testcases_get(
+        return testcase_handler::get_testcases(
             request,
             db_connection_,
             problem_id
@@ -208,7 +208,7 @@ problem_router::response_type problem_router::handle_testcases(
     }
 
     if(request.method() == boost::beast::http::verb::post){
-        return testcase_handler::handle_create_testcase_post(
+        return testcase_handler::post_testcase(
             request,
             db_connection_,
             problem_id
@@ -216,7 +216,7 @@ problem_router::response_type problem_router::handle_testcases(
     }
 
     if(request.method() == boost::beast::http::verb::delete_){
-        return testcase_handler::handle_delete_testcase_delete(
+        return testcase_handler::delete_testcase(
             request,
             db_connection_,
             problem_id
@@ -232,7 +232,7 @@ problem_router::response_type problem_router::handle_testcase(
     std::int32_t testcase_order
 ){
     if(request.method() == boost::beast::http::verb::put){
-        return testcase_handler::handle_set_testcase_put(
+        return testcase_handler::put_testcase(
             request,
             db_connection_,
             problem_id,

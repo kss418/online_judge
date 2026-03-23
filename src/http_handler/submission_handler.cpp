@@ -5,7 +5,7 @@
 #include "http_server/http_util.hpp"
 #include "http_server/json_util.hpp"
 
-submission_handler::response_type submission_handler::handle_get_submission_get(
+submission_handler::response_type submission_handler::get_submission(
     const request_type& request,
     db_connection& db_connection_value,
     std::int64_t submission_id
@@ -29,7 +29,7 @@ submission_handler::response_type submission_handler::handle_get_submission_get(
     );
 }
 
-submission_handler::response_type submission_handler::handle_create_submission_post(
+submission_handler::response_type submission_handler::post_submission(
     const request_type& request,
     db_connection& db_connection_value,
     std::int64_t problem_id
@@ -73,7 +73,7 @@ submission_handler::response_type submission_handler::handle_create_submission_p
     );
 }
 
-submission_handler::response_type submission_handler::handle_list_submissions_get(
+submission_handler::response_type submission_handler::get_submissions(
     const request_type& request,
     db_connection& db_connection_value
 ){

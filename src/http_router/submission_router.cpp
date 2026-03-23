@@ -36,7 +36,7 @@ submission_router::response_type submission_router::handle_submissions(
     const request_type& request
 ){
     if(request.method() == boost::beast::http::verb::get){
-        return submission_handler::handle_list_submissions_get(
+        return submission_handler::get_submissions(
             request,
             db_connection_
         );
@@ -50,7 +50,7 @@ submission_router::response_type submission_router::handle_submission(
     std::int64_t resource_id
 ){
     if(request.method() == boost::beast::http::verb::get){
-        return submission_handler::handle_get_submission_get(
+        return submission_handler::get_submission(
             request,
             db_connection_,
             resource_id
@@ -58,7 +58,7 @@ submission_router::response_type submission_router::handle_submission(
     }
 
     if(request.method() == boost::beast::http::verb::post){
-        return submission_handler::handle_create_submission_post(
+        return submission_handler::post_submission(
             request,
             db_connection_,
             resource_id

@@ -7,7 +7,7 @@
 #include "db_service/problem_core_service.hpp"
 #include "db_service/problem_statistics_service.hpp"
 
-problem_handler::response_type problem_handler::handle_list_problems_get(
+problem_handler::response_type problem_handler::get_problems(
     const request_type& request,
     db_connection& db_connection_value
 ){
@@ -36,7 +36,7 @@ problem_handler::response_type problem_handler::handle_list_problems_get(
     );
 }
 
-problem_handler::response_type problem_handler::handle_get_problem_get(
+problem_handler::response_type problem_handler::get_problem(
     const request_type& request,
     db_connection& db_connection_value,
     std::int64_t problem_id
@@ -157,7 +157,7 @@ problem_handler::response_type problem_handler::handle_get_problem_get(
     );
 }
 
-problem_handler::response_type problem_handler::handle_create_problem_post(
+problem_handler::response_type problem_handler::post_problem(
     const request_type& request,
     db_connection& db_connection_value
 ){

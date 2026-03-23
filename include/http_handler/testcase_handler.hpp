@@ -13,23 +13,23 @@ namespace testcase_handler{
     using request_type = boost::beast::http::request<boost::beast::http::string_body>;
     using response_type = boost::beast::http::response<boost::beast::http::string_body>;
 
-    response_type handle_list_testcases_get(
+    response_type get_testcases(
         const request_type& request,
         db_connection& db_connection_value,
         std::int64_t problem_id
     );
-    response_type handle_create_testcase_post(
+    response_type post_testcase(
         const request_type& request,
         db_connection& db_connection_value,
         std::int64_t problem_id
     );
-    response_type handle_set_testcase_put(
+    response_type put_testcase(
         const request_type& request,
         db_connection& db_connection_value,
         std::int64_t problem_id,
         std::int32_t testcase_order
     );
-    response_type handle_delete_testcase_delete(
+    response_type delete_testcase(
         const request_type& request,
         db_connection& db_connection_value,
         std::int64_t problem_id

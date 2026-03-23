@@ -136,7 +136,7 @@ create_sample_status_code="$(
         -H "Authorization: Bearer ${sign_up_token}" \
         -H "Content-Type: application/json" \
         -d "${sample_request_body}" \
-        "${base_url}/api/problem/${problem_id}/samples"
+        "${base_url}/api/problem/${problem_id}/sample"
 )"
 
 if [[ "${create_sample_status_code}" != "201" ]]; then
@@ -190,7 +190,7 @@ create_empty_sample_status_code="$(
         -H "Authorization: Bearer ${sign_up_token}" \
         -H "Content-Type: application/json" \
         -d "${empty_sample_request_body}" \
-        "${base_url}/api/problem/${problem_id}/samples"
+        "${base_url}/api/problem/${problem_id}/sample"
 )"
 
 if [[ "${create_empty_sample_status_code}" != "201" ]]; then
@@ -225,7 +225,7 @@ list_samples_status_code="$(
         --show-error \
         --output "${list_samples_response_file}" \
         --write-out "%{http_code}" \
-        "${base_url}/api/problem/${problem_id}/samples"
+        "${base_url}/api/problem/${problem_id}/sample"
 )"
 
 if [[ "${list_samples_status_code}" != "200" ]]; then
@@ -365,7 +365,7 @@ update_sample_status_code="$(
         -H "Authorization: Bearer ${sign_up_token}" \
         -H "Content-Type: application/json" \
         -d "${update_sample_request_body}" \
-        "${base_url}/api/problem/${problem_id}/samples/1"
+        "${base_url}/api/problem/${problem_id}/sample/1"
 )"
 
 if [[ "${update_sample_status_code}" != "200" ]]; then
@@ -401,7 +401,7 @@ list_updated_samples_status_code="$(
         --show-error \
         --output "${updated_samples_response_file}" \
         --write-out "%{http_code}" \
-        "${base_url}/api/problem/${problem_id}/samples"
+        "${base_url}/api/problem/${problem_id}/sample"
 )"
 
 if [[ "${list_updated_samples_status_code}" != "200" ]]; then
@@ -513,7 +513,7 @@ delete_sample_status_code="$(
         --write-out "%{http_code}" \
         -X DELETE \
         -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/problem/${problem_id}/samples"
+        "${base_url}/api/problem/${problem_id}/sample"
 )"
 
 if [[ "${delete_sample_status_code}" != "200" ]]; then
@@ -542,7 +542,7 @@ remaining_samples_status_code="$(
         --show-error \
         --output "${remaining_samples_response_file}" \
         --write-out "%{http_code}" \
-        "${base_url}/api/problem/${problem_id}/samples"
+        "${base_url}/api/problem/${problem_id}/sample"
 )"
 
 if [[ "${remaining_samples_status_code}" != "200" ]]; then
