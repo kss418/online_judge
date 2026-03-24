@@ -104,6 +104,30 @@ std::expected<void, error_code> submission_service::update_submission_status(
     );
 }
 
+std::expected<void, error_code> submission_service::mark_queued(
+    db_connection& connection,
+    std::int64_t submission_id
+){
+    const submission_dto::status_update status_update_value =
+        submission_dto::make_status_update(
+            submission_id,
+            submission_status::queued
+        );
+    return update_submission_status(connection, status_update_value);
+}
+
+std::expected<void, error_code> submission_service::mark_judging(
+    db_connection& connection,
+    std::int64_t submission_id
+){
+    const submission_dto::status_update status_update_value =
+        submission_dto::make_status_update(
+            submission_id,
+            submission_status::judging
+        );
+    return update_submission_status(connection, status_update_value);
+}
+
 std::expected<std::optional<submission_dto::queued_submission>, error_code>
 submission_service::lease_submission(
     db_connection& connection,

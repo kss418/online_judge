@@ -194,7 +194,8 @@ std::expected<void, error_code> judge_worker::run(){
         );
         
         if(!process_submission_exp){
-            const auto mark_queued_exp = mark_queued(
+            const auto mark_queued_exp = submission_service::mark_queued(
+                db_connection_,
                 queued_submission_value.submission_id
             );
             if(!mark_queued_exp){
@@ -213,7 +214,10 @@ std::expected<void, error_code> judge_worker::process_submission(
         return std::unexpected(source_file_path_exp.error());
     }
 
-    const auto mark_judging_exp = mark_judging(queued_submission_value.submission_id);
+    const auto mark_judging_exp = submission_service::mark_judging(
+        db_connection_,
+        queued_submission_value.submission_id
+    );
     if(!mark_judging_exp){
         return std::unexpected(mark_judging_exp.error());
     }
@@ -296,31 +300,6 @@ std::expected<void, error_code> judge_worker::finalize_submission(
 
     return {};
 }
-
-std::expected<void, error_code> judge_worker::mark_queued(std::int64_t submission_id){
-    const submission_dto::status_update status_update_value =
-        submission_dto::make_status_update(
-            submission_id,
-            submission_status::queued
-        );
-    return submission_service::update_submission_status(
-        db_connection_,
-        status_update_value
-    );
-}
-
-std::expected<void, error_code> judge_worker::mark_judging(std::int64_t submission_id){
-    const submission_dto::status_update status_update_value =
-        submission_dto::make_status_update(
-            submission_id,
-            submission_status::judging
-        );
-    return submission_service::update_submission_status(
-        db_connection_,
-        status_update_value
-    );
-}
-
 std::expected<std::filesystem::path, error_code> judge_worker::prepare_submission(
     const submission_dto::queued_submission& queued_submission_value
 ){

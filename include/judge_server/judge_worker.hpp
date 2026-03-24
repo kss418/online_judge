@@ -56,8 +56,6 @@ private:
         judge_result result,
         const std::vector<sandbox_runner::run_result>& run_results
     );
-    std::expected<void, error_code> mark_queued(std::int64_t submission_id);
-    std::expected<void, error_code> mark_judging(std::int64_t submission_id);
     std::expected<void, error_code> process_submission(
         const submission_dto::queued_submission& queued_submission_value
     );
