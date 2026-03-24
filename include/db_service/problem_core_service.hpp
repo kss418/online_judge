@@ -31,6 +31,15 @@ namespace problem_core_service{
         db_connection& connection,
         const problem_dto::create_request& create_request_value
     );
+    std::expected<void, error_code> update_problem(
+        db_connection& connection,
+        const problem_dto::reference& problem_reference_value,
+        const problem_dto::update_request& update_request_value
+    );
+    std::expected<void, error_code> delete_problem(
+        db_connection& connection,
+        const problem_dto::reference& problem_reference_value
+    );
     std::expected<std::vector<problem_dto::summary>, error_code> list_problems(
         db_connection& connection,
         const problem_dto::list_filter& filter_value

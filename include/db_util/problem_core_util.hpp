@@ -32,6 +32,15 @@ namespace problem_core_util{
         pqxx::transaction_base& transaction,
         const problem_dto::create_request& create_request_value
     );
+    std::expected<void, error_code> set_title(
+        pqxx::transaction_base& transaction,
+        const problem_dto::reference& problem_reference_value,
+        const problem_dto::title& title_value
+    );
+    std::expected<void, error_code> delete_problem(
+        pqxx::transaction_base& transaction,
+        const problem_dto::reference& problem_reference_value
+    );
 
     std::expected<std::vector<problem_dto::summary>, error_code> list_problems(
         pqxx::transaction_base& transaction,

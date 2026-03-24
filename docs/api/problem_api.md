@@ -238,6 +238,113 @@ Examples:
 }
 ```
 
+### `PUT /api/problem/{problem_id}/title`
+
+Update an existing problem title. This endpoint requires an admin bearer token. Updating the title increments the problem version by 1.
+
+#### request
+
+- content-type: `application/json`
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+
+- body fields:
+
+| field | type | required | note |
+|---|---|---|---|
+| `title` | `string` | yes | must be non-empty |
+
+Example:
+
+```json
+{
+  "title": "A + B Revised"
+}
+```
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `message` | `string` | always `problem updated` |
+
+Example:
+
+```json
+{
+  "message": "problem updated"
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- invalid json: `400 Bad Request`
+- missing required fields: `400 Bad Request`
+- unknown `problem_id`: `404 Not Found`
+- unexpected internal failure: `500 Internal Server Error`
+
+### `DELETE /api/problem/{problem_id}`
+
+Delete an existing problem. This endpoint requires an admin bearer token.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `message` | `string` | always `problem deleted` |
+
+Example:
+
+```json
+{
+  "message": "problem deleted"
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- unknown `problem_id`: `404 Not Found`
+- delete blocked by a database constraint such as existing submissions: `400 Bad Request`
+- unexpected internal failure: `500 Internal Server Error`
+
 ### `POST /api/problem/{problem_id}/rejudge`
 
 Requeue all `wrong_answer` and `accepted` submissions for a problem. This endpoint requires an admin bearer token.

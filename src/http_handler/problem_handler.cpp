@@ -200,6 +200,124 @@ problem_handler::response_type problem_handler::post_problem(
     );
 }
 
+problem_handler::response_type problem_handler::put_problem(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t problem_id
+){
+    problem_dto::reference problem_reference_value{problem_id};
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto exists_problem_exp = problem_core_service::exists_problem(
+            db_connection_value,
+            problem_reference_value
+        );
+        if(!exists_problem_exp){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::internal_server_error,
+                "internal_server_error",
+                "failed to check problem: " + to_string(exists_problem_exp.error())
+            );
+        }
+        if(!exists_problem_exp->exists){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::not_found,
+                "problem_not_found",
+                "problem not found"
+            );
+        }
+
+        const auto update_request_exp =
+            http_util::parse_json_dto_or_400<problem_dto::update_request>(
+                request,
+                problem_dto::make_update_request_from_json
+            );
+        if(!update_request_exp){
+            return std::move(update_request_exp.error());
+        }
+
+        const auto update_problem_exp = problem_core_service::update_problem(
+            db_connection_value,
+            problem_reference_value,
+            *update_request_exp
+        );
+        if(!update_problem_exp){
+            return http_response_util::create_4xx_or_500(
+                request,
+                "update problem",
+                update_problem_exp.error()
+            );
+        }
+
+        return http_response_util::create_json(
+            request,
+            boost::beast::http::status::ok,
+            json_util::make_message_object("problem updated")
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
+problem_handler::response_type problem_handler::delete_problem(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t problem_id
+){
+    problem_dto::reference problem_reference_value{problem_id};
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto exists_problem_exp = problem_core_service::exists_problem(
+            db_connection_value,
+            problem_reference_value
+        );
+        if(!exists_problem_exp){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::internal_server_error,
+                "internal_server_error",
+                "failed to check problem: " + to_string(exists_problem_exp.error())
+            );
+        }
+        if(!exists_problem_exp->exists){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::not_found,
+                "problem_not_found",
+                "problem not found"
+            );
+        }
+
+        const auto delete_problem_exp = problem_core_service::delete_problem(
+            db_connection_value,
+            problem_reference_value
+        );
+        if(!delete_problem_exp){
+            return http_response_util::create_4xx_or_500(
+                request,
+                "delete problem",
+                delete_problem_exp.error()
+            );
+        }
+
+        return http_response_util::create_json(
+            request,
+            boost::beast::http::status::ok,
+            json_util::make_message_object("problem deleted")
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
 problem_handler::response_type problem_handler::post_problem_rejudge(
     const request_type& request,
     db_connection& db_connection_value,

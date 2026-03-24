@@ -105,6 +105,62 @@ std::expected<problem_dto::created, error_code> problem_core_service::create_pro
     );
 }
 
+std::expected<void, error_code> problem_core_service::update_problem(
+    db_connection& connection,
+    const problem_dto::reference& problem_reference_value,
+    const problem_dto::update_request& update_request_value
+){
+    if(problem_reference_value.problem_id <= 0 || update_request_value.title.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return db_service_util::with_retry_write_transaction(
+        connection,
+        [&](pqxx::work& transaction) -> std::expected<void, error_code> {
+            problem_dto::title title_value;
+            title_value.value = update_request_value.title;
+
+            const auto set_title_exp = problem_core_util::set_title(
+                transaction,
+                problem_reference_value,
+                title_value
+            );
+            if(!set_title_exp){
+                return std::unexpected(set_title_exp.error());
+            }
+
+            const auto version_exp = problem_core_util::increase_version(
+                transaction,
+                problem_reference_value
+            );
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
+            }
+
+            return {};
+        }
+    );
+}
+
+std::expected<void, error_code> problem_core_service::delete_problem(
+    db_connection& connection,
+    const problem_dto::reference& problem_reference_value
+){
+    if(problem_reference_value.problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return db_service_util::with_retry_write_transaction(
+        connection,
+        [&](pqxx::work& transaction) -> std::expected<void, error_code> {
+            return problem_core_util::delete_problem(
+                transaction,
+                problem_reference_value
+            );
+        }
+    );
+}
+
 std::expected<std::vector<problem_dto::summary>, error_code> problem_core_service::list_problems(
     db_connection& connection,
     const problem_dto::list_filter& filter_value

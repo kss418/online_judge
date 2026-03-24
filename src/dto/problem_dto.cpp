@@ -18,6 +18,22 @@ problem_dto::make_create_request_from_json(const boost::json::object& json){
     return create_request_value;
 }
 
+std::expected<problem_dto::update_request, dto_validation_error>
+problem_dto::make_update_request_from_json(const boost::json::object& json){
+    const auto title_opt = http_util::get_non_empty_string_field(json, "title");
+    if(!title_opt){
+        return std::unexpected(dto_validation_error{
+            .code = "missing_field",
+            .message = "required field: title",
+            .field_opt = "title"
+        });
+    }
+
+    update_request update_request_value;
+    update_request_value.title = std::string{*title_opt};
+    return update_request_value;
+}
+
 std::expected<problem_dto::list_filter, dto_validation_error>
 problem_dto::make_list_filter_from_query_params(
     const std::vector<http_util::query_param>& query_params

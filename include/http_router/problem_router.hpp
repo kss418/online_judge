@@ -21,7 +21,11 @@ public:
 
 private:
     response_type handle_problems(const request_type& request);
-    response_type handle_get_problem(
+    response_type handle_problem(
+        const request_type& request,
+        std::int64_t problem_id
+    );
+    response_type handle_title(
         const request_type& request,
         std::int64_t problem_id
     );

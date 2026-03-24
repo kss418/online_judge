@@ -31,6 +31,10 @@ namespace problem_dto{
         std::string title;
     };
 
+    struct update_request{
+        std::string title;
+    };
+
     struct created{
         std::int64_t problem_id = 0;
     };
@@ -66,6 +70,9 @@ namespace problem_dto{
     };
 
     std::expected<create_request, dto_validation_error> make_create_request_from_json(
+        const boost::json::object& json
+    );
+    std::expected<update_request, dto_validation_error> make_update_request_from_json(
         const boost::json::object& json
     );
     std::expected<list_filter, dto_validation_error> make_list_filter_from_query_params(

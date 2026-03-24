@@ -106,6 +106,52 @@ std::expected<problem_dto::created, error_code> problem_core_util::create_proble
     return created_value;
 }
 
+std::expected<void, error_code> problem_core_util::set_title(
+    pqxx::transaction_base& transaction,
+    const problem_dto::reference& problem_reference_value,
+    const problem_dto::title& title_value
+){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
+    if(problem_id <= 0 || title_value.value.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto update_result = transaction.exec(
+        "UPDATE problems "
+        "SET title = $2 "
+        "WHERE problem_id = $1",
+        pqxx::params{problem_id, title_value.value}
+    );
+
+    if(update_result.affected_rows() == 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return {};
+}
+
+std::expected<void, error_code> problem_core_util::delete_problem(
+    pqxx::transaction_base& transaction,
+    const problem_dto::reference& problem_reference_value
+){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto delete_result = transaction.exec(
+        "DELETE FROM problems "
+        "WHERE problem_id = $1",
+        pqxx::params{problem_id}
+    );
+
+    if(delete_result.affected_rows() == 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return {};
+}
+
 std::expected<std::vector<problem_dto::summary>, error_code> problem_core_util::list_problems(
     pqxx::transaction_base& transaction,
     const problem_dto::list_filter& filter_value
