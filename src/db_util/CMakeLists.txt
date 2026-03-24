@@ -1,6 +1,7 @@
 target_sources(lib
     PRIVATE
         auth_util.cpp
+        db_util.cpp
         login_util.cpp
         problem_content_util.cpp
         problem_core_util.cpp
