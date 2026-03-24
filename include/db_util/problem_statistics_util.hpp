@@ -31,4 +31,9 @@ namespace problem_statistics_util{
         pqxx::transaction_base& transaction,
         const problem_dto::reference& problem_reference_value
     );
+
+    std::expected<void, error_code> decrease_accepted_count(
+        pqxx::transaction_base& transaction,
+        const problem_dto::reference& problem_reference_value
+    );
 }

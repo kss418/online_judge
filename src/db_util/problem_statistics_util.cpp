@@ -99,3 +99,28 @@ std::expected<void, error_code> problem_statistics_util::increase_accepted_count
 
     return {};
 }
+
+std::expected<void, error_code> problem_statistics_util::decrease_accepted_count(
+    pqxx::transaction_base& transaction,
+    const problem_dto::reference& problem_reference_value
+){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto update_result = transaction.exec(
+        "UPDATE problem_statistics "
+        "SET "
+        "accepted_count = accepted_count - 1, "
+        "updated_at = NOW() "
+        "WHERE problem_id = $1 AND accepted_count > 0",
+        pqxx::params{problem_id}
+    );
+
+    if(update_result.affected_rows() == 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return {};
+}
