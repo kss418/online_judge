@@ -32,7 +32,7 @@ problem_content_handler::response_type problem_content_handler::put_limits(
             *limits_exp
         );
         if(!set_limits_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "set problem limits",
                 set_limits_exp.error()
@@ -75,7 +75,7 @@ problem_content_handler::response_type problem_content_handler::put_statement(
             *statement_exp
         );
         if(!set_statement_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "set problem statement",
                 set_statement_exp.error()
@@ -165,7 +165,7 @@ problem_content_handler::response_type problem_content_handler::post_sample(
             *sample_exp
         );
         if(!create_sample_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "create problem sample",
                 create_sample_exp.error()
@@ -212,7 +212,7 @@ problem_content_handler::response_type problem_content_handler::put_sample(
             *sample_exp
         );
         if(!set_sample_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "set problem sample",
                 set_sample_exp.error()
@@ -224,7 +224,7 @@ problem_content_handler::response_type problem_content_handler::put_sample(
             sample_reference_value
         );
         if(!updated_sample_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "get problem sample",
                 updated_sample_exp.error()
@@ -257,7 +257,7 @@ problem_content_handler::response_type problem_content_handler::delete_sample(
             problem_reference_value
         );
         if(!sample_values_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "list problem samples",
                 sample_values_exp.error()
@@ -277,7 +277,7 @@ problem_content_handler::response_type problem_content_handler::delete_sample(
             problem_reference_value
         );
         if(!delete_sample_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "delete problem sample",
                 delete_sample_exp.error()

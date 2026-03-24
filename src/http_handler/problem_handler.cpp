@@ -233,7 +233,7 @@ problem_handler::response_type problem_handler::post_problem_rejudge(
             problem_id
         );
         if(!rejudge_problem_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "rejudge problem",
                 rejudge_problem_exp.error()

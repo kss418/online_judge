@@ -270,6 +270,27 @@ assert_json_error_field(){
 }
 
 make_sign_up_request_body(){
+    local user_login_id="$1"
+    local raw_password="$2"
+    local user_name="${3:-${user_login_id}}"
+
+    python3 - "${user_login_id}" "${raw_password}" "${user_name}" <<'PY'
+import json
+import sys
+
+print(
+    json.dumps(
+        {
+            "user_login_id": sys.argv[1],
+            "raw_password": sys.argv[2],
+            "user_name": sys.argv[3],
+        }
+    )
+)
+PY
+}
+
+make_login_request_body(){
     python3 - "$1" "$2" <<'PY'
 import json
 import sys
@@ -326,12 +347,15 @@ sign_up_user(){
     local raw_password="$2"
     local response_file_path="$3"
     local failure_context="${4:-fixture}"
+    local user_name="${5:-${user_login_id}}"
     local sign_up_request_body=""
     local sign_up_status_code=""
 
     require_fixture_test_env
 
-    sign_up_request_body="$(make_sign_up_request_body "${user_login_id}" "${raw_password}")"
+    sign_up_request_body="$(
+        make_sign_up_request_body "${user_login_id}" "${raw_password}" "${user_name}"
+    )"
     sign_up_status_code="$(
         send_http_request \
             "POST" \

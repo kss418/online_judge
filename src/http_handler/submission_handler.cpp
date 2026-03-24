@@ -124,7 +124,7 @@ submission_handler::response_type submission_handler::post_submission(
                 *create_request_exp
             );
             if(!create_submission_exp){
-                return http_response_util::create_400_or_500(
+                return http_response_util::create_4xx_or_500(
                     request,
                     "create submission",
                     create_submission_exp.error()
@@ -156,7 +156,7 @@ submission_handler::response_type submission_handler::post_submission_rejudge(
             submission_id
         );
         if(!rejudge_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "rejudge submission",
                 rejudge_exp.error()
@@ -194,7 +194,7 @@ submission_handler::response_type submission_handler::get_submissions(
         *filter_exp
     );
     if(!submission_summary_values_exp){
-        return http_response_util::create_400_or_500(
+        return http_response_util::create_4xx_or_500(
             request,
             "list submissions",
             submission_summary_values_exp.error()

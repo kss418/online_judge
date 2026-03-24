@@ -19,9 +19,21 @@ namespace auth_dto{
         std::string token_hash;
     };
 
+    struct sign_up_request{
+        std::string user_name;
+        std::string user_login_id;
+        std::string raw_password;
+    };
+
     struct credentials{
         std::string user_login_id;
         std::string raw_password;
+    };
+
+    struct hashed_sign_up_request{
+        std::string user_name;
+        std::string user_login_id;
+        std::string password_hash;
     };
 
     struct hashed_credentials{
@@ -32,16 +44,26 @@ namespace auth_dto{
     struct identity{
         std::int64_t user_id = 0;
         bool is_admin = false;
+        std::string user_name;
     };
 
     struct session{
         std::int64_t user_id = 0;
         bool is_admin = false;
+        std::string user_name;
         std::string token;
     };
 
+    std::expected<sign_up_request, dto_validation_error> make_sign_up_request_from_json(
+        const boost::json::object& json
+    );
+
     std::expected<credentials, dto_validation_error> make_credentials_from_json(
         const boost::json::object& json
+    );
+
+    std::expected<hashed_sign_up_request, error_code> hash_sign_up_request(
+        const sign_up_request& sign_up_request_value
     );
 
     std::expected<hashed_credentials, error_code> hash_credentials(

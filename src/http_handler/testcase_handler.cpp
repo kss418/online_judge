@@ -85,7 +85,7 @@ testcase_handler::response_type testcase_handler::post_testcase(
             *testcase_exp
         );
         if(!create_testcase_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "create testcase",
                 create_testcase_exp.error()
@@ -131,7 +131,7 @@ testcase_handler::response_type testcase_handler::put_testcase(
             *testcase_exp
         );
         if(!set_testcase_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "set testcase",
                 set_testcase_exp.error()
@@ -143,7 +143,7 @@ testcase_handler::response_type testcase_handler::put_testcase(
             testcase_reference_value
         );
         if(!updated_testcase_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "get testcase",
                 updated_testcase_exp.error()
@@ -176,7 +176,7 @@ testcase_handler::response_type testcase_handler::delete_testcase(
             problem_reference_value
         );
         if(!testcase_count_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "get testcase count",
                 testcase_count_exp.error()
@@ -196,7 +196,7 @@ testcase_handler::response_type testcase_handler::delete_testcase(
             problem_reference_value
         );
         if(!delete_testcase_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "delete testcase",
                 delete_testcase_exp.error()

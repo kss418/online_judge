@@ -37,7 +37,7 @@ namespace http_response_util{
         std::string_view code,
         std::string_view message
     );
-    response_type create_400_or_500(
+    response_type create_4xx_or_500(
         const request_type& request,
         std::string_view action,
         const error_code& code

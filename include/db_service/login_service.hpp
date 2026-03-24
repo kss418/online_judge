@@ -9,7 +9,7 @@
 namespace login_service{
     std::expected<auth_dto::session, error_code> sign_up(
         db_connection& connection_value,
-        const auth_dto::credentials& credentials_value
+        const auth_dto::sign_up_request& sign_up_request_value
     );
 
     std::expected<std::optional<auth_dto::session>, error_code> login(

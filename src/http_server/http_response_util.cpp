@@ -65,17 +65,21 @@ http_response_util::response_type http_response_util::create_bearer_error(
     return response;
 }
 
-http_response_util::response_type http_response_util::create_400_or_500(
+http_response_util::response_type http_response_util::create_4xx_or_500(
     const request_type& request,
     std::string_view action,
     const error_code& code
 ){
-    const auto status = code.is_bad_request_error()
-        ? boost::beast::http::status::bad_request
-        : boost::beast::http::status::internal_server_error;
-    const auto error_code_text = code.is_bad_request_error()
-        ? "bad_request"
-        : "internal_server_error";
+    boost::beast::http::status status = boost::beast::http::status::internal_server_error;
+    std::string_view error_code_text = "internal_server_error";
+    if(code == psql_error::unique_violation){
+        status = boost::beast::http::status::conflict;
+        error_code_text = "conflict";
+    }
+    else if(code.is_bad_request_error()){
+        status = boost::beast::http::status::bad_request;
+        error_code_text = "bad_request";
+    }
 
     return create_error(
         request,

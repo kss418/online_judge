@@ -60,7 +60,7 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_util::get_toke
     }
 
     const auto token_identity_result = transaction.exec(
-        "SELECT token_table.user_id, user_table.is_admin "
+        "SELECT token_table.user_id, user_table.is_admin, user_table.user_name "
         "FROM auth_tokens token_table "
         "JOIN users user_table "
         "ON token_table.user_id = user_table.user_id "
@@ -79,6 +79,7 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_util::get_toke
     auth_dto::identity identity_value;
     identity_value.user_id = token_identity_result[0][0].as<std::int64_t>();
     identity_value.is_admin = token_identity_result[0][1].as<bool>();
+    identity_value.user_name = token_identity_result[0][2].as<std::string>();
     return identity_value;
 }
 

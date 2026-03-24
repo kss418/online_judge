@@ -15,6 +15,7 @@ Create a local user and issue an auth token in the same request.
 
 | field | type | required | note |
 |---|---|---|---|
+| `user_name` | `string` | yes | must be non-empty |
 | `user_login_id` | `string` | yes | must be non-empty |
 | `raw_password` | `string` | yes | must be non-empty |
 
@@ -22,6 +23,7 @@ Example:
 
 ```json
 {
+  "user_name": "Alice",
   "user_login_id": "alice",
   "raw_password": "password123"
 }
@@ -37,6 +39,7 @@ Example:
 |---|---|---|
 | `user_id` | `int64` | created user id |
 | `is_admin` | `boolean` | currently `false` on sign-up |
+| `user_name` | `string` | stored display name |
 | `token` | `string` | raw bearer token |
 
 Example:
@@ -45,6 +48,7 @@ Example:
 {
   "user_id": 1,
   "is_admin": false,
+  "user_name": "Alice",
   "token": "..."
 }
 ```
@@ -53,7 +57,8 @@ Example:
 
 - invalid or empty request body: `400 Bad Request` with `invalid json`
 - missing required fields: `400 Bad Request`
-- duplicate `user_login_id`: `400 Bad Request`
+- duplicate `user_name`: `409 Conflict`
+- duplicate `user_login_id`: `409 Conflict`
 - unexpected internal failure: `500 Internal Server Error`
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
@@ -82,8 +87,8 @@ Examples:
 ```json
 {
   "error": {
-    "code": "bad_request",
-    "message": "failed to sign up: invalid argument"
+    "code": "conflict",
+    "message": "failed to sign up: psql unique violation"
   }
 }
 ```
@@ -121,6 +126,7 @@ Example:
 |---|---|---|
 | `user_id` | `int64` | authenticated user id |
 | `is_admin` | `boolean` | current admin flag |
+| `user_name` | `string` | stored display name |
 | `token` | `string` | newly issued raw bearer token |
 
 Example:
@@ -129,6 +135,7 @@ Example:
 {
   "user_id": 1,
   "is_admin": false,
+  "user_name": "Alice",
   "token": "..."
 }
 ```

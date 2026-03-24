@@ -6,13 +6,13 @@
 
 std::expected<auth_dto::session, error_code> login_service::sign_up(
     db_connection& connection_value,
-    const auth_dto::credentials& credentials_value
+    const auth_dto::sign_up_request& sign_up_request_value
 ){
-    const auto hashed_credentials_exp = auth_dto::hash_credentials(
-        credentials_value
+    const auto hashed_sign_up_request_exp = auth_dto::hash_sign_up_request(
+        sign_up_request_value
     );
-    if(!hashed_credentials_exp){
-        return std::unexpected(hashed_credentials_exp.error());
+    if(!hashed_sign_up_request_exp){
+        return std::unexpected(hashed_sign_up_request_exp.error());
     }
 
     const auto issued_token_exp = token_util::issue_token();
@@ -27,7 +27,7 @@ std::expected<auth_dto::session, error_code> login_service::sign_up(
         [&](pqxx::work& transaction) -> std::expected<auth_dto::session, error_code> {
             const auto user_id_exp = login_util::create_user(
                 transaction,
-                *hashed_credentials_exp
+                *hashed_sign_up_request_exp
             );
             if(!user_id_exp){
                 return std::unexpected(user_id_exp.error());
@@ -46,6 +46,7 @@ std::expected<auth_dto::session, error_code> login_service::sign_up(
             auth_dto::session session_value;
             session_value.user_id = *user_id_exp;
             session_value.is_admin = false;
+            session_value.user_name = hashed_sign_up_request_exp->user_name;
             session_value.token = issued_token_exp->token;
             return session_value;
         }
@@ -98,6 +99,7 @@ std::expected<std::optional<auth_dto::session>, error_code> login_service::login
             auth_dto::session session_value;
             session_value.user_id = login_identity_exp->value().user_id;
             session_value.is_admin = login_identity_exp->value().is_admin;
+            session_value.user_name = login_identity_exp->value().user_name;
             session_value.token = issued_token_exp->token;
             return session_value;
         }

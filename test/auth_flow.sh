@@ -26,7 +26,10 @@ http_port="${AUTH_FLOW_TEST_HTTP_PORT:-18080}"
 base_url="${AUTH_FLOW_TEST_BASE_URL:-http://127.0.0.1:${http_port}}"
 http_server_bin="${AUTH_FLOW_TEST_HTTP_SERVER_BIN:-${project_root}/http_server}"
 user_login_id="${AUTH_FLOW_TEST_LOGIN_ID:-auth_flow_test_$(date +%s)_$$}"
+user_name="${AUTH_FLOW_TEST_USER_NAME:-${user_login_id}}"
 second_user_login_id="${AUTH_FLOW_TEST_SECOND_LOGIN_ID:-${user_login_id}_second}"
+second_user_name="${AUTH_FLOW_TEST_SECOND_USER_NAME:-${second_user_login_id}}"
+duplicate_user_name_login_id="${AUTH_FLOW_TEST_DUPLICATE_USER_NAME_LOGIN_ID:-${user_login_id}_duplicate_name}"
 raw_password="${AUTH_FLOW_TEST_PASSWORD:-password123}"
 test_db_name="auth_flow_test_$$_$(date +%s)"
 test_database_created="0"
@@ -48,6 +51,7 @@ register_temp_file second_sign_up_response_file
 register_temp_file second_login_response_file
 register_temp_file promote_admin_response_file
 register_temp_file unauthorized_promote_response_file
+register_temp_file duplicate_user_name_response_file
 
 trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
 
@@ -63,15 +67,21 @@ export DB_NAME="${test_db_name}"
 
 append_log_line "${test_log_temp_file}" "base_url=${base_url}"
 append_log_line "${test_log_temp_file}" "user_login_id=${user_login_id}"
+append_log_line "${test_log_temp_file}" "user_name=${user_name}"
 append_log_line "${test_log_temp_file}" "test_db_name=${test_db_name}"
 
 apply_test_database_migrations
 ensure_dedicated_http_server
 
-sign_up_user "${user_login_id}" "${raw_password}" "${sign_up_response_file}" "auth flow" >/dev/null
+sign_up_user \
+    "${user_login_id}" \
+    "${raw_password}" \
+    "${sign_up_response_file}" \
+    "auth flow" \
+    "${user_name}" >/dev/null
 print_success_log "sign-up success"
 
-request_body="$(make_sign_up_request_body "${user_login_id}" "${raw_password}")"
+request_body="$(make_login_request_body "${user_login_id}" "${raw_password}")"
 
 send_http_request_and_assert_status \
     "POST" \
@@ -83,13 +93,13 @@ send_http_request_and_assert_status \
     "${request_body}"
 print_success_log "login success"
 
-if ! python3 - "${sign_up_response_file}" "${login_response_file}" "${user_login_id}" <<'PY'
+if ! python3 - "${sign_up_response_file}" "${login_response_file}" "${user_name}" <<'PY'
 import json
 import sys
 
 sign_up_response_file_path = sys.argv[1]
 login_response_file_path = sys.argv[2]
-expected_login_id = sys.argv[3]
+expected_user_name = sys.argv[3]
 
 with open(sign_up_response_file_path, encoding="utf-8") as response_file:
     sign_up_response = json.load(response_file)
@@ -99,10 +109,12 @@ with open(login_response_file_path, encoding="utf-8") as response_file:
 
 sign_up_user_id = sign_up_response.get("user_id")
 sign_up_is_admin = sign_up_response.get("is_admin")
+sign_up_user_name = sign_up_response.get("user_name")
 sign_up_token = sign_up_response.get("token")
 
 login_user_id = login_response.get("user_id")
 login_is_admin = login_response.get("is_admin")
+login_user_name = login_response.get("user_name")
 login_token = login_response.get("token")
 
 if not isinstance(sign_up_user_id, int) or sign_up_user_id <= 0:
@@ -110,6 +122,9 @@ if not isinstance(sign_up_user_id, int) or sign_up_user_id <= 0:
 
 if sign_up_is_admin is not False:
     raise SystemExit("expected is_admin to be false for new user")
+
+if sign_up_user_name != expected_user_name:
+    raise SystemExit("sign-up response user_name mismatch")
 
 if not isinstance(sign_up_token, str) or not sign_up_token:
     raise SystemExit("missing token in sign-up response")
@@ -119,6 +134,9 @@ if login_user_id != sign_up_user_id:
 
 if login_is_admin is not False:
     raise SystemExit("expected is_admin to stay false after login")
+
+if login_user_name != expected_user_name:
+    raise SystemExit("login response user_name mismatch")
 
 if not isinstance(login_token, str) or not login_token:
     raise SystemExit("missing token in login response")
@@ -137,8 +155,37 @@ append_log_line "${test_log_temp_file}" "auth flow test passed"
 login_user_id="$(read_json_field "${login_response_file}" "user_id" "int")"
 login_token="$(read_json_field "${login_response_file}" "token" "string")"
 
+duplicate_user_name_request_body="$(
+    make_sign_up_request_body \
+        "${duplicate_user_name_login_id}" \
+        "${raw_password}" \
+        "${user_name}"
+)"
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/auth/sign-up" \
+    "${duplicate_user_name_response_file}" \
+    "409" \
+    "duplicate user_name sign-up" \
+    "" \
+    "${duplicate_user_name_request_body}"
+assert_json_error_code \
+    "${duplicate_user_name_response_file}" \
+    "conflict" \
+    "duplicate user_name sign-up"
+assert_json_error_message \
+    "${duplicate_user_name_response_file}" \
+    "failed to sign up: psql unique violation" \
+    "duplicate user_name sign-up"
+print_success_log "duplicate user_name failure success"
+
 read -r second_user_id second_user_token < <(
-    sign_up_user "${second_user_login_id}" "${raw_password}" "${second_sign_up_response_file}" "auth flow"
+    sign_up_user \
+        "${second_user_login_id}" \
+        "${raw_password}" \
+        "${second_sign_up_response_file}" \
+        "auth flow" \
+        "${second_user_name}"
 )
 print_success_log "second sign-up success"
 
@@ -167,7 +214,7 @@ send_http_request_and_assert_status \
     "${login_token}"
 print_success_log "promote admin success"
 
-second_login_request_body="$(make_sign_up_request_body "${second_user_login_id}" "${raw_password}")"
+second_login_request_body="$(make_login_request_body "${second_user_login_id}" "${raw_password}")"
 send_http_request_and_assert_status \
     "POST" \
     "${base_url}/api/auth/login" \
@@ -182,7 +229,8 @@ if ! python3 \
     - "${unauthorized_promote_response_file}" \
     "${promote_admin_response_file}" \
     "${second_login_response_file}" \
-    "${second_user_id}" <<'PY'
+    "${second_user_id}" \
+    "${second_user_name}" <<'PY'
 import json
 import sys
 
@@ -196,6 +244,7 @@ with open(sys.argv[3], encoding="utf-8") as response_file:
     second_login_response = json.load(response_file)
 
 expected_second_user_id = int(sys.argv[4])
+expected_second_user_name = sys.argv[5]
 
 if unauthorized_promote_response.get("error", {}).get("code") != "admin_bearer_token_required":
     raise SystemExit("unexpected error code for unauthorized promote response")
@@ -211,6 +260,9 @@ if second_login_response.get("user_id") != expected_second_user_id:
 
 if second_login_response.get("is_admin") is not True:
     raise SystemExit("expected second login response is_admin to be true after promotion")
+
+if second_login_response.get("user_name") != expected_second_user_name:
+    raise SystemExit("expected second login response user_name to be preserved")
 PY
 then
     append_log_line "${test_log_temp_file}" "admin promote validation failed"

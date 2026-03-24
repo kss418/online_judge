@@ -11,20 +11,21 @@ auth_handler::response_type auth_handler::post_sign_up(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto credentials_exp = http_util::parse_json_dto_or_400<auth_dto::credentials>(
+    const auto sign_up_request_exp =
+        http_util::parse_json_dto_or_400<auth_dto::sign_up_request>(
         request,
-        auth_dto::make_credentials_from_json
+        auth_dto::make_sign_up_request_from_json
     );
-    if(!credentials_exp){
-        return std::move(credentials_exp.error());
+    if(!sign_up_request_exp){
+        return std::move(sign_up_request_exp.error());
     }
 
     const auto sign_up_exp = login_service::sign_up(
         db_connection_value,
-        *credentials_exp
+        *sign_up_request_exp
     );
     if(!sign_up_exp){
-        return http_response_util::create_400_or_500(
+        return http_response_util::create_4xx_or_500(
             request,
             "sign up",
             sign_up_exp.error()
@@ -55,7 +56,7 @@ auth_handler::response_type auth_handler::post_login(
         *credentials_exp
     );
     if(!login_exp){
-        return http_response_util::create_400_or_500(
+        return http_response_util::create_4xx_or_500(
             request,
             "login",
             login_exp.error()

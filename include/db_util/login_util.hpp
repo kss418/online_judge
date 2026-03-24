@@ -12,7 +12,7 @@ namespace pqxx{
 namespace login_util{
     std::expected<std::int64_t, error_code> create_user(
         pqxx::transaction_base& transaction,
-        const auth_dto::hashed_credentials& credentials_value
+        const auth_dto::hashed_sign_up_request& sign_up_request_value
     );
 
     std::expected<bool, error_code> verify_user(

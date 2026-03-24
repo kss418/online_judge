@@ -9,6 +9,7 @@ Base migration: `scripts/migrate_auth_schema.sh`
 | column | type | nullable | default | note |
 |---|---|---|---|---|
 | `user_id` | `bigserial` | no | | pk |
+| `user_name` | `text` | no | | display name for the user |
 | `user_login_id` | `text` | yes | | login identifier for local auth |
 | `user_password_hash` | `text` | yes | | password hash for local auth |
 | `is_admin` | `boolean` | no | `false` | source of truth for admin privilege |
@@ -18,11 +19,13 @@ Base migration: `scripts/migrate_auth_schema.sh`
 Constraints:
 
 - `users_pkey`
+- `users_user_name_not_blank`
 - `users_user_login_id_not_blank`
 - `users_user_password_hash_not_blank`
 
 Indexes:
 
+- `users_user_name_unique_idx (user_name)`
 - `users_user_login_id_unique_idx (user_login_id) where user_login_id is not null`
 
 ### `auth_tokens`

@@ -39,6 +39,7 @@ boost::json::object json_util::make_auth_session_object(const auth_dto::session&
     boost::json::object response_object;
     response_object["user_id"] = session_value.user_id;
     response_object["is_admin"] = session_value.is_admin;
+    response_object["user_name"] = session_value.user_name;
     response_object["token"] = session_value.token;
     return response_object;
 }

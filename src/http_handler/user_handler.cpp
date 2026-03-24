@@ -16,7 +16,7 @@ user_handler::response_type user_handler::put_user_admin(
             true
         );
         if(!update_admin_status_exp){
-            return http_response_util::create_400_or_500(
+            return http_response_util::create_4xx_or_500(
                 request,
                 "update admin status",
                 update_admin_status_exp.error()
