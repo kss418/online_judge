@@ -7,6 +7,8 @@ project_root="$(cd "${script_dir}/.." && pwd)"
 # shellcheck disable=SC1091
 source "${script_dir}/util.sh"
 # shellcheck disable=SC1091
+source "${script_dir}/flow_test_util.sh"
+# shellcheck disable=SC1091
 source "${script_dir}/database_util.sh"
 # shellcheck disable=SC1091
 source "${script_dir}/http_server_util.sh"
@@ -42,79 +44,38 @@ int main(){
     return 0;
 }
 }"
-all_submission_response_file="$(mktemp)"
-submission_detail_response_file="$(mktemp)"
-missing_submission_response_file="$(mktemp)"
-list_submission_response_file="$(mktemp)"
-top_submission_response_file="$(mktemp)"
-submission_history_response_file="$(mktemp)"
-missing_history_response_file="$(mktemp)"
-submission_source_response_file="$(mktemp)"
-unauthorized_source_response_file="$(mktemp)"
-forbidden_source_response_file="$(mktemp)"
-admin_source_response_file="$(mktemp)"
-missing_source_response_file="$(mktemp)"
-rejudge_response_file="$(mktemp)"
-rejudge_unauthorized_response_file="$(mktemp)"
-rejudge_invalid_response_file="$(mktemp)"
-rejudge_detail_response_file="$(mktemp)"
-problem_rejudge_response_file="$(mktemp)"
-problem_rejudge_unauthorized_response_file="$(mktemp)"
-problem_rejudge_missing_response_file="$(mktemp)"
 test_log_path=""
 server_log_path=""
 server_pid=""
 test_log_name="test_submission_flow.log"
 server_log_name="test_submission_flow_server.log"
-test_log_temp_file="$(mktemp)"
-server_log_temp_file="$(mktemp)"
-sign_up_response_file="$(mktemp)"
-submission_response_file="$(mktemp)"
 
-cleanup(){
-    cleanup_http_server
-    drop_test_database
+init_flow_test
+register_temp_file all_submission_response_file
+register_temp_file submission_detail_response_file
+register_temp_file missing_submission_response_file
+register_temp_file list_submission_response_file
+register_temp_file top_submission_response_file
+register_temp_file submission_history_response_file
+register_temp_file missing_history_response_file
+register_temp_file submission_source_response_file
+register_temp_file unauthorized_source_response_file
+register_temp_file forbidden_source_response_file
+register_temp_file admin_source_response_file
+register_temp_file missing_source_response_file
+register_temp_file rejudge_response_file
+register_temp_file rejudge_unauthorized_response_file
+register_temp_file rejudge_invalid_response_file
+register_temp_file rejudge_detail_response_file
+register_temp_file problem_rejudge_response_file
+register_temp_file problem_rejudge_unauthorized_response_file
+register_temp_file problem_rejudge_missing_response_file
+register_temp_file test_log_temp_file
+register_temp_file server_log_temp_file
+register_temp_file sign_up_response_file
+register_temp_file submission_response_file
 
-    rm -f \
-        "${test_log_temp_file}" \
-        "${server_log_temp_file}" \
-        "${sign_up_response_file}" \
-        "${submission_response_file}" \
-        "${all_submission_response_file}" \
-        "${submission_detail_response_file}" \
-        "${missing_submission_response_file}" \
-        "${list_submission_response_file}" \
-        "${top_submission_response_file}" \
-        "${submission_history_response_file}" \
-        "${missing_history_response_file}" \
-        "${submission_source_response_file}" \
-        "${unauthorized_source_response_file}" \
-        "${forbidden_source_response_file}" \
-        "${admin_source_response_file}" \
-        "${missing_source_response_file}" \
-        "${rejudge_response_file}" \
-        "${rejudge_unauthorized_response_file}" \
-        "${rejudge_invalid_response_file}" \
-        "${rejudge_detail_response_file}" \
-        "${problem_rejudge_response_file}" \
-        "${problem_rejudge_unauthorized_response_file}" \
-        "${problem_rejudge_missing_response_file}"
-
-}
-
-print_success_log(){
-    local log_message="$1"
-
-    if [[ -z "${log_message}" ]]; then
-        echo "missing log_message" >&2
-        return 1
-    fi
-
-    printf '%s\n' "${log_message}"
-    append_log_line "${test_log_temp_file}" "${log_message}"
-}
-
-trap cleanup EXIT
+trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
 
 require_command curl
 require_command psql

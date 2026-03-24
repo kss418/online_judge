@@ -7,6 +7,8 @@ project_root="$(cd "${script_dir}/.." && pwd)"
 # shellcheck disable=SC1091
 source "${script_dir}/util.sh"
 # shellcheck disable=SC1091
+source "${script_dir}/flow_test_util.sh"
+# shellcheck disable=SC1091
 source "${script_dir}/database_util.sh"
 # shellcheck disable=SC1091
 source "${script_dir}/http_server_util.sh"
@@ -30,36 +32,12 @@ server_log_path=""
 server_pid=""
 test_log_name="test_problem_get_flow.log"
 server_log_name="test_problem_get_flow_server.log"
-test_log_temp_file="$(mktemp)"
-server_log_temp_file="$(mktemp)"
-full_problem_response_file="$(mktemp)"
-blank_problem_response_file="$(mktemp)"
-missing_problem_response_file="$(mktemp)"
-
-cleanup(){
-    cleanup_http_server
-    drop_test_database
-
-    rm -f \
-        "${test_log_temp_file}" \
-        "${server_log_temp_file}" \
-        "${full_problem_response_file}" \
-        "${blank_problem_response_file}" \
-        "${missing_problem_response_file}"
-
-}
-
-print_success_log(){
-    local log_message="$1"
-
-    if [[ -z "${log_message}" ]]; then
-        echo "missing log_message" >&2
-        return 1
-    fi
-
-    printf '%s\n' "${log_message}"
-    append_log_line "${test_log_temp_file}" "${log_message}"
-}
+init_flow_test
+register_temp_file test_log_temp_file
+register_temp_file server_log_temp_file
+register_temp_file full_problem_response_file
+register_temp_file blank_problem_response_file
+register_temp_file missing_problem_response_file
 
 create_full_problem(){
     require_db_env
@@ -154,7 +132,7 @@ FROM created_problem;
 SQL
 }
 
-trap cleanup EXIT
+trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
 
 require_command curl
 require_command psql

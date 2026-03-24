@@ -7,6 +7,8 @@ project_root="$(cd "${script_dir}/.." && pwd)"
 # shellcheck disable=SC1091
 source "${script_dir}/util.sh"
 # shellcheck disable=SC1091
+source "${script_dir}/flow_test_util.sh"
+# shellcheck disable=SC1091
 source "${script_dir}/database_util.sh"
 # shellcheck disable=SC1091
 source "${script_dir}/http_server_util.sh"
@@ -30,40 +32,16 @@ server_log_path=""
 server_pid=""
 test_log_name="test_problem_list_flow.log"
 server_log_name="test_problem_list_flow_server.log"
-test_log_temp_file="$(mktemp)"
-server_log_temp_file="$(mktemp)"
-list_problem_response_file="$(mktemp)"
-filtered_problem_response_file="$(mktemp)"
-missing_problem_response_file="$(mktemp)"
-invalid_query_response_file="$(mktemp)"
 
-cleanup(){
-    cleanup_http_server
-    drop_test_database
+init_flow_test
+register_temp_file test_log_temp_file
+register_temp_file server_log_temp_file
+register_temp_file list_problem_response_file
+register_temp_file filtered_problem_response_file
+register_temp_file missing_problem_response_file
+register_temp_file invalid_query_response_file
 
-    rm -f \
-        "${test_log_temp_file}" \
-        "${server_log_temp_file}" \
-        "${list_problem_response_file}" \
-        "${filtered_problem_response_file}" \
-        "${missing_problem_response_file}" \
-        "${invalid_query_response_file}"
-
-}
-
-print_success_log(){
-    local log_message="$1"
-
-    if [[ -z "${log_message}" ]]; then
-        echo "missing log_message" >&2
-        return 1
-    fi
-
-    printf '%s\n' "${log_message}"
-    append_log_line "${test_log_temp_file}" "${log_message}"
-}
-
-trap cleanup EXIT
+trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
 
 require_command curl
 require_command psql

@@ -7,6 +7,8 @@ project_root="$(cd "${script_dir}/.." && pwd)"
 # shellcheck disable=SC1091
 source "${script_dir}/util.sh"
 # shellcheck disable=SC1091
+source "${script_dir}/flow_test_util.sh"
+# shellcheck disable=SC1091
 source "${script_dir}/database_util.sh"
 # shellcheck disable=SC1091
 source "${script_dir}/http_server_util.sh"
@@ -33,50 +35,21 @@ server_log_path=""
 server_pid=""
 test_log_name="test_auth_flow.log"
 server_log_name="test_auth_flow_server.log"
-test_log_temp_file="$(mktemp)"
-server_log_temp_file="$(mktemp)"
-sign_up_response_file="$(mktemp)"
-login_response_file="$(mktemp)"
-renew_response_file="$(mktemp)"
-logout_response_file="$(mktemp)"
-second_logout_response_file="$(mktemp)"
-second_sign_up_response_file="$(mktemp)"
-second_login_response_file="$(mktemp)"
-promote_admin_response_file="$(mktemp)"
-unauthorized_promote_response_file="$(mktemp)"
 
-cleanup(){
-    cleanup_http_server
-    drop_test_database
+init_flow_test
+register_temp_file test_log_temp_file
+register_temp_file server_log_temp_file
+register_temp_file sign_up_response_file
+register_temp_file login_response_file
+register_temp_file renew_response_file
+register_temp_file logout_response_file
+register_temp_file second_logout_response_file
+register_temp_file second_sign_up_response_file
+register_temp_file second_login_response_file
+register_temp_file promote_admin_response_file
+register_temp_file unauthorized_promote_response_file
 
-    rm -f \
-        "${test_log_temp_file}" \
-        "${server_log_temp_file}" \
-        "${sign_up_response_file}" \
-        "${login_response_file}" \
-        "${renew_response_file}" \
-        "${logout_response_file}" \
-        "${second_logout_response_file}" \
-        "${second_sign_up_response_file}" \
-        "${second_login_response_file}" \
-        "${promote_admin_response_file}" \
-        "${unauthorized_promote_response_file}"
-
-}
-
-print_success_log(){
-    local log_message="$1"
-
-    if [[ -z "${log_message}" ]]; then
-        echo "missing log_message" >&2
-        return 1
-    fi
-
-    printf '%s\n' "${log_message}"
-    append_log_line "${test_log_temp_file}" "${log_message}"
-}
-
-trap cleanup EXIT
+trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
 
 require_command curl
 require_command psql
