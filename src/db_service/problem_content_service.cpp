@@ -9,7 +9,7 @@ std::expected<problem_content_dto::limits, error_code> problem_content_service::
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_content_dto::limits, error_code> {
@@ -26,7 +26,7 @@ std::expected<void, error_code> problem_content_service::set_limits(
     const problem_dto::reference& problem_reference_value,
     const problem_content_dto::limits& limits_value
 ){
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
             const auto set_limits_exp = problem_core_util::set_limits(
@@ -55,7 +55,7 @@ std::expected<problem_content_dto::statement, error_code> problem_content_servic
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_content_dto::statement, error_code> {
@@ -72,7 +72,7 @@ std::expected<void, error_code> problem_content_service::set_statement(
     const problem_dto::reference& problem_reference_value,
     const problem_content_dto::statement& statement
 ){
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
             const auto set_statement_exp = problem_content_util::set_statement(
@@ -106,7 +106,7 @@ std::expected<problem_content_dto::sample, error_code> problem_content_service::
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<problem_content_dto::sample, error_code> {
@@ -140,7 +140,7 @@ std::expected<problem_content_dto::sample, error_code> problem_content_service::
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_content_dto::sample, error_code> {
@@ -161,7 +161,7 @@ problem_content_service::list_samples(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_content_dto::sample>, error_code> {
@@ -182,7 +182,7 @@ std::expected<void, error_code> problem_content_service::set_sample(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
             const auto set_sample_exp = problem_content_util::set_sample(
@@ -218,7 +218,7 @@ std::expected<void, error_code> problem_content_service::delete_sample(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
             const auto sample_values_exp = problem_content_util::list_samples(

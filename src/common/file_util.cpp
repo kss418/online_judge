@@ -11,6 +11,8 @@
 #include <system_error>
 #include <unistd.h>
 
+static constexpr int FILE_OPERATION_ATTEMPT_COUNT = 5;
+
 static bool should_retry_read_errno(int error_number){
     return error_number == EINTR;
 }
@@ -27,6 +29,17 @@ static bool should_retry_write_errno(int error_number){
 
 static bool should_retry_fsync_errno(int error_number){
     return error_number == EINTR;
+}
+
+bool file_util::should_retry_file_error(const error_code& error_code_value){
+    return
+        error_code_value == errno_error::interrupted_system_call ||
+        error_code_value == errno_error::resource_temporarily_unavailable ||
+        error_code_value == errno_error::operation_would_block ||
+        error_code_value == errno_error::too_many_open_files_process ||
+        error_code_value == errno_error::too_many_open_files_system ||
+        error_code_value == errno_error::busy_resource ||
+        error_code_value == errno_error::text_file_busy;
 }
 
 static std::expected<std::string, error_code> read_file_content(
@@ -104,102 +117,126 @@ std::expected<bool, error_code> file_util::exists(const std::filesystem::path& f
 std::expected<void, error_code> file_util::create_directories(
     const std::filesystem::path& directory_path
 ){
-    std::error_code create_directories_ec;
-    std::filesystem::create_directories(directory_path, create_directories_ec);
-    if(create_directories_ec){
-        return std::unexpected(
-            error_code::create(error_code::map_errno(create_directories_ec.value()))
-        );
-    }
+    return retry_file_operation(
+        FILE_OPERATION_ATTEMPT_COUNT,
+        [&]() -> std::expected<void, error_code> {
+            std::error_code create_directories_ec;
+            std::filesystem::create_directories(directory_path, create_directories_ec);
+            if(create_directories_ec){
+                return std::unexpected(
+                    error_code::create(error_code::map_errno(create_directories_ec.value()))
+                );
+            }
 
-    return {};
+            return std::expected<void, error_code>{};
+        }
+    );
 }
 
 std::expected<void, error_code> file_util::remove_file(const std::filesystem::path& file_path){
-    std::error_code remove_ec;
-    std::filesystem::remove(file_path, remove_ec);
-    if(remove_ec){
-        return std::unexpected(error_code::create(error_code::map_errno(remove_ec.value())));
-    }
+    return retry_file_operation(
+        FILE_OPERATION_ATTEMPT_COUNT,
+        [&]() -> std::expected<void, error_code> {
+            std::error_code remove_ec;
+            std::filesystem::remove(file_path, remove_ec);
+            if(remove_ec){
+                return std::unexpected(
+                    error_code::create(error_code::map_errno(remove_ec.value()))
+                );
+            }
 
-    return {};
+            return std::expected<void, error_code>{};
+        }
+    );
 }
 
 std::expected<std::int32_t, error_code> file_util::read_int32_file(
     const std::filesystem::path& file_path
 ){
-    const auto file_content_exp = read_file_content(file_path);
-    if(!file_content_exp){
-        return std::unexpected(file_content_exp.error());
-    }
+    return retry_file_operation(
+        FILE_OPERATION_ATTEMPT_COUNT,
+        [&]() -> std::expected<std::int32_t, error_code> {
+            const auto file_content_exp = read_file_content(file_path);
+            if(!file_content_exp){
+                return std::unexpected(file_content_exp.error());
+            }
 
-    const std::string& file_content = *file_content_exp;
-    const char* file_begin = file_content.data();
-    const char* file_end = file_begin + file_content.size();
+            const std::string& file_content = *file_content_exp;
+            const char* file_begin = file_content.data();
+            const char* file_end = file_begin + file_content.size();
 
-    while(file_begin != file_end && std::isspace(static_cast<unsigned char>(*file_begin))){
-        ++file_begin;
-    }
+            while(file_begin != file_end && std::isspace(static_cast<unsigned char>(*file_begin))){
+                ++file_begin;
+            }
 
-    if(file_begin == file_end){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
+            if(file_begin == file_end){
+                return std::unexpected(error_code::create(errno_error::invalid_argument));
+            }
 
-    std::int32_t value = 0;
-    const auto [parse_end, parse_ec] = std::from_chars(file_begin, file_end, value);
-    if(parse_ec != std::errc{}){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
+            std::int32_t value = 0;
+            const auto [parse_end, parse_ec] = std::from_chars(file_begin, file_end, value);
+            if(parse_ec != std::errc{}){
+                return std::unexpected(error_code::create(errno_error::invalid_argument));
+            }
 
-    const char* trailing_begin = parse_end;
-    while(trailing_begin != file_end && std::isspace(static_cast<unsigned char>(*trailing_begin))){
-        ++trailing_begin;
-    }
+            const char* trailing_begin = parse_end;
+            while(trailing_begin != file_end && std::isspace(static_cast<unsigned char>(*trailing_begin))){
+                ++trailing_begin;
+            }
 
-    if(trailing_begin != file_end){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
+            if(trailing_begin != file_end){
+                return std::unexpected(error_code::create(errno_error::invalid_argument));
+            }
 
-    return value;
+            return std::expected<std::int32_t, error_code>{value};
+        }
+    );
 }
 
 std::expected<void, error_code> file_util::create_file(
     const std::filesystem::path& file_path,
     std::string_view file_content
 ){
-    std::string temp_file_pattern = file_path.string();
-    temp_file_pattern += ".tmp.XXXXXX";
+    return retry_file_operation(
+        FILE_OPERATION_ATTEMPT_COUNT,
+        [&]() -> std::expected<void, error_code> {
+            std::string temp_file_pattern = file_path.string();
+            temp_file_pattern += ".tmp.XXXXXX";
 
-    auto temp_file_exp = temp_file::create(temp_file_pattern);
-    if(!temp_file_exp){
-        return std::unexpected(temp_file_exp.error());
-    }
+            auto temp_file_exp = temp_file::create(temp_file_pattern);
+            if(!temp_file_exp){
+                return std::unexpected(temp_file_exp.error());
+            }
 
-    temp_file temporary_file = std::move(*temp_file_exp);
-    const auto write_exp = write_all(temporary_file.get_fd(), file_content);
-    if(!write_exp){
-        return std::unexpected(write_exp.error());
-    }
+            temp_file temporary_file = std::move(*temp_file_exp);
+            const auto write_exp = write_all(temporary_file.get_fd(), file_content);
+            if(!write_exp){
+                return std::unexpected(write_exp.error());
+            }
 
-    while(::fsync(temporary_file.get_fd()) < 0){
-        const int fsync_errno = errno;
-        if(should_retry_fsync_errno(fsync_errno)){
-            continue;
+            while(::fsync(temporary_file.get_fd()) < 0){
+                const int fsync_errno = errno;
+                if(should_retry_fsync_errno(fsync_errno)){
+                    continue;
+                }
+
+                return std::unexpected(error_code::create(error_code::map_errno(fsync_errno)));
+            }
+
+            const auto close_fd_exp = temporary_file.close_fd_checked();
+            if(!close_fd_exp){
+                return std::unexpected(close_fd_exp.error());
+            }
+
+            std::error_code rename_ec;
+            std::filesystem::rename(temporary_file.get_path(), file_path, rename_ec);
+            if(rename_ec){
+                return std::unexpected(
+                    error_code::create(error_code::map_errno(rename_ec.value()))
+                );
+            }
+
+            return std::expected<void, error_code>{};
         }
-
-        return std::unexpected(error_code::create(error_code::map_errno(fsync_errno)));
-    }
-
-    const auto close_fd_exp = temporary_file.close_fd_checked();
-    if(!close_fd_exp){
-        return std::unexpected(close_fd_exp.error());
-    }
-
-    std::error_code rename_ec;
-    std::filesystem::rename(temporary_file.get_path(), file_path, rename_ec);
-    if(rename_ec){
-        return std::unexpected(error_code::create(error_code::map_errno(rename_ec.value())));
-    }
-
-    return {};
+    );
 }

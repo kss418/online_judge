@@ -14,7 +14,7 @@ std::expected<problem_dto::testcase, error_code> testcase_service::create_testca
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<problem_dto::testcase, error_code> {
@@ -70,7 +70,7 @@ std::expected<problem_dto::testcase, error_code> testcase_service::get_testcase(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::testcase, error_code> {
@@ -90,7 +90,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_service::get_tes
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::testcase_count, error_code> {
@@ -110,7 +110,7 @@ std::expected<std::vector<problem_dto::testcase>, error_code> testcase_service::
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_dto::testcase>, error_code> {
@@ -134,7 +134,7 @@ std::expected<void, error_code> testcase_service::set_testcase(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
             const auto set_testcase_exp = testcase_util::set_testcase(
@@ -170,7 +170,7 @@ std::expected<void, error_code> testcase_service::delete_testcase(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
             const auto delete_testcase_exp = testcase_util::delete_testcase(

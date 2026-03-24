@@ -22,7 +22,7 @@ std::expected<auth_dto::session, error_code> login_service::sign_up(
     auth_dto::hashed_token hashed_token_value;
     hashed_token_value.token_hash = issued_token_exp->token_hash;
 
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection_value,
         [&](pqxx::work& transaction) -> std::expected<auth_dto::session, error_code> {
             const auto user_id_exp = login_util::create_user(
@@ -63,7 +63,7 @@ std::expected<std::optional<auth_dto::session>, error_code> login_service::login
         return std::unexpected(hashed_credentials_exp.error());
     }
 
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection_value,
         [&](pqxx::work& transaction)
             -> std::expected<std::optional<auth_dto::session>, error_code> {

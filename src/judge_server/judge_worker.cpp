@@ -2,7 +2,6 @@
 
 #include "common/file_util.hpp"
 #include "db_service/submission_service.hpp"
-#include "db_util/db_util.hpp"
 #include "judge_server/checker.hpp"
 #include "judge_server/judge_util.hpp"
 #include "judge_server/testcase_runner.hpp"
@@ -265,21 +264,6 @@ std::expected<judge_worker::process_submission_data, error_code> judge_worker::j
     return process_submission_data_value;
 }
 
-std::expected<void, error_code> judge_worker::try_finalize_submission(
-    const submission_dto::finalize_request& finalize_request_value
-){
-    return db_util::retry_db_operation(
-        db_connection_,
-        FINALIZE_SUBMISSION_ATTEMPT_COUNT,
-        [&]() -> std::expected<void, error_code> {
-            return submission_service::finalize_submission(
-                db_connection_,
-                finalize_request_value
-            );
-        }
-    );
-}
-
 std::expected<void, error_code> judge_worker::finalize_submission(
     std::int64_t submission_id,
     judge_result result,
@@ -302,11 +286,12 @@ std::expected<void, error_code> judge_worker::finalize_submission(
             finalize_submission_data_value.max_rss_kb_opt
         );
 
-    const auto try_finalize_submission_exp = try_finalize_submission(
+    const auto finalize_submission_exp = submission_service::finalize_submission(
+        db_connection_,
         finalize_request_value
     );
-    if(!try_finalize_submission_exp){
-        return std::unexpected(try_finalize_submission_exp.error());
+    if(!finalize_submission_exp){
+        return std::unexpected(finalize_submission_exp.error());
     }
 
     return {};
@@ -318,15 +303,9 @@ std::expected<void, error_code> judge_worker::mark_queued(std::int64_t submissio
             submission_id,
             submission_status::queued
         );
-    return db_util::retry_db_operation(
+    return submission_service::update_submission_status(
         db_connection_,
-        SUBMISSION_STATUS_UPDATE_ATTEMPT_COUNT,
-        [&]() -> std::expected<void, error_code> {
-            return submission_service::update_submission_status(
-                db_connection_,
-                status_update_value
-            );
-        }
+        status_update_value
     );
 }
 
@@ -336,15 +315,9 @@ std::expected<void, error_code> judge_worker::mark_judging(std::int64_t submissi
             submission_id,
             submission_status::judging
         );
-    return db_util::retry_db_operation(
+    return submission_service::update_submission_status(
         db_connection_,
-        SUBMISSION_STATUS_UPDATE_ATTEMPT_COUNT,
-        [&]() -> std::expected<void, error_code> {
-            return submission_service::update_submission_status(
-                db_connection_,
-                status_update_value
-            );
-        }
+        status_update_value
     );
 }
 
@@ -380,14 +353,8 @@ std::expected<std::filesystem::path, error_code> judge_worker::prepare_submissio
 std::expected<std::optional<submission_dto::queued_submission>, error_code> judge_worker::lease_submission(){
     submission_dto::lease_request lease_request_value;
     lease_request_value.lease_duration = LEASE_DURATION;
-    return db_util::retry_db_operation(
+    return submission_service::lease_submission(
         db_connection_,
-        LEASE_SUBMISSION_ATTEMPT_COUNT,
-        [&]() -> std::expected<std::optional<submission_dto::queued_submission>, error_code> {
-            return submission_service::lease_submission(
-                db_connection_,
-                lease_request_value
-            );
-        }
+        lease_request_value
     );
 }

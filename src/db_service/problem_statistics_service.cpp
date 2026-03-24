@@ -7,7 +7,7 @@ problem_statistics_service::get_statistics(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_content_dto::statistics, error_code> {

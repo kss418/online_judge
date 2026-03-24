@@ -2,6 +2,7 @@
 
 #include "common/db_connection.hpp"
 #include "common/error_code.hpp"
+#include "db_util/db_util.hpp"
 
 #include <pqxx/pqxx>
 
@@ -12,6 +13,8 @@
 #include <utility>
 
 namespace db_service_util{
+    inline constexpr int DB_TRANSACTION_ATTEMPT_COUNT = 5;
+
     template <typename result_type>
     concept expected_error_result = requires{
         typename result_type::value_type;
@@ -53,6 +56,35 @@ namespace db_service_util{
     }
 
     template <typename callback_type>
+        requires expected_error_result<write_transaction_result<callback_type>>
+    auto with_retry_write_transaction(
+        db_connection& connection,
+        int retry_count,
+        callback_type&& callback
+    ) -> write_transaction_result<callback_type> {
+        return db_util::retry_db_operation(
+            connection,
+            retry_count,
+            [&]() -> write_transaction_result<callback_type> {
+                return with_write_transaction(connection, callback);
+            }
+        );
+    }
+
+    template <typename callback_type>
+        requires expected_error_result<write_transaction_result<callback_type>>
+    auto with_retry_write_transaction(
+        db_connection& connection,
+        callback_type&& callback
+    ) -> write_transaction_result<callback_type> {
+        return with_retry_write_transaction(
+            connection,
+            DB_TRANSACTION_ATTEMPT_COUNT,
+            std::forward<callback_type>(callback)
+        );
+    }
+
+    template <typename callback_type>
         requires expected_error_result<read_transaction_result<callback_type>>
     auto with_read_transaction(
         db_connection& connection,
@@ -69,5 +101,34 @@ namespace db_service_util{
         catch(const std::exception& exception){
             return std::unexpected(error_code::map_psql_error_code(exception));
         }
+    }
+
+    template <typename callback_type>
+        requires expected_error_result<read_transaction_result<callback_type>>
+    auto with_retry_read_transaction(
+        db_connection& connection,
+        int retry_count,
+        callback_type&& callback
+    ) -> read_transaction_result<callback_type> {
+        return db_util::retry_db_operation(
+            connection,
+            retry_count,
+            [&]() -> read_transaction_result<callback_type> {
+                return with_read_transaction(connection, callback);
+            }
+        );
+    }
+
+    template <typename callback_type>
+        requires expected_error_result<read_transaction_result<callback_type>>
+    auto with_retry_read_transaction(
+        db_connection& connection,
+        callback_type&& callback
+    ) -> read_transaction_result<callback_type> {
+        return with_retry_read_transaction(
+            connection,
+            DB_TRANSACTION_ATTEMPT_COUNT,
+            std::forward<callback_type>(callback)
+        );
     }
 }

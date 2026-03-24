@@ -21,7 +21,7 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_service::auth_
     auth_dto::hashed_token hashed_token_value;
     hashed_token_value.token_hash = *token_hash_exp;
 
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection_value,
         [&](pqxx::work& transaction)
             -> std::expected<std::optional<auth_dto::identity>, error_code> {
@@ -64,7 +64,7 @@ std::expected<bool, error_code> auth_service::renew_token(
     auth_dto::hashed_token hashed_token_value;
     hashed_token_value.token_hash = *token_hash_exp;
 
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection_value,
         [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
             const auto update_expires_at_exp = auth_util::update_expires_at(
@@ -99,7 +99,7 @@ std::expected<bool, error_code> auth_service::revoke_token(
     auth_dto::hashed_token hashed_token_value;
     hashed_token_value.token_hash = *token_hash_exp;
 
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection_value,
         [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
             const auto revoke_token_exp = auth_util::revoke_token(
@@ -127,7 +127,7 @@ std::expected<bool, error_code> auth_service::update_admin_status(
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection_value,
         [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
             const auto update_admin_status_exp = auth_util::update_admin_status(

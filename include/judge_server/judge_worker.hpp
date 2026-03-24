@@ -51,9 +51,6 @@ private:
         submission_status submission_status_value,
         const std::vector<sandbox_runner::run_result>& run_results
     );
-    std::expected<void, error_code> try_finalize_submission(
-        const submission_dto::finalize_request& finalize_request_value
-    );
     std::expected<void, error_code> finalize_submission(
         std::int64_t submission_id,
         judge_result result,
@@ -77,9 +74,6 @@ private:
     );
     static constexpr std::chrono::seconds LEASE_DURATION{900};
     static constexpr std::chrono::milliseconds NOTIFICATION_WAIT_TIMEOUT{30000};
-    static constexpr int FINALIZE_SUBMISSION_ATTEMPT_COUNT = 5;
-    static constexpr int SUBMISSION_STATUS_UPDATE_ATTEMPT_COUNT = 3;
-    static constexpr int LEASE_SUBMISSION_ATTEMPT_COUNT = 3;
 
     submission_event_listener submission_event_listener_;
     db_connection db_connection_;

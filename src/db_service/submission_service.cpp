@@ -14,7 +14,7 @@ std::expected<submission_dto::history_list, error_code> submission_service::get_
     db_connection& connection,
     std::int64_t submission_id
 ){
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::history_list, error_code> {
@@ -27,7 +27,7 @@ std::expected<submission_dto::source_detail, error_code> submission_service::get
     db_connection& connection,
     std::int64_t submission_id
 ){
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::source_detail, error_code> {
@@ -40,7 +40,7 @@ std::expected<submission_dto::detail, error_code> submission_service::get_submis
     db_connection& connection,
     std::int64_t submission_id
 ){
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::detail, error_code> {
@@ -63,7 +63,7 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<submission_dto::created, error_code> {
@@ -93,7 +93,7 @@ std::expected<void, error_code> submission_service::update_submission_status(
     db_connection& connection,
     const submission_dto::status_update& status_update_value
 ){
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
             return submission_util::update_submission_status(
@@ -109,7 +109,7 @@ submission_service::lease_submission(
     db_connection& connection,
     const submission_dto::lease_request& lease_request_value
 ){
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<std::optional<submission_dto::queued_submission>, error_code> {
@@ -136,8 +136,9 @@ std::expected<void, error_code> submission_service::finalize_submission(
     db_connection& connection,
     const submission_dto::finalize_request& finalize_request_value
 ){
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection,
+        db_service_util::DB_TRANSACTION_ATTEMPT_COUNT,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
             const auto finalize_submission_exp = submission_util::finalize_submission(
                 transaction,
@@ -171,7 +172,7 @@ submission_service::list_submissions(
     db_connection& connection,
     const submission_dto::list_filter& filter_value
 ){
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<submission_dto::summary>, error_code> {

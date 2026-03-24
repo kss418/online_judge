@@ -9,7 +9,7 @@ std::expected<problem_dto::existence, error_code> problem_core_service::exists_p
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<problem_dto::existence, error_code> {
@@ -25,7 +25,7 @@ std::expected<problem_dto::title, error_code> problem_core_service::get_title(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::title, error_code> {
@@ -41,7 +41,7 @@ std::expected<problem_dto::version, error_code> problem_core_service::get_versio
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::version, error_code> {
@@ -57,7 +57,7 @@ std::expected<problem_dto::created, error_code> problem_core_service::create_pro
     db_connection& connection,
     const problem_dto::create_request& create_request_value
 ){
-    return db_service_util::with_write_transaction(
+    return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<problem_dto::created, error_code> {
@@ -109,7 +109,7 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_servic
     db_connection& connection,
     const problem_dto::list_filter& filter_value
 ){
-    return db_service_util::with_read_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_dto::summary>, error_code> {

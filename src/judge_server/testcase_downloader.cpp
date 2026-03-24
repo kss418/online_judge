@@ -1,7 +1,6 @@
 #include "judge_server/testcase_downloader.hpp"
 
 #include "common/file_util.hpp"
-#include "db_util/db_util.hpp"
 #include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"
 #include "db_service/testcase_service.hpp"
@@ -72,15 +71,9 @@ std::expected<std::pair<std::int32_t, std::int32_t>, error_code> testcase_downlo
 
 std::expected<bool, error_code> testcase_downloader::is_latest(std::int64_t problem_id){
     const problem_dto::reference problem_reference_value{problem_id};
-    const auto version_exp = db_util::retry_db_operation(
+    const auto version_exp = problem_core_service::get_version(
         connection_,
-        DB_OPERATION_ATTEMPT_COUNT,
-        [&]{
-            return problem_core_service::get_version(
-                connection_,
-                problem_reference_value
-            );
-        }
+        problem_reference_value
     );
     if(!version_exp){
         return std::unexpected(version_exp.error());
@@ -107,15 +100,9 @@ std::expected<bool, error_code> testcase_downloader::is_latest(std::int64_t prob
 
 std::expected<void, error_code> testcase_downloader::sync_version_file(std::int64_t problem_id){
     const problem_dto::reference problem_reference_value{problem_id};
-    const auto version_exp = db_util::retry_db_operation(
+    const auto version_exp = problem_core_service::get_version(
         connection_,
-        DB_OPERATION_ATTEMPT_COUNT,
-        [&]{
-            return problem_core_service::get_version(
-                connection_,
-                problem_reference_value
-            );
-        }
+        problem_reference_value
     );
     if(!version_exp){
         return std::unexpected(version_exp.error());
@@ -168,15 +155,9 @@ std::expected<void, error_code> testcase_downloader::sync_version_file(std::int6
 
 std::expected<void, error_code> testcase_downloader::sync_limit_file(std::int64_t problem_id){
     const problem_dto::reference problem_reference_value{problem_id};
-    const auto limits_exp = db_util::retry_db_operation(
+    const auto limits_exp = problem_content_service::get_limits(
         connection_,
-        DB_OPERATION_ATTEMPT_COUNT,
-        [&]{
-            return problem_content_service::get_limits(
-                connection_,
-                problem_reference_value
-            );
-        }
+        problem_reference_value
     );
     if(!limits_exp){
         return std::unexpected(limits_exp.error());
@@ -279,15 +260,9 @@ std::expected<void, error_code> testcase_downloader::sync_testcases(std::int64_t
 
 std::expected<void, error_code> testcase_downloader::download_all(std::int64_t problem_id){
     const problem_dto::reference problem_reference_value{problem_id};
-    const auto testcase_count_exp = db_util::retry_db_operation(
+    const auto testcase_count_exp = testcase_service::get_testcase_count(
         connection_,
-        DB_OPERATION_ATTEMPT_COUNT,
-        [&]{
-            return testcase_service::get_testcase_count(
-                connection_,
-                problem_reference_value
-            );
-        }
+        problem_reference_value
     );
     if(!testcase_count_exp){
         return std::unexpected(testcase_count_exp.error());
@@ -305,15 +280,9 @@ std::expected<void, error_code> testcase_downloader::download_all(std::int64_t p
 
 std::expected<void, error_code> testcase_downloader::delete_outdated(std::int64_t problem_id){
     const problem_dto::reference problem_reference_value{problem_id};
-    const auto testcase_count_exp = db_util::retry_db_operation(
+    const auto testcase_count_exp = testcase_service::get_testcase_count(
         connection_,
-        DB_OPERATION_ATTEMPT_COUNT,
-        [&]{
-            return testcase_service::get_testcase_count(
-                connection_,
-                problem_reference_value
-            );
-        }
+        problem_reference_value
     );
     if(!testcase_count_exp){
         return std::unexpected(testcase_count_exp.error());
@@ -443,15 +412,9 @@ std::expected<void, error_code> testcase_downloader::download_one(
     problem_dto::testcase_ref testcase_reference_value;
     testcase_reference_value.problem_id = problem_id;
     testcase_reference_value.testcase_order = order;
-    const auto testcase_exp = db_util::retry_db_operation(
+    const auto testcase_exp = testcase_service::get_testcase(
         connection_,
-        DB_OPERATION_ATTEMPT_COUNT,
-        [&]{
-            return testcase_service::get_testcase(
-                connection_,
-                testcase_reference_value
-            );
-        }
+        testcase_reference_value
     );
     if(!testcase_exp){
         return std::unexpected(testcase_exp.error());

@@ -14,8 +14,6 @@ public:
     std::expected<void, error_code> sync_testcases(std::int64_t problem_id);
 
 private:
-    static constexpr int DB_OPERATION_ATTEMPT_COUNT = 3;
-
     std::expected<bool, error_code> is_latest(std::int64_t problem_id);
     std::expected<void, error_code> sync_version_file(std::int64_t problem_id);
     std::expected<void, error_code> sync_limit_file(std::int64_t problem_id);
