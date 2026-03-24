@@ -127,27 +127,14 @@ print(
 PY
 )"
 
-create_testcase_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${create_testcase_response_file}" \
-        --write-out "%{http_code}" \
-        -X POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${testcase_request_body}" \
-        "${base_url}/api/problem/${problem_id}/testcase"
-)"
-
-if [[ "${create_testcase_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "first testcase create failed: status=${create_testcase_status_code}"
-    publish_failure_logs
-    echo "problem testcase flow first create failed: expected status 201, got ${create_testcase_status_code}" >&2
-    echo "response body:" >&2
-    cat "${create_testcase_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/problem/${problem_id}/testcase" \
+    "${create_testcase_response_file}" \
+    "201" \
+    "first testcase create" \
+    "${sign_up_token}" \
+    "${testcase_request_body}"
 
 python3 - "${create_testcase_response_file}" <<'PY'
 import json
@@ -181,27 +168,14 @@ print(
 PY
 )"
 
-create_empty_testcase_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${create_empty_testcase_response_file}" \
-        --write-out "%{http_code}" \
-        -X POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${empty_testcase_request_body}" \
-        "${base_url}/api/problem/${problem_id}/testcase"
-)"
-
-if [[ "${create_empty_testcase_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "empty testcase create failed: status=${create_empty_testcase_status_code}"
-    publish_failure_logs
-    echo "problem testcase flow empty create failed: expected status 201, got ${create_empty_testcase_status_code}" >&2
-    echo "response body:" >&2
-    cat "${create_empty_testcase_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/problem/${problem_id}/testcase" \
+    "${create_empty_testcase_response_file}" \
+    "201" \
+    "empty testcase create" \
+    "${sign_up_token}" \
+    "${empty_testcase_request_body}"
 
 python3 - "${create_empty_testcase_response_file}" <<'PY'
 import json
@@ -220,24 +194,13 @@ PY
 
 print_success_log "problem testcase empty create success"
 
-list_testcases_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${list_testcases_response_file}" \
-        --write-out "%{http_code}" \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/problem/${problem_id}/testcase"
-)"
-
-if [[ "${list_testcases_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "list testcases failed: status=${list_testcases_status_code}"
-    publish_failure_logs
-    echo "problem testcase flow list failed: expected status 200, got ${list_testcases_status_code}" >&2
-    echo "response body:" >&2
-    cat "${list_testcases_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}/testcase" \
+    "${list_testcases_response_file}" \
+    "200" \
+    "list testcases" \
+    "${sign_up_token}"
 
 python3 - "${list_testcases_response_file}" <<'PY'
 import json
@@ -273,23 +236,12 @@ PY
 
 print_success_log "problem testcase list success"
 
-get_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${get_problem_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem/${problem_id}"
-)"
-
-if [[ "${get_problem_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "get problem failed after testcase create: status=${get_problem_status_code}"
-    publish_failure_logs
-    echo "problem testcase flow verification failed: expected status 200, got ${get_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${get_problem_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${get_problem_response_file}" \
+    "200" \
+    "get problem after testcase create"
 
 python3 - "${get_problem_response_file}" "${problem_id}" <<'PY'
 import json
@@ -335,27 +287,14 @@ print(
 PY
 )"
 
-update_testcase_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${update_testcase_response_file}" \
-        --write-out "%{http_code}" \
-        -X PUT \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${update_testcase_request_body}" \
-        "${base_url}/api/problem/${problem_id}/testcase/1"
-)"
-
-if [[ "${update_testcase_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "update testcase failed: status=${update_testcase_status_code}"
-    publish_failure_logs
-    echo "problem testcase flow update failed: expected status 200, got ${update_testcase_status_code}" >&2
-    echo "response body:" >&2
-    cat "${update_testcase_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "PUT" \
+    "${base_url}/api/problem/${problem_id}/testcase/1" \
+    "${update_testcase_response_file}" \
+    "200" \
+    "update testcase" \
+    "${sign_up_token}" \
+    "${update_testcase_request_body}"
 
 python3 - "${update_testcase_response_file}" <<'PY'
 import json
@@ -377,24 +316,13 @@ PY
 
 print_success_log "problem testcase update success"
 
-updated_testcases_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${updated_testcases_response_file}" \
-        --write-out "%{http_code}" \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/problem/${problem_id}/testcase"
-)"
-
-if [[ "${updated_testcases_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "list updated testcases failed: status=${updated_testcases_status_code}"
-    publish_failure_logs
-    echo "problem testcase flow updated list failed: expected status 200, got ${updated_testcases_status_code}" >&2
-    echo "response body:" >&2
-    cat "${updated_testcases_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}/testcase" \
+    "${updated_testcases_response_file}" \
+    "200" \
+    "list updated testcases" \
+    "${sign_up_token}"
 
 python3 - "${updated_testcases_response_file}" <<'PY'
 import json
@@ -419,23 +347,12 @@ if first_testcase.get("testcase_output") != "30\n":
     raise SystemExit("unexpected first testcase_output after update")
 PY
 
-updated_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${updated_problem_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem/${problem_id}"
-)"
-
-if [[ "${updated_problem_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "get problem failed after testcase update: status=${updated_problem_status_code}"
-    publish_failure_logs
-    echo "problem testcase flow update verification failed: expected status 200, got ${updated_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${updated_problem_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${updated_problem_response_file}" \
+    "200" \
+    "get problem after testcase update"
 
 python3 - "${updated_problem_response_file}" "${problem_id}" <<'PY'
 import json
@@ -451,64 +368,27 @@ if response.get("version") != 4:
     raise SystemExit("version mismatch after testcase update")
 PY
 
-delete_testcase_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${delete_testcase_response_file}" \
-        --write-out "%{http_code}" \
-        -X DELETE \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/problem/${problem_id}/testcase"
-)"
-
-if [[ "${delete_testcase_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "delete testcase failed: status=${delete_testcase_status_code}"
-    publish_failure_logs
-    echo "problem testcase flow delete failed: expected status 200, got ${delete_testcase_status_code}" >&2
-    echo "response body:" >&2
-    cat "${delete_testcase_response_file}" >&2
-    exit 1
-fi
-
-if ! python3 - "${delete_testcase_response_file}" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as response_file:
-    response = json.load(response_file)
-
-if response.get("message") != "problem testcase deleted":
-    raise SystemExit("unexpected delete testcase message")
-PY
-then
-    append_log_line "${test_log_temp_file}" "delete testcase body mismatch"
-    publish_failure_logs
-    echo "problem testcase flow delete failed: unexpected response body" >&2
-    cat "${delete_testcase_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "DELETE" \
+    "${base_url}/api/problem/${problem_id}/testcase" \
+    "${delete_testcase_response_file}" \
+    "200" \
+    "delete testcase" \
+    "${sign_up_token}"
+assert_json_message \
+    "${delete_testcase_response_file}" \
+    "problem testcase deleted" \
+    "delete testcase"
 
 print_success_log "problem testcase delete success"
 
-remaining_testcases_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${remaining_testcases_response_file}" \
-        --write-out "%{http_code}" \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/problem/${problem_id}/testcase"
-)"
-
-if [[ "${remaining_testcases_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "list remaining testcases failed: status=${remaining_testcases_status_code}"
-    publish_failure_logs
-    echo "problem testcase flow remaining list failed: expected status 200, got ${remaining_testcases_status_code}" >&2
-    echo "response body:" >&2
-    cat "${remaining_testcases_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}/testcase" \
+    "${remaining_testcases_response_file}" \
+    "200" \
+    "list remaining testcases" \
+    "${sign_up_token}"
 
 python3 - "${remaining_testcases_response_file}" <<'PY'
 import json
@@ -533,23 +413,12 @@ if first_testcase.get("testcase_output") != "30\n":
     raise SystemExit("unexpected remaining testcase_output after delete")
 PY
 
-deleted_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${deleted_problem_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem/${problem_id}"
-)"
-
-if [[ "${deleted_problem_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "get problem failed after testcase delete: status=${deleted_problem_status_code}"
-    publish_failure_logs
-    echo "problem testcase flow delete verification failed: expected status 200, got ${deleted_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${deleted_problem_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${deleted_problem_response_file}" \
+    "200" \
+    "get problem after testcase delete"
 
 python3 - "${deleted_problem_response_file}" "${problem_id}" <<'PY'
 import json

@@ -10,6 +10,8 @@ source "${script_dir}/util.sh"
 source "${script_dir}/database_util.sh"
 # shellcheck disable=SC1091
 source "${script_dir}/http_server_util.sh"
+# shellcheck disable=SC1091
+source "${script_dir}/fixture_util.sh"
 
 if [[ -f "${project_root}/.env" ]]; then
     set -a
@@ -178,23 +180,12 @@ append_log_line "${test_log_temp_file}" "full_problem_id=${full_problem_id}"
 append_log_line "${test_log_temp_file}" "blank_problem_id=${blank_problem_id}"
 append_log_line "${test_log_temp_file}" "missing_problem_id=${missing_problem_id}"
 
-full_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${full_problem_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem/${full_problem_id}"
-)"
-
-if [[ "${full_problem_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "full problem get failed: status=${full_problem_status_code}"
-    publish_failure_logs
-    echo "problem get test failed: expected status 200, got ${full_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${full_problem_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${full_problem_id}" \
+    "${full_problem_response_file}" \
+    "200" \
+    "full problem get"
 
 if ! python3 - "${full_problem_response_file}" "${full_problem_id}" <<'PY'
 import json
@@ -262,23 +253,12 @@ fi
 
 print_success_log "problem detail response validated"
 
-blank_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${blank_problem_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem/${blank_problem_id}"
-)"
-
-if [[ "${blank_problem_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "blank problem get failed: status=${blank_problem_status_code}"
-    publish_failure_logs
-    echo "blank problem get test failed: expected status 200, got ${blank_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${blank_problem_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${blank_problem_id}" \
+    "${blank_problem_response_file}" \
+    "200" \
+    "blank problem get"
 
 if ! python3 - "${blank_problem_response_file}" "${blank_problem_id}" <<'PY'
 import json
@@ -325,48 +305,20 @@ fi
 
 print_success_log "blank problem response validated"
 
-missing_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${missing_problem_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem/${missing_problem_id}"
-)"
-
-if [[ "${missing_problem_status_code}" != "404" ]]; then
-    append_log_line "${test_log_temp_file}" "missing problem get failed: status=${missing_problem_status_code}"
-    publish_failure_logs
-    echo "missing problem get test failed: expected status 404, got ${missing_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${missing_problem_response_file}" >&2
-    exit 1
-fi
-
-if ! python3 - "${missing_problem_response_file}" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as response_file:
-    response = json.load(response_file)
-
-error_value = response.get("error")
-if not isinstance(error_value, dict):
-    raise SystemExit("missing error object")
-
-if error_value.get("code") != "problem_not_found":
-    raise SystemExit("unexpected error code")
-
-if error_value.get("message") != "problem not found":
-    raise SystemExit("unexpected error message")
-PY
-then
-    append_log_line "${test_log_temp_file}" "missing problem body mismatch"
-    publish_failure_logs
-    echo "missing problem get test failed: unexpected response body" >&2
-    cat "${missing_problem_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${missing_problem_id}" \
+    "${missing_problem_response_file}" \
+    "404" \
+    "missing problem get"
+assert_json_error_code \
+    "${missing_problem_response_file}" \
+    "problem_not_found" \
+    "missing problem get"
+assert_json_error_message \
+    "${missing_problem_response_file}" \
+    "problem not found" \
+    "missing problem get"
 
 append_log_line "${test_log_temp_file}" "problem get flow test passed"
 print_success_log \

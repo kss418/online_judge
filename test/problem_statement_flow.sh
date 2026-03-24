@@ -117,65 +117,27 @@ print(
 PY
 )"
 
-set_statement_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${set_statement_response_file}" \
-        --write-out "%{http_code}" \
-        -X PUT \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${statement_request_body}" \
-        "${base_url}/api/problem/${problem_id}/statement"
-)"
-
-if [[ "${set_statement_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "set statement failed: status=${set_statement_status_code}"
-    publish_failure_logs
-    echo "problem statement update failed: expected status 200, got ${set_statement_status_code}" >&2
-    echo "response body:" >&2
-    cat "${set_statement_response_file}" >&2
-    exit 1
-fi
-
-if ! python3 - "${set_statement_response_file}" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as response_file:
-    response = json.load(response_file)
-
-if response != {"message": "problem statement updated"}:
-    raise SystemExit("unexpected statement update response body")
-PY
-then
-    append_log_line "${test_log_temp_file}" "set statement body mismatch"
-    publish_failure_logs
-    echo "problem statement update failed: unexpected response body" >&2
-    cat "${set_statement_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "PUT" \
+    "${base_url}/api/problem/${problem_id}/statement" \
+    "${set_statement_response_file}" \
+    "200" \
+    "set statement" \
+    "${sign_up_token}" \
+    "${statement_request_body}"
+assert_json_message \
+    "${set_statement_response_file}" \
+    "problem statement updated" \
+    "set statement"
 
 print_success_log "problem statement initial update success"
 
-get_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${get_problem_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem/${problem_id}"
-)"
-
-if [[ "${get_problem_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "get problem after statement update failed: status=${get_problem_status_code}"
-    publish_failure_logs
-    echo "problem statement verification failed: expected status 200, got ${get_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${get_problem_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${get_problem_response_file}" \
+    "200" \
+    "get problem after statement update"
 
 if ! python3 - "${get_problem_response_file}" "${problem_id}" <<'PY'
 import json
@@ -240,63 +202,25 @@ print(
 PY
 )"
 
-clear_statement_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${clear_statement_response_file}" \
-        --write-out "%{http_code}" \
-        -X PUT \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${clear_statement_request_body}" \
-        "${base_url}/api/problem/${problem_id}/statement"
-)"
+send_http_request_and_assert_status \
+    "PUT" \
+    "${base_url}/api/problem/${problem_id}/statement" \
+    "${clear_statement_response_file}" \
+    "200" \
+    "clear statement" \
+    "${sign_up_token}" \
+    "${clear_statement_request_body}"
+assert_json_message \
+    "${clear_statement_response_file}" \
+    "problem statement updated" \
+    "clear statement"
 
-if [[ "${clear_statement_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "clear statement failed: status=${clear_statement_status_code}"
-    publish_failure_logs
-    echo "problem statement clear failed: expected status 200, got ${clear_statement_status_code}" >&2
-    echo "response body:" >&2
-    cat "${clear_statement_response_file}" >&2
-    exit 1
-fi
-
-if ! python3 - "${clear_statement_response_file}" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as response_file:
-    response = json.load(response_file)
-
-if response != {"message": "problem statement updated"}:
-    raise SystemExit("unexpected statement clear response body")
-PY
-then
-    append_log_line "${test_log_temp_file}" "clear statement body mismatch"
-    publish_failure_logs
-    echo "problem statement clear failed: unexpected response body" >&2
-    cat "${clear_statement_response_file}" >&2
-    exit 1
-fi
-
-updated_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${updated_problem_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem/${problem_id}"
-)"
-
-if [[ "${updated_problem_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "get problem after clear statement failed: status=${updated_problem_status_code}"
-    publish_failure_logs
-    echo "problem statement clear verification failed: expected status 200, got ${updated_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${updated_problem_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${updated_problem_response_file}" \
+    "200" \
+    "get problem after clear statement"
 
 if ! python3 - "${updated_problem_response_file}" "${problem_id}" <<'PY'
 import json

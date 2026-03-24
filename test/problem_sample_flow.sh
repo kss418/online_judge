@@ -126,27 +126,14 @@ print(
 PY
 )"
 
-create_sample_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${create_sample_response_file}" \
-        --write-out "%{http_code}" \
-        -X POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${sample_request_body}" \
-        "${base_url}/api/problem/${problem_id}/sample"
-)"
-
-if [[ "${create_sample_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "first sample create failed: status=${create_sample_status_code}"
-    publish_failure_logs
-    echo "problem sample flow first create failed: expected status 201, got ${create_sample_status_code}" >&2
-    echo "response body:" >&2
-    cat "${create_sample_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/problem/${problem_id}/sample" \
+    "${create_sample_response_file}" \
+    "201" \
+    "first sample create" \
+    "${sign_up_token}" \
+    "${sample_request_body}"
 
 python3 - "${create_sample_response_file}" <<'PY'
 import json
@@ -180,27 +167,14 @@ print(
 PY
 )"
 
-create_empty_sample_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${create_empty_sample_response_file}" \
-        --write-out "%{http_code}" \
-        -X POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${empty_sample_request_body}" \
-        "${base_url}/api/problem/${problem_id}/sample"
-)"
-
-if [[ "${create_empty_sample_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "empty sample create failed: status=${create_empty_sample_status_code}"
-    publish_failure_logs
-    echo "problem sample flow empty create failed: expected status 201, got ${create_empty_sample_status_code}" >&2
-    echo "response body:" >&2
-    cat "${create_empty_sample_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/problem/${problem_id}/sample" \
+    "${create_empty_sample_response_file}" \
+    "201" \
+    "empty sample create" \
+    "${sign_up_token}" \
+    "${empty_sample_request_body}"
 
 python3 - "${create_empty_sample_response_file}" <<'PY'
 import json
@@ -219,23 +193,12 @@ PY
 
 print_success_log "problem sample empty create success"
 
-list_samples_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${list_samples_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem/${problem_id}/sample"
-)"
-
-if [[ "${list_samples_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "list samples failed: status=${list_samples_status_code}"
-    publish_failure_logs
-    echo "problem sample flow list failed: expected status 200, got ${list_samples_status_code}" >&2
-    echo "response body:" >&2
-    cat "${list_samples_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}/sample" \
+    "${list_samples_response_file}" \
+    "200" \
+    "list samples"
 
 python3 - "${list_samples_response_file}" <<'PY'
 import json
@@ -275,23 +238,12 @@ PY
 
 print_success_log "problem sample list success"
 
-get_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${get_problem_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem/${problem_id}"
-)"
-
-if [[ "${get_problem_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "get problem after sample create failed: status=${get_problem_status_code}"
-    publish_failure_logs
-    echo "problem sample public verification failed: expected status 200, got ${get_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${get_problem_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${get_problem_response_file}" \
+    "200" \
+    "get problem after sample create"
 
 if ! python3 - "${get_problem_response_file}" "${problem_id}" <<'PY'
 import json
@@ -355,27 +307,14 @@ print(
 PY
 )"
 
-update_sample_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${update_sample_response_file}" \
-        --write-out "%{http_code}" \
-        -X PUT \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${update_sample_request_body}" \
-        "${base_url}/api/problem/${problem_id}/sample/1"
-)"
-
-if [[ "${update_sample_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "update sample failed: status=${update_sample_status_code}"
-    publish_failure_logs
-    echo "problem sample flow update failed: expected status 200, got ${update_sample_status_code}" >&2
-    echo "response body:" >&2
-    cat "${update_sample_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "PUT" \
+    "${base_url}/api/problem/${problem_id}/sample/1" \
+    "${update_sample_response_file}" \
+    "200" \
+    "update sample" \
+    "${sign_up_token}" \
+    "${update_sample_request_body}"
 
 python3 - "${update_sample_response_file}" <<'PY'
 import json
@@ -395,23 +334,12 @@ if response.get("sample_output") != "30\n":
     raise SystemExit("unexpected sample_output after update")
 PY
 
-list_updated_samples_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${updated_samples_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem/${problem_id}/sample"
-)"
-
-if [[ "${list_updated_samples_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "list samples after update failed: status=${list_updated_samples_status_code}"
-    publish_failure_logs
-    echo "problem sample flow updated list failed: expected status 200, got ${list_updated_samples_status_code}" >&2
-    echo "response body:" >&2
-    cat "${updated_samples_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}/sample" \
+    "${updated_samples_response_file}" \
+    "200" \
+    "list samples after update"
 
 python3 - "${updated_samples_response_file}" <<'PY'
 import json
@@ -449,23 +377,12 @@ if normalized_samples != expected_samples:
     raise SystemExit("updated sample list mismatch")
 PY
 
-updated_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${updated_problem_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem/${problem_id}"
-)"
-
-if [[ "${updated_problem_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "get problem after sample update failed: status=${updated_problem_status_code}"
-    publish_failure_logs
-    echo "problem sample update verification failed: expected status 200, got ${updated_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${updated_problem_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${updated_problem_response_file}" \
+    "200" \
+    "get problem after sample update"
 
 if ! python3 - "${updated_problem_response_file}" "${problem_id}" <<'PY'
 import json
@@ -505,54 +422,24 @@ then
     exit 1
 fi
 
-delete_sample_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${delete_sample_response_file}" \
-        --write-out "%{http_code}" \
-        -X DELETE \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/problem/${problem_id}/sample"
-)"
+send_http_request_and_assert_status \
+    "DELETE" \
+    "${base_url}/api/problem/${problem_id}/sample" \
+    "${delete_sample_response_file}" \
+    "200" \
+    "delete sample" \
+    "${sign_up_token}"
+assert_json_message \
+    "${delete_sample_response_file}" \
+    "problem sample deleted" \
+    "delete sample"
 
-if [[ "${delete_sample_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "delete sample failed: status=${delete_sample_status_code}"
-    publish_failure_logs
-    echo "problem sample flow delete failed: expected status 200, got ${delete_sample_status_code}" >&2
-    echo "response body:" >&2
-    cat "${delete_sample_response_file}" >&2
-    exit 1
-fi
-
-python3 - "${delete_sample_response_file}" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as response_file:
-    response = json.load(response_file)
-
-if response != {"message": "problem sample deleted"}:
-    raise SystemExit("unexpected delete sample response")
-PY
-
-remaining_samples_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${remaining_samples_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem/${problem_id}/sample"
-)"
-
-if [[ "${remaining_samples_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "list samples after delete failed: status=${remaining_samples_status_code}"
-    publish_failure_logs
-    echo "problem sample flow remaining list failed: expected status 200, got ${remaining_samples_status_code}" >&2
-    echo "response body:" >&2
-    cat "${remaining_samples_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}/sample" \
+    "${remaining_samples_response_file}" \
+    "200" \
+    "list samples after delete"
 
 python3 - "${remaining_samples_response_file}" <<'PY'
 import json
@@ -574,23 +461,12 @@ if remaining_sample.get("sample_output") != "30\n":
     raise SystemExit("unexpected remaining sample_output after delete")
 PY
 
-deleted_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${deleted_problem_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem/${problem_id}"
-)"
-
-if [[ "${deleted_problem_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "get problem after sample delete failed: status=${deleted_problem_status_code}"
-    publish_failure_logs
-    echo "problem sample delete verification failed: expected status 200, got ${deleted_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${deleted_problem_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${deleted_problem_response_file}" \
+    "200" \
+    "get problem after sample delete"
 
 if ! python3 - "${deleted_problem_response_file}" "${problem_id}" <<'PY'
 import json

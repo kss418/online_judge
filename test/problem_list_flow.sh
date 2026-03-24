@@ -89,23 +89,12 @@ append_log_line "${test_log_temp_file}" "first_problem_id=${first_problem_id}"
 append_log_line "${test_log_temp_file}" "second_problem_id=${second_problem_id}"
 append_log_line "${test_log_temp_file}" "third_problem_id=${third_problem_id}"
 
-list_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${list_problem_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem"
-)"
-
-if [[ "${list_problem_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "problem list failed: status=${list_problem_status_code}"
-    publish_failure_logs
-    echo "problem list flow failed: expected status 200, got ${list_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${list_problem_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem" \
+    "${list_problem_response_file}" \
+    "200" \
+    "problem list"
 
 if ! python3 - "${list_problem_response_file}" "${first_problem_id}" "${second_problem_id}" "${third_problem_id}" <<'PY'
 import json
@@ -150,23 +139,12 @@ fi
 
 print_success_log "problem list response validated"
 
-filtered_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${filtered_problem_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem?title=PLUS"
-)"
-
-if [[ "${filtered_problem_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "filtered problem list failed: status=${filtered_problem_status_code}"
-    publish_failure_logs
-    echo "filtered problem list flow failed: expected status 200, got ${filtered_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${filtered_problem_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem?title=PLUS" \
+    "${filtered_problem_response_file}" \
+    "200" \
+    "filtered problem list"
 
 if ! python3 - "${filtered_problem_response_file}" "${first_problem_id}" "${second_problem_id}" <<'PY'
 import json
@@ -205,23 +183,12 @@ fi
 
 print_success_log "problem list title filter validated"
 
-missing_problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${missing_problem_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem?title=divide"
-)"
-
-if [[ "${missing_problem_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "missing title problem list failed: status=${missing_problem_status_code}"
-    publish_failure_logs
-    echo "missing title problem list flow failed: expected status 200, got ${missing_problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${missing_problem_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem?title=divide" \
+    "${missing_problem_response_file}" \
+    "200" \
+    "missing title problem list"
 
 if ! python3 - "${missing_problem_response_file}" <<'PY'
 import json
@@ -243,51 +210,24 @@ fi
 
 print_success_log "problem list empty filter validated"
 
-invalid_query_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${invalid_query_response_file}" \
-        --write-out "%{http_code}" \
-        "${base_url}/api/problem?unsupported=value"
-)"
-
-if [[ "${invalid_query_status_code}" != "400" ]]; then
-    append_log_line "${test_log_temp_file}" "invalid query problem list failed: status=${invalid_query_status_code}"
-    publish_failure_logs
-    echo "invalid query problem list flow failed: expected status 400, got ${invalid_query_status_code}" >&2
-    echo "response body:" >&2
-    cat "${invalid_query_response_file}" >&2
-    exit 1
-fi
-
-if ! python3 - "${invalid_query_response_file}" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as response_file:
-    response = json.load(response_file)
-
-error_value = response.get("error")
-if not isinstance(error_value, dict):
-    raise SystemExit("missing error object")
-
-if error_value.get("code") != "unsupported_query_parameter":
-    raise SystemExit("unexpected error code")
-
-if error_value.get("message") != "unsupported query parameter: unsupported":
-    raise SystemExit("unexpected error message")
-
-if error_value.get("field") != "unsupported":
-    raise SystemExit("unexpected error field")
-PY
-then
-    append_log_line "${test_log_temp_file}" "invalid query body mismatch"
-    publish_failure_logs
-    echo "invalid query problem list flow failed: unexpected response body" >&2
-    cat "${invalid_query_response_file}" >&2
-    exit 1
-fi
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem?unsupported=value" \
+    "${invalid_query_response_file}" \
+    "400" \
+    "invalid query problem list"
+assert_json_error_code \
+    "${invalid_query_response_file}" \
+    "unsupported_query_parameter" \
+    "invalid query problem list"
+assert_json_error_message \
+    "${invalid_query_response_file}" \
+    "unsupported query parameter: unsupported" \
+    "invalid query problem list"
+assert_json_error_field \
+    "${invalid_query_response_file}" \
+    "unsupported" \
+    "invalid query problem list"
 
 append_log_line "${test_log_temp_file}" "problem list flow test passed"
 print_success_log \

@@ -23,6 +23,252 @@ publish_fixture_failure_logs(){
     fi
 }
 
+send_http_request(){
+    local request_method="$1"
+    local request_url="$2"
+    local response_file_path="$3"
+    local auth_token="${4:-}"
+    local request_body="${5:-}"
+    local content_type="${6:-application/json}"
+    local curl_args=()
+
+    require_fixture_test_env
+
+    if [[ -z "${request_method}" || -z "${request_url}" || -z "${response_file_path}" ]]; then
+        echo "missing required http request argument" >&2
+        exit 1
+    fi
+
+    curl_args=(
+        curl
+        --silent
+        --show-error
+        --output "${response_file_path}"
+        --write-out "%{http_code}"
+        --request "${request_method}"
+    )
+
+    if [[ -n "${auth_token}" ]]; then
+        curl_args+=(-H "Authorization: Bearer ${auth_token}")
+    fi
+
+    if [[ -n "${request_body}" ]]; then
+        curl_args+=(-H "Content-Type: ${content_type}")
+        curl_args+=(-d "${request_body}")
+    fi
+
+    curl_args+=("${request_url}")
+
+    "${curl_args[@]}"
+}
+
+send_http_request_and_assert_status(){
+    local request_method="$1"
+    local request_url="$2"
+    local response_file_path="$3"
+    local expected_status_code="$4"
+    local failure_context="$5"
+    local auth_token="${6:-}"
+    local request_body="${7:-}"
+    local content_type="${8:-application/json}"
+    local actual_status_code=""
+
+    actual_status_code="$(
+        send_http_request \
+            "${request_method}" \
+            "${request_url}" \
+            "${response_file_path}" \
+            "${auth_token}" \
+            "${request_body}" \
+            "${content_type}"
+    )"
+
+    assert_status_code \
+        "${actual_status_code}" \
+        "${expected_status_code}" \
+        "${response_file_path}" \
+        "${failure_context}"
+}
+
+assert_status_code(){
+    local actual_status_code="$1"
+    local expected_status_code="$2"
+    local response_file_path="$3"
+    local failure_context="$4"
+
+    if [[ -z "${actual_status_code}" || -z "${expected_status_code}" || -z "${response_file_path}" || -z "${failure_context}" ]]; then
+        echo "missing required status assertion argument" >&2
+        exit 1
+    fi
+
+    if [[ "${actual_status_code}" != "${expected_status_code}" ]]; then
+        append_log_line "${test_log_temp_file}" "${failure_context} failed: status=${actual_status_code}"
+        publish_fixture_failure_logs
+        echo "${failure_context}: expected status ${expected_status_code}, got ${actual_status_code}" >&2
+        echo "response body:" >&2
+        cat "${response_file_path}" >&2
+        exit 1
+    fi
+
+    append_log_line "${test_log_temp_file}" "${failure_context} passed: status=${actual_status_code}"
+}
+
+read_json_field(){
+    local response_file_path="$1"
+    local field_path="$2"
+    local expected_type="${3:-string}"
+
+    if [[ -z "${response_file_path}" || -z "${field_path}" ]]; then
+        echo "missing required read json field argument" >&2
+        exit 1
+    fi
+
+    python3 - "${response_file_path}" "${field_path}" "${expected_type}" <<'PY'
+import json
+import sys
+
+response_file_path = sys.argv[1]
+field_path = sys.argv[2]
+expected_type = sys.argv[3]
+
+with open(response_file_path, encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+current_value = response
+for field_name in field_path.split("."):
+    if not isinstance(current_value, dict) or field_name not in current_value:
+        raise SystemExit(f"missing json field: {field_path}")
+    current_value = current_value[field_name]
+
+if expected_type == "string":
+    if not isinstance(current_value, str) or not current_value:
+        raise SystemExit(f"expected non-empty string field: {field_path}")
+elif expected_type == "int":
+    if not isinstance(current_value, int):
+        raise SystemExit(f"expected int field: {field_path}")
+elif expected_type == "bool":
+    if not isinstance(current_value, bool):
+        raise SystemExit(f"expected bool field: {field_path}")
+else:
+    raise SystemExit(f"unsupported expected_type: {expected_type}")
+
+print(current_value)
+PY
+}
+
+assert_json_field_equals(){
+    local response_file_path="$1"
+    local field_path="$2"
+    local expected_value="$3"
+    local failure_context="$4"
+    local expected_type="${5:-string}"
+
+    if [[ -z "${response_file_path}" || -z "${field_path}" || -z "${failure_context}" ]]; then
+        echo "missing required json field assertion argument" >&2
+        exit 1
+    fi
+
+    if ! python3 - "${response_file_path}" "${field_path}" "${expected_value}" "${expected_type}" <<'PY'
+import json
+import sys
+
+response_file_path = sys.argv[1]
+field_path = sys.argv[2]
+expected_value_text = sys.argv[3]
+expected_type = sys.argv[4]
+
+with open(response_file_path, encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+current_value = response
+for field_name in field_path.split("."):
+    if not isinstance(current_value, dict) or field_name not in current_value:
+        raise SystemExit(f"missing json field: {field_path}")
+    current_value = current_value[field_name]
+
+if expected_type == "string":
+    expected_value = expected_value_text
+elif expected_type == "int":
+    expected_value = int(expected_value_text)
+elif expected_type == "null":
+    expected_value = None
+elif expected_type == "bool":
+    if expected_value_text == "true":
+        expected_value = True
+    elif expected_value_text == "false":
+        expected_value = False
+    else:
+        raise SystemExit(f"invalid bool expected value: {expected_value_text}")
+else:
+    raise SystemExit(f"unsupported expected_type: {expected_type}")
+
+if current_value != expected_value:
+    raise SystemExit(
+        f"json field mismatch: {field_path}, expected={expected_value!r}, actual={current_value!r}"
+    )
+PY
+    then
+        append_log_line "${test_log_temp_file}" "${failure_context} json field validation failed: field=${field_path}"
+        publish_fixture_failure_logs
+        echo "${failure_context} json field validation failed: field=${field_path}" >&2
+        echo "response body:" >&2
+        cat "${response_file_path}" >&2
+        exit 1
+    fi
+}
+
+assert_json_error_code(){
+    local response_file_path="$1"
+    local expected_error_code="$2"
+    local failure_context="$3"
+
+    assert_json_field_equals \
+        "${response_file_path}" \
+        "error.code" \
+        "${expected_error_code}" \
+        "${failure_context}" \
+        "string"
+}
+
+assert_json_message(){
+    local response_file_path="$1"
+    local expected_message="$2"
+    local failure_context="$3"
+
+    assert_json_field_equals \
+        "${response_file_path}" \
+        "message" \
+        "${expected_message}" \
+        "${failure_context}" \
+        "string"
+}
+
+assert_json_error_message(){
+    local response_file_path="$1"
+    local expected_message="$2"
+    local failure_context="$3"
+
+    assert_json_field_equals \
+        "${response_file_path}" \
+        "error.message" \
+        "${expected_message}" \
+        "${failure_context}" \
+        "string"
+}
+
+assert_json_error_field(){
+    local response_file_path="$1"
+    local expected_field="$2"
+    local failure_context="$3"
+
+    assert_json_field_equals \
+        "${response_file_path}" \
+        "error.field" \
+        "${expected_field}" \
+        "${failure_context}" \
+        "string"
+}
+
 make_sign_up_request_body(){
     python3 - "$1" "$2" <<'PY'
 import json
@@ -87,26 +333,20 @@ sign_up_user(){
 
     sign_up_request_body="$(make_sign_up_request_body "${user_login_id}" "${raw_password}")"
     sign_up_status_code="$(
-        curl \
-            --silent \
-            --show-error \
-            --output "${response_file_path}" \
-            --write-out "%{http_code}" \
-            -H "Content-Type: application/json" \
-            -d "${sign_up_request_body}" \
-            "${base_url}/api/auth/sign-up"
+        send_http_request \
+            "POST" \
+            "${base_url}/api/auth/sign-up" \
+            "${response_file_path}" \
+            "" \
+            "${sign_up_request_body}"
     )"
 
-    if [[ "${sign_up_status_code}" != "201" ]]; then
-        append_log_line "${test_log_temp_file}" "sign-up failed: status=${sign_up_status_code}"
-        publish_fixture_failure_logs
-        echo "${failure_context} sign-up failed: expected status 201, got ${sign_up_status_code}" >&2
-        echo "response body:" >&2
-        cat "${response_file_path}" >&2
-        exit 1
-    fi
+    assert_status_code \
+        "${sign_up_status_code}" \
+        "201" \
+        "${response_file_path}" \
+        "${failure_context} sign-up"
 
-    append_log_line "${test_log_temp_file}" "sign-up passed: status=${sign_up_status_code}"
     read_auth_response_user_id_and_token "${response_file_path}"
 }
 
@@ -180,26 +420,19 @@ create_problem_via_api(){
     create_problem_request_body="$(make_create_problem_request_body "${problem_title}")"
 
     create_problem_status_code="$(
-        curl \
-            --silent \
-            --show-error \
-            --output "${response_file_path}" \
-            --write-out "%{http_code}" \
-            --request POST \
-            -H "Authorization: Bearer ${auth_token}" \
-            -H "Content-Type: application/json" \
-            -d "${create_problem_request_body}" \
-            "${base_url}/api/problem"
+        send_http_request \
+            "POST" \
+            "${base_url}/api/problem" \
+            "${response_file_path}" \
+            "${auth_token}" \
+            "${create_problem_request_body}"
     )"
 
-    if [[ "${create_problem_status_code}" != "201" ]]; then
-        append_log_line "${test_log_temp_file}" "problem create failed: status=${create_problem_status_code}"
-        publish_fixture_failure_logs
-        echo "${failure_context} create problem failed: expected status 201, got ${create_problem_status_code}" >&2
-        echo "response body:" >&2
-        cat "${response_file_path}" >&2
-        exit 1
-    fi
+    assert_status_code \
+        "${create_problem_status_code}" \
+        "201" \
+        "${response_file_path}" \
+        "${failure_context} create problem"
 
     problem_id="$(read_problem_id_from_create_problem_response "${response_file_path}")"
     append_log_line \

@@ -171,28 +171,14 @@ PY
 )"
 
 submission_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${submission_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${submission_request_body}" \
-        "${base_url}/api/submission/${problem_id}"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${problem_id}" \
+        "${submission_response_file}" \
+        "${sign_up_token}" \
+        "${submission_request_body}"
 )"
-
-if [[ "${submission_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "submission create failed: status=${submission_status_code}"
-    publish_failure_logs
-    echo "submission create test failed: expected status 201, got ${submission_status_code}" >&2
-    echo "response body:" >&2
-    cat "${submission_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "submission create passed: status=${submission_status_code}"
+assert_status_code "${submission_status_code}" "201" "${submission_response_file}" "submission create"
 print_success_log "submission create success"
 
 submission_id="$(
@@ -233,28 +219,14 @@ PY
 )"
 
 second_submission_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${submission_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${second_submission_request_body}" \
-        "${base_url}/api/submission/${problem_id}"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${problem_id}" \
+        "${submission_response_file}" \
+        "${sign_up_token}" \
+        "${second_submission_request_body}"
 )"
-
-if [[ "${second_submission_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "second submission create failed: status=${second_submission_status_code}"
-    publish_failure_logs
-    echo "second submission create test failed: expected status 201, got ${second_submission_status_code}" >&2
-    echo "response body:" >&2
-    cat "${submission_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "second submission create passed: status=${second_submission_status_code}"
+assert_status_code "${second_submission_status_code}" "201" "${submission_response_file}" "second submission create"
 print_success_log "second submission create success"
 
 second_submission_id="$(
@@ -325,205 +297,88 @@ fi
 print_success_log "initial queue priority validation success"
 
 submission_detail_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${submission_detail_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        "${base_url}/api/submission/${submission_id}"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission/${submission_id}" \
+        "${submission_detail_response_file}"
 )"
-
-if [[ "${submission_detail_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "submission detail get failed: status=${submission_detail_status_code}"
-    publish_failure_logs
-    echo "submission detail get test failed: expected status 200, got ${submission_detail_status_code}" >&2
-    echo "response body:" >&2
-    cat "${submission_detail_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "submission detail get passed: status=${submission_detail_status_code}"
+assert_status_code "${submission_detail_status_code}" "200" "${submission_detail_response_file}" "submission detail get"
 print_success_log "submission detail get success"
 
 missing_submission_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${missing_submission_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        "${base_url}/api/submission/${missing_submission_id}"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission/${missing_submission_id}" \
+        "${missing_submission_response_file}"
 )"
-
-if [[ "${missing_submission_status_code}" != "404" ]]; then
-    append_log_line "${test_log_temp_file}" "missing submission get failed: status=${missing_submission_status_code}"
-    publish_failure_logs
-    echo "missing submission get test failed: expected status 404, got ${missing_submission_status_code}" >&2
-    echo "response body:" >&2
-    cat "${missing_submission_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "missing submission get passed: status=${missing_submission_status_code}"
+assert_status_code "${missing_submission_status_code}" "404" "${missing_submission_response_file}" "missing submission get"
 print_success_log "missing submission get success"
 
 submission_history_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${submission_history_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        "${base_url}/api/submission/${submission_id}/history"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission/${submission_id}/history" \
+        "${submission_history_response_file}"
 )"
-
-if [[ "${submission_history_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "submission history get failed: status=${submission_history_status_code}"
-    publish_failure_logs
-    echo "submission history get test failed: expected status 200, got ${submission_history_status_code}" >&2
-    echo "response body:" >&2
-    cat "${submission_history_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "submission history get passed: status=${submission_history_status_code}"
+assert_status_code "${submission_history_status_code}" "200" "${submission_history_response_file}" "submission history get"
 print_success_log "submission history get success"
 
 missing_history_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${missing_history_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        "${base_url}/api/submission/${missing_submission_id}/history"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission/${missing_submission_id}/history" \
+        "${missing_history_response_file}"
 )"
-
-if [[ "${missing_history_status_code}" != "404" ]]; then
-    append_log_line "${test_log_temp_file}" "missing submission history get failed: status=${missing_history_status_code}"
-    publish_failure_logs
-    echo "missing submission history get test failed: expected status 404, got ${missing_history_status_code}" >&2
-    echo "response body:" >&2
-    cat "${missing_history_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "missing submission history get passed: status=${missing_history_status_code}"
+assert_status_code "${missing_history_status_code}" "404" "${missing_history_response_file}" "missing submission history get"
 print_success_log "missing submission history get success"
 
 submission_source_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${submission_source_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/submission/${submission_id}/source"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission/${submission_id}/source" \
+        "${submission_source_response_file}" \
+        "${sign_up_token}"
 )"
-
-if [[ "${submission_source_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "submission source get failed: status=${submission_source_status_code}"
-    publish_failure_logs
-    echo "submission source get test failed: expected status 200, got ${submission_source_status_code}" >&2
-    echo "response body:" >&2
-    cat "${submission_source_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "submission source get passed: status=${submission_source_status_code}"
+assert_status_code "${submission_source_status_code}" "200" "${submission_source_response_file}" "submission source get"
 print_success_log "submission source get success"
 
 unauthorized_source_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${unauthorized_source_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        "${base_url}/api/submission/${submission_id}/source"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission/${submission_id}/source" \
+        "${unauthorized_source_response_file}"
 )"
-
-if [[ "${unauthorized_source_status_code}" != "401" ]]; then
-    append_log_line "${test_log_temp_file}" "unauthorized submission source get failed: status=${unauthorized_source_status_code}"
-    publish_failure_logs
-    echo "unauthorized submission source get test failed: expected status 401, got ${unauthorized_source_status_code}" >&2
-    echo "response body:" >&2
-    cat "${unauthorized_source_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "unauthorized submission source get passed: status=${unauthorized_source_status_code}"
+assert_status_code "${unauthorized_source_status_code}" "401" "${unauthorized_source_response_file}" "unauthorized submission source get"
 print_success_log "unauthorized submission source get success"
 
 forbidden_source_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${forbidden_source_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        -H "Authorization: Bearer ${other_user_token}" \
-        "${base_url}/api/submission/${submission_id}/source"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission/${submission_id}/source" \
+        "${forbidden_source_response_file}" \
+        "${other_user_token}"
 )"
-
-if [[ "${forbidden_source_status_code}" != "403" ]]; then
-    append_log_line "${test_log_temp_file}" "forbidden submission source get failed: status=${forbidden_source_status_code}"
-    publish_failure_logs
-    echo "forbidden submission source get test failed: expected status 403, got ${forbidden_source_status_code}" >&2
-    echo "response body:" >&2
-    cat "${forbidden_source_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "forbidden submission source get passed: status=${forbidden_source_status_code}"
+assert_status_code "${forbidden_source_status_code}" "403" "${forbidden_source_response_file}" "forbidden submission source get"
 print_success_log "forbidden submission source get success"
 
 admin_source_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${admin_source_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        -H "Authorization: Bearer ${admin_user_token}" \
-        "${base_url}/api/submission/${submission_id}/source"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission/${submission_id}/source" \
+        "${admin_source_response_file}" \
+        "${admin_user_token}"
 )"
-
-if [[ "${admin_source_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "admin submission source get failed: status=${admin_source_status_code}"
-    publish_failure_logs
-    echo "admin submission source get test failed: expected status 200, got ${admin_source_status_code}" >&2
-    echo "response body:" >&2
-    cat "${admin_source_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "admin submission source get passed: status=${admin_source_status_code}"
+assert_status_code "${admin_source_status_code}" "200" "${admin_source_response_file}" "admin submission source get"
 print_success_log "admin submission source get success"
 
 missing_source_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${missing_source_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/submission/${missing_submission_id}/source"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission/${missing_submission_id}/source" \
+        "${missing_source_response_file}" \
+        "${sign_up_token}"
 )"
-
-if [[ "${missing_source_status_code}" != "404" ]]; then
-    append_log_line "${test_log_temp_file}" "missing submission source get failed: status=${missing_source_status_code}"
-    publish_failure_logs
-    echo "missing submission source get test failed: expected status 404, got ${missing_source_status_code}" >&2
-    echo "response body:" >&2
-    cat "${missing_source_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "missing submission source get passed: status=${missing_source_status_code}"
+assert_status_code "${missing_source_status_code}" "404" "${missing_source_response_file}" "missing submission source get"
 print_success_log "missing submission source get success"
 
 if ! PGPASSWORD="${DB_PASSWORD}" psql \
@@ -569,94 +424,42 @@ then
 fi
 
 rejudge_unauthorized_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${rejudge_unauthorized_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/submission/${submission_id}/rejudge"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${submission_id}/rejudge" \
+        "${rejudge_unauthorized_response_file}" \
+        "${sign_up_token}"
 )"
-
-if [[ "${rejudge_unauthorized_status_code}" != "401" ]]; then
-    append_log_line "${test_log_temp_file}" "unauthorized rejudge failed: status=${rejudge_unauthorized_status_code}"
-    publish_failure_logs
-    echo "unauthorized rejudge test failed: expected status 401, got ${rejudge_unauthorized_status_code}" >&2
-    echo "response body:" >&2
-    cat "${rejudge_unauthorized_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "unauthorized rejudge passed: status=${rejudge_unauthorized_status_code}"
+assert_status_code "${rejudge_unauthorized_status_code}" "401" "${rejudge_unauthorized_response_file}" "unauthorized rejudge"
 print_success_log "unauthorized rejudge success"
 
 rejudge_invalid_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${rejudge_invalid_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${admin_user_token}" \
-        "${base_url}/api/submission/${second_submission_id}/rejudge"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${second_submission_id}/rejudge" \
+        "${rejudge_invalid_response_file}" \
+        "${admin_user_token}"
 )"
-
-if [[ "${rejudge_invalid_status_code}" != "400" ]]; then
-    append_log_line "${test_log_temp_file}" "queued submission rejudge failed: status=${rejudge_invalid_status_code}"
-    publish_failure_logs
-    echo "queued submission rejudge test failed: expected status 400, got ${rejudge_invalid_status_code}" >&2
-    echo "response body:" >&2
-    cat "${rejudge_invalid_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "queued submission rejudge passed: status=${rejudge_invalid_status_code}"
+assert_status_code "${rejudge_invalid_status_code}" "400" "${rejudge_invalid_response_file}" "queued submission rejudge"
 print_success_log "queued submission rejudge success"
 
 rejudge_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${rejudge_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${admin_user_token}" \
-        "${base_url}/api/submission/${submission_id}/rejudge"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${submission_id}/rejudge" \
+        "${rejudge_response_file}" \
+        "${admin_user_token}"
 )"
-
-if [[ "${rejudge_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "submission rejudge failed: status=${rejudge_status_code}"
-    publish_failure_logs
-    echo "submission rejudge test failed: expected status 200, got ${rejudge_status_code}" >&2
-    echo "response body:" >&2
-    cat "${rejudge_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "submission rejudge passed: status=${rejudge_status_code}"
+assert_status_code "${rejudge_status_code}" "200" "${rejudge_response_file}" "submission rejudge"
 print_success_log "submission rejudge success"
 
 rejudge_detail_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${rejudge_detail_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        "${base_url}/api/submission/${submission_id}"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission/${submission_id}" \
+        "${rejudge_detail_response_file}"
 )"
-
-if [[ "${rejudge_detail_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "rejudge detail get failed: status=${rejudge_detail_status_code}"
-    publish_failure_logs
-    echo "rejudge detail get test failed: expected status 200, got ${rejudge_detail_status_code}" >&2
-    echo "response body:" >&2
-    cat "${rejudge_detail_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "rejudge detail get passed: status=${rejudge_detail_status_code}"
+assert_status_code "${rejudge_detail_status_code}" "200" "${rejudge_detail_response_file}" "rejudge detail get"
 print_success_log "rejudge detail get success"
 
 if ! python3 \
@@ -777,69 +580,30 @@ fi
 print_success_log "submission rejudge db validation success"
 
 all_submission_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${all_submission_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        "${base_url}/api/submission"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission" \
+        "${all_submission_response_file}"
 )"
-
-if [[ "${all_submission_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "submission list without filter failed: status=${all_submission_status_code}"
-    publish_failure_logs
-    echo "submission list without filter test failed: expected status 200, got ${all_submission_status_code}" >&2
-    echo "response body:" >&2
-    cat "${all_submission_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "submission list without filter passed: status=${all_submission_status_code}"
+assert_status_code "${all_submission_status_code}" "200" "${all_submission_response_file}" "submission list without filter"
 print_success_log "submission list without filter success"
 
 list_submission_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${list_submission_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        "${base_url}/api/submission?top=${second_submission_id}&user_id=${sign_up_user_id}&problem_id=${problem_id}&status=queued"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission?top=${second_submission_id}&user_id=${sign_up_user_id}&problem_id=${problem_id}&status=queued" \
+        "${list_submission_response_file}"
 )"
-
-if [[ "${list_submission_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "submission list failed: status=${list_submission_status_code}"
-    publish_failure_logs
-    echo "submission list test failed: expected status 200, got ${list_submission_status_code}" >&2
-    echo "response body:" >&2
-    cat "${list_submission_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "submission list passed: status=${list_submission_status_code}"
+assert_status_code "${list_submission_status_code}" "200" "${list_submission_response_file}" "submission list"
 print_success_log "submission list success"
 
 top_submission_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${top_submission_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        "${base_url}/api/submission?top=${submission_id}&user_id=${sign_up_user_id}&problem_id=${problem_id}&status=queued"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission?top=${submission_id}&user_id=${sign_up_user_id}&problem_id=${problem_id}&status=queued" \
+        "${top_submission_response_file}"
 )"
-
-if [[ "${top_submission_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "submission top list failed: status=${top_submission_status_code}"
-    publish_failure_logs
-    echo "submission top list test failed: expected status 200, got ${top_submission_status_code}" >&2
-    echo "response body:" >&2
-    cat "${top_submission_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "submission top list passed: status=${top_submission_status_code}"
+assert_status_code "${top_submission_status_code}" "200" "${top_submission_response_file}" "submission top list"
 print_success_log "submission top list success"
 
 if ! python3 \
@@ -1295,26 +1059,14 @@ then
 fi
 
 third_submission_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${submission_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${submission_request_body}" \
-        "${base_url}/api/submission/${problem_id}"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${problem_id}" \
+        "${submission_response_file}" \
+        "${sign_up_token}" \
+        "${submission_request_body}"
 )"
-
-if [[ "${third_submission_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "third submission create failed: status=${third_submission_status_code}"
-    publish_failure_logs
-    echo "third submission create test failed: expected status 201, got ${third_submission_status_code}" >&2
-    echo "response body:" >&2
-    cat "${submission_response_file}" >&2
-    exit 1
-fi
+assert_status_code "${third_submission_status_code}" "201" "${submission_response_file}" "third submission create"
 
 third_submission_id="$(
     python3 - "${submission_response_file}" <<'PY'
@@ -1395,64 +1147,43 @@ then
 fi
 
 problem_rejudge_unauthorized_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${problem_rejudge_unauthorized_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/problem/${problem_id}/rejudge"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/problem/${problem_id}/rejudge" \
+        "${problem_rejudge_unauthorized_response_file}" \
+        "${sign_up_token}"
 )"
-
-if [[ "${problem_rejudge_unauthorized_status_code}" != "401" ]]; then
-    append_log_line "${test_log_temp_file}" "problem rejudge unauthorized failed: status=${problem_rejudge_unauthorized_status_code}"
-    publish_failure_logs
-    echo "problem rejudge unauthorized test failed: expected status 401, got ${problem_rejudge_unauthorized_status_code}" >&2
-    echo "response body:" >&2
-    cat "${problem_rejudge_unauthorized_response_file}" >&2
-    exit 1
-fi
+assert_status_code \
+    "${problem_rejudge_unauthorized_status_code}" \
+    "401" \
+    "${problem_rejudge_unauthorized_response_file}" \
+    "problem rejudge unauthorized"
 
 problem_rejudge_missing_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${problem_rejudge_missing_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${admin_user_token}" \
-        "${base_url}/api/problem/${missing_submission_id}/rejudge"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/problem/${missing_submission_id}/rejudge" \
+        "${problem_rejudge_missing_response_file}" \
+        "${admin_user_token}"
 )"
-
-if [[ "${problem_rejudge_missing_status_code}" != "404" ]]; then
-    append_log_line "${test_log_temp_file}" "problem rejudge missing failed: status=${problem_rejudge_missing_status_code}"
-    publish_failure_logs
-    echo "problem rejudge missing test failed: expected status 404, got ${problem_rejudge_missing_status_code}" >&2
-    echo "response body:" >&2
-    cat "${problem_rejudge_missing_response_file}" >&2
-    exit 1
-fi
+assert_status_code \
+    "${problem_rejudge_missing_status_code}" \
+    "404" \
+    "${problem_rejudge_missing_response_file}" \
+    "problem rejudge missing"
 
 problem_rejudge_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${problem_rejudge_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${admin_user_token}" \
-        "${base_url}/api/problem/${problem_id}/rejudge"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/problem/${problem_id}/rejudge" \
+        "${problem_rejudge_response_file}" \
+        "${admin_user_token}"
 )"
-
-if [[ "${problem_rejudge_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "problem rejudge failed: status=${problem_rejudge_status_code}"
-    publish_failure_logs
-    echo "problem rejudge test failed: expected status 200, got ${problem_rejudge_status_code}" >&2
-    echo "response body:" >&2
-    cat "${problem_rejudge_response_file}" >&2
-    exit 1
-fi
+assert_status_code \
+    "${problem_rejudge_status_code}" \
+    "200" \
+    "${problem_rejudge_response_file}" \
+    "problem rejudge"
 
 if ! python3 \
     - "${problem_rejudge_unauthorized_response_file}" \

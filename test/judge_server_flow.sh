@@ -241,13 +241,10 @@ wait_for_submission_final_status(){
     while (( attempt < 120 )); do
         local detail_status_code=""
         detail_status_code="$(
-            curl \
-                --silent \
-                --show-error \
-                --output "${response_file_path}" \
-                --write-out "%{http_code}" \
-                --request GET \
-                "${base_url}/api/submission/${submission_id}"
+            send_http_request \
+                "GET" \
+                "${base_url}/api/submission/${submission_id}" \
+                "${response_file_path}"
         )"
 
         if [[ "${detail_status_code}" != "200" ]]; then
@@ -415,13 +412,10 @@ validate_submission_status_history(){
 
     local submission_history_status_code=""
     submission_history_status_code="$(
-        curl \
-            --silent \
-            --show-error \
-            --output "${submission_history_response_file}" \
-            --write-out "%{http_code}" \
-            --request GET \
-            "${base_url}/api/submission/${submission_id}/history"
+        send_http_request \
+            "GET" \
+            "${base_url}/api/submission/${submission_id}/history" \
+            "${submission_history_response_file}"
     )"
 
     if [[ "${submission_history_status_code}" != "200" ]]; then
@@ -612,52 +606,28 @@ limits_request_body="$(
     make_limits_request_body "${problem_memory_limit_mb}" "${problem_time_limit_ms}"
 )"
 set_limits_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${set_limits_response_file}" \
-        --write-out "%{http_code}" \
-        --request PUT \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${limits_request_body}" \
-        "${base_url}/api/problem/${problem_id}/limits"
+    send_http_request \
+        "PUT" \
+        "${base_url}/api/problem/${problem_id}/limits" \
+        "${set_limits_response_file}" \
+        "${sign_up_token}" \
+        "${limits_request_body}"
 )"
-
-if [[ "${set_limits_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "set limits failed: status=${set_limits_status_code}"
-    publish_all_failure_logs
-    echo "judge server flow set limits failed: expected status 200, got ${set_limits_status_code}" >&2
-    echo "response body:" >&2
-    cat "${set_limits_response_file}" >&2
-    exit 1
-fi
+assert_status_code "${set_limits_status_code}" "200" "${set_limits_response_file}" "set limits"
 
 append_log_line "${test_log_temp_file}" "problem limits updated: problem_id=${problem_id}, memory_limit_mb=${problem_memory_limit_mb}, time_limit_ms=${problem_time_limit_ms}"
 print_success_log "problem limits update success"
 
 testcase_request_body="$(make_testcase_request_body)"
 create_testcase_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${create_testcase_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${testcase_request_body}" \
-        "${base_url}/api/problem/${problem_id}/testcase"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/problem/${problem_id}/testcase" \
+        "${create_testcase_response_file}" \
+        "${sign_up_token}" \
+        "${testcase_request_body}"
 )"
-
-if [[ "${create_testcase_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "create testcase failed: status=${create_testcase_status_code}"
-    publish_all_failure_logs
-    echo "judge server flow create testcase failed: expected status 201, got ${create_testcase_status_code}" >&2
-    echo "response body:" >&2
-    cat "${create_testcase_response_file}" >&2
-    exit 1
-fi
+assert_status_code "${create_testcase_status_code}" "201" "${create_testcase_response_file}" "create testcase"
 
 python3 - "${create_testcase_response_file}" <<'PY'
 import json
@@ -681,26 +651,14 @@ accepted_submission_request_body="$(
     make_submission_request_body "cpp" "${accepted_source_code}"
 )"
 accepted_submission_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${submission_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${accepted_submission_request_body}" \
-        "${base_url}/api/submission/${problem_id}"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${problem_id}" \
+        "${submission_response_file}" \
+        "${sign_up_token}" \
+        "${accepted_submission_request_body}"
 )"
-
-if [[ "${accepted_submission_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "accepted submission create failed: status=${accepted_submission_status_code}"
-    publish_all_failure_logs
-    echo "accepted submission create failed: expected status 201, got ${accepted_submission_status_code}" >&2
-    echo "response body:" >&2
-    cat "${submission_response_file}" >&2
-    exit 1
-fi
+assert_status_code "${accepted_submission_status_code}" "201" "${submission_response_file}" "accepted submission create"
 
 accepted_submission_id="$(
     python3 - "${submission_response_file}" <<'PY'
@@ -745,26 +703,14 @@ wrong_answer_submission_request_body="$(
     make_submission_request_body "cpp" "${wrong_answer_source_code}"
 )"
 wrong_answer_submission_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${submission_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${wrong_answer_submission_request_body}" \
-        "${base_url}/api/submission/${problem_id}"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${problem_id}" \
+        "${submission_response_file}" \
+        "${sign_up_token}" \
+        "${wrong_answer_submission_request_body}"
 )"
-
-if [[ "${wrong_answer_submission_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "wrong_answer submission create failed: status=${wrong_answer_submission_status_code}"
-    publish_all_failure_logs
-    echo "wrong_answer submission create failed: expected status 201, got ${wrong_answer_submission_status_code}" >&2
-    echo "response body:" >&2
-    cat "${submission_response_file}" >&2
-    exit 1
-fi
+assert_status_code "${wrong_answer_submission_status_code}" "201" "${submission_response_file}" "wrong_answer submission create"
 
 wrong_answer_submission_id="$(
     python3 - "${submission_response_file}" <<'PY'
@@ -809,26 +755,14 @@ compile_error_submission_request_body="$(
     make_submission_request_body "cpp" "${compile_error_source_code}"
 )"
 compile_error_submission_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${submission_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${compile_error_submission_request_body}" \
-        "${base_url}/api/submission/${problem_id}"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${problem_id}" \
+        "${submission_response_file}" \
+        "${sign_up_token}" \
+        "${compile_error_submission_request_body}"
 )"
-
-if [[ "${compile_error_submission_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "compile_error submission create failed: status=${compile_error_submission_status_code}"
-    publish_all_failure_logs
-    echo "compile_error submission create failed: expected status 201, got ${compile_error_submission_status_code}" >&2
-    echo "response body:" >&2
-    cat "${submission_response_file}" >&2
-    exit 1
-fi
+assert_status_code "${compile_error_submission_status_code}" "201" "${submission_response_file}" "compile_error submission create"
 
 compile_error_submission_id="$(
     python3 - "${submission_response_file}" <<'PY'
@@ -869,24 +803,13 @@ validate_submission_detail \
 validate_submission_status_history "${compile_error_submission_id}" "compile_error"
 
 compile_error_submission_source_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${submission_source_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/submission/${compile_error_submission_id}/source"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission/${compile_error_submission_id}/source" \
+        "${submission_source_response_file}" \
+        "${sign_up_token}"
 )"
-
-if [[ "${compile_error_submission_source_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "compile_error submission source get failed: status=${compile_error_submission_source_status_code}"
-    publish_all_failure_logs
-    echo "compile_error submission source get failed: expected status 200, got ${compile_error_submission_source_status_code}" >&2
-    echo "response body:" >&2
-    cat "${submission_source_response_file}" >&2
-    exit 1
-fi
+assert_status_code "${compile_error_submission_source_status_code}" "200" "${submission_source_response_file}" "compile_error submission source get"
 
 validate_submission_source \
     "${submission_source_response_file}" \
@@ -903,26 +826,14 @@ runtime_error_submission_request_body="$(
     make_submission_request_body "cpp" "${runtime_error_source_code}"
 )"
 runtime_error_submission_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${submission_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${runtime_error_submission_request_body}" \
-        "${base_url}/api/submission/${problem_id}"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${problem_id}" \
+        "${submission_response_file}" \
+        "${sign_up_token}" \
+        "${runtime_error_submission_request_body}"
 )"
-
-if [[ "${runtime_error_submission_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "runtime_error submission create failed: status=${runtime_error_submission_status_code}"
-    publish_all_failure_logs
-    echo "runtime_error submission create failed: expected status 201, got ${runtime_error_submission_status_code}" >&2
-    echo "response body:" >&2
-    cat "${submission_response_file}" >&2
-    exit 1
-fi
+assert_status_code "${runtime_error_submission_status_code}" "201" "${submission_response_file}" "runtime_error submission create"
 
 runtime_error_submission_id="$(
     python3 - "${submission_response_file}" <<'PY'
@@ -963,24 +874,13 @@ validate_submission_detail \
 validate_submission_status_history "${runtime_error_submission_id}" "runtime_error"
 
 runtime_error_submission_source_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${submission_source_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        "${base_url}/api/submission/${runtime_error_submission_id}/source"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission/${runtime_error_submission_id}/source" \
+        "${submission_source_response_file}" \
+        "${sign_up_token}"
 )"
-
-if [[ "${runtime_error_submission_source_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "runtime_error submission source get failed: status=${runtime_error_submission_source_status_code}"
-    publish_all_failure_logs
-    echo "runtime_error submission source get failed: expected status 200, got ${runtime_error_submission_source_status_code}" >&2
-    echo "response body:" >&2
-    cat "${submission_source_response_file}" >&2
-    exit 1
-fi
+assert_status_code "${runtime_error_submission_source_status_code}" "200" "${submission_source_response_file}" "runtime_error submission source get"
 
 validate_submission_source \
     "${submission_source_response_file}" \
@@ -997,26 +897,14 @@ time_limit_exceeded_submission_request_body="$(
     make_submission_request_body "cpp" "${time_limit_exceeded_source_code}"
 )"
 time_limit_exceeded_submission_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${submission_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${sign_up_token}" \
-        -H "Content-Type: application/json" \
-        -d "${time_limit_exceeded_submission_request_body}" \
-        "${base_url}/api/submission/${problem_id}"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${problem_id}" \
+        "${submission_response_file}" \
+        "${sign_up_token}" \
+        "${time_limit_exceeded_submission_request_body}"
 )"
-
-if [[ "${time_limit_exceeded_submission_status_code}" != "201" ]]; then
-    append_log_line "${test_log_temp_file}" "time_limit_exceeded submission create failed: status=${time_limit_exceeded_submission_status_code}"
-    publish_all_failure_logs
-    echo "time_limit_exceeded submission create failed: expected status 201, got ${time_limit_exceeded_submission_status_code}" >&2
-    echo "response body:" >&2
-    cat "${submission_response_file}" >&2
-    exit 1
-fi
+assert_status_code "${time_limit_exceeded_submission_status_code}" "201" "${submission_response_file}" "time_limit_exceeded submission create"
 
 time_limit_exceeded_submission_id="$(
     python3 - "${submission_response_file}" <<'PY'
@@ -1058,23 +946,12 @@ validate_submission_status_history "${time_limit_exceeded_submission_id}" "time_
 print_success_log "time_limit_exceeded submission judged successfully"
 
 problem_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${problem_response_file}" \
-        --write-out "%{http_code}" \
-        --request GET \
-        "${base_url}/api/problem/${problem_id}"
+    send_http_request \
+        "GET" \
+        "${base_url}/api/problem/${problem_id}" \
+        "${problem_response_file}"
 )"
-
-if [[ "${problem_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "problem statistics get failed: status=${problem_status_code}"
-    publish_all_failure_logs
-    echo "judge server flow problem get failed: expected status 200, got ${problem_status_code}" >&2
-    echo "response body:" >&2
-    cat "${problem_response_file}" >&2
-    exit 1
-fi
+assert_status_code "${problem_status_code}" "200" "${problem_response_file}" "problem statistics get"
 
 python3 - "${problem_response_file}" "${problem_id}" <<'PY'
 import json

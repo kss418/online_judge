@@ -100,27 +100,14 @@ print_success_log "sign-up success"
 
 request_body="$(make_sign_up_request_body "${user_login_id}" "${raw_password}")"
 
-login_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${login_response_file}" \
-        --write-out "%{http_code}" \
-        -H "Content-Type: application/json" \
-        -d "${request_body}" \
-        "${base_url}/api/auth/login"
-)"
-
-if [[ "${login_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "login failed: status=${login_status_code}"
-    publish_failure_logs
-    echo "login test failed: expected status 200, got ${login_status_code}" >&2
-    echo "response body:" >&2
-    cat "${login_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "login passed: status=${login_status_code}"
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/auth/login" \
+    "${login_response_file}" \
+    "200" \
+    "login" \
+    "" \
+    "${request_body}"
 print_success_log "login success"
 
 if ! python3 - "${sign_up_response_file}" "${login_response_file}" "${user_login_id}" <<'PY'
@@ -174,114 +161,48 @@ fi
 
 append_log_line "${test_log_temp_file}" "auth flow test passed"
 
-login_user_id="$(
-    python3 - "${login_response_file}" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as response_file:
-    login_response = json.load(response_file)
-
-user_id = login_response.get("user_id")
-if not isinstance(user_id, int) or user_id <= 0:
-    raise SystemExit("invalid user_id in login response")
-
-print(user_id)
-PY
-)"
-
-login_token="$(
-    python3 - "${login_response_file}" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as response_file:
-    login_response = json.load(response_file)
-
-login_token = login_response.get("token")
-if not isinstance(login_token, str) or not login_token:
-    raise SystemExit("missing token in login response")
-
-print(login_token)
-PY
-)"
+login_user_id="$(read_json_field "${login_response_file}" "user_id" "int")"
+login_token="$(read_json_field "${login_response_file}" "token" "string")"
 
 read -r second_user_id second_user_token < <(
     sign_up_user "${second_user_login_id}" "${raw_password}" "${second_sign_up_response_file}" "auth flow"
 )
 print_success_log "second sign-up success"
 
-unauthorized_promote_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${unauthorized_promote_response_file}" \
-        --write-out "%{http_code}" \
-        --request PUT \
-        -H "Authorization: Bearer ${second_user_token}" \
-        "${base_url}/api/user/${login_user_id}/admin"
-)"
-
-if [[ "${unauthorized_promote_status_code}" != "401" ]]; then
-    append_log_line "${test_log_temp_file}" "unauthorized promote failed: status=${unauthorized_promote_status_code}"
-    publish_failure_logs
-    echo "unauthorized promote test failed: expected status 401, got ${unauthorized_promote_status_code}" >&2
-    echo "response body:" >&2
-    cat "${unauthorized_promote_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "unauthorized promote passed: status=${unauthorized_promote_status_code}"
+send_http_request_and_assert_status \
+    "PUT" \
+    "${base_url}/api/user/${login_user_id}/admin" \
+    "${unauthorized_promote_response_file}" \
+    "401" \
+    "unauthorized promote" \
+    "${second_user_token}"
 print_success_log "unauthorized promote success"
+assert_json_error_code \
+    "${unauthorized_promote_response_file}" \
+    "admin_bearer_token_required" \
+    "unauthorized promote"
 
 promote_admin_user "${login_user_id}" "auth flow" >/dev/null
 print_success_log "bootstrap admin promote success"
 
-promote_admin_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${promote_admin_response_file}" \
-        --write-out "%{http_code}" \
-        --request PUT \
-        -H "Authorization: Bearer ${login_token}" \
-        "${base_url}/api/user/${second_user_id}/admin"
-)"
-
-if [[ "${promote_admin_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "promote admin failed: status=${promote_admin_status_code}"
-    publish_failure_logs
-    echo "promote admin test failed: expected status 200, got ${promote_admin_status_code}" >&2
-    echo "response body:" >&2
-    cat "${promote_admin_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "promote admin passed: status=${promote_admin_status_code}"
+send_http_request_and_assert_status \
+    "PUT" \
+    "${base_url}/api/user/${second_user_id}/admin" \
+    "${promote_admin_response_file}" \
+    "200" \
+    "promote admin" \
+    "${login_token}"
 print_success_log "promote admin success"
 
 second_login_request_body="$(make_sign_up_request_body "${second_user_login_id}" "${raw_password}")"
-second_login_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${second_login_response_file}" \
-        --write-out "%{http_code}" \
-        -H "Content-Type: application/json" \
-        -d "${second_login_request_body}" \
-        "${base_url}/api/auth/login"
-)"
-
-if [[ "${second_login_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "second login failed: status=${second_login_status_code}"
-    publish_failure_logs
-    echo "second login test failed: expected status 200, got ${second_login_status_code}" >&2
-    echo "response body:" >&2
-    cat "${second_login_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "second login passed: status=${second_login_status_code}"
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/auth/login" \
+    "${second_login_response_file}" \
+    "200" \
+    "second login" \
+    "" \
+    "${second_login_request_body}"
 print_success_log "second login success"
 
 if ! python3 \
@@ -325,71 +246,32 @@ then
 fi
 
 renew_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${renew_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${login_token}" \
-        "${base_url}/api/auth/token/renew"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/auth/token/renew" \
+        "${renew_response_file}" \
+        "${login_token}"
 )"
-
-if [[ "${renew_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "token renew failed: status=${renew_status_code}"
-    publish_failure_logs
-    echo "token renew test failed: expected status 200, got ${renew_status_code}" >&2
-    echo "response body:" >&2
-    cat "${renew_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "token renew passed: status=${renew_status_code}"
+assert_status_code "${renew_status_code}" "200" "${renew_response_file}" "token renew"
 print_success_log "token renew success"
 
 logout_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${logout_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${login_token}" \
-        "${base_url}/api/auth/logout"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/auth/logout" \
+        "${logout_response_file}" \
+        "${login_token}"
 )"
-
-if [[ "${logout_status_code}" != "200" ]]; then
-    append_log_line "${test_log_temp_file}" "logout failed: status=${logout_status_code}"
-    publish_failure_logs
-    echo "logout test failed: expected status 200, got ${logout_status_code}" >&2
-    echo "response body:" >&2
-    cat "${logout_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "logout passed: status=${logout_status_code}"
+assert_status_code "${logout_status_code}" "200" "${logout_response_file}" "logout"
 print_success_log "logout success"
 
 second_logout_status_code="$(
-    curl \
-        --silent \
-        --show-error \
-        --output "${second_logout_response_file}" \
-        --write-out "%{http_code}" \
-        --request POST \
-        -H "Authorization: Bearer ${login_token}" \
-        "${base_url}/api/auth/logout"
+    send_http_request \
+        "POST" \
+        "${base_url}/api/auth/logout" \
+        "${second_logout_response_file}" \
+        "${login_token}"
 )"
-
-if [[ "${second_logout_status_code}" != "401" ]]; then
-    append_log_line "${test_log_temp_file}" "second logout failed: status=${second_logout_status_code}"
-    publish_failure_logs
-    echo "second logout test failed: expected status 401, got ${second_logout_status_code}" >&2
-    echo "response body:" >&2
-    cat "${second_logout_response_file}" >&2
-    exit 1
-fi
-
-append_log_line "${test_log_temp_file}" "second logout passed: status=${second_logout_status_code}"
+assert_status_code "${second_logout_status_code}" "401" "${second_logout_response_file}" "second logout"
 print_success_log "token reuse failure success"
 print_success_log "auth flow test passed: login_id=${user_login_id}, user_id=${login_user_id}"
