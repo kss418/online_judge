@@ -280,6 +280,50 @@ PY
 
 missing_submission_id=$((second_submission_id + 999999))
 
+mapfile -t initial_queue_priority_values < <(
+    PGPASSWORD="${DB_PASSWORD}" psql \
+        -X \
+        -h "${DB_HOST}" \
+        -p "${DB_PORT}" \
+        -U "${DB_USER}" \
+        -d "${DB_NAME}" \
+        -v submission_id="${submission_id}" \
+        -v second_submission_id="${second_submission_id}" \
+        -v ON_ERROR_STOP=1 \
+        -qAt <<'SQL'
+SELECT priority
+FROM submission_queue
+WHERE submission_id = :'submission_id';
+
+SELECT priority
+FROM submission_queue
+WHERE submission_id = :'second_submission_id';
+SQL
+)
+
+if [[ "${#initial_queue_priority_values[@]}" -ne 2 ]]; then
+    append_log_line "${test_log_temp_file}" "initial queue priority validation failed: unexpected row count"
+    publish_failure_logs
+    echo "initial queue priority validation failed: expected 2 rows, got ${#initial_queue_priority_values[@]}" >&2
+    exit 1
+fi
+
+if [[ "${initial_queue_priority_values[0]}" != "100" ]]; then
+    append_log_line "${test_log_temp_file}" "initial queue priority validation failed: first_priority=${initial_queue_priority_values[0]}"
+    publish_failure_logs
+    echo "initial queue priority validation failed: expected first priority 100, got ${initial_queue_priority_values[0]}" >&2
+    exit 1
+fi
+
+if [[ "${initial_queue_priority_values[1]}" != "100" ]]; then
+    append_log_line "${test_log_temp_file}" "initial queue priority validation failed: second_priority=${initial_queue_priority_values[1]}"
+    publish_failure_logs
+    echo "initial queue priority validation failed: expected second priority 100, got ${initial_queue_priority_values[1]}" >&2
+    exit 1
+fi
+
+print_success_log "initial queue priority validation success"
+
 submission_detail_status_code="$(
     curl \
         --silent \
@@ -695,13 +739,17 @@ WHERE problem_id = :'problem_id';
 SELECT COUNT(*)
 FROM submission_queue
 WHERE submission_id = :'submission_id';
+
+SELECT priority
+FROM submission_queue
+WHERE submission_id = :'submission_id';
 SQL
 )
 
-if [[ "${#rejudge_db_values[@]}" -ne 2 ]]; then
+if [[ "${#rejudge_db_values[@]}" -ne 3 ]]; then
     append_log_line "${test_log_temp_file}" "rejudge db validation failed: unexpected row count"
     publish_failure_logs
-    echo "rejudge db validation failed: expected 2 rows, got ${#rejudge_db_values[@]}" >&2
+    echo "rejudge db validation failed: expected 3 rows, got ${#rejudge_db_values[@]}" >&2
     exit 1
 fi
 
@@ -716,6 +764,13 @@ if [[ "${rejudge_db_values[1]}" != "1" ]]; then
     append_log_line "${test_log_temp_file}" "rejudge db validation failed: queue_count=${rejudge_db_values[1]}"
     publish_failure_logs
     echo "rejudge db validation failed: expected queue row count 1, got ${rejudge_db_values[1]}" >&2
+    exit 1
+fi
+
+if [[ "${rejudge_db_values[2]}" != "0" ]]; then
+    append_log_line "${test_log_temp_file}" "rejudge db validation failed: queue_priority=${rejudge_db_values[2]}"
+    publish_failure_logs
+    echo "rejudge db validation failed: expected queue priority 0, got ${rejudge_db_values[2]}" >&2
     exit 1
 fi
 
@@ -1459,6 +1514,14 @@ SELECT accepted_count
 FROM problem_statistics
 WHERE problem_id = :'problem_id';
 
+SELECT priority
+FROM submission_queue
+WHERE submission_id = :'first_submission_id';
+
+SELECT priority
+FROM submission_queue
+WHERE submission_id = :'second_submission_id';
+
 SELECT COUNT(*)
 FROM submission_queue
 WHERE submission_id IN (
@@ -1469,10 +1532,10 @@ WHERE submission_id IN (
 SQL
 )
 
-if [[ "${#problem_rejudge_values[@]}" -ne 5 ]]; then
+if [[ "${#problem_rejudge_values[@]}" -ne 7 ]]; then
     append_log_line "${test_log_temp_file}" "problem rejudge db validation failed: unexpected row count"
     publish_failure_logs
-    echo "problem rejudge db validation failed: expected 5 rows, got ${#problem_rejudge_values[@]}" >&2
+    echo "problem rejudge db validation failed: expected 7 rows, got ${#problem_rejudge_values[@]}" >&2
     exit 1
 fi
 
@@ -1504,10 +1567,24 @@ if [[ "${problem_rejudge_values[3]}" != "0" ]]; then
     exit 1
 fi
 
-if [[ "${problem_rejudge_values[4]}" != "2" ]]; then
-    append_log_line "${test_log_temp_file}" "problem rejudge db validation failed: queue_count=${problem_rejudge_values[4]}"
+if [[ "${problem_rejudge_values[4]}" != "0" ]]; then
+    append_log_line "${test_log_temp_file}" "problem rejudge db validation failed: first_queue_priority=${problem_rejudge_values[4]}"
     publish_failure_logs
-    echo "problem rejudge db validation failed: expected queue_count 2, got ${problem_rejudge_values[4]}" >&2
+    echo "problem rejudge db validation failed: expected first queue priority 0, got ${problem_rejudge_values[4]}" >&2
+    exit 1
+fi
+
+if [[ "${problem_rejudge_values[5]}" != "0" ]]; then
+    append_log_line "${test_log_temp_file}" "problem rejudge db validation failed: second_queue_priority=${problem_rejudge_values[5]}"
+    publish_failure_logs
+    echo "problem rejudge db validation failed: expected second queue priority 0, got ${problem_rejudge_values[5]}" >&2
+    exit 1
+fi
+
+if [[ "${problem_rejudge_values[6]}" != "2" ]]; then
+    append_log_line "${test_log_temp_file}" "problem rejudge db validation failed: queue_count=${problem_rejudge_values[6]}"
+    publish_failure_logs
+    echo "problem rejudge db validation failed: expected queue_count 2, got ${problem_rejudge_values[6]}" >&2
     exit 1
 fi
 

@@ -15,6 +15,9 @@ namespace pqxx{
 }
 
 namespace submission_util{
+    inline constexpr std::int16_t NORMAL_SUBMISSION_QUEUE_PRIORITY = 100;
+    inline constexpr std::int16_t REJUDGE_SUBMISSION_QUEUE_PRIORITY = 0;
+
     std::expected<submission_dto::history_list, error_code> get_submission_history(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id
@@ -45,7 +48,8 @@ namespace submission_util{
 
     std::expected<void, error_code> enqueue_submission(
         pqxx::transaction_base& transaction,
-        std::int64_t submission_id
+        std::int64_t submission_id,
+        std::int16_t priority = NORMAL_SUBMISSION_QUEUE_PRIORITY
     );
 
     std::expected<void, error_code> update_submission_status(

@@ -94,7 +94,8 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
 
             const auto enqueue_submission_exp = submission_util::enqueue_submission(
                 transaction,
-                create_submission_exp->submission_id
+                create_submission_exp->submission_id,
+                submission_util::NORMAL_SUBMISSION_QUEUE_PRIORITY
             );
             if(!enqueue_submission_exp){
                 return std::unexpected(enqueue_submission_exp.error());

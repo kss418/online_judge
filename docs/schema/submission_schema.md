@@ -71,7 +71,7 @@ Indexes:
 |---|---|---|---|---|
 | `queue_id` | `bigserial` | no | | pk |
 | `submission_id` | `bigint` | no | | unique fk -> `submissions(submission_id)` on delete cascade |
-| `priority` | `smallint` | no | `0` |  |
+| `priority` | `smallint` | no | `0` | higher value is leased first |
 | `attempt_count` | `integer` | no | `0` | `>= 0` check |
 | `available_at` | `timestamptz` | no | `now()` |  |
 | `leased_until` | `timestamptz` | yes | |  |

@@ -203,15 +203,16 @@ std::expected<submission_dto::created, error_code> submission_util::create_submi
 
 std::expected<void, error_code> submission_util::enqueue_submission(
     pqxx::transaction_base& transaction,
-    std::int64_t submission_id
+    std::int64_t submission_id,
+    std::int16_t priority
 ){
     if(submission_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
     transaction.exec(
-        "INSERT INTO submission_queue(submission_id) VALUES($1)",
-        pqxx::params{submission_id}
+        "INSERT INTO submission_queue(submission_id, priority) VALUES($1, $2)",
+        pqxx::params{submission_id, priority}
     );
 
     transaction.exec(
@@ -380,7 +381,8 @@ std::expected<void, error_code> submission_util::rejudge_submission(
 
     const auto enqueue_submission_exp = enqueue_submission(
         transaction,
-        submission_id
+        submission_id,
+        REJUDGE_SUBMISSION_QUEUE_PRIORITY
     );
     if(!enqueue_submission_exp){
         return std::unexpected(enqueue_submission_exp.error());

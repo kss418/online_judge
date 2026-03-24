@@ -152,6 +152,26 @@ BEGIN
     IF EXISTS(
         SELECT 1
         FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'submission_queue'
+    ) AND NOT EXISTS(
+        SELECT 1
+        FROM information_schema.columns
+        WHERE
+            table_schema = 'public' AND
+            table_name = 'submission_queue' AND
+            column_name = 'priority'
+    ) THEN
+        ALTER TABLE submission_queue
+            ADD COLUMN priority SMALLINT NOT NULL DEFAULT 0;
+    END IF;
+END
+$do$;
+
+DO $do$
+BEGIN
+    IF EXISTS(
+        SELECT 1
+        FROM information_schema.tables
         WHERE table_schema = 'public' AND table_name = 'users'
     ) THEN
         IF NOT EXISTS(
@@ -214,6 +234,10 @@ ON CONFLICT(version) DO NOTHING;
 
 INSERT INTO schema_migrations(version)
 VALUES('submission_schema_v2')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('submission_schema_v3')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;
