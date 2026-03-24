@@ -3,6 +3,10 @@
 #include <cerrno>
 #include <unistd.h>
 
+static bool should_suppress_close_errno(int error_number){
+    return error_number == EINTR;
+}
+
 unique_fd::unique_fd(unique_fd&& other) noexcept{
     this->fd_ = other.fd_;
     other.fd_ = -1;
@@ -32,7 +36,12 @@ std::expected<void, error_code> unique_fd::close_checked() noexcept{
     const int closed_fd = fd_;
     fd_ = -1;
     if(::close(closed_fd) < 0){
-        return std::unexpected(error_code::create(error_code::map_errno(errno)));
+        const int close_errno = errno;
+        if(should_suppress_close_errno(close_errno)){
+            return {};
+        }
+
+        return std::unexpected(error_code::create(error_code::map_errno(close_errno)));
     }
 
     return {};

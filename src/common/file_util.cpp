@@ -11,6 +11,24 @@
 #include <system_error>
 #include <unistd.h>
 
+static bool should_retry_read_errno(int error_number){
+    return error_number == EINTR;
+}
+
+static bool should_retry_write_errno(int error_number){
+    return
+        error_number == EINTR ||
+        error_number == EAGAIN
+#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
+        || error_number == EWOULDBLOCK
+#endif
+    ;
+}
+
+static bool should_retry_fsync_errno(int error_number){
+    return error_number == EINTR;
+}
+
 static std::expected<std::string, error_code> read_file_content(
     const std::filesystem::path& file_path
 ){
@@ -28,6 +46,9 @@ static std::expected<std::string, error_code> read_file_content(
         }
 
         if(read_count < 0){
+            if(should_retry_read_errno(errno)){
+                continue;
+            }
             return std::unexpected(error_code::create(error_code::map_errno(errno)));
         }
 
@@ -54,7 +75,14 @@ static std::expected<void, error_code> write_all(
             file_content.size() - written_size
         );
         if(written_count < 0){
+            if(should_retry_write_errno(errno)){
+                continue;
+            }
             return std::unexpected(error_code::create(error_code::map_errno(errno)));
+        }
+
+        if(written_count == 0){
+            return std::unexpected(error_code::create(errno_error::io_error));
         }
 
         written_size += static_cast<std::size_t>(written_count);
@@ -153,8 +181,12 @@ std::expected<void, error_code> file_util::create_file(
         return std::unexpected(write_exp.error());
     }
 
-    if(::fsync(temporary_file.get_fd()) < 0){
+    while(::fsync(temporary_file.get_fd()) < 0){
         const int fsync_errno = errno;
+        if(should_retry_fsync_errno(fsync_errno)){
+            continue;
+        }
+
         return std::unexpected(error_code::create(error_code::map_errno(fsync_errno)));
     }
 
