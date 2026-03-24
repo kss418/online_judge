@@ -141,7 +141,22 @@ judge_worker::finalize_submission_data judge_worker::make_finalize_submission_da
     return finalize_submission_data_value;
 }
 
-std::expected<judge_result, error_code> judge_worker::judge_submission(
+bool judge_worker::should_retry_finalize_submission(const error_code& error_code_value){
+    return
+        error_code_value == errno_error::invalid_file_descriptor ||
+        error_code_value == errno_error::interrupted_system_call ||
+        error_code_value == psql_error::broken_connection ||
+        error_code_value == psql_error::serialization_failure ||
+        error_code_value == psql_error::deadlock_detected;
+}
+
+bool judge_worker::should_reconnect_db_connection(const error_code& error_code_value){
+    return
+        error_code_value == errno_error::invalid_file_descriptor ||
+        error_code_value == psql_error::broken_connection;
+}
+
+std::expected<judge_result, error_code> judge_worker::check_result(
     std::int64_t problem_id,
     const testcase_runner::run_batch& run_batch_value
 ){
@@ -179,7 +194,7 @@ std::expected<void, error_code> judge_worker::run(){
         if(!queued_submission_opt_exp->has_value()){
             auto wait_submission_notification_exp =
                 submission_event_listener_.wait_submission_notification(
-                    notification_wait_timeout_
+                    NOTIFICATION_WAIT_TIMEOUT
                 );
             if(!wait_submission_notification_exp){
                 return std::unexpected(wait_submission_notification_exp.error());
@@ -189,36 +204,56 @@ std::expected<void, error_code> judge_worker::run(){
 
         const submission_dto::queued_submission& queued_submission_value =
             queued_submission_opt_exp->value();
-        const auto source_file_path_exp = prepare_submission(queued_submission_value);
-        if(!source_file_path_exp){
-            return std::unexpected(source_file_path_exp.error());
-        }
-
-        const auto mark_judging_exp = mark_judging(queued_submission_value.submission_id);
-        if(!mark_judging_exp){
-            return std::unexpected(mark_judging_exp.error());
-        }
-
-        auto process_submission_exp = process_submission(
-            *source_file_path_exp,
-            queued_submission_value.problem_id
+        const auto process_submission_exp = process_submission(
+            queued_submission_value
         );
+        
         if(!process_submission_exp){
-            return std::unexpected(process_submission_exp.error());
-        }
-
-        const auto finalize_submission_exp = finalize_submission(
-            queued_submission_value.submission_id,
-            process_submission_exp->judge_result_value,
-            process_submission_exp->run_results
-        );
-        if(!finalize_submission_exp){
-            return std::unexpected(finalize_submission_exp.error());
+            const auto mark_queued_exp = mark_queued(
+                queued_submission_value.submission_id
+            );
+            if(!mark_queued_exp){
+                return std::unexpected(mark_queued_exp.error());
+            }
+            continue;
         }
     }
 }
 
-std::expected<judge_worker::process_submission_data, error_code> judge_worker::process_submission(
+std::expected<void, error_code> judge_worker::process_submission(
+    const submission_dto::queued_submission& queued_submission_value
+){
+    const auto source_file_path_exp = prepare_submission(queued_submission_value);
+    if(!source_file_path_exp){
+        return std::unexpected(source_file_path_exp.error());
+    }
+
+    const auto mark_judging_exp = mark_judging(queued_submission_value.submission_id);
+    if(!mark_judging_exp){
+        return std::unexpected(mark_judging_exp.error());
+    }
+
+    auto judge_submission_exp = judge_submission(
+        *source_file_path_exp,
+        queued_submission_value.problem_id
+    );
+    if(!judge_submission_exp){
+        return std::unexpected(judge_submission_exp.error());
+    }
+
+    const auto finalize_submission_exp = finalize_submission(
+        queued_submission_value.submission_id,
+        judge_submission_exp->judge_result_value,
+        judge_submission_exp->run_results
+    );
+    if(!finalize_submission_exp){
+        return std::unexpected(finalize_submission_exp.error());
+    }
+
+    return {};
+}
+
+std::expected<judge_worker::process_submission_data, error_code> judge_worker::judge_submission(
     const std::filesystem::path& source_file_path,
     std::int64_t problem_id
 ){
@@ -230,7 +265,7 @@ std::expected<judge_worker::process_submission_data, error_code> judge_worker::p
         return std::unexpected(run_all_testcases_exp.error());
     }
 
-    const auto judge_result_exp = judge_submission(
+    const auto judge_result_exp = check_result(
         problem_id,
         *run_all_testcases_exp
     );
@@ -242,6 +277,40 @@ std::expected<judge_worker::process_submission_data, error_code> judge_worker::p
     process_submission_data_value.judge_result_value = *judge_result_exp;
     process_submission_data_value.run_results = std::move(run_all_testcases_exp->run_results);
     return process_submission_data_value;
+}
+
+std::expected<void, error_code> judge_worker::try_finalize_submission(
+    const submission_dto::finalize_request& finalize_request_value
+){
+    error_code last_error = error_code::create(psql_error::unknown_psql_error);
+
+    for(int attempt = 1; attempt <= FINALIZE_SUBMISSION_ATTEMPT_COUNT; ++attempt){
+        const auto finalize_submission_exp = submission_service::finalize_submission(
+            db_connection_,
+            finalize_request_value
+        );
+        if(finalize_submission_exp){
+            return {};
+        }
+
+        const error_code finalize_submission_error = finalize_submission_exp.error();
+        last_error = finalize_submission_error;
+        if(
+            attempt == FINALIZE_SUBMISSION_ATTEMPT_COUNT ||
+            !should_retry_finalize_submission(finalize_submission_error)
+        ){
+            return std::unexpected(finalize_submission_error);
+        }
+
+        if(should_reconnect_db_connection(finalize_submission_error)){
+            const auto reconnect_exp = db_connection_.reconnect();
+            if(!reconnect_exp){
+                last_error = reconnect_exp.error();
+            }
+        }
+    }
+
+    return std::unexpected(last_error);
 }
 
 std::expected<void, error_code> judge_worker::finalize_submission(
@@ -265,12 +334,29 @@ std::expected<void, error_code> judge_worker::finalize_submission(
             finalize_submission_data_value.elapsed_ms_opt,
             finalize_submission_data_value.max_rss_kb_opt
         );
-    const auto finalize_submission_exp = submission_service::finalize_submission(
-        db_connection_,
+
+    const auto try_finalize_submission_exp = try_finalize_submission(
         finalize_request_value
     );
-    if(!finalize_submission_exp){
-        return std::unexpected(finalize_submission_exp.error());
+    if(!try_finalize_submission_exp){
+        return std::unexpected(try_finalize_submission_exp.error());
+    }
+
+    return {};
+}
+
+std::expected<void, error_code> judge_worker::mark_queued(std::int64_t submission_id){
+    const submission_dto::status_update status_update_value =
+        submission_dto::make_status_update(
+            submission_id,
+            submission_status::queued
+        );
+    const auto update_submission_status_exp = submission_service::update_submission_status(
+        db_connection_,
+        status_update_value
+    );
+    if(!update_submission_status_exp){
+        return std::unexpected(update_submission_status_exp.error());
     }
 
     return {};
@@ -324,6 +410,6 @@ std::expected<std::filesystem::path, error_code> judge_worker::prepare_submissio
 
 std::expected<std::optional<submission_dto::queued_submission>, error_code> judge_worker::lease_submission(){
     submission_dto::lease_request lease_request_value;
-    lease_request_value.lease_duration = lease_duration_;
+    lease_request_value.lease_duration = LEASE_DURATION;
     return submission_service::lease_submission(db_connection_, lease_request_value);
 }

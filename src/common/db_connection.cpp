@@ -17,20 +17,49 @@ std::expected<db_connection, error_code> db_connection::create(){
     }
 
     db_connection connection;
-    connection.connection_string_ = std::move(*connection_string_exp);
-    try{
-        auto created_connection = std::make_unique<pqxx::connection>(connection.connection_string_);
-        if(!created_connection->is_open()){
-            return std::unexpected(error_code::create(psql_error::broken_connection));
-        }
-
-        connection.connection_ = std::move(created_connection);
-    }
-    catch(const std::exception& exception){
-        return std::unexpected(error_code::map_psql_error_code(exception));
+    auto connect_exp = connection.connect(*connection_string_exp);
+    if(!connect_exp){
+        return std::unexpected(connect_exp.error());
     }
 
     return connection;
+}
+
+std::expected<void, error_code> db_connection::connect(
+    const std::string& connection_string_value
+){
+    connection_.reset();
+    connection_string_ = connection_string_value;
+
+    try{
+        auto created_connection = std::make_unique<pqxx::connection>(
+            connection_string_
+        );
+        if(!created_connection->is_open()){
+            connection_.reset();
+            return std::unexpected(error_code::create(psql_error::broken_connection));
+        }
+
+        connection_ = std::move(created_connection);
+        return {};
+    }
+    catch(const std::exception& exception){
+        connection_.reset();
+        return std::unexpected(error_code::map_psql_error_code(exception));
+    }
+}
+
+std::expected<void, error_code> db_connection::reconnect(){
+    if(connection_string_.empty()){
+        auto connection_string_exp = initialize();
+        if(!connection_string_exp){
+            return std::unexpected(connection_string_exp.error());
+        }
+
+        return connect(*connection_string_exp);
+    }
+
+    return connect(connection_string_);
 }
 
 void db_connection::disconnect(){

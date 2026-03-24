@@ -51,25 +51,35 @@ private:
         submission_status submission_status_value,
         const std::vector<sandbox_runner::run_result>& run_results
     );
+    static bool should_retry_finalize_submission(const error_code& error_code_value);
+    static bool should_reconnect_db_connection(const error_code& error_code_value);
+    std::expected<void, error_code> try_finalize_submission(
+        const submission_dto::finalize_request& finalize_request_value
+    );
     std::expected<void, error_code> finalize_submission(
         std::int64_t submission_id,
         judge_result result,
         const std::vector<sandbox_runner::run_result>& run_results
     );
+    std::expected<void, error_code> mark_queued(std::int64_t submission_id);
     std::expected<void, error_code> mark_judging(std::int64_t submission_id);
+    std::expected<void, error_code> process_submission(
+        const submission_dto::queued_submission& queued_submission_value
+    );
     std::expected<std::filesystem::path, error_code> prepare_submission(
         const submission_dto::queued_submission& queued_submission_value
     );
-    std::expected<process_submission_data, error_code> process_submission(
+    std::expected<process_submission_data, error_code> judge_submission(
         const std::filesystem::path& source_file_path,
         std::int64_t problem_id
     );
-    std::expected<judge_result, error_code> judge_submission(
+    std::expected<judge_result, error_code> check_result(
         std::int64_t problem_id,
         const testcase_runner::run_batch& run_batch_value
     );
-    static constexpr std::chrono::seconds lease_duration_{900};
-    static constexpr std::chrono::milliseconds notification_wait_timeout_{30000};
+    static constexpr std::chrono::seconds LEASE_DURATION{900};
+    static constexpr std::chrono::milliseconds NOTIFICATION_WAIT_TIMEOUT{30000};
+    static constexpr int FINALIZE_SUBMISSION_ATTEMPT_COUNT = 5;
 
     submission_event_listener submission_event_listener_;
     db_connection db_connection_;
