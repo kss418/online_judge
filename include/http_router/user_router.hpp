@@ -20,6 +20,8 @@ public:
     response_type route(const request_type& request, std::string_view path);
 
 private:
+    response_type handle_user_me(const request_type& request);
+
     response_type handle_user_admin(
         const request_type& request,
         std::int64_t user_id

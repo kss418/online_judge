@@ -24,6 +24,7 @@ namespace json_util{
         std::int64_t user_id,
         bool is_admin
     );
+    boost::json::object make_user_me_object(const auth_dto::identity& auth_identity_value);
 
     boost::json::object make_auth_session_object(const auth_dto::session& session_value);
 

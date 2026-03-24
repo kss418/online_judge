@@ -11,6 +11,11 @@ namespace user_handler{
     using request_type = boost::beast::http::request<boost::beast::http::string_body>;
     using response_type = boost::beast::http::response<boost::beast::http::string_body>;
 
+    response_type get_me(
+        const request_type& request,
+        db_connection& db_connection_value
+    );
+
     response_type put_user_admin(
         const request_type& request,
         db_connection& db_connection_value,

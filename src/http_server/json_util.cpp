@@ -35,6 +35,14 @@ boost::json::object json_util::make_user_admin_object(
     return response_object;
 }
 
+boost::json::object json_util::make_user_me_object(const auth_dto::identity& auth_identity_value){
+    boost::json::object response_object;
+    response_object["id"] = auth_identity_value.user_id;
+    response_object["user_name"] = auth_identity_value.user_name;
+    response_object["is_admin"] = auth_identity_value.is_admin;
+    return response_object;
+}
+
 boost::json::object json_util::make_auth_session_object(const auth_dto::session& session_value){
     boost::json::object response_object;
     response_object["user_id"] = session_value.user_id;

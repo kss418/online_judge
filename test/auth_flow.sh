@@ -49,6 +49,7 @@ register_temp_file logout_response_file
 register_temp_file second_logout_response_file
 register_temp_file second_sign_up_response_file
 register_temp_file second_login_response_file
+register_temp_file user_me_response_file
 register_temp_file promote_admin_response_file
 register_temp_file unauthorized_promote_response_file
 register_temp_file duplicate_user_name_response_file
@@ -155,6 +156,39 @@ append_log_line "${test_log_temp_file}" "auth flow test passed"
 login_user_id="$(read_json_field "${login_response_file}" "user_id" "int")"
 login_token="$(read_json_field "${login_response_file}" "token" "string")"
 
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/user/me" \
+    "${user_me_response_file}" \
+    "200" \
+    "get current user before promote" \
+    "${login_token}"
+if ! python3 - "${user_me_response_file}" "${login_user_id}" "${user_name}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    current_user = json.load(response_file)
+
+expected_user_id = int(sys.argv[2])
+expected_user_name = sys.argv[3]
+
+if current_user.get("id") != expected_user_id:
+    raise SystemExit("current user id mismatch before promote")
+
+if current_user.get("user_name") != expected_user_name:
+    raise SystemExit("current user user_name mismatch before promote")
+
+if current_user.get("is_admin") is not False:
+    raise SystemExit("expected current user is_admin to be false before promote")
+PY
+then
+    append_log_line "${test_log_temp_file}" "current user validation failed before promote"
+    publish_failure_logs
+    exit 1
+fi
+print_success_log "current user get success before promote"
+
 duplicate_user_name_request_body="$(
     make_sign_up_request_body \
         "${duplicate_user_name_login_id}" \
@@ -213,6 +247,39 @@ send_http_request_and_assert_status \
     "promote admin" \
     "${login_token}"
 print_success_log "promote admin success"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/user/me" \
+    "${user_me_response_file}" \
+    "200" \
+    "get current user after promote" \
+    "${login_token}"
+if ! python3 - "${user_me_response_file}" "${login_user_id}" "${user_name}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    current_user = json.load(response_file)
+
+expected_user_id = int(sys.argv[2])
+expected_user_name = sys.argv[3]
+
+if current_user.get("id") != expected_user_id:
+    raise SystemExit("current user id mismatch after promote")
+
+if current_user.get("user_name") != expected_user_name:
+    raise SystemExit("current user user_name mismatch after promote")
+
+if current_user.get("is_admin") is not True:
+    raise SystemExit("expected current user is_admin to be true after promote")
+PY
+then
+    append_log_line "${test_log_temp_file}" "current user validation failed after promote"
+    publish_failure_logs
+    exit 1
+fi
+print_success_log "current user get success after promote"
 
 second_login_request_body="$(make_login_request_body "${second_user_login_id}" "${raw_password}")"
 send_http_request_and_assert_status \
