@@ -343,7 +343,24 @@ if [[ "${missing_problem_status_code}" != "404" ]]; then
     exit 1
 fi
 
-if [[ "$(cat "${missing_problem_response_file}")" != "problem not found" ]]; then
+if ! python3 - "${missing_problem_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+error_value = response.get("error")
+if not isinstance(error_value, dict):
+    raise SystemExit("missing error object")
+
+if error_value.get("code") != "problem_not_found":
+    raise SystemExit("unexpected error code")
+
+if error_value.get("message") != "problem not found":
+    raise SystemExit("unexpected error message")
+PY
+then
     append_log_line "${test_log_temp_file}" "missing problem body mismatch"
     publish_failure_logs
     echo "missing problem get test failed: unexpected response body" >&2

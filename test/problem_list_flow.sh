@@ -261,7 +261,27 @@ if [[ "${invalid_query_status_code}" != "400" ]]; then
     exit 1
 fi
 
-if [[ "$(cat "${invalid_query_response_file}")" != "unsupported query parameter: unsupported" ]]; then
+if ! python3 - "${invalid_query_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+error_value = response.get("error")
+if not isinstance(error_value, dict):
+    raise SystemExit("missing error object")
+
+if error_value.get("code") != "unsupported_query_parameter":
+    raise SystemExit("unexpected error code")
+
+if error_value.get("message") != "unsupported query parameter: unsupported":
+    raise SystemExit("unexpected error message")
+
+if error_value.get("field") != "unsupported":
+    raise SystemExit("unexpected error field")
+PY
+then
     append_log_line "${test_log_temp_file}" "invalid query body mismatch"
     publish_failure_logs
     echo "invalid query problem list flow failed: unexpected response body" >&2
