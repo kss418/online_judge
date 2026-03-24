@@ -1,5 +1,7 @@
 #include "judge_server/judge_util.hpp"
 
+#include "common/language_util.hpp"
+
 #include <cstdlib>
 
 judge_util& judge_util::instance(){
@@ -39,14 +41,9 @@ std::expected<std::filesystem::path, error_code> judge_util::make_source_file_pa
     }
 
     std::string_view extension = ".txt";
-    if(language == "cpp"){
-        extension = ".cpp";
-    }
-    else if(language == "python"){
-        extension = ".py";
-    }
-    else if(language == "java"){
-        extension = ".java";
+    const auto supported_language_opt = language_util::find_supported_language(language);
+    if(supported_language_opt){
+        extension = supported_language_opt->source_extension;
     }
 
     return *source_root_path_exp / (std::to_string(submission_id) + std::string(extension));

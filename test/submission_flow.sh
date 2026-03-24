@@ -74,6 +74,7 @@ register_temp_file test_log_temp_file
 register_temp_file server_log_temp_file
 register_temp_file sign_up_response_file
 register_temp_file submission_response_file
+register_temp_file invalid_language_response_file
 
 trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
 
@@ -114,6 +115,49 @@ print_success_log "admin user promote success"
 
 problem_id="$(create_problem_in_db "submission flow")"
 print_success_log "problem create success"
+
+invalid_language_request_body="$(
+    python3 - "${submission_source_code}" <<'PY'
+import json
+import sys
+
+print(
+    json.dumps(
+        {
+            "language": "ruby",
+            "source_code": sys.argv[1],
+        }
+    )
+)
+PY
+)"
+
+invalid_language_status_code="$(
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${problem_id}" \
+        "${invalid_language_response_file}" \
+        "${sign_up_token}" \
+        "${invalid_language_request_body}"
+)"
+assert_status_code \
+    "${invalid_language_status_code}" \
+    "400" \
+    "${invalid_language_response_file}" \
+    "invalid submission language"
+assert_json_error_code \
+    "${invalid_language_response_file}" \
+    "invalid_field" \
+    "invalid submission language"
+assert_json_error_message \
+    "${invalid_language_response_file}" \
+    "unsupported language: ruby" \
+    "invalid submission language"
+assert_json_error_field \
+    "${invalid_language_response_file}" \
+    "language" \
+    "invalid submission language"
+print_success_log "invalid submission language validation success"
 
 submission_request_body="$(
     python3 - "${submission_language}" "${submission_source_code}" <<'PY'

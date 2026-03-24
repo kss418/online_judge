@@ -1,5 +1,6 @@
 #include "dto/submission_dto.hpp"
 
+#include "common/language_util.hpp"
 #include "common/string_util.hpp"
 #include "http_server/http_util.hpp"
 
@@ -16,6 +17,13 @@ std::expected<submission_dto::source, dto_validation_error> submission_dto::make
         return std::unexpected(dto_validation_error{
             .code = "missing_field",
             .message = "required field: language",
+            .field_opt = "language"
+        });
+    }
+    if(!language_util::find_supported_language(*language_opt)){
+        return std::unexpected(dto_validation_error{
+            .code = "invalid_field",
+            .message = "unsupported language: " + std::string{*language_opt},
             .field_opt = "language"
         });
     }

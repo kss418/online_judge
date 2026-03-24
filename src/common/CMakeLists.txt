@@ -12,4 +12,5 @@ target_sources(lib
         unique_fd.cpp
         temp_file.cpp
         blocking_io.cpp
+        language_util.cpp
 )

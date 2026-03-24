@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/language_util.hpp"
 #include "dto/auth_dto.hpp"
 #include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
@@ -25,6 +26,15 @@ namespace json_util{
         bool is_admin
     );
     boost::json::object make_user_me_object(const auth_dto::identity& auth_identity_value);
+    boost::json::object make_supported_language_object(
+        const language_util::supported_language& supported_language_value
+    );
+    boost::json::array make_supported_language_array(
+        std::span<const language_util::supported_language> supported_language_values
+    );
+    boost::json::object make_supported_language_list_object(
+        std::span<const language_util::supported_language> supported_language_values
+    );
 
     boost::json::object make_auth_session_object(const auth_dto::session& session_value);
 

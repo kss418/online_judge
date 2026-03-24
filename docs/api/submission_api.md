@@ -27,7 +27,7 @@ Create a new submission for a problem. The user-visible problem number is the sa
 
 | field | type | required | note |
 |---|---|---|---|
-| `language` | `string` | yes | must be non-empty |
+| `language` | `string` | yes | must be one of `cpp`, `python`, `java` |
 | `source_code` | `string` | yes | must be non-empty |
 
 Example:
@@ -65,6 +65,7 @@ Example:
 - invalid, expired, or revoked token: `401 Unauthorized`
 - invalid or empty request body: `400 Bad Request`
 - missing required fields: `400 Bad Request`
+- unsupported `language`: `400 Bad Request`
 - invalid `problem_id` or unknown problem: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
@@ -77,6 +78,16 @@ Examples:
   "error": {
     "code": "missing_field",
     "message": "required field: language",
+    "field": "language"
+  }
+}
+```
+
+```json
+{
+  "error": {
+    "code": "invalid_field",
+    "message": "unsupported language: ruby",
     "field": "language"
   }
 }

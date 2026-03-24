@@ -19,6 +19,7 @@ public:
 
 private:
     response_type handle_health(const request_type& request);
+    response_type handle_supported_languages(const request_type& request);
 
     system_handler system_handler_;
 };
