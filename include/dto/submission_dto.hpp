@@ -16,6 +16,11 @@ namespace http_util{
     struct query_param;
 }
 
+namespace pqxx{
+    class result;
+    class row;
+}
+
 namespace submission_dto{
     struct history{
         std::int64_t history_id = 0;
@@ -132,6 +137,17 @@ namespace submission_dto{
         std::int64_t user_id,
         std::int64_t problem_id
     );
+    history make_history_from_row(const pqxx::row& submission_history_row);
+    history_list make_history_list_from_result(const pqxx::result& submission_history_result);
+    source_detail make_source_detail_from_row(const pqxx::row& submission_source_row);
+    detail make_detail_from_row(const pqxx::row& submission_detail_row);
+    created make_created(
+        std::int64_t submission_id,
+        submission_status submission_status_value
+    );
+    summary make_summary_from_row(const pqxx::row& submission_summary_row);
+    std::vector<summary> make_summary_list_from_result(const pqxx::result& submission_summary_result);
+    queued_submission make_queued_submission_from_row(const pqxx::row& submission_queue_row);
     status_update make_status_update(
         std::int64_t submission_id,
         submission_status to_status,
@@ -146,5 +162,9 @@ namespace submission_dto{
         std::optional<std::int64_t> elapsed_ms_opt = std::nullopt,
         std::optional<std::int64_t> max_rss_kb_opt = std::nullopt,
         std::optional<std::string> reason_opt = std::nullopt
+    );
+    finalize_result make_finalize_result(
+        std::int64_t problem_id,
+        bool should_increase_accepted_count
     );
 }

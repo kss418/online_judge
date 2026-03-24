@@ -29,23 +29,7 @@ std::expected<submission_dto::history_list, error_code> submission_util::get_sub
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    submission_dto::history_list history_values;
-    history_values.reserve(submission_history_query.size());
-    for(const auto& submission_history_row : submission_history_query){
-        submission_dto::history history_value;
-        history_value.history_id = submission_history_row[0].as<std::int64_t>();
-        if(!submission_history_row[1].is_null()){
-            history_value.from_status_opt = submission_history_row[1].as<std::string>();
-        }
-        history_value.to_status = submission_history_row[2].as<std::string>();
-        if(!submission_history_row[3].is_null()){
-            history_value.reason_opt = submission_history_row[3].as<std::string>();
-        }
-        history_value.created_at = submission_history_row[4].as<std::string>();
-        history_values.push_back(std::move(history_value));
-    }
-
-    return history_values;
+    return submission_dto::make_history_list_from_result(submission_history_query);
 }
 
 std::expected<submission_dto::source_detail, error_code> submission_util::get_submission_source(
@@ -73,21 +57,7 @@ std::expected<submission_dto::source_detail, error_code> submission_util::get_su
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    submission_dto::source_detail source_detail_value;
-    source_detail_value.submission_id = submission_source_query[0][0].as<std::int64_t>();
-    source_detail_value.user_id = submission_source_query[0][1].as<std::int64_t>();
-    source_detail_value.problem_id = submission_source_query[0][2].as<std::int64_t>();
-    source_detail_value.language = submission_source_query[0][3].as<std::string>();
-    source_detail_value.source_code = submission_source_query[0][4].as<std::string>();
-    if(!submission_source_query[0][5].is_null()){
-        source_detail_value.compile_output_opt =
-            submission_source_query[0][5].as<std::string>();
-    }
-    if(!submission_source_query[0][6].is_null()){
-        source_detail_value.judge_output_opt =
-            submission_source_query[0][6].as<std::string>();
-    }
-    return source_detail_value;
+    return submission_dto::make_source_detail_from_row(submission_source_query[0]);
 }
 
 std::expected<submission_dto::detail, error_code> submission_util::get_submission_detail(
@@ -120,30 +90,46 @@ std::expected<submission_dto::detail, error_code> submission_util::get_submissio
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    submission_dto::detail detail_value;
-    detail_value.submission_id = submission_detail_result[0][0].as<std::int64_t>();
-    detail_value.user_id = submission_detail_result[0][1].as<std::int64_t>();
-    detail_value.problem_id = submission_detail_result[0][2].as<std::int64_t>();
-    detail_value.language = submission_detail_result[0][3].as<std::string>();
-    detail_value.status = submission_detail_result[0][4].as<std::string>();
-    if(!submission_detail_result[0][5].is_null()){
-        detail_value.score_opt = submission_detail_result[0][5].as<std::int16_t>();
+    return submission_dto::make_detail_from_row(submission_detail_result[0]);
+}
+
+std::expected<std::vector<submission_dto::summary>, error_code>
+submission_util::get_wa_or_ac_submissions(
+    pqxx::transaction_base& transaction,
+    std::int64_t problem_id
+){
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
-    if(!submission_detail_result[0][6].is_null()){
-        detail_value.compile_output_opt = submission_detail_result[0][6].as<std::string>();
-    }
-    if(!submission_detail_result[0][7].is_null()){
-        detail_value.judge_output_opt = submission_detail_result[0][7].as<std::string>();
-    }
-    if(!submission_detail_result[0][8].is_null()){
-        detail_value.elapsed_ms_opt = submission_detail_result[0][8].as<std::int64_t>();
-    }
-    if(!submission_detail_result[0][9].is_null()){
-        detail_value.max_rss_kb_opt = submission_detail_result[0][9].as<std::int64_t>();
-    }
-    detail_value.created_at = submission_detail_result[0][10].as<std::string>();
-    detail_value.updated_at = submission_detail_result[0][11].as<std::string>();
-    return detail_value;
+
+    const auto submission_summary_query = transaction.exec(
+        "SELECT "
+        "submission_id, "
+        "user_id, "
+        "problem_id, "
+        "language, "
+        "status::text, "
+        "score, "
+        "elapsed_ms, "
+        "max_rss_kb, "
+        "created_at::text, "
+        "updated_at::text "
+        "FROM submissions "
+        "WHERE "
+        "problem_id = $1 AND "
+        "("
+        "status = $2::submission_status OR "
+        "status = $3::submission_status"
+        ") "
+        "ORDER BY submission_id DESC",
+        pqxx::params{
+            problem_id,
+            to_string(submission_status::wrong_answer),
+            to_string(submission_status::accepted)
+        }
+    );
+
+    return submission_dto::make_summary_list_from_result(submission_summary_query);
 }
 
 std::expected<submission_status, error_code> submission_util::get_submission_status(
@@ -209,10 +195,10 @@ std::expected<submission_dto::created, error_code> submission_util::create_submi
         pqxx::params{submission_id, to_string(submission_status::queued)}
     );
 
-    submission_dto::created created_value;
-    created_value.submission_id = submission_id;
-    created_value.status = to_string(submission_status::queued);
-    return created_value;
+    return submission_dto::make_created(
+        submission_id,
+        submission_status::queued
+    );
 }
 
 std::expected<void, error_code> submission_util::enqueue_submission(
@@ -373,11 +359,10 @@ std::expected<submission_dto::queued_submission, error_code> submission_util::le
         return std::unexpected(error_code::create(errno_error::resource_temporarily_unavailable));
     }
 
-    submission_dto::queued_submission queued_submission_value;
-    queued_submission_value.submission_id = lease_candidate_result[0][0].as<std::int64_t>();
-    queued_submission_value.problem_id = lease_candidate_result[0][1].as<std::int64_t>();
-    queued_submission_value.language = lease_candidate_result[0][2].as<std::string>();
-    queued_submission_value.source_code = lease_candidate_result[0][3].as<std::string>();
+    submission_dto::queued_submission queued_submission_value =
+        submission_dto::make_queued_submission_from_row(
+            lease_candidate_result[0]
+        );
 
     transaction.exec(
         "UPDATE submission_queue "
@@ -452,10 +437,10 @@ std::expected<submission_dto::finalize_result, error_code> submission_util::fina
         pqxx::params{submission_id}
     );
 
-    submission_dto::finalize_result finalize_result_value;
-    finalize_result_value.problem_id = problem_id;
-    finalize_result_value.should_increase_accepted_count = should_increase_accepted_count;
-    return finalize_result_value;
+    return submission_dto::make_finalize_result(
+        problem_id,
+        should_increase_accepted_count
+    );
 }
 
 std::expected<std::vector<submission_dto::summary>, error_code> submission_util::list_submissions(
@@ -516,28 +501,5 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_util:
         query_params
     );
 
-    std::vector<submission_dto::summary> summary_values;
-    summary_values.reserve(submission_summary_query.size());
-    for(const auto& submission_summary_row : submission_summary_query){
-        submission_dto::summary summary_value;
-        summary_value.submission_id = submission_summary_row[0].as<std::int64_t>();
-        summary_value.user_id = submission_summary_row[1].as<std::int64_t>();
-        summary_value.problem_id = submission_summary_row[2].as<std::int64_t>();
-        summary_value.language = submission_summary_row[3].as<std::string>();
-        summary_value.status = submission_summary_row[4].as<std::string>();
-        if(!submission_summary_row[5].is_null()){
-            summary_value.score_opt = submission_summary_row[5].as<std::int16_t>();
-        }
-        if(!submission_summary_row[6].is_null()){
-            summary_value.elapsed_ms_opt = submission_summary_row[6].as<std::int64_t>();
-        }
-        if(!submission_summary_row[7].is_null()){
-            summary_value.max_rss_kb_opt = submission_summary_row[7].as<std::int64_t>();
-        }
-        summary_value.created_at = submission_summary_row[8].as<std::string>();
-        summary_value.updated_at = submission_summary_row[9].as<std::string>();
-        summary_values.push_back(std::move(summary_value));
-    }
-
-    return summary_values;
+    return submission_dto::make_summary_list_from_result(submission_summary_query);
 }

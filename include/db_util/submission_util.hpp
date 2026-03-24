@@ -28,6 +28,10 @@ namespace submission_util{
         pqxx::transaction_base& transaction,
         std::int64_t submission_id
     );
+    std::expected<std::vector<submission_dto::summary>, error_code> get_wa_or_ac_submissions(
+        pqxx::transaction_base& transaction,
+        std::int64_t problem_id
+    );
 
     std::expected<submission_status, error_code> get_submission_status(
         pqxx::transaction_base& transaction,

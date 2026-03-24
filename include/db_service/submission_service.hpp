@@ -25,6 +25,10 @@ namespace submission_service{
         db_connection& connection,
         std::int64_t submission_id
     );
+    std::expected<std::vector<submission_dto::summary>, error_code> get_wa_or_ac_submissions(
+        db_connection& connection,
+        std::int64_t problem_id
+    );
     std::expected<submission_dto::created, error_code> create_submission(
         db_connection& connection,
         const submission_dto::create_request& create_request_value

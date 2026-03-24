@@ -49,6 +49,23 @@ std::expected<submission_dto::detail, error_code> submission_service::get_submis
     );
 }
 
+std::expected<std::vector<submission_dto::summary>, error_code>
+submission_service::get_wa_or_ac_submissions(
+    db_connection& connection,
+    std::int64_t problem_id
+){
+    return db_service_util::with_retry_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<std::vector<submission_dto::summary>, error_code> {
+            return submission_util::get_wa_or_ac_submissions(
+                transaction,
+                problem_id
+            );
+        }
+    );
+}
+
 std::expected<submission_dto::created, error_code> submission_service::create_submission(
     db_connection& connection,
     const submission_dto::create_request& create_request_value
