@@ -1,5 +1,9 @@
 #pragma once
 
+#include "common/error_code.hpp"
+
+#include <expected>
+
 struct unique_fd{
 private:
     int fd_ = -1;
@@ -15,6 +19,7 @@ public:
 
     ~unique_fd() noexcept;
     void close(int new_fd = -1) noexcept;
+    std::expected<void, error_code> close_checked() noexcept;
     int get() const noexcept;
     explicit operator bool() const noexcept;
 };

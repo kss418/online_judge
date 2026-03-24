@@ -27,6 +27,7 @@ public:
     static std::expected<temp_file, error_code> create(std::string_view pattern);
 
     void close_fd() noexcept;
+    std::expected<void, error_code> close_fd_checked() noexcept;
     int get_fd() const noexcept;
     const std::filesystem::path& get_path() const noexcept;
     explicit operator bool() const noexcept;

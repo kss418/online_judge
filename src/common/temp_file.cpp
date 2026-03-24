@@ -42,6 +42,10 @@ void temp_file::close_fd() noexcept{
     fd_.close();
 }
 
+std::expected<void, error_code> temp_file::close_fd_checked() noexcept{
+    return fd_.close_checked();
+}
+
 int temp_file::get_fd() const noexcept{
     return fd_.get();
 }

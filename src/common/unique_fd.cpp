@@ -1,4 +1,6 @@
 #include "common/unique_fd.hpp"
+
+#include <cerrno>
 #include <unistd.h>
 
 unique_fd::unique_fd(unique_fd&& other) noexcept{
@@ -20,6 +22,20 @@ unique_fd::~unique_fd() noexcept{ close(); }
 void unique_fd::close(int new_fd) noexcept{
     if(fd_ != -1) ::close(fd_);
     fd_ = new_fd;
+}
+
+std::expected<void, error_code> unique_fd::close_checked() noexcept{
+    if(fd_ == -1){
+        return {};
+    }
+
+    const int closed_fd = fd_;
+    fd_ = -1;
+    if(::close(closed_fd) < 0){
+        return std::unexpected(error_code::create(error_code::map_errno(errno)));
+    }
+
+    return {};
 }
 
 int unique_fd::get() const noexcept{ return fd_; }
