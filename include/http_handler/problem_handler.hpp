@@ -26,4 +26,9 @@ namespace problem_handler{
         const request_type& request,
         db_connection& db_connection_value
     );
+    response_type post_problem_rejudge(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t problem_id
+    );
 }

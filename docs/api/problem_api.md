@@ -238,6 +238,53 @@ Examples:
 }
 ```
 
+### `POST /api/problem/{problem_id}/rejudge`
+
+Requeue all `wrong_answer` and `accepted` submissions for a problem. This endpoint requires an admin bearer token.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `message` | `string` | currently `"problem submissions requeued"` |
+
+Example:
+
+```json
+{
+  "message": "problem submissions requeued"
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- unknown `problem_id`: `404 Not Found`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
 ### `PUT /api/problem/{problem_id}/limits`
 
 Update the limits of an existing problem.

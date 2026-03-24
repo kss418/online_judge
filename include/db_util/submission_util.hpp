@@ -63,6 +63,11 @@ namespace submission_util{
         std::int64_t submission_id
     );
 
+    std::expected<void, error_code> rejudge_submission(
+        pqxx::transaction_base& transaction,
+        std::int64_t submission_id
+    );
+
     std::expected<submission_dto::queued_submission, error_code> lease_submission(
         pqxx::transaction_base& transaction,
         const submission_dto::lease_request& lease_request_value

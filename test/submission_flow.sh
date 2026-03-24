@@ -58,6 +58,9 @@ rejudge_response_file="$(mktemp)"
 rejudge_unauthorized_response_file="$(mktemp)"
 rejudge_invalid_response_file="$(mktemp)"
 rejudge_detail_response_file="$(mktemp)"
+problem_rejudge_response_file="$(mktemp)"
+problem_rejudge_unauthorized_response_file="$(mktemp)"
+problem_rejudge_missing_response_file="$(mktemp)"
 test_log_path=""
 server_log_path=""
 server_pid=""
@@ -92,7 +95,10 @@ cleanup(){
         "${rejudge_response_file}" \
         "${rejudge_unauthorized_response_file}" \
         "${rejudge_invalid_response_file}" \
-        "${rejudge_detail_response_file}"
+        "${rejudge_detail_response_file}" \
+        "${problem_rejudge_response_file}" \
+        "${problem_rejudge_unauthorized_response_file}" \
+        "${problem_rejudge_missing_response_file}"
 
 }
 
@@ -1232,6 +1238,280 @@ then
     publish_failure_logs
     exit 1
 fi
+
+third_submission_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${submission_response_file}" \
+        --write-out "%{http_code}" \
+        --request POST \
+        -H "Authorization: Bearer ${sign_up_token}" \
+        -H "Content-Type: application/json" \
+        -d "${submission_request_body}" \
+        "${base_url}/api/submission/${problem_id}"
+)"
+
+if [[ "${third_submission_status_code}" != "201" ]]; then
+    append_log_line "${test_log_temp_file}" "third submission create failed: status=${third_submission_status_code}"
+    publish_failure_logs
+    echo "third submission create test failed: expected status 201, got ${third_submission_status_code}" >&2
+    echo "response body:" >&2
+    cat "${submission_response_file}" >&2
+    exit 1
+fi
+
+third_submission_id="$(
+    python3 - "${submission_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    submission_response = json.load(response_file)
+
+submission_id = submission_response.get("submission_id")
+if not isinstance(submission_id, int) or submission_id <= 0:
+    raise SystemExit("invalid third submission_id")
+
+print(submission_id)
+PY
+)"
+
+if ! PGPASSWORD="${DB_PASSWORD}" psql \
+    -X \
+    -h "${DB_HOST}" \
+    -p "${DB_PORT}" \
+    -U "${DB_USER}" \
+    -d "${DB_NAME}" \
+    -v first_submission_id="${submission_id}" \
+    -v second_submission_id="${second_submission_id}" \
+    -v third_submission_id="${third_submission_id}" \
+    -v problem_id="${problem_id}" \
+    -v ON_ERROR_STOP=1 >/dev/null <<'SQL'
+UPDATE submissions
+SET
+    status = 'accepted',
+    score = 100,
+    compile_output = 'accepted stale compile output',
+    judge_output = 'accepted stale judge output',
+    elapsed_ms = 11,
+    max_rss_kb = 22,
+    updated_at = NOW()
+WHERE submission_id = :'first_submission_id';
+
+UPDATE submissions
+SET
+    status = 'wrong_answer',
+    score = 0,
+    compile_output = 'wrong answer stale compile output',
+    judge_output = 'wrong answer stale judge output',
+    elapsed_ms = 33,
+    max_rss_kb = 44,
+    updated_at = NOW()
+WHERE submission_id = :'second_submission_id';
+
+UPDATE submissions
+SET
+    status = 'compile_error',
+    score = 0,
+    compile_output = 'compile error stale compile output',
+    judge_output = 'compile error stale judge output',
+    elapsed_ms = NULL,
+    max_rss_kb = NULL,
+    updated_at = NOW()
+WHERE submission_id = :'third_submission_id';
+
+DELETE FROM submission_queue
+WHERE submission_id IN (
+    :'first_submission_id',
+    :'second_submission_id',
+    :'third_submission_id'
+);
+
+UPDATE problem_statistics
+SET accepted_count = accepted_count + 1, updated_at = NOW()
+WHERE problem_id = :'problem_id';
+SQL
+then
+    append_log_line "${test_log_temp_file}" "problem rejudge setup failed"
+    publish_failure_logs
+    echo "problem rejudge setup failed" >&2
+    exit 1
+fi
+
+problem_rejudge_unauthorized_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${problem_rejudge_unauthorized_response_file}" \
+        --write-out "%{http_code}" \
+        --request POST \
+        -H "Authorization: Bearer ${sign_up_token}" \
+        "${base_url}/api/problem/${problem_id}/rejudge"
+)"
+
+if [[ "${problem_rejudge_unauthorized_status_code}" != "401" ]]; then
+    append_log_line "${test_log_temp_file}" "problem rejudge unauthorized failed: status=${problem_rejudge_unauthorized_status_code}"
+    publish_failure_logs
+    echo "problem rejudge unauthorized test failed: expected status 401, got ${problem_rejudge_unauthorized_status_code}" >&2
+    echo "response body:" >&2
+    cat "${problem_rejudge_unauthorized_response_file}" >&2
+    exit 1
+fi
+
+problem_rejudge_missing_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${problem_rejudge_missing_response_file}" \
+        --write-out "%{http_code}" \
+        --request POST \
+        -H "Authorization: Bearer ${admin_user_token}" \
+        "${base_url}/api/problem/${missing_submission_id}/rejudge"
+)"
+
+if [[ "${problem_rejudge_missing_status_code}" != "404" ]]; then
+    append_log_line "${test_log_temp_file}" "problem rejudge missing failed: status=${problem_rejudge_missing_status_code}"
+    publish_failure_logs
+    echo "problem rejudge missing test failed: expected status 404, got ${problem_rejudge_missing_status_code}" >&2
+    echo "response body:" >&2
+    cat "${problem_rejudge_missing_response_file}" >&2
+    exit 1
+fi
+
+problem_rejudge_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${problem_rejudge_response_file}" \
+        --write-out "%{http_code}" \
+        --request POST \
+        -H "Authorization: Bearer ${admin_user_token}" \
+        "${base_url}/api/problem/${problem_id}/rejudge"
+)"
+
+if [[ "${problem_rejudge_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "problem rejudge failed: status=${problem_rejudge_status_code}"
+    publish_failure_logs
+    echo "problem rejudge test failed: expected status 200, got ${problem_rejudge_status_code}" >&2
+    echo "response body:" >&2
+    cat "${problem_rejudge_response_file}" >&2
+    exit 1
+fi
+
+if ! python3 \
+    - "${problem_rejudge_unauthorized_response_file}" \
+    "${problem_rejudge_missing_response_file}" \
+    "${problem_rejudge_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    unauthorized_response = json.load(response_file)
+
+with open(sys.argv[2], encoding="utf-8") as response_file:
+    missing_response = json.load(response_file)
+
+with open(sys.argv[3], encoding="utf-8") as response_file:
+    success_response = json.load(response_file)
+
+if unauthorized_response.get("error", {}).get("code") != "admin_bearer_token_required":
+    raise SystemExit("unexpected error code for unauthorized problem rejudge response")
+
+if missing_response.get("error", {}).get("code") != "problem_not_found":
+    raise SystemExit("unexpected error code for missing problem rejudge response")
+
+if success_response.get("message") != "problem submissions requeued":
+    raise SystemExit("unexpected success message for problem rejudge response")
+PY
+then
+    append_log_line "${test_log_temp_file}" "problem rejudge response validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+mapfile -t problem_rejudge_values < <(
+    PGPASSWORD="${DB_PASSWORD}" psql \
+        -X \
+        -h "${DB_HOST}" \
+        -p "${DB_PORT}" \
+        -U "${DB_USER}" \
+        -d "${DB_NAME}" \
+        -v first_submission_id="${submission_id}" \
+        -v second_submission_id="${second_submission_id}" \
+        -v third_submission_id="${third_submission_id}" \
+        -v problem_id="${problem_id}" \
+        -v ON_ERROR_STOP=1 \
+        -qAt <<'SQL'
+SELECT status::text, score, compile_output, judge_output, elapsed_ms, max_rss_kb
+FROM submissions
+WHERE submission_id = :'first_submission_id';
+
+SELECT status::text, score, compile_output, judge_output, elapsed_ms, max_rss_kb
+FROM submissions
+WHERE submission_id = :'second_submission_id';
+
+SELECT status::text, score, compile_output, judge_output, elapsed_ms, max_rss_kb
+FROM submissions
+WHERE submission_id = :'third_submission_id';
+
+SELECT accepted_count
+FROM problem_statistics
+WHERE problem_id = :'problem_id';
+
+SELECT COUNT(*)
+FROM submission_queue
+WHERE submission_id IN (
+    :'first_submission_id',
+    :'second_submission_id',
+    :'third_submission_id'
+);
+SQL
+)
+
+if [[ "${#problem_rejudge_values[@]}" -ne 5 ]]; then
+    append_log_line "${test_log_temp_file}" "problem rejudge db validation failed: unexpected row count"
+    publish_failure_logs
+    echo "problem rejudge db validation failed: expected 5 rows, got ${#problem_rejudge_values[@]}" >&2
+    exit 1
+fi
+
+if [[ "${problem_rejudge_values[0]}" != "queued|||||" ]]; then
+    append_log_line "${test_log_temp_file}" "problem rejudge db validation failed: first_submission=${problem_rejudge_values[0]}"
+    publish_failure_logs
+    echo "problem rejudge db validation failed for first submission: ${problem_rejudge_values[0]}" >&2
+    exit 1
+fi
+
+if [[ "${problem_rejudge_values[1]}" != "queued|||||" ]]; then
+    append_log_line "${test_log_temp_file}" "problem rejudge db validation failed: second_submission=${problem_rejudge_values[1]}"
+    publish_failure_logs
+    echo "problem rejudge db validation failed for second submission: ${problem_rejudge_values[1]}" >&2
+    exit 1
+fi
+
+if [[ "${problem_rejudge_values[2]}" != "compile_error|0|compile error stale compile output|compile error stale judge output||" ]]; then
+    append_log_line "${test_log_temp_file}" "problem rejudge db validation failed: third_submission=${problem_rejudge_values[2]}"
+    publish_failure_logs
+    echo "problem rejudge db validation failed for third submission: ${problem_rejudge_values[2]}" >&2
+    exit 1
+fi
+
+if [[ "${problem_rejudge_values[3]}" != "0" ]]; then
+    append_log_line "${test_log_temp_file}" "problem rejudge db validation failed: accepted_count=${problem_rejudge_values[3]}"
+    publish_failure_logs
+    echo "problem rejudge db validation failed: expected accepted_count 0, got ${problem_rejudge_values[3]}" >&2
+    exit 1
+fi
+
+if [[ "${problem_rejudge_values[4]}" != "2" ]]; then
+    append_log_line "${test_log_temp_file}" "problem rejudge db validation failed: queue_count=${problem_rejudge_values[4]}"
+    publish_failure_logs
+    echo "problem rejudge db validation failed: expected queue_count 2, got ${problem_rejudge_values[4]}" >&2
+    exit 1
+fi
+
+print_success_log "problem rejudge success"
 
 append_log_line "${test_log_temp_file}" "submission flow test passed"
 print_success_log "submission flow test passed: login_id=${user_login_id}, user_id=${sign_up_user_id}, problem_id=${problem_id}, submission_id=${submission_id}, second_submission_id=${second_submission_id}"

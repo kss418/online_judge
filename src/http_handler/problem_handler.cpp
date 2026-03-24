@@ -7,6 +7,7 @@
 #include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"
 #include "db_service/problem_statistics_service.hpp"
+#include "db_service/submission_service.hpp"
 
 problem_handler::response_type problem_handler::get_problems(
     const request_type& request,
@@ -189,6 +190,60 @@ problem_handler::response_type problem_handler::post_problem(
             request,
             boost::beast::http::status::created,
             json_util::make_problem_created_object(*create_problem_exp)
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
+problem_handler::response_type problem_handler::post_problem_rejudge(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t problem_id
+){
+    problem_dto::reference problem_reference_value{problem_id};
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto exists_problem_exp = problem_core_service::exists_problem(
+            db_connection_value,
+            problem_reference_value
+        );
+        if(!exists_problem_exp){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::internal_server_error,
+                "internal_server_error",
+                "failed to check problem: " + to_string(exists_problem_exp.error())
+            );
+        }
+        if(!exists_problem_exp->exists){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::not_found,
+                "problem_not_found",
+                "problem not found"
+            );
+        }
+
+        const auto rejudge_problem_exp = submission_service::rejudge_problem(
+            db_connection_value,
+            problem_id
+        );
+        if(!rejudge_problem_exp){
+            return http_response_util::create_400_or_500(
+                request,
+                "rejudge problem",
+                rejudge_problem_exp.error()
+            );
+        }
+
+        return http_response_util::create_json(
+            request,
+            boost::beast::http::status::ok,
+            json_util::make_message_object("problem submissions requeued")
         );
     };
 

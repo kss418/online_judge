@@ -160,59 +160,39 @@ std::expected<void, error_code> submission_service::rejudge(
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            const auto submission_status_exp = submission_util::get_submission_status(
+            return submission_util::rejudge_submission(
                 transaction,
                 submission_id
             );
-            if(!submission_status_exp){
-                return std::unexpected(submission_status_exp.error());
-            }
+        }
+    );
+}
 
-            if(
-                *submission_status_exp == submission_status::queued ||
-                *submission_status_exp == submission_status::judging
-            ){
-                return std::unexpected(error_code::create(errno_error::invalid_argument));
-            }
-
-            const auto decrease_accepted_count_exp =
-                submission_util::decrease_accepted_count_if_submission_accepted(
+std::expected<void, error_code> submission_service::rejudge_problem(
+    db_connection& connection,
+    std::int64_t problem_id
+){
+    return db_service_util::with_retry_write_transaction(
+        connection,
+        [&](pqxx::work& transaction) -> std::expected<void, error_code> {
+            const auto submission_values_exp =
+                submission_util::get_wa_or_ac_submissions(
                     transaction,
-                    submission_id
+                    problem_id
                 );
-            if(!decrease_accepted_count_exp){
-                return std::unexpected(decrease_accepted_count_exp.error());
+            if(!submission_values_exp){
+                return std::unexpected(submission_values_exp.error());
             }
 
-            const auto clear_submission_result_exp =
-                submission_util::clear_submission_result(
+            for(const auto& submission_value : *submission_values_exp){
+                const auto rejudge_submission_exp =
+                    submission_util::rejudge_submission(
                     transaction,
-                    submission_id
+                    submission_value.submission_id
                 );
-            if(!clear_submission_result_exp){
-                return std::unexpected(clear_submission_result_exp.error());
-            }
-
-            const submission_dto::status_update status_update_value =
-                submission_dto::make_status_update(
-                    submission_id,
-                    submission_status::queued
-                );
-            const auto update_submission_status_exp =
-                submission_util::update_submission_status(
-                    transaction,
-                    status_update_value
-                );
-            if(!update_submission_status_exp){
-                return std::unexpected(update_submission_status_exp.error());
-            }
-
-            const auto enqueue_submission_exp = submission_util::enqueue_submission(
-                transaction,
-                submission_id
-            );
-            if(!enqueue_submission_exp){
-                return std::unexpected(enqueue_submission_exp.error());
+                if(!rejudge_submission_exp){
+                    return std::unexpected(rejudge_submission_exp.error());
+                }
             }
 
             return {};

@@ -51,6 +51,10 @@ private:
         std::int64_t problem_id,
         std::int32_t testcase_order
     );
+    response_type handle_problem_rejudge(
+        const request_type& request,
+        std::int64_t problem_id
+    );
 
     db_connection& db_connection_;
 };

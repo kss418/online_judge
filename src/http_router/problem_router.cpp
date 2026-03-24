@@ -87,6 +87,15 @@ problem_router::response_type problem_router::route(
         return handle_testcase(request, *problem_id_opt, *testcase_order_opt);
     }
 
+    if(path_segments.size() == 2 && path_segments[1] == "rejudge"){
+        const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
+        if(!problem_id_opt){
+            return http_response_util::create_not_found(request);
+        }
+
+        return handle_problem_rejudge(request, *problem_id_opt);
+    }
+
     return http_response_util::create_not_found(request);
 }
 
@@ -237,6 +246,21 @@ problem_router::response_type problem_router::handle_testcase(
             db_connection_,
             problem_id,
             testcase_order
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
+problem_router::response_type problem_router::handle_problem_rejudge(
+    const request_type& request,
+    std::int64_t problem_id
+){
+    if(request.method() == boost::beast::http::verb::post){
+        return problem_handler::post_problem_rejudge(
+            request,
+            db_connection_,
+            problem_id
         );
     }
 

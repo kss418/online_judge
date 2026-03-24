@@ -53,6 +53,10 @@ namespace submission_service{
         db_connection& connection,
         std::int64_t submission_id
     );
+    std::expected<void, error_code> rejudge_problem(
+        db_connection& connection,
+        std::int64_t problem_id
+    );
     std::expected<std::optional<submission_dto::queued_submission>, error_code> lease_submission(
         db_connection& connection,
         const submission_dto::lease_request& lease_request_value
