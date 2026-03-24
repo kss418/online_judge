@@ -1,4 +1,5 @@
 #include "db_util/submission_util.hpp"
+#include "db_util/problem_statistics_util.hpp"
 
 #include <pqxx/pqxx>
 
@@ -145,6 +146,33 @@ std::expected<submission_dto::detail, error_code> submission_util::get_submissio
     return detail_value;
 }
 
+std::expected<submission_status, error_code> submission_util::get_submission_status(
+    pqxx::transaction_base& transaction,
+    std::int64_t submission_id
+){
+    if(submission_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto submission_status_result = transaction.exec(
+        "SELECT status::text "
+        "FROM submissions "
+        "WHERE submission_id = $1",
+        pqxx::params{submission_id}
+    );
+    if(submission_status_result.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const std::string submission_status_string = submission_status_result[0][0].as<std::string>();
+    const auto submission_status_opt = parse_submission_status(submission_status_string);
+    if(!submission_status_opt){
+        return std::unexpected(error_code::create(errno_error::unknown_error));
+    }
+
+    return *submission_status_opt;
+}
+
 std::expected<submission_dto::created, error_code> submission_util::create_submission(
     pqxx::transaction_base& transaction,
     const submission_dto::create_request& create_request_value
@@ -181,6 +209,20 @@ std::expected<submission_dto::created, error_code> submission_util::create_submi
         pqxx::params{submission_id, to_string(submission_status::queued)}
     );
 
+    submission_dto::created created_value;
+    created_value.submission_id = submission_id;
+    created_value.status = to_string(submission_status::queued);
+    return created_value;
+}
+
+std::expected<void, error_code> submission_util::enqueue_submission(
+    pqxx::transaction_base& transaction,
+    std::int64_t submission_id
+){
+    if(submission_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
     transaction.exec(
         "INSERT INTO submission_queue(submission_id) VALUES($1)",
         pqxx::params{submission_id}
@@ -191,10 +233,7 @@ std::expected<submission_dto::created, error_code> submission_util::create_submi
         pqxx::params{SUBMISSION_QUEUE_CHANNEL, std::to_string(submission_id)}
     );
 
-    submission_dto::created created_value;
-    created_value.submission_id = submission_id;
-    created_value.status = to_string(submission_status::queued);
-    return created_value;
+    return {};
 }
 
 std::expected<void, error_code> submission_util::update_submission_status(
@@ -235,6 +274,73 @@ std::expected<void, error_code> submission_util::update_submission_status(
     );
 
     return {};
+}
+
+std::expected<void, error_code> submission_util::clear_submission_result(
+    pqxx::transaction_base& transaction,
+    std::int64_t submission_id
+){
+    if(submission_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto update_result = transaction.exec(
+        "UPDATE submissions "
+        "SET "
+        "score = NULL, "
+        "compile_output = NULL, "
+        "judge_output = NULL, "
+        "elapsed_ms = NULL, "
+        "max_rss_kb = NULL, "
+        "updated_at = NOW() "
+        "WHERE submission_id = $1",
+        pqxx::params{submission_id}
+    );
+
+    if(update_result.affected_rows() == 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return {};
+}
+
+std::expected<void, error_code> submission_util::decrease_accepted_count_if_submission_accepted(
+    pqxx::transaction_base& transaction,
+    std::int64_t submission_id
+){
+    const auto submission_status_exp = get_submission_status(
+        transaction,
+        submission_id
+    );
+    if(!submission_status_exp){
+        return std::unexpected(submission_status_exp.error());
+    }
+
+    if(*submission_status_exp != submission_status::accepted){
+        return {};
+    }
+
+    const auto problem_result = transaction.exec(
+        "SELECT problem_id "
+        "FROM submissions "
+        "WHERE submission_id = $1 AND status = $2::submission_status "
+        "FOR UPDATE",
+        pqxx::params{
+            submission_id,
+            to_string(submission_status::accepted)
+        }
+    );
+    if(problem_result.empty()){
+        return {};
+    }
+
+    const problem_dto::reference problem_reference_value{
+        problem_result[0][0].as<std::int64_t>()
+    };
+    return problem_statistics_util::decrease_accepted_count(
+        transaction,
+        problem_reference_value
+    );
 }
 
 std::expected<submission_dto::queued_submission, error_code> submission_util::lease_submission(

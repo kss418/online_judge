@@ -244,6 +244,55 @@ Examples:
 }
 ```
 
+### `POST /api/submission/{submission_id}/rejudge`
+
+Requeue a finished submission for judging again. This endpoint requires an admin bearer token.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | admin bearer token, format: `Bearer <token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `submission_id` | `int64` | must be positive |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `submission_id` | `int64` | requeued submission id |
+| `status` | `string` | reset status, currently `queued` |
+
+Example:
+
+```json
+{
+  "submission_id": 12,
+  "status": "queued"
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- non-admin token: `401 Unauthorized`
+- unknown `submission_id`, or submission already `queued` / `judging`: `400 Bad Request`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
 ### `GET /api/submission/{submission_id}/history`
 
 Get the status transition history for a single submission. This endpoint is public and does not require authentication.

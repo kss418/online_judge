@@ -29,14 +29,34 @@ namespace submission_util{
         std::int64_t submission_id
     );
 
+    std::expected<submission_status, error_code> get_submission_status(
+        pqxx::transaction_base& transaction,
+        std::int64_t submission_id
+    );
+
     std::expected<submission_dto::created, error_code> create_submission(
         pqxx::transaction_base& transaction,
         const submission_dto::create_request& create_request_value
     );
 
+    std::expected<void, error_code> enqueue_submission(
+        pqxx::transaction_base& transaction,
+        std::int64_t submission_id
+    );
+
     std::expected<void, error_code> update_submission_status(
         pqxx::transaction_base& transaction,
         const submission_dto::status_update& status_update_value
+    );
+
+    std::expected<void, error_code> clear_submission_result(
+        pqxx::transaction_base& transaction,
+        std::int64_t submission_id
+    );
+
+    std::expected<void, error_code> decrease_accepted_count_if_submission_accepted(
+        pqxx::transaction_base& transaction,
+        std::int64_t submission_id
     );
 
     std::expected<submission_dto::queued_submission, error_code> lease_submission(

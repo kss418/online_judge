@@ -47,6 +47,15 @@ submission_router::response_type submission_router::route(
         return handle_submission_source(request, *resource_id_opt);
     }
 
+    if(path_segments.size() == 2 && path_segments[1] == "rejudge"){
+        const auto resource_id_opt = string_util::parse_positive_int64(path_segments[0]);
+        if(!resource_id_opt){
+            return http_response_util::create_not_found(request);
+        }
+
+        return handle_submission_rejudge(request, *resource_id_opt);
+    }
+
     return http_response_util::create_not_found(request);
 }
 
@@ -107,6 +116,21 @@ submission_router::response_type submission_router::handle_submission_source(
 ){
     if(request.method() == boost::beast::http::verb::get){
         return submission_handler::get_submission_source(
+            request,
+            db_connection_,
+            resource_id
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
+submission_router::response_type submission_router::handle_submission_rejudge(
+    const request_type& request,
+    std::int64_t resource_id
+){
+    if(request.method() == boost::beast::http::verb::post){
+        return submission_handler::post_submission_rejudge(
             request,
             db_connection_,
             resource_id

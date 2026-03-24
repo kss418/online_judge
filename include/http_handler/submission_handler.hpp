@@ -31,6 +31,11 @@ namespace submission_handler{
         db_connection& db_connection_value,
         std::int64_t problem_id
     );
+    response_type post_submission_rejudge(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t submission_id
+    );
     response_type get_submissions(
         const request_type& request,
         db_connection& db_connection_value

@@ -33,6 +33,10 @@ private:
         const request_type& request,
         std::int64_t resource_id
     );
+    response_type handle_submission_rejudge(
+        const request_type& request,
+        std::int64_t resource_id
+    );
 
     db_connection& db_connection_;
 };

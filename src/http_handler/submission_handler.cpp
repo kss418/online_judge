@@ -145,6 +145,41 @@ submission_handler::response_type submission_handler::post_submission(
     );
 }
 
+submission_handler::response_type submission_handler::post_submission_rejudge(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t submission_id
+){
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto rejudge_exp = submission_service::rejudge(
+            db_connection_value,
+            submission_id
+        );
+        if(!rejudge_exp){
+            return http_response_util::create_400_or_500(
+                request,
+                "rejudge submission",
+                rejudge_exp.error()
+            );
+        }
+
+        submission_dto::created created_value;
+        created_value.submission_id = submission_id;
+        created_value.status = to_string(submission_status::queued);
+        return http_response_util::create_json(
+            request,
+            boost::beast::http::status::ok,
+            json_util::make_submission_created_object(created_value)
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
 submission_handler::response_type submission_handler::get_submissions(
     const request_type& request,
     db_connection& db_connection_value

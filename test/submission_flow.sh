@@ -54,6 +54,10 @@ unauthorized_source_response_file="$(mktemp)"
 forbidden_source_response_file="$(mktemp)"
 admin_source_response_file="$(mktemp)"
 missing_source_response_file="$(mktemp)"
+rejudge_response_file="$(mktemp)"
+rejudge_unauthorized_response_file="$(mktemp)"
+rejudge_invalid_response_file="$(mktemp)"
+rejudge_detail_response_file="$(mktemp)"
 test_log_path=""
 server_log_path=""
 server_pid=""
@@ -84,7 +88,11 @@ cleanup(){
         "${unauthorized_source_response_file}" \
         "${forbidden_source_response_file}" \
         "${admin_source_response_file}" \
-        "${missing_source_response_file}"
+        "${missing_source_response_file}" \
+        "${rejudge_response_file}" \
+        "${rejudge_unauthorized_response_file}" \
+        "${rejudge_invalid_response_file}" \
+        "${rejudge_detail_response_file}"
 
 }
 
@@ -467,6 +475,245 @@ fi
 
 append_log_line "${test_log_temp_file}" "missing submission source get passed: status=${missing_source_status_code}"
 print_success_log "missing submission source get success"
+
+if ! PGPASSWORD="${DB_PASSWORD}" psql \
+    -X \
+    -h "${DB_HOST}" \
+    -p "${DB_PORT}" \
+    -U "${DB_USER}" \
+    -d "${DB_NAME}" \
+    -v submission_id="${submission_id}" \
+    -v problem_id="${problem_id}" \
+    -v ON_ERROR_STOP=1 >/dev/null <<'SQL'
+UPDATE submissions
+SET
+    status = 'accepted',
+    score = 100,
+    compile_output = 'stale compile output',
+    judge_output = 'stale judge output',
+    elapsed_ms = 123,
+    max_rss_kb = 456,
+    updated_at = NOW()
+WHERE submission_id = :'submission_id';
+
+DELETE FROM submission_queue
+WHERE submission_id = :'submission_id';
+
+UPDATE problem_statistics
+SET accepted_count = accepted_count + 1, updated_at = NOW()
+WHERE problem_id = :'problem_id';
+
+INSERT INTO submission_status_history(submission_id, from_status, to_status, reason)
+VALUES(
+    :'submission_id',
+    'queued',
+    'accepted',
+    'submission flow rejudge setup'
+);
+SQL
+then
+    append_log_line "${test_log_temp_file}" "rejudge setup failed"
+    publish_failure_logs
+    echo "submission rejudge setup failed" >&2
+    exit 1
+fi
+
+rejudge_unauthorized_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${rejudge_unauthorized_response_file}" \
+        --write-out "%{http_code}" \
+        --request POST \
+        -H "Authorization: Bearer ${sign_up_token}" \
+        "${base_url}/api/submission/${submission_id}/rejudge"
+)"
+
+if [[ "${rejudge_unauthorized_status_code}" != "401" ]]; then
+    append_log_line "${test_log_temp_file}" "unauthorized rejudge failed: status=${rejudge_unauthorized_status_code}"
+    publish_failure_logs
+    echo "unauthorized rejudge test failed: expected status 401, got ${rejudge_unauthorized_status_code}" >&2
+    echo "response body:" >&2
+    cat "${rejudge_unauthorized_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "unauthorized rejudge passed: status=${rejudge_unauthorized_status_code}"
+print_success_log "unauthorized rejudge success"
+
+rejudge_invalid_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${rejudge_invalid_response_file}" \
+        --write-out "%{http_code}" \
+        --request POST \
+        -H "Authorization: Bearer ${admin_user_token}" \
+        "${base_url}/api/submission/${second_submission_id}/rejudge"
+)"
+
+if [[ "${rejudge_invalid_status_code}" != "400" ]]; then
+    append_log_line "${test_log_temp_file}" "queued submission rejudge failed: status=${rejudge_invalid_status_code}"
+    publish_failure_logs
+    echo "queued submission rejudge test failed: expected status 400, got ${rejudge_invalid_status_code}" >&2
+    echo "response body:" >&2
+    cat "${rejudge_invalid_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "queued submission rejudge passed: status=${rejudge_invalid_status_code}"
+print_success_log "queued submission rejudge success"
+
+rejudge_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${rejudge_response_file}" \
+        --write-out "%{http_code}" \
+        --request POST \
+        -H "Authorization: Bearer ${admin_user_token}" \
+        "${base_url}/api/submission/${submission_id}/rejudge"
+)"
+
+if [[ "${rejudge_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "submission rejudge failed: status=${rejudge_status_code}"
+    publish_failure_logs
+    echo "submission rejudge test failed: expected status 200, got ${rejudge_status_code}" >&2
+    echo "response body:" >&2
+    cat "${rejudge_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "submission rejudge passed: status=${rejudge_status_code}"
+print_success_log "submission rejudge success"
+
+rejudge_detail_status_code="$(
+    curl \
+        --silent \
+        --show-error \
+        --output "${rejudge_detail_response_file}" \
+        --write-out "%{http_code}" \
+        --request GET \
+        "${base_url}/api/submission/${submission_id}"
+)"
+
+if [[ "${rejudge_detail_status_code}" != "200" ]]; then
+    append_log_line "${test_log_temp_file}" "rejudge detail get failed: status=${rejudge_detail_status_code}"
+    publish_failure_logs
+    echo "rejudge detail get test failed: expected status 200, got ${rejudge_detail_status_code}" >&2
+    echo "response body:" >&2
+    cat "${rejudge_detail_response_file}" >&2
+    exit 1
+fi
+
+append_log_line "${test_log_temp_file}" "rejudge detail get passed: status=${rejudge_detail_status_code}"
+print_success_log "rejudge detail get success"
+
+if ! python3 \
+    - "${rejudge_unauthorized_response_file}" \
+    "${rejudge_invalid_response_file}" \
+    "${rejudge_response_file}" \
+    "${rejudge_detail_response_file}" \
+    "${submission_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    unauthorized_response = json.load(response_file)
+
+with open(sys.argv[2], encoding="utf-8") as response_file:
+    invalid_response = json.load(response_file)
+
+with open(sys.argv[3], encoding="utf-8") as response_file:
+    rejudge_response = json.load(response_file)
+
+with open(sys.argv[4], encoding="utf-8") as response_file:
+    detail_response = json.load(response_file)
+
+expected_submission_id = int(sys.argv[5])
+
+if unauthorized_response.get("error", {}).get("code") != "admin_bearer_token_required":
+    raise SystemExit("unexpected error code for unauthorized rejudge response")
+
+if invalid_response.get("error", {}).get("code") != "bad_request":
+    raise SystemExit("unexpected error code for queued rejudge response")
+
+if rejudge_response.get("submission_id") != expected_submission_id:
+    raise SystemExit("submission_id mismatch in rejudge response")
+
+if rejudge_response.get("status") != "queued":
+    raise SystemExit("expected rejudge response status to be queued")
+
+if detail_response.get("submission_id") != expected_submission_id:
+    raise SystemExit("submission_id mismatch in rejudge detail response")
+
+if detail_response.get("status") != "queued":
+    raise SystemExit("expected rejudge detail status to be queued")
+
+if detail_response.get("score", "missing") is not None:
+    raise SystemExit("expected rejudge detail score to be null")
+
+if detail_response.get("compile_output", "missing") is not None:
+    raise SystemExit("expected rejudge detail compile_output to be null")
+
+if detail_response.get("judge_output", "missing") is not None:
+    raise SystemExit("expected rejudge detail judge_output to be null")
+
+if detail_response.get("elapsed_ms", "missing") is not None:
+    raise SystemExit("expected rejudge detail elapsed_ms to be null")
+
+if detail_response.get("max_rss_kb", "missing") is not None:
+    raise SystemExit("expected rejudge detail max_rss_kb to be null")
+PY
+then
+    append_log_line "${test_log_temp_file}" "submission rejudge validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+mapfile -t rejudge_db_values < <(
+    PGPASSWORD="${DB_PASSWORD}" psql \
+        -X \
+        -h "${DB_HOST}" \
+        -p "${DB_PORT}" \
+        -U "${DB_USER}" \
+        -d "${DB_NAME}" \
+        -v submission_id="${submission_id}" \
+        -v problem_id="${problem_id}" \
+        -v ON_ERROR_STOP=1 \
+        -qAt <<'SQL'
+SELECT accepted_count
+FROM problem_statistics
+WHERE problem_id = :'problem_id';
+
+SELECT COUNT(*)
+FROM submission_queue
+WHERE submission_id = :'submission_id';
+SQL
+)
+
+if [[ "${#rejudge_db_values[@]}" -ne 2 ]]; then
+    append_log_line "${test_log_temp_file}" "rejudge db validation failed: unexpected row count"
+    publish_failure_logs
+    echo "rejudge db validation failed: expected 2 rows, got ${#rejudge_db_values[@]}" >&2
+    exit 1
+fi
+
+if [[ "${rejudge_db_values[0]}" != "0" ]]; then
+    append_log_line "${test_log_temp_file}" "rejudge db validation failed: accepted_count=${rejudge_db_values[0]}"
+    publish_failure_logs
+    echo "rejudge db validation failed: expected accepted_count 0, got ${rejudge_db_values[0]}" >&2
+    exit 1
+fi
+
+if [[ "${rejudge_db_values[1]}" != "1" ]]; then
+    append_log_line "${test_log_temp_file}" "rejudge db validation failed: queue_count=${rejudge_db_values[1]}"
+    publish_failure_logs
+    echo "rejudge db validation failed: expected queue row count 1, got ${rejudge_db_values[1]}" >&2
+    exit 1
+fi
+
+print_success_log "submission rejudge db validation success"
 
 all_submission_status_code="$(
     curl \
