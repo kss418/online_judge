@@ -1,6 +1,3 @@
-vcpkg
-vcpkg_installed
-build
 .vscode
-.env
-log
+.idea
+.DS_Store
