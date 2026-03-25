@@ -94,16 +94,22 @@ expected_problems = [
         "problem_id": third_problem_id,
         "title": "Multiply",
         "version": 1,
+        "submission_count": 0,
+        "accepted_count": 0,
     },
     {
         "problem_id": second_problem_id,
         "title": "plus one",
         "version": 1,
+        "submission_count": 0,
+        "accepted_count": 0,
     },
     {
         "problem_id": first_problem_id,
         "title": "A Plus B",
         "version": 1,
+        "submission_count": 0,
+        "accepted_count": 0,
     },
 ]
 if response.get("problems") != expected_problems:
@@ -143,11 +149,15 @@ expected_problems = [
         "problem_id": second_problem_id,
         "title": "plus one",
         "version": 1,
+        "submission_count": 0,
+        "accepted_count": 0,
     },
     {
         "problem_id": first_problem_id,
         "title": "A Plus B",
         "version": 1,
+        "submission_count": 0,
+        "accepted_count": 0,
     },
 ]
 if response.get("problems") != expected_problems:

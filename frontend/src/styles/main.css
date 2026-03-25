@@ -74,7 +74,6 @@ code {
 }
 
 .brand-block h1,
-.shell-header h2,
 .panel-header h3 {
   margin: 0;
   font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
@@ -82,7 +81,6 @@ code {
 }
 
 .brand-eyebrow,
-.shell-header-label,
 .panel-kicker,
 .command-label,
 .sidebar-panel-label {
@@ -94,7 +92,6 @@ code {
 }
 
 .brand-copy,
-.shell-header-copy,
 .lead-copy,
 .todo-item p,
 .empty-state p {
@@ -156,23 +153,9 @@ code {
 }
 
 .shell-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 12;
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 1rem;
-  padding-top: 0.15rem;
-}
-
-.shell-header {
-  display: grid;
-  gap: 0.75rem;
   margin-bottom: 1.5rem;
-}
-
-.shell-header-copy {
-  max-width: 42rem;
 }
 
 .shell-content {
@@ -526,7 +509,6 @@ code {
 
   .shell-topbar {
     justify-content: flex-end;
-    padding-top: 0;
   }
 
   .auth-session-card {

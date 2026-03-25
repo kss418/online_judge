@@ -280,6 +280,8 @@ boost::json::object json_util::make_problem_summary_object(
     response_object["problem_id"] = summary_value.problem_id;
     response_object["title"] = summary_value.title;
     response_object["version"] = summary_value.version;
+    response_object["submission_count"] = summary_value.submission_count;
+    response_object["accepted_count"] = summary_value.accepted_count;
     return response_object;
 }
 

@@ -162,21 +162,25 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_util::
 
     std::string problem_list_query =
         "SELECT "
-        "problem_id, "
-        "title, "
-        "version "
-        "FROM problems "
+        "p.problem_id, "
+        "p.title, "
+        "p.version, "
+        "COALESCE(ps.submission_count, 0), "
+        "COALESCE(ps.accepted_count, 0) "
+        "FROM problems AS p "
+        "LEFT JOIN problem_statistics AS ps "
+        "ON ps.problem_id = p.problem_id "
         "WHERE 1 = 1";
     pqxx::params query_params;
     int query_param_index = 1;
 
     if(filter_value.title_opt){
         problem_list_query +=
-            " AND title ILIKE $" + std::to_string(query_param_index++);
+            " AND p.title ILIKE $" + std::to_string(query_param_index++);
         query_params.append("%" + *filter_value.title_opt + "%");
     }
 
-    problem_list_query += " ORDER BY problem_id DESC";
+    problem_list_query += " ORDER BY p.problem_id DESC";
 
     const auto problem_summary_query = transaction.exec(
         problem_list_query,
@@ -190,6 +194,8 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_util::
         summary_value.problem_id = problem_summary_row[0].as<std::int64_t>();
         summary_value.title = problem_summary_row[1].as<std::string>();
         summary_value.version = problem_summary_row[2].as<std::int32_t>();
+        summary_value.submission_count = problem_summary_row[3].as<std::int64_t>();
+        summary_value.accepted_count = problem_summary_row[4].as<std::int64_t>();
         summary_values.push_back(std::move(summary_value));
     }
 

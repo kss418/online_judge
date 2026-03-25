@@ -80,16 +80,6 @@
         </div>
       </div>
 
-      <header class="shell-header">
-        <div>
-          <p class="shell-header-label">workspace</p>
-          <h2>{{ currentSectionTitle }}</h2>
-        </div>
-        <p class="shell-header-copy">
-          인증 영역은 메인 화면 오른쪽 위로 분리해 두었고, 로그인 상태는 이후 문제와 제출 화면에서도 그대로 재사용됩니다.
-        </p>
-      </header>
-
       <main class="shell-content">
         <RouterView />
       </main>
@@ -104,7 +94,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { apiBaseUrl } from '@/api/http'
@@ -140,11 +130,6 @@ function isActive(path){
     ? route.path === '/'
     : route.path.startsWith(path)
 }
-
-const currentSectionTitle = computed(() => {
-  const activeItem = navItems.find((item) => isActive(item.to))
-  return activeItem?.label || 'Frontend Studio'
-})
 
 function openAuthDialog(mode){
   authDialogMode.value = mode

@@ -43,6 +43,8 @@ namespace problem_dto{
         std::int64_t problem_id = 0;
         std::string title;
         std::int32_t version = 0;
+        std::int64_t submission_count = 0;
+        std::int64_t accepted_count = 0;
     };
 
     struct version{
