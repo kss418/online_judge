@@ -21,12 +21,20 @@
             <p class="panel-kicker">problem</p>
             <div class="detail-title-row">
               <h3>#{{ problemDetail.problem_id }} {{ problemDetail.title }}</h3>
-              <RouterLink
-                class="primary-button detail-submit-link"
-                :to="{ name: 'problem-submit', params: { problemId: problemDetail.problem_id } }"
-              >
-                제출하기
-              </RouterLink>
+              <div class="detail-title-actions">
+                <RouterLink
+                  class="ghost-button detail-list-link"
+                  :to="{ name: 'submissions', query: { problemId: problemDetail.problem_id } }"
+                >
+                  제출 목록
+                </RouterLink>
+                <RouterLink
+                  class="primary-button detail-submit-link"
+                  :to="{ name: 'problem-submit', params: { problemId: problemDetail.problem_id } }"
+                >
+                  제출하기
+                </RouterLink>
+              </div>
             </div>
           </div>
         </div>
@@ -262,6 +270,13 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
+.detail-title-actions {
+  display: inline-flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .detail-rate-label,
 .detail-metric-label,
 .sample-label {
@@ -297,6 +312,12 @@ onMounted(() => {
 }
 
 .detail-submit-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-list-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;

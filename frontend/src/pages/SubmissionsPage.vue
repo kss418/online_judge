@@ -4,7 +4,7 @@
       <div class="submissions-toolbar">
         <div>
           <p class="panel-kicker">submissions</p>
-          <h3>제출 목록</h3>
+          <h3>{{ pageTitle }}</h3>
         </div>
       </div>
 
@@ -79,17 +79,34 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { getSubmissionList } from '@/api/submission'
 import StatusBadge from '@/components/StatusBadge.vue'
 
+const route = useRoute()
 const listLimit = 50
 const isLoading = ref(true)
 const errorMessage = ref('')
 const submissions = ref([])
 const countFormatter = new Intl.NumberFormat()
 const submissionCount = computed(() => submissions.value.length)
+const numericProblemId = computed(() => {
+  const problemIdQuery = Array.isArray(route.query.problemId)
+    ? route.query.problemId[0]
+    : route.query.problemId
+
+  const parsedProblemId = Number.parseInt(problemIdQuery, 10)
+  return Number.isInteger(parsedProblemId) && parsedProblemId > 0
+    ? parsedProblemId
+    : null
+})
+const pageTitle = computed(() =>
+  numericProblemId.value
+    ? `문제 #${formatCount(numericProblemId.value)} 제출 목록`
+    : '제출 목록'
+)
 
 const statusLabelMap = {
   queued: '대기 중',
@@ -146,7 +163,10 @@ async function loadSubmissions(){
   errorMessage.value = ''
 
   try {
-    const response = await getSubmissionList({ limit: listLimit })
+    const response = await getSubmissionList({
+      limit: listLimit,
+      problemId: numericProblemId.value ?? undefined
+    })
 
     submissions.value = Array.isArray(response.submissions)
       ? response.submissions
@@ -170,9 +190,9 @@ async function loadSubmissions(){
   }
 }
 
-onMounted(() => {
+watch(numericProblemId, () => {
   loadSubmissions()
-})
+}, { immediate: true })
 </script>
 
 <style scoped>
