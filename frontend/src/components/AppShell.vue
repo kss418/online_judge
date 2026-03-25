@@ -121,7 +121,7 @@ const navItems = [
   {
     to: '/submissions',
     label: 'Submissions',
-    hint: '제출 화면 뼈대'
+    hint: '제출 목록'
   }
 ]
 

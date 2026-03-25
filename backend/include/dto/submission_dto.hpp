@@ -61,6 +61,7 @@ namespace submission_dto{
     struct summary{
         std::int64_t submission_id = 0;
         std::int64_t user_id = 0;
+        std::string user_name;
         std::int64_t problem_id = 0;
         std::string language;
         std::string status;

@@ -104,24 +104,27 @@ submission_util::get_wa_or_ac_submissions(
 
     const auto submission_summary_query = transaction.exec(
         "SELECT "
-        "submission_id, "
-        "user_id, "
-        "problem_id, "
-        "language, "
-        "status::text, "
-        "score, "
-        "elapsed_ms, "
-        "max_rss_kb, "
-        "created_at::text, "
-        "updated_at::text "
-        "FROM submissions "
+        "submission_table.submission_id, "
+        "submission_table.user_id, "
+        "user_table.user_name, "
+        "submission_table.problem_id, "
+        "submission_table.language, "
+        "submission_table.status::text, "
+        "submission_table.score, "
+        "submission_table.elapsed_ms, "
+        "submission_table.max_rss_kb, "
+        "submission_table.created_at::text, "
+        "submission_table.updated_at::text "
+        "FROM submissions submission_table "
+        "JOIN users user_table "
+        "ON user_table.user_id = submission_table.user_id "
         "WHERE "
-        "problem_id = $1 AND "
+        "submission_table.problem_id = $1 AND "
         "("
-        "status = $2::submission_status OR "
-        "status = $3::submission_status"
+        "submission_table.status = $2::submission_status OR "
+        "submission_table.status = $3::submission_status"
         ") "
-        "ORDER BY submission_id DESC",
+        "ORDER BY submission_table.submission_id DESC",
         pqxx::params{
             problem_id,
             to_string(submission_status::wrong_answer),
@@ -524,44 +527,48 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_util:
 
     std::string submission_list_query =
         "SELECT "
-        "submission_id, "
-        "user_id, "
-        "problem_id, "
-        "language, "
-        "status::text, "
-        "score, "
-        "elapsed_ms, "
-        "max_rss_kb, "
-        "created_at::text, "
-        "updated_at::text "
-        "FROM submissions "
+        "submission_table.submission_id, "
+        "submission_table.user_id, "
+        "user_table.user_name, "
+        "submission_table.problem_id, "
+        "submission_table.language, "
+        "submission_table.status::text, "
+        "submission_table.score, "
+        "submission_table.elapsed_ms, "
+        "submission_table.max_rss_kb, "
+        "submission_table.created_at::text, "
+        "submission_table.updated_at::text "
+        "FROM submissions submission_table "
+        "JOIN users user_table "
+        "ON user_table.user_id = submission_table.user_id "
         "WHERE 1 = 1";
     pqxx::params query_params;
     int query_param_index = 1;
 
     if(filter_value.top_submission_id_opt){
         submission_list_query +=
-            " AND submission_id <= $" + std::to_string(query_param_index++);
+            " AND submission_table.submission_id <= $" + std::to_string(query_param_index++);
         query_params.append(*filter_value.top_submission_id_opt);
     }
     if(filter_value.user_id_opt){
         submission_list_query +=
-            " AND user_id = $" + std::to_string(query_param_index++);
+            " AND submission_table.user_id = $" + std::to_string(query_param_index++);
         query_params.append(*filter_value.user_id_opt);
     }
     if(filter_value.problem_id_opt){
         submission_list_query +=
-            " AND problem_id = $" + std::to_string(query_param_index++);
+            " AND submission_table.problem_id = $" + std::to_string(query_param_index++);
         query_params.append(*filter_value.problem_id_opt);
     }
     if(filter_value.status_opt){
         submission_list_query +=
-            " AND status = $" + std::to_string(query_param_index++) + "::submission_status";
+            " AND submission_table.status = $" + std::to_string(query_param_index++) +
+            "::submission_status";
         query_params.append(*filter_value.status_opt);
     }
 
     submission_list_query +=
-        " ORDER BY submission_id DESC LIMIT $" + std::to_string(query_param_index++);
+        " ORDER BY submission_table.submission_id DESC LIMIT $" + std::to_string(query_param_index++);
     query_params.append(limit);
 
     const auto submission_summary_query = transaction.exec(

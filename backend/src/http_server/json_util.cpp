@@ -165,6 +165,7 @@ boost::json::object json_util::make_submission_summary_object(
     boost::json::object response_object;
     response_object["submission_id"] = summary_value.submission_id;
     response_object["user_id"] = summary_value.user_id;
+    response_object["user_name"] = summary_value.user_name;
     response_object["problem_id"] = summary_value.problem_id;
     response_object["language"] = summary_value.language;
     response_object["status"] = summary_value.status;
