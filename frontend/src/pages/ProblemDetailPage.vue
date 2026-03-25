@@ -19,11 +19,15 @@
         <div class="panel-header detail-title-block">
           <div>
             <p class="panel-kicker">problem</p>
-            <h3>#{{ problemDetail.problem_id }} {{ problemDetail.title }}</h3>
-          </div>
-          <div class="detail-rate-block">
-            <span class="detail-rate-label">정답률</span>
-            <strong>{{ acceptanceRate }}</strong>
+            <div class="detail-title-row">
+              <h3>#{{ problemDetail.problem_id }} {{ problemDetail.title }}</h3>
+              <RouterLink
+                class="primary-button detail-submit-link"
+                :to="{ name: 'problem-submit', params: { problemId: problemDetail.problem_id } }"
+              >
+                제출하기
+              </RouterLink>
+            </div>
           </div>
         </div>
 
@@ -43,6 +47,10 @@
           <div class="detail-metric-card">
             <span class="detail-metric-label">제출</span>
             <strong>{{ formatCount(problemDetail.statistics.submission_count) }}</strong>
+          </div>
+          <div class="detail-metric-card">
+            <span class="detail-metric-label">정답률</span>
+            <strong>{{ acceptanceRate }}</strong>
           </div>
         </div>
 
@@ -244,13 +252,14 @@ onMounted(() => {
 }
 
 .detail-title-block {
-  align-items: end;
+  align-items: start;
 }
 
-.detail-rate-block {
-  display: grid;
-  gap: 0.2rem;
-  justify-items: end;
+.detail-title-row {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .detail-rate-label,
@@ -262,14 +271,9 @@ onMounted(() => {
   letter-spacing: 0.08em;
 }
 
-.detail-rate-block strong {
-  font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
-  font-size: 1.2rem;
-}
-
 .detail-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.9rem;
 }
 
@@ -290,6 +294,12 @@ onMounted(() => {
 .detail-sections {
   display: grid;
   gap: 1rem;
+}
+
+.detail-submit-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .detail-section {
@@ -347,6 +357,10 @@ onMounted(() => {
 
   .detail-title-block {
     align-items: start;
+  }
+
+  .detail-title-row {
+    align-items: stretch;
   }
 
   .detail-rate-block {
