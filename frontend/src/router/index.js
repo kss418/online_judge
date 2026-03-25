@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import HomePage from '@/pages/HomePage.vue'
+import ProblemDetailPage from '@/pages/ProblemDetailPage.vue'
 import ProblemsPage from '@/pages/ProblemsPage.vue'
 import SubmissionsPage from '@/pages/SubmissionsPage.vue'
 
@@ -14,6 +15,11 @@ const routes = [
     path: '/problems',
     name: 'problems',
     component: ProblemsPage
+  },
+  {
+    path: '/problems/:problemId',
+    name: 'problem-detail',
+    component: ProblemDetailPage
   },
   {
     path: '/submissions',

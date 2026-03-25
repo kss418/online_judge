@@ -72,15 +72,15 @@
           <span>통계</span>
         </div>
 
-        <div
+        <RouterLink
           v-for="problem in pagedProblems"
           :key="problem.problem_id"
-          class="problem-row"
+          class="problem-row problem-row-link"
+          :to="{ name: 'problem-detail', params: { problemId: problem.problem_id } }"
         >
           <strong class="problem-id">#{{ problem.problem_id }}</strong>
           <div class="problem-main">
             <strong>{{ problem.title }}</strong>
-            <span class="problem-meta">문제 상세와 제출 화면을 다음 단계에서 연결할 수 있습니다.</span>
           </div>
           <div class="problem-stats" aria-label="problem statistics">
             <div class="problem-counts">
@@ -100,7 +100,7 @@
               </strong>
             </div>
           </div>
-        </div>
+        </RouterLink>
       </div>
 
       <div
@@ -437,6 +437,18 @@ onMounted(() => {
   background: var(--surface-strong);
 }
 
+.problem-row-link:hover {
+  transform: translateY(-1px);
+}
+
+.problem-row-link {
+  color: inherit;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
 .problem-id {
   font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
   font-size: 1.05rem;
@@ -449,12 +461,6 @@ onMounted(() => {
 .problem-main strong {
   display: block;
   margin-bottom: 0.2rem;
-}
-
-.problem-meta {
-  display: block;
-  color: var(--ink-soft);
-  font-size: 0.92rem;
 }
 
 .problem-stats {
@@ -635,6 +641,10 @@ onMounted(() => {
   }
 
   .problem-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .problem-row-link {
     grid-template-columns: minmax(0, 1fr);
   }
 

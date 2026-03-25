@@ -12,3 +12,7 @@ export function getProblemList(options = {}){
 
   return requestJson(path)
 }
+
+export function getProblemDetail(problemId){
+  return requestJson(`/problem/${problemId}`)
+}

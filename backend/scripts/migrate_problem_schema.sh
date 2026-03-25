@@ -191,6 +191,49 @@ CREATE TABLE IF NOT EXISTS problem_testcases(
 CREATE INDEX IF NOT EXISTS problem_testcases_problem_id_testcase_order_idx
     ON problem_testcases(problem_id, testcase_order ASC);
 
+INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms, updated_at)
+SELECT p.problem_id, 256, 1000, NOW()
+FROM problems AS p
+LEFT JOIN problem_limits AS l
+    ON l.problem_id = p.problem_id
+WHERE l.problem_id IS NULL
+ON CONFLICT(problem_id) DO NOTHING;
+
+INSERT INTO problem_statistics(problem_id, submission_count, accepted_count, updated_at)
+SELECT p.problem_id, 0, 0, NOW()
+FROM problems AS p
+LEFT JOIN problem_statistics AS s
+    ON s.problem_id = p.problem_id
+WHERE s.problem_id IS NULL
+ON CONFLICT(problem_id) DO NOTHING;
+
+INSERT INTO problem_statements(
+    problem_id,
+    description,
+    input_format,
+    output_format,
+    sample_count,
+    testcase_count,
+    note,
+    created_at,
+    updated_at
+)
+SELECT
+    p.problem_id,
+    '',
+    '',
+    '',
+    0,
+    0,
+    NULL,
+    NOW(),
+    NOW()
+FROM problems AS p
+LEFT JOIN problem_statements AS st
+    ON st.problem_id = p.problem_id
+WHERE st.problem_id IS NULL
+ON CONFLICT(problem_id) DO NOTHING;
+
 DO $do$
 BEGIN
     IF EXISTS(
@@ -215,7 +258,7 @@ END
 $do$;
 
 INSERT INTO schema_migrations(version)
-VALUES('problem_schema_v11')
+VALUES('problem_schema_v12')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;
