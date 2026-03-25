@@ -12,3 +12,4 @@
 - [`schema/auth_schema.md`](./schema/auth_schema.md)
 - [`schema/problem_schema.md`](./schema/problem_schema.md)
 - [`schema/submission_schema.md`](./schema/submission_schema.md)
+- [`schema/user_problem_schema.md`](./schema/user_problem_schema.md)
