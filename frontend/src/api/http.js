@@ -15,22 +15,27 @@ async function parseResponse(response){
 }
 
 export async function requestJson(path, options = {}){
-  const headers = new Headers(options.headers || {})
+  const { bearerToken, ...fetchOptions } = options
+  const headers = new Headers(fetchOptions.headers || {})
   headers.set('Accept', 'application/json')
 
+  if (bearerToken) {
+    headers.set('Authorization', `Bearer ${bearerToken}`)
+  }
+
   const hasJsonBody =
-    options.body &&
-    !(options.body instanceof FormData) &&
-    !(options.body instanceof URLSearchParams) &&
-    typeof options.body !== 'string'
+    fetchOptions.body &&
+    !(fetchOptions.body instanceof FormData) &&
+    !(fetchOptions.body instanceof URLSearchParams) &&
+    typeof fetchOptions.body !== 'string'
 
   if (hasJsonBody && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
 
   const response = await fetch(`${apiBaseUrl}${path}`, {
-    ...options,
-    body: hasJsonBody ? JSON.stringify(options.body) : options.body,
+    ...fetchOptions,
+    body: hasJsonBody ? JSON.stringify(fetchOptions.body) : fetchOptions.body,
     headers
   })
 
@@ -40,9 +45,13 @@ export async function requestJson(path, options = {}){
     const errorMessage =
       typeof payload === 'string'
         ? payload
-        : payload?.message || `Request failed with status ${response.status}`
+        : payload?.error?.message || payload?.message || `Request failed with status ${response.status}`
 
-    throw new Error(errorMessage)
+    const error = new Error(errorMessage)
+    error.status = response.status
+    error.code = payload?.error?.code || null
+    error.payload = payload
+    throw error
   }
 
   return payload
