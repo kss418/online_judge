@@ -155,24 +155,24 @@ code {
   padding: 2rem;
 }
 
-.shell-header {
+.shell-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 12;
   display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 1.5rem;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+  padding-top: 0.15rem;
+}
+
+.shell-header {
+  display: grid;
+  gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
 
-.shell-header-aside {
-  display: flex;
-  flex-direction: column;
-  align-items: end;
-  gap: 1rem;
-}
-
 .shell-header-copy {
-  max-width: 34rem;
-  text-align: right;
+  max-width: 42rem;
 }
 
 .shell-content {
@@ -524,12 +524,9 @@ code {
     align-items: start;
   }
 
-  .shell-header-aside,
-  .shell-header-copy,
-  .auth-toolbar {
-    align-items: start;
-    text-align: left;
-    justify-content: start;
+  .shell-topbar {
+    justify-content: flex-end;
+    padding-top: 0;
   }
 
   .auth-session-card {

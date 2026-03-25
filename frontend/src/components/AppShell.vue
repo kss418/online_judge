@@ -29,65 +29,65 @@
     </aside>
 
     <div class="shell-main">
+      <div class="shell-topbar">
+        <div class="auth-toolbar">
+          <template v-if="authState.isInitializing">
+            <div class="auth-session-card">
+              <p class="auth-session-label">session</p>
+              <strong>세션 확인 중...</strong>
+            </div>
+          </template>
+
+          <template v-else-if="isAuthenticated">
+            <div class="auth-session-card">
+              <p class="auth-session-label">signed in</p>
+              <div class="auth-session-user">
+                <strong>{{ authState.currentUser.user_name }}</strong>
+                <StatusBadge
+                  v-if="authState.currentUser.is_admin"
+                  label="Admin"
+                  tone="warning"
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="ghost-button"
+              :disabled="authState.isSubmitting"
+              @click="handleLogout"
+            >
+              {{ authState.isSubmitting ? '처리 중...' : '로그아웃' }}
+            </button>
+          </template>
+
+          <template v-else>
+            <button
+              type="button"
+              class="ghost-button"
+              @click="openAuthDialog('sign-up')"
+            >
+              회원가입
+            </button>
+            <button
+              type="button"
+              class="primary-button"
+              @click="openAuthDialog('login')"
+            >
+              로그인
+            </button>
+          </template>
+        </div>
+      </div>
+
       <header class="shell-header">
         <div>
           <p class="shell-header-label">workspace</p>
           <h2>{{ currentSectionTitle }}</h2>
         </div>
-        <div class="shell-header-aside">
-          <p class="shell-header-copy">
-            인증 상태를 헤더에서 바로 다루고, 이후 문제/제출 화면에서도 같은 세션을 재사용할 수 있게 구성했습니다.
-          </p>
-
-          <div class="auth-toolbar">
-            <template v-if="authState.isInitializing">
-              <div class="auth-session-card">
-                <p class="auth-session-label">session</p>
-                <strong>세션 확인 중...</strong>
-              </div>
-            </template>
-
-            <template v-else-if="isAuthenticated">
-              <div class="auth-session-card">
-                <p class="auth-session-label">signed in</p>
-                <div class="auth-session-user">
-                  <strong>{{ authState.currentUser.user_name }}</strong>
-                  <StatusBadge
-                    v-if="authState.currentUser.is_admin"
-                    label="Admin"
-                    tone="warning"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="button"
-                class="ghost-button"
-                :disabled="authState.isSubmitting"
-                @click="handleLogout"
-              >
-                {{ authState.isSubmitting ? '처리 중...' : '로그아웃' }}
-              </button>
-            </template>
-
-            <template v-else>
-              <button
-                type="button"
-                class="ghost-button"
-                @click="openAuthDialog('sign-up')"
-              >
-                회원가입
-              </button>
-              <button
-                type="button"
-                class="primary-button"
-                @click="openAuthDialog('login')"
-              >
-                로그인
-              </button>
-            </template>
-          </div>
-        </div>
+        <p class="shell-header-copy">
+          인증 영역은 메인 화면 오른쪽 위로 분리해 두었고, 로그인 상태는 이후 문제와 제출 화면에서도 그대로 재사용됩니다.
+        </p>
       </header>
 
       <main class="shell-content">
