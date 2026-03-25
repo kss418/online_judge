@@ -1,6 +1,18 @@
 <template>
   <section class="page-grid single-column">
     <article class="panel submissions-panel">
+      <div
+        v-if="numericProblemId"
+        class="submissions-header"
+      >
+        <RouterLink
+          class="submissions-back-link"
+          :to="{ name: 'problem-detail', params: { problemId: numericProblemId } }"
+        >
+          문제로 돌아가기
+        </RouterLink>
+      </div>
+
       <div class="submissions-toolbar">
         <div>
           <p class="panel-kicker">submissions</p>
@@ -84,8 +96,10 @@ import { useRoute } from 'vue-router'
 
 import { getSubmissionList } from '@/api/submission'
 import StatusBadge from '@/components/StatusBadge.vue'
+import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
+const { authState, isAuthenticated, initializeAuth } = useAuth()
 const listLimit = 50
 const isLoading = ref(true)
 const errorMessage = ref('')
@@ -93,19 +107,62 @@ const submissions = ref([])
 const countFormatter = new Intl.NumberFormat()
 const submissionCount = computed(() => submissions.value.length)
 const numericProblemId = computed(() => {
+  const problemIdParam = Array.isArray(route.params.problemId)
+    ? route.params.problemId[0]
+    : route.params.problemId
   const problemIdQuery = Array.isArray(route.query.problemId)
     ? route.query.problemId[0]
     : route.query.problemId
+  const sourceValue = problemIdParam || problemIdQuery
 
-  const parsedProblemId = Number.parseInt(problemIdQuery, 10)
+  const parsedProblemId = Number.parseInt(sourceValue, 10)
   return Number.isInteger(parsedProblemId) && parsedProblemId > 0
     ? parsedProblemId
     : null
 })
+const isMineScope = computed(() => {
+  if (route.name === 'problem-my-submissions') {
+    return true
+  }
+
+  if (route.name === 'problem-submissions') {
+    return false
+  }
+
+  const scopeQuery = Array.isArray(route.query.scope)
+    ? route.query.scope[0]
+    : route.query.scope
+
+  return scopeQuery === 'mine'
+})
+const numericUserId = computed(() => {
+  const userIdQuery = Array.isArray(route.query.userId)
+    ? route.query.userId[0]
+    : route.query.userId
+
+  const parsedUserId = Number.parseInt(userIdQuery, 10)
+  return Number.isInteger(parsedUserId) && parsedUserId > 0
+    ? parsedUserId
+    : null
+})
+const activeUserId = computed(() => {
+  if (isMineScope.value) {
+    const currentUserId = Number(authState.currentUser?.id)
+    return Number.isInteger(currentUserId) && currentUserId > 0
+      ? currentUserId
+      : null
+  }
+
+  return numericUserId.value
+})
 const pageTitle = computed(() =>
-  numericProblemId.value
-    ? `문제 #${formatCount(numericProblemId.value)} 제출 목록`
-    : '제출 목록'
+  isMineScope.value && numericProblemId.value
+    ? `문제 #${formatCount(numericProblemId.value)} 내 제출`
+    : isMineScope.value
+      ? '내 제출'
+      : numericProblemId.value
+        ? `문제 #${formatCount(numericProblemId.value)} 제출 목록`
+        : '제출 목록'
 )
 
 const statusLabelMap = {
@@ -162,10 +219,23 @@ async function loadSubmissions(){
   isLoading.value = true
   errorMessage.value = ''
 
+  if (isMineScope.value && authState.isInitializing) {
+    submissions.value = []
+    return
+  }
+
+  if (isMineScope.value && !isAuthenticated.value) {
+    submissions.value = []
+    errorMessage.value = '내 제출을 보려면 로그인하세요.'
+    isLoading.value = false
+    return
+  }
+
   try {
     const response = await getSubmissionList({
       limit: listLimit,
-      problemId: numericProblemId.value ?? undefined
+      problemId: numericProblemId.value ?? undefined,
+      userId: activeUserId.value ?? undefined
     })
 
     submissions.value = Array.isArray(response.submissions)
@@ -190,7 +260,16 @@ async function loadSubmissions(){
   }
 }
 
-watch(numericProblemId, () => {
+initializeAuth()
+
+watch([
+  () => route.name,
+  numericProblemId,
+  numericUserId,
+  isMineScope,
+  () => authState.isInitializing,
+  () => authState.currentUser?.id
+], () => {
   loadSubmissions()
 }, { immediate: true })
 </script>
@@ -199,6 +278,31 @@ watch(numericProblemId, () => {
 .submissions-panel {
   display: grid;
   gap: 1.25rem;
+}
+
+.submissions-header {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.submissions-back-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.6rem;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+  font-weight: 700;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.submissions-back-link:hover {
+  transform: translateY(-1px);
+  border-color: rgba(20, 33, 61, 0.24);
 }
 
 .submissions-toolbar,

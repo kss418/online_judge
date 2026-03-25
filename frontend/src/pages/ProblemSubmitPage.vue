@@ -101,7 +101,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { getSupportedLanguages } from '@/api/http'
 import { getProblemDetail } from '@/api/problem'
@@ -109,6 +109,7 @@ import { createSubmission } from '@/api/submission'
 import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
+const router = useRouter()
 const { authState, isAuthenticated, initializeAuth } = useAuth()
 const numericProblemId = computed(() => Number.parseInt(route.params.problemId, 10))
 
@@ -238,7 +239,7 @@ async function submitSolution(){
   submissionSuccessMessage.value = ''
 
   try {
-    const response = await createSubmission(
+    await createSubmission(
       numericProblemId.value,
       {
         language: selectedLanguage.value,
@@ -247,18 +248,12 @@ async function submitSolution(){
       authState.token
     )
 
-    submissionSuccessMessage.value =
-      `제출 #${response.submission_id}가 생성되었습니다. 현재 상태: ${response.status}`
-
-    if (problemDetail.value) {
-      problemDetail.value = {
-        ...problemDetail.value,
-        statistics: {
-          ...problemDetail.value.statistics,
-          submission_count: problemDetail.value.statistics.submission_count + 1
-        }
+    await router.push({
+      name: 'problem-my-submissions',
+      params: {
+        problemId: String(numericProblemId.value)
       }
-    }
+    })
   } catch (error) {
     submitErrorMessage.value = error instanceof Error
       ? error.message

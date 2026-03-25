@@ -23,6 +23,16 @@ const routes = [
     component: ProblemSubmitPage
   },
   {
+    path: '/problems/:problemId/submissions',
+    name: 'problem-submissions',
+    component: SubmissionsPage
+  },
+  {
+    path: '/problems/:problemId/my-submissions',
+    name: 'problem-my-submissions',
+    component: SubmissionsPage
+  },
+  {
     path: '/problems/:problemId',
     name: 'problem-detail',
     component: ProblemDetailPage

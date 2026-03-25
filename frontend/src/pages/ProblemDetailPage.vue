@@ -23,8 +23,15 @@
               <h3>#{{ problemDetail.problem_id }} {{ problemDetail.title }}</h3>
               <div class="detail-title-actions">
                 <RouterLink
+                  v-if="isAuthenticated"
                   class="ghost-button detail-list-link"
-                  :to="{ name: 'submissions', query: { problemId: problemDetail.problem_id } }"
+                  :to="{ name: 'problem-my-submissions', params: { problemId: problemDetail.problem_id } }"
+                >
+                  내 제출
+                </RouterLink>
+                <RouterLink
+                  class="ghost-button detail-list-link"
+                  :to="{ name: 'problem-submissions', params: { problemId: problemDetail.problem_id } }"
                 >
                   제출 목록
                 </RouterLink>
@@ -149,8 +156,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { getProblemDetail } from '@/api/problem'
+import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
+const { isAuthenticated, initializeAuth } = useAuth()
 const isLoading = ref(true)
 const errorMessage = ref('')
 const problemDetail = ref(null)
@@ -224,6 +233,7 @@ function formatCount(value){
 }
 
 onMounted(() => {
+  initializeAuth()
   loadProblemDetail()
 })
 </script>
