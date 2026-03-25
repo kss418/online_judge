@@ -80,7 +80,15 @@
             <span class="submission-cell is-metric">
               {{ formatMemory(submission.max_rss_kb) }}
             </span>
-            <span class="submission-cell is-language">
+            <button
+              v-if="canViewSource(submission)"
+              type="button"
+              class="submission-language-button"
+              @click="openSourceDialog(submission)"
+            >
+              {{ submission.language }}
+            </button>
+            <span v-else class="submission-cell is-language">
               {{ submission.language }}
             </span>
           </div>
@@ -88,13 +96,69 @@
       </div>
     </article>
   </section>
+
+  <Teleport to="body">
+    <div
+      v-if="sourceDialogOpen"
+      class="submission-source-backdrop"
+      @click.self="closeSourceDialog"
+    >
+      <section
+        class="submission-source-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="submission-source-title"
+      >
+        <div class="submission-source-header">
+          <div>
+            <p class="panel-kicker">submission source</p>
+            <h3 id="submission-source-title">
+              제출 #{{ activeSourceSubmissionId ? formatCount(activeSourceSubmissionId) : '' }} 소스 코드
+            </h3>
+          </div>
+          <button
+            type="button"
+            class="icon-button"
+            aria-label="닫기"
+            @click="closeSourceDialog"
+          >
+            ×
+          </button>
+        </div>
+
+        <div v-if="isLoadingSource" class="empty-state">
+          <p>소스 코드를 불러오는 중입니다.</p>
+        </div>
+
+        <div v-else-if="sourceErrorMessage" class="empty-state error-state">
+          <p>{{ sourceErrorMessage }}</p>
+        </div>
+
+        <div v-else-if="sourceDetail" class="submission-source-content">
+          <div class="submission-source-meta">
+            <StatusBadge :label="sourceDetail.language" tone="neutral" />
+          </div>
+          <pre class="submission-source-code"><code>{{ sourceDetail.source_code }}</code></pre>
+          <div class="submission-source-actions">
+            <button
+              type="button"
+              class="ghost-button"
+              @click="copySourceCode"
+            >
+              {{ copyButtonLabel }}
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
-import { getSubmissionList } from '@/api/submission'
+import { getSubmissionList, getSubmissionSource } from '@/api/submission'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
 
@@ -104,6 +168,12 @@ const listLimit = 50
 const isLoading = ref(true)
 const errorMessage = ref('')
 const submissions = ref([])
+const sourceDialogOpen = ref(false)
+const isLoadingSource = ref(false)
+const sourceErrorMessage = ref('')
+const sourceDetail = ref(null)
+const activeSourceSubmissionId = ref(null)
+const copyState = ref('idle')
 const countFormatter = new Intl.NumberFormat()
 const submissionCount = computed(() => submissions.value.length)
 const numericProblemId = computed(() => {
@@ -164,6 +234,17 @@ const pageTitle = computed(() =>
         ? `문제 #${formatCount(numericProblemId.value)} 제출 목록`
         : '제출 목록'
 )
+const copyButtonLabel = computed(() => {
+  if (copyState.value === 'success') {
+    return '복사됨'
+  }
+
+  if (copyState.value === 'error') {
+    return '복사 실패'
+  }
+
+  return '복사'
+})
 
 const statusLabelMap = {
   queued: '대기 중',
@@ -186,6 +267,8 @@ const statusToneMap = {
   runtime_error: 'danger',
   compile_error: 'danger'
 }
+
+let copyStateResetTimer = null
 
 function formatCount(value){
   return countFormatter.format(value)
@@ -213,6 +296,118 @@ function getStatusLabel(status){
 
 function getStatusTone(status){
   return statusToneMap[status] || 'neutral'
+}
+
+function canViewSource(submission){
+  if (!isAuthenticated.value || !authState.currentUser) {
+    return false
+  }
+
+  if (authState.currentUser.is_admin) {
+    return true
+  }
+
+  return Number(submission.user_id) === Number(authState.currentUser.id)
+}
+
+function resetCopyState(){
+  copyState.value = 'idle'
+
+  if (copyStateResetTimer) {
+    clearTimeout(copyStateResetTimer)
+    copyStateResetTimer = null
+  }
+}
+
+function scheduleCopyStateReset(){
+  if (copyStateResetTimer) {
+    clearTimeout(copyStateResetTimer)
+  }
+
+  copyStateResetTimer = window.setTimeout(() => {
+    copyState.value = 'idle'
+    copyStateResetTimer = null
+  }, 1400)
+}
+
+function fallbackCopyText(text){
+  if (typeof document === 'undefined') {
+    throw new Error('clipboard unavailable')
+  }
+
+  const helperTextArea = document.createElement('textarea')
+  helperTextArea.value = text
+  helperTextArea.setAttribute('readonly', '')
+  helperTextArea.style.position = 'fixed'
+  helperTextArea.style.opacity = '0'
+  helperTextArea.style.pointerEvents = 'none'
+
+  document.body.appendChild(helperTextArea)
+  helperTextArea.select()
+  helperTextArea.setSelectionRange(0, helperTextArea.value.length)
+
+  const copySucceeded = document.execCommand('copy')
+  document.body.removeChild(helperTextArea)
+
+  if (!copySucceeded) {
+    throw new Error('clipboard unavailable')
+  }
+}
+
+function closeSourceDialog(){
+  sourceDialogOpen.value = false
+  isLoadingSource.value = false
+  sourceErrorMessage.value = ''
+  sourceDetail.value = null
+  activeSourceSubmissionId.value = null
+  resetCopyState()
+}
+
+async function openSourceDialog(submission){
+  if (!canViewSource(submission) || !authState.token) {
+    return
+  }
+
+  sourceDialogOpen.value = true
+  isLoadingSource.value = true
+  sourceErrorMessage.value = ''
+  sourceDetail.value = null
+  activeSourceSubmissionId.value = submission.submission_id
+
+  try {
+    const response = await getSubmissionSource(submission.submission_id, authState.token)
+    sourceDetail.value = {
+      submission_id: Number(response.submission_id),
+      language: response.language || submission.language,
+      source_code: response.source_code || ''
+    }
+  } catch (error) {
+    sourceErrorMessage.value = error instanceof Error
+      ? error.message
+      : '소스 코드를 불러오지 못했습니다.'
+  } finally {
+    isLoadingSource.value = false
+  }
+}
+
+async function copySourceCode(){
+  if (!sourceDetail.value?.source_code) {
+    return
+  }
+
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(sourceDetail.value.source_code)
+    } else {
+      fallbackCopyText(sourceDetail.value.source_code)
+    }
+
+    copyState.value = 'success'
+  } catch {
+    copyState.value = 'error'
+  }
+
+  scheduleCopyStateReset()
 }
 
 async function loadSubmissions(){
@@ -243,6 +438,7 @@ async function loadSubmissions(){
         .map((submission) => ({
           ...submission,
           submission_id: Number(submission.submission_id),
+          user_id: Number(submission.user_id),
           problem_id: Number(submission.problem_id),
           user_name: submission.user_name || `사용자 ${countFormatter.format(submission.user_id)}`,
           elapsed_ms: typeof submission.elapsed_ms === 'number' ? submission.elapsed_ms : null,
@@ -382,6 +578,81 @@ watch([
 
 .submission-problem-link:hover {
   color: var(--accent);
+}
+
+.submission-language-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.submission-language-button:hover {
+  text-decoration: underline;
+}
+
+.submission-source-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(10px);
+}
+
+.submission-source-dialog {
+  width: min(960px, 100%);
+  max-height: calc(100vh - 3rem);
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: var(--shadow);
+  padding: 1.4rem;
+}
+
+.submission-source-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.submission-source-content {
+  display: grid;
+  gap: 1rem;
+}
+
+.submission-source-meta {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.submission-source-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.submission-source-code {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  background: rgba(20, 33, 61, 0.06);
+  overflow: auto;
+  color: var(--ink-strong);
+  font-family: "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.92rem;
+  line-height: 1.6;
 }
 
 @media (max-width: 720px) {

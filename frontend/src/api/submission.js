@@ -29,6 +29,12 @@ export function getSubmissionList(options = {}){
   return requestJson(path)
 }
 
+export function getSubmissionSource(submissionId, token){
+  return requestJson(`/submission/${submissionId}/source`, {
+    bearerToken: token
+  })
+}
+
 export function createSubmission(problemId, payload, token){
   return requestJson(`/submission/${problemId}`, {
     method: 'POST',
