@@ -513,10 +513,14 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_util:
         (filter_value.top_submission_id_opt && *filter_value.top_submission_id_opt <= 0) ||
         (filter_value.user_id_opt && *filter_value.user_id_opt <= 0) ||
         (filter_value.problem_id_opt && *filter_value.problem_id_opt <= 0) ||
+        (filter_value.limit_opt && *filter_value.limit_opt <= 0) ||
         (filter_value.status_opt && !parse_submission_status(*filter_value.status_opt))
     ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
+
+    const std::int32_t limit =
+        filter_value.limit_opt.value_or(submission_dto::DEFAULT_LIST_LIMIT);
 
     std::string submission_list_query =
         "SELECT "
@@ -556,7 +560,9 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_util:
         query_params.append(*filter_value.status_opt);
     }
 
-    submission_list_query += " ORDER BY submission_id DESC LIMIT 20";
+    submission_list_query +=
+        " ORDER BY submission_id DESC LIMIT $" + std::to_string(query_param_index++);
+    query_params.append(limit);
 
     const auto submission_summary_query = transaction.exec(
         submission_list_query,

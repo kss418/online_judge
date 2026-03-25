@@ -136,6 +136,27 @@ submission_dto::make_list_filter_from_query_params(
             filter_value.status_opt = to_string(*status_opt);
             continue;
         }
+        if(query_param.key == "limit"){
+            if(filter_value.limit_opt){
+                return std::unexpected(dto_validation_error{
+                    .code = "duplicate_query_parameter",
+                    .message = "duplicate query parameter: limit",
+                    .field_opt = "limit"
+                });
+            }
+
+            const auto limit_opt = string_util::parse_positive_int32(query_param.value);
+            if(!limit_opt){
+                return std::unexpected(dto_validation_error{
+                    .code = "invalid_query_parameter",
+                    .message = "invalid query parameter: limit",
+                    .field_opt = "limit"
+                });
+            }
+
+            filter_value.limit_opt = *limit_opt;
+            continue;
+        }
 
         return std::unexpected(dto_validation_error{
             .code = "unsupported_query_parameter",

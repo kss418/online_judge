@@ -22,6 +22,8 @@ namespace pqxx{
 }
 
 namespace submission_dto{
+    inline constexpr std::int32_t DEFAULT_LIST_LIMIT = 50;
+
     struct history{
         std::int64_t history_id = 0;
         std::optional<std::string> from_status_opt = std::nullopt;
@@ -89,6 +91,7 @@ namespace submission_dto{
         std::optional<std::int64_t> user_id_opt = std::nullopt;
         std::optional<std::int64_t> problem_id_opt = std::nullopt;
         std::optional<std::string> status_opt = std::nullopt;
+        std::optional<std::int32_t> limit_opt = std::nullopt;
     };
 
     struct queued_submission{

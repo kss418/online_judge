@@ -56,6 +56,8 @@ register_temp_file submission_detail_response_file
 register_temp_file missing_submission_response_file
 register_temp_file list_submission_response_file
 register_temp_file top_submission_response_file
+register_temp_file limited_submission_response_file
+register_temp_file invalid_limit_submission_response_file
 register_temp_file submission_history_response_file
 register_temp_file missing_history_response_file
 register_temp_file submission_source_response_file
@@ -611,6 +613,24 @@ top_submission_status_code="$(
 assert_status_code "${top_submission_status_code}" "200" "${top_submission_response_file}" "submission top list"
 print_success_log "submission top list success"
 
+limited_submission_status_code="$(
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission?user_id=${sign_up_user_id}&problem_id=${problem_id}&limit=1" \
+        "${limited_submission_response_file}"
+)"
+assert_status_code "${limited_submission_status_code}" "200" "${limited_submission_response_file}" "submission limited list"
+print_success_log "submission limited list success"
+
+invalid_limit_submission_status_code="$(
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission?limit=0" \
+        "${invalid_limit_submission_response_file}"
+)"
+assert_status_code "${invalid_limit_submission_status_code}" "400" "${invalid_limit_submission_response_file}" "submission invalid limit list"
+print_success_log "submission invalid limit list success"
+
 if ! python3 \
     - "${submission_history_response_file}" \
     "${submission_id}" <<'PY'
@@ -1059,6 +1079,75 @@ if "source_code" in submission:
 PY
 then
     append_log_line "${test_log_temp_file}" "submission top list validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 \
+    - "${limited_submission_response_file}" \
+    "${second_submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "${submission_language}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    submission_list = json.load(response_file)
+
+expected_submission_id = int(sys.argv[2])
+expected_user_id = int(sys.argv[3])
+expected_problem_id = int(sys.argv[4])
+expected_language = sys.argv[5]
+
+if submission_list.get("submission_count") != 1:
+    raise SystemExit("expected submission_count to be 1 for limited submission list response")
+
+submissions = submission_list.get("submissions")
+if not isinstance(submissions, list) or len(submissions) != 1:
+    raise SystemExit("expected one submission in limited submission list response")
+
+submission = submissions[0]
+
+if submission.get("submission_id") != expected_submission_id:
+    raise SystemExit("submission_id mismatch in limited submission list response")
+
+if submission.get("user_id") != expected_user_id:
+    raise SystemExit("user_id mismatch in limited submission list response")
+
+if submission.get("problem_id") != expected_problem_id:
+    raise SystemExit("problem_id mismatch in limited submission list response")
+
+if submission.get("language") != expected_language:
+    raise SystemExit("language mismatch in limited submission list response")
+PY
+then
+    append_log_line "${test_log_temp_file}" "submission limited list validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 \
+    - "${invalid_limit_submission_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+error = response.get("error", {})
+
+if error.get("code") != "invalid_query_parameter":
+    raise SystemExit("unexpected error code for invalid limit submission list response")
+
+if error.get("message") != "invalid query parameter: limit":
+    raise SystemExit("unexpected error message for invalid limit submission list response")
+
+if error.get("field") != "limit":
+    raise SystemExit("unexpected error field for invalid limit submission list response")
+PY
+then
+    append_log_line "${test_log_temp_file}" "submission invalid limit validation failed"
     publish_failure_logs
     exit 1
 fi
