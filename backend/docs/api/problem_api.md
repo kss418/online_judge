@@ -6,11 +6,18 @@ HTTP API handled by `problem_router`.
 
 ### `GET /api/problem`
 
-List problems using an optional title filter. This endpoint is public and does not require authentication.
+List problems using an optional title filter. This endpoint is public. When a valid bearer token is
+provided, the response also includes the current user's problem state for each listed problem.
 
 #### request
 
 - required header: none
+- optional header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | no | format: `Bearer <token>`; when present and valid, `user_problem_state` is populated |
+
 - supported query parameters:
 
 | field | type | required | note |
@@ -47,6 +54,9 @@ Each problem summary contains:
 | `problem_id` | `int64` | problem id |
 | `title` | `string` | problem title |
 | `version` | `int32` | current problem version |
+| `submission_count` | `int64` | aggregate submission count across all users |
+| `accepted_count` | `int64` | aggregate accepted count across all users |
+| `user_problem_state` | `string \| null` | `solved`, `wrong`, or `null`; `null` is returned for anonymous requests, unattempted problems, and pending-only submissions |
 
 Example:
 
@@ -57,12 +67,18 @@ Example:
     {
       "problem_id": 1001,
       "title": "Multiply",
-      "version": 1
+      "version": 1,
+      "submission_count": 12,
+      "accepted_count": 7,
+      "user_problem_state": null
     },
     {
       "problem_id": 1000,
       "title": "A + B",
-      "version": 3
+      "version": 3,
+      "submission_count": 21,
+      "accepted_count": 11,
+      "user_problem_state": "solved"
     }
   ]
 }
@@ -72,6 +88,7 @@ Example:
 
 - invalid query string or duplicate query parameter: `400 Bad Request`
 - unsupported query parameter: `400 Bad Request`
+- invalid, expired, or malformed bearer token when `Authorization` is provided: `401 Unauthorized`
 - unexpected internal failure: `500 Internal Server Error`
 
 If no problems match the filter, the endpoint returns `200 OK` with an empty `problems` array.

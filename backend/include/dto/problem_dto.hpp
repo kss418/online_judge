@@ -45,6 +45,7 @@ namespace problem_dto{
         std::int32_t version = 0;
         std::int64_t submission_count = 0;
         std::int64_t accepted_count = 0;
+        std::optional<std::string> user_problem_state_opt = std::nullopt;
     };
 
     struct version{

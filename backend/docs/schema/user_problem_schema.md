@@ -10,28 +10,18 @@ Prerequisites:
 
 ## view
 
-### `user_problem_list`
+### `user_problem_attempt_summary`
 
-One row per `users x problems` pair. This view summarizes each user's current state for every
-problem, including unattempted problems.
+One row per attempted `user_id x problem_id` pair. This is the sparse base view intended for
+problem-list style lookups.
 
 | column | type | nullable | note |
 |---|---|---|---|
 | `user_id` | `bigint` | no | fk source: `users(user_id)` |
-| `user_name` | `text` | no | copied from `users.user_name` |
 | `problem_id` | `bigint` | no | fk source: `problems(problem_id)` |
-| `problem_title` | `text` | no | copied from `problems.title` |
-| `problem_version` | `integer` | no | copied from `problems.version` |
 | `submission_count` | `bigint` | no | total submissions by the user for the problem |
 | `accepted_submission_count` | `bigint` | no | accepted submissions for the user/problem pair |
 | `failed_submission_count` | `bigint` | no | judged non-accepted submissions for the user/problem pair |
-| `problem_state` | `text` | no | one of `unattempted`, `wrong`, `solved` |
-
-`problem_state` is derived with the following priority:
-
-- `solved`: `accepted_submission_count > 0`
-- `wrong`: no accepted submission exists and `failed_submission_count > 0`
-- `unattempted`: no accepted or failed submission exists for the user/problem pair
 
 `failed_submission_count` includes these submission statuses:
 
@@ -44,21 +34,24 @@ problem, including unattempted problems.
 
 ### `user_wrong_problem_list`
 
-Filtered view over `user_problem_list`.
+Filtered sparse view over `user_problem_attempt_summary`.
 
 | column | type | nullable | note |
 |---|---|---|---|
-| all columns from `user_problem_list` | same as source view | same as source view | only rows with `problem_state = 'wrong'` are exposed |
+| `user_id` | `bigint` | no | fk source: `users(user_id)` |
+| `problem_id` | `bigint` | no | fk source: `problems(problem_id)` |
+| `submission_count` | `bigint` | no | total submissions by the user for the problem |
+| `accepted_submission_count` | `bigint` | no | always `0` in this view |
+| `failed_submission_count` | `bigint` | no | failed judged submissions for the user/problem pair |
+| `problem_state` | `text` | no | always `wrong` |
 
 This view represents unsolved problems for which the user already has at least one failed judged
 submission. Pending-only problems are excluded.
 
 ## cross-schema relation
 
-- `user_problem_list.user_id -> users.user_id`
-- `user_problem_list.problem_id -> problems.problem_id`
-- `user_problem_list` aggregates from `submissions(user_id, problem_id, status, created_at)`
-- `user_wrong_problem_list` is a filtered projection of `user_problem_list`
+- `user_problem_attempt_summary` aggregates from `submissions(user_id, problem_id, status, created_at)`
+- `user_wrong_problem_list` is a filtered projection of `user_problem_attempt_summary`
 
 ## shared table
 

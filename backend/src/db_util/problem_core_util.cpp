@@ -154,9 +154,13 @@ std::expected<void, error_code> problem_core_util::delete_problem(
 
 std::expected<std::vector<problem_dto::summary>, error_code> problem_core_util::list_problems(
     pqxx::transaction_base& transaction,
-    const problem_dto::list_filter& filter_value
+    const problem_dto::list_filter& filter_value,
+    std::optional<std::int64_t> viewer_user_id_opt
 ){
-    if(filter_value.title_opt && filter_value.title_opt->empty()){
+    if(
+        (filter_value.title_opt && filter_value.title_opt->empty()) ||
+        (viewer_user_id_opt && *viewer_user_id_opt <= 0)
+    ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -166,13 +170,37 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_util::
         "p.title, "
         "p.version, "
         "COALESCE(ps.submission_count, 0), "
-        "COALESCE(ps.accepted_count, 0) "
-        "FROM problems AS p "
-        "LEFT JOIN problem_statistics AS ps "
-        "ON ps.problem_id = p.problem_id "
-        "WHERE 1 = 1";
+        "COALESCE(ps.accepted_count, 0), ";
     pqxx::params query_params;
     int query_param_index = 1;
+
+    if(viewer_user_id_opt){
+        problem_list_query +=
+            "CASE "
+            "WHEN COALESCE(ups.accepted_submission_count, 0) > 0 THEN 'solved' "
+            "WHEN COALESCE(ups.failed_submission_count, 0) > 0 THEN 'wrong' "
+            "ELSE NULL "
+            "END ";
+    }
+    else{
+        problem_list_query += "NULL::TEXT ";
+    }
+
+    problem_list_query +=
+        "FROM problems AS p "
+        "LEFT JOIN problem_statistics AS ps "
+        "ON ps.problem_id = p.problem_id ";
+
+    if(viewer_user_id_opt){
+        problem_list_query +=
+            "LEFT JOIN user_problem_attempt_summary AS ups "
+            "ON ups.problem_id = p.problem_id "
+            "AND ups.user_id = $" + std::to_string(query_param_index++) + " ";
+        query_params.append(*viewer_user_id_opt);
+    }
+
+    problem_list_query +=
+        "WHERE 1 = 1";
 
     if(filter_value.title_opt){
         problem_list_query +=
@@ -196,6 +224,10 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_util::
         summary_value.version = problem_summary_row[2].as<std::int32_t>();
         summary_value.submission_count = problem_summary_row[3].as<std::int64_t>();
         summary_value.accepted_count = problem_summary_row[4].as<std::int64_t>();
+        if(!problem_summary_row[5].is_null()){
+            summary_value.user_problem_state_opt =
+                problem_summary_row[5].as<std::string>();
+        }
         summary_values.push_back(std::move(summary_value));
     }
 

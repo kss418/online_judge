@@ -32,8 +32,9 @@ publish_failure_logs(){
 
 init_flow_test
 register_temp_file test_log_temp_file
-register_temp_file user_problem_list_response_file
+register_temp_file user_problem_attempt_summary_response_file
 register_temp_file user_wrong_problem_list_response_file
+register_temp_file user_problem_list_exists_response_file
 
 trap 'finish_flow_test drop_test_database' EXIT
 
@@ -95,7 +96,7 @@ if ! PGPASSWORD="${DB_PASSWORD}" psql \
     -p "${DB_PORT}" \
     -U "${DB_USER}" \
     -d "${DB_NAME}" \
-    -v ON_ERROR_STOP=1 <<'SQL' >"${user_problem_list_response_file}" 2>>"${test_log_temp_file}"
+    -v ON_ERROR_STOP=1 <<'SQL' >"${user_problem_attempt_summary_response_file}" 2>>"${test_log_temp_file}"
 SELECT COALESCE(
     json_agg(
         row_to_json(row_value)
@@ -106,24 +107,20 @@ SELECT COALESCE(
 FROM (
     SELECT
         user_id,
-        user_name,
         problem_id,
-        problem_title,
-        problem_version,
         submission_count,
         accepted_submission_count,
-        failed_submission_count,
-        problem_state
-    FROM user_problem_list
+        failed_submission_count
+    FROM user_problem_attempt_summary
 ) row_value;
 SQL
 then
-    append_log_line "${test_log_temp_file}" "user_problem_list query failed"
+    append_log_line "${test_log_temp_file}" "user_problem_attempt_summary query failed"
     publish_failure_logs
     exit 1
 fi
 
-if ! python3 - "${user_problem_list_response_file}" <<'PY'
+if ! python3 - "${user_problem_attempt_summary_response_file}" <<'PY'
 import json
 import sys
 
@@ -133,60 +130,72 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
 expected_rows = [
     {
         "user_id": 1,
-        "user_name": "alice",
         "problem_id": 1,
-        "problem_title": "A + B",
-        "problem_version": 1,
         "submission_count": 1,
         "accepted_submission_count": 1,
         "failed_submission_count": 0,
-        "problem_state": "solved",
     },
     {
         "user_id": 1,
-        "user_name": "alice",
         "problem_id": 2,
-        "problem_title": "Two Sum",
-        "problem_version": 3,
         "submission_count": 2,
         "accepted_submission_count": 0,
         "failed_submission_count": 2,
-        "problem_state": "wrong",
     },
     {
         "user_id": 2,
-        "user_name": "bob",
         "problem_id": 1,
-        "problem_title": "A + B",
-        "problem_version": 1,
         "submission_count": 1,
         "accepted_submission_count": 0,
         "failed_submission_count": 0,
-        "problem_state": "unattempted",
-    },
-    {
-        "user_id": 2,
-        "user_name": "bob",
-        "problem_id": 2,
-        "problem_title": "Two Sum",
-        "problem_version": 3,
-        "submission_count": 0,
-        "accepted_submission_count": 0,
-        "failed_submission_count": 0,
-        "problem_state": "unattempted",
     },
 ]
 
 if rows != expected_rows:
-    raise SystemExit(f"user_problem_list mismatch: {rows!r}")
+    raise SystemExit(f"user_problem_attempt_summary mismatch: {rows!r}")
 PY
 then
-    append_log_line "${test_log_temp_file}" "user_problem_list validation failed"
+    append_log_line "${test_log_temp_file}" "user_problem_attempt_summary validation failed"
     publish_failure_logs
     exit 1
 fi
 
-print_success_log "user_problem_list view validated"
+print_success_log "user_problem_attempt_summary view validated"
+
+if ! PGPASSWORD="${DB_PASSWORD}" psql \
+    -X \
+    -qAt \
+    -h "${DB_HOST}" \
+    -p "${DB_PORT}" \
+    -U "${DB_USER}" \
+    -d "${DB_NAME}" \
+    -v ON_ERROR_STOP=1 <<'SQL' >"${user_problem_list_exists_response_file}" 2>>"${test_log_temp_file}"
+SELECT COUNT(*)::TEXT
+FROM information_schema.views
+WHERE table_schema = 'public' AND table_name = 'user_problem_list';
+SQL
+then
+    append_log_line "${test_log_temp_file}" "user_problem_list existence check failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 - "${user_problem_list_exists_response_file}" <<'PY'
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    value = response_file.read().strip()
+
+if value != "0":
+    raise SystemExit(f"user_problem_list still exists: {value}")
+PY
+then
+    append_log_line "${test_log_temp_file}" "user_problem_list removal validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+print_success_log "user_problem_list removal validated"
 
 if ! PGPASSWORD="${DB_PASSWORD}" psql \
     -X \
@@ -206,10 +215,7 @@ SELECT COALESCE(
 FROM (
     SELECT
         user_id,
-        user_name,
         problem_id,
-        problem_title,
-        problem_version,
         submission_count,
         accepted_submission_count,
         failed_submission_count,
@@ -233,10 +239,7 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
 expected_rows = [
     {
         "user_id": 1,
-        "user_name": "alice",
         "problem_id": 2,
-        "problem_title": "Two Sum",
-        "problem_version": 3,
         "submission_count": 2,
         "accepted_submission_count": 0,
         "failed_submission_count": 2,

@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <expected>
+#include <optional>
 #include <vector>
 
 namespace problem_core_service{
@@ -42,6 +43,7 @@ namespace problem_core_service{
     );
     std::expected<std::vector<problem_dto::summary>, error_code> list_problems(
         db_connection& connection,
-        const problem_dto::list_filter& filter_value
+        const problem_dto::list_filter& filter_value,
+        std::optional<std::int64_t> viewer_user_id_opt = std::nullopt
     );
 }

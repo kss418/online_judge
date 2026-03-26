@@ -306,6 +306,24 @@ std::expected<auth_dto::identity, http_util::response_type> http_util::try_auth_
     return auth_identity_exp->value();
 }
 
+std::expected<std::optional<auth_dto::identity>, http_util::response_type>
+http_util::try_optional_auth_bearer(
+    const request_type& request,
+    db_connection& db_connection
+){
+    const auto authorization_field_it = request.find(boost::beast::http::field::authorization);
+    if(authorization_field_it == request.end()){
+        return std::optional<auth_dto::identity>{};
+    }
+
+    const auto auth_identity_exp = try_auth_bearer(request, db_connection);
+    if(!auth_identity_exp){
+        return std::unexpected(std::move(auth_identity_exp.error()));
+    }
+
+    return std::optional<auth_dto::identity>{*auth_identity_exp};
+}
+
 std::expected<auth_dto::identity, http_util::response_type> http_util::try_admin_auth_bearer(
     const request_type& request,
     db_connection& db_connection

@@ -283,6 +283,12 @@ boost::json::object json_util::make_problem_summary_object(
     response_object["version"] = summary_value.version;
     response_object["submission_count"] = summary_value.submission_count;
     response_object["accepted_count"] = summary_value.accepted_count;
+    if(summary_value.user_problem_state_opt){
+        response_object["user_problem_state"] = *summary_value.user_problem_state_opt;
+    }
+    else{
+        response_object["user_problem_state"] = nullptr;
+    }
     return response_object;
 }
 

@@ -27,6 +27,8 @@ base_url="${PROBLEM_LIST_FLOW_TEST_BASE_URL:-http://127.0.0.1:${http_port}}"
 http_server_bin="${PROBLEM_LIST_FLOW_TEST_HTTP_SERVER_BIN:-${project_root}/http_server}"
 test_db_name="problem_list_flow_test_$$_$(date +%s)"
 test_database_created="0"
+user_login_id="${PROBLEM_LIST_FLOW_TEST_LOGIN_ID:-problem_list_flow_test_$(date +%s)_$$}"
+raw_password="${PROBLEM_LIST_FLOW_TEST_PASSWORD:-password123!}"
 test_log_path=""
 server_log_path=""
 server_pid=""
@@ -36,10 +38,13 @@ server_log_name="test_problem_list_flow_server.log"
 init_flow_test
 register_temp_file test_log_temp_file
 register_temp_file server_log_temp_file
+register_temp_file sign_up_response_file
 register_temp_file list_problem_response_file
+register_temp_file authenticated_list_problem_response_file
 register_temp_file filtered_problem_response_file
 register_temp_file missing_problem_response_file
 register_temp_file invalid_query_response_file
+register_temp_file invalid_token_response_file
 
 trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
 
@@ -55,6 +60,7 @@ export DB_NAME="${test_db_name}"
 
 append_log_line "${test_log_temp_file}" "base_url=${base_url}"
 append_log_line "${test_log_temp_file}" "test_db_name=${test_db_name}"
+append_log_line "${test_log_temp_file}" "user_login_id=${user_login_id}"
 
 apply_test_database_migrations
 ensure_dedicated_http_server
@@ -62,10 +68,61 @@ ensure_dedicated_http_server
 first_problem_id="$(create_problem_in_db "problem list flow" "A Plus B")"
 second_problem_id="$(create_problem_in_db "problem list flow" "plus one")"
 third_problem_id="$(create_problem_in_db "problem list flow" "Multiply")"
+fourth_problem_id="$(create_problem_in_db "problem list flow" "Queue Later")"
 
 append_log_line "${test_log_temp_file}" "first_problem_id=${first_problem_id}"
 append_log_line "${test_log_temp_file}" "second_problem_id=${second_problem_id}"
 append_log_line "${test_log_temp_file}" "third_problem_id=${third_problem_id}"
+append_log_line "${test_log_temp_file}" "fourth_problem_id=${fourth_problem_id}"
+
+read -r sign_up_user_id sign_up_token <<EOF
+$(sign_up_user "${user_login_id}" "${raw_password}" "${sign_up_response_file}" "problem list flow")
+EOF
+
+append_log_line "${test_log_temp_file}" "sign_up_user_id=${sign_up_user_id}"
+
+if ! PGPASSWORD="${DB_PASSWORD}" psql \
+    -X \
+    -h "${DB_HOST}" \
+    -p "${DB_PORT}" \
+    -U "${DB_USER}" \
+    -d "${DB_NAME}" \
+    -v sign_up_user_id="${sign_up_user_id}" \
+    -v first_problem_id="${first_problem_id}" \
+    -v second_problem_id="${second_problem_id}" \
+    -v third_problem_id="${third_problem_id}" \
+    -v ON_ERROR_STOP=1 <<'SQL' >>"${test_log_temp_file}" 2>&1
+INSERT INTO submissions(
+    user_id,
+    problem_id,
+    language,
+    source_code,
+    status,
+    created_at,
+    updated_at
+)
+VALUES
+    (:'sign_up_user_id', :'first_problem_id', 'cpp17', 'accepted code', 'accepted', '2026-01-01T00:00:01Z', '2026-01-01T00:00:01Z'),
+    (:'sign_up_user_id', :'second_problem_id', 'cpp17', 'wrong code', 'wrong_answer', '2026-01-01T00:00:02Z', '2026-01-01T00:00:02Z'),
+    (:'sign_up_user_id', :'third_problem_id', 'cpp17', 'queued code', 'queued', '2026-01-01T00:00:03Z', '2026-01-01T00:00:03Z');
+
+UPDATE problem_statistics
+SET submission_count = 1, accepted_count = 1
+WHERE problem_id = :'first_problem_id';
+
+UPDATE problem_statistics
+SET submission_count = 1, accepted_count = 0
+WHERE problem_id = :'second_problem_id';
+
+UPDATE problem_statistics
+SET submission_count = 1, accepted_count = 0
+WHERE problem_id = :'third_problem_id';
+SQL
+then
+    append_log_line "${test_log_temp_file}" "problem list submission fixture insert failed"
+    publish_failure_logs
+    exit 1
+fi
 
 send_http_request_and_assert_status \
     "GET" \
@@ -74,7 +131,7 @@ send_http_request_and_assert_status \
     "200" \
     "problem list"
 
-if ! python3 - "${list_problem_response_file}" "${first_problem_id}" "${second_problem_id}" "${third_problem_id}" <<'PY'
+if ! python3 - "${list_problem_response_file}" "${first_problem_id}" "${second_problem_id}" "${third_problem_id}" "${fourth_problem_id}" <<'PY'
 import json
 import sys
 
@@ -82,34 +139,46 @@ response_file_path = sys.argv[1]
 first_problem_id = int(sys.argv[2])
 second_problem_id = int(sys.argv[3])
 third_problem_id = int(sys.argv[4])
+fourth_problem_id = int(sys.argv[5])
 
 with open(response_file_path, encoding="utf-8") as response_file:
     response = json.load(response_file)
 
-if response.get("problem_count") != 3:
+if response.get("problem_count") != 4:
     raise SystemExit("problem_count mismatch")
 
 expected_problems = [
     {
-        "problem_id": third_problem_id,
-        "title": "Multiply",
+        "problem_id": fourth_problem_id,
+        "title": "Queue Later",
         "version": 1,
         "submission_count": 0,
         "accepted_count": 0,
+        "user_problem_state": None,
+    },
+    {
+        "problem_id": third_problem_id,
+        "title": "Multiply",
+        "version": 1,
+        "submission_count": 1,
+        "accepted_count": 0,
+        "user_problem_state": None,
     },
     {
         "problem_id": second_problem_id,
         "title": "plus one",
         "version": 1,
-        "submission_count": 0,
+        "submission_count": 1,
         "accepted_count": 0,
+        "user_problem_state": None,
     },
     {
         "problem_id": first_problem_id,
         "title": "A Plus B",
         "version": 1,
-        "submission_count": 0,
-        "accepted_count": 0,
+        "submission_count": 1,
+        "accepted_count": 1,
+        "user_problem_state": None,
     },
 ]
 if response.get("problems") != expected_problems:
@@ -122,6 +191,75 @@ then
 fi
 
 print_success_log "problem list response validated"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem" \
+    "${authenticated_list_problem_response_file}" \
+    "200" \
+    "authenticated problem list" \
+    "${sign_up_token}"
+
+if ! python3 - "${authenticated_list_problem_response_file}" "${first_problem_id}" "${second_problem_id}" "${third_problem_id}" "${fourth_problem_id}" <<'PY'
+import json
+import sys
+
+response_file_path = sys.argv[1]
+first_problem_id = int(sys.argv[2])
+second_problem_id = int(sys.argv[3])
+third_problem_id = int(sys.argv[4])
+fourth_problem_id = int(sys.argv[5])
+
+with open(response_file_path, encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+expected_problems = [
+    {
+        "problem_id": fourth_problem_id,
+        "title": "Queue Later",
+        "version": 1,
+        "submission_count": 0,
+        "accepted_count": 0,
+        "user_problem_state": None,
+    },
+    {
+        "problem_id": third_problem_id,
+        "title": "Multiply",
+        "version": 1,
+        "submission_count": 1,
+        "accepted_count": 0,
+        "user_problem_state": None,
+    },
+    {
+        "problem_id": second_problem_id,
+        "title": "plus one",
+        "version": 1,
+        "submission_count": 1,
+        "accepted_count": 0,
+        "user_problem_state": "wrong",
+    },
+    {
+        "problem_id": first_problem_id,
+        "title": "A Plus B",
+        "version": 1,
+        "submission_count": 1,
+        "accepted_count": 1,
+        "user_problem_state": "solved",
+    },
+]
+
+if response.get("problem_count") != 4:
+    raise SystemExit("authenticated problem_count mismatch")
+if response.get("problems") != expected_problems:
+    raise SystemExit("authenticated problem list mismatch")
+PY
+then
+    append_log_line "${test_log_temp_file}" "authenticated problem list response validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+print_success_log "authenticated problem list response validated"
 
 send_http_request_and_assert_status \
     "GET" \
@@ -149,15 +287,17 @@ expected_problems = [
         "problem_id": second_problem_id,
         "title": "plus one",
         "version": 1,
-        "submission_count": 0,
+        "submission_count": 1,
         "accepted_count": 0,
+        "user_problem_state": None,
     },
     {
         "problem_id": first_problem_id,
         "title": "A Plus B",
         "version": 1,
-        "submission_count": 0,
-        "accepted_count": 0,
+        "submission_count": 1,
+        "accepted_count": 1,
+        "user_problem_state": None,
     },
 ]
 if response.get("problems") != expected_problems:
@@ -217,6 +357,22 @@ assert_json_error_field \
     "unsupported" \
     "invalid query problem list"
 
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem" \
+    "${invalid_token_response_file}" \
+    "401" \
+    "invalid bearer token problem list" \
+    "invalid-token"
+assert_json_error_code \
+    "${invalid_token_response_file}" \
+    "invalid_or_expired_token" \
+    "invalid bearer token problem list"
+assert_json_error_message \
+    "${invalid_token_response_file}" \
+    "invalid, expired, or revoked token" \
+    "invalid bearer token problem list"
+
 append_log_line "${test_log_temp_file}" "problem list flow test passed"
 print_success_log \
-    "problem list flow test passed: first_problem_id=${first_problem_id}, second_problem_id=${second_problem_id}, third_problem_id=${third_problem_id}"
+    "problem list flow test passed: first_problem_id=${first_problem_id}, second_problem_id=${second_problem_id}, third_problem_id=${third_problem_id}, fourth_problem_id=${fourth_problem_id}, user_id=${sign_up_user_id}"

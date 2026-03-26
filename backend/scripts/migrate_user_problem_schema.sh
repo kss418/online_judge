@@ -75,62 +75,46 @@ $do$;
 
 DROP VIEW IF EXISTS user_wrong_problem_list;
 DROP VIEW IF EXISTS user_problem_list;
+DROP VIEW IF EXISTS user_problem_attempt_summary;
 
-CREATE VIEW user_problem_list AS
-WITH submission_rollup AS (
-    SELECT
-        submission_table.user_id,
-        submission_table.problem_id,
-        COUNT(*)::BIGINT AS submission_count,
-        COUNT(*) FILTER(
-            WHERE submission_table.status = 'accepted'::submission_status
-        )::BIGINT AS accepted_submission_count,
-        COUNT(*) FILTER(
-            WHERE submission_table.status IN (
-                'wrong_answer'::submission_status,
-                'time_limit_exceeded'::submission_status,
-                'memory_limit_exceeded'::submission_status,
-                'runtime_error'::submission_status,
-                'compile_error'::submission_status,
-                'output_exceeded'::submission_status
-            )
-        )::BIGINT AS failed_submission_count
-    FROM submissions submission_table
-    GROUP BY submission_table.user_id, submission_table.problem_id
-)
+CREATE VIEW user_problem_attempt_summary AS
 SELECT
-    user_table.user_id,
-    user_table.user_name,
-    problem_table.problem_id,
-    problem_table.title AS problem_title,
-    problem_table.version AS problem_version,
-    COALESCE(submission_rollup.submission_count, 0::BIGINT) AS submission_count,
-    COALESCE(
-        submission_rollup.accepted_submission_count,
-        0::BIGINT
-    ) AS accepted_submission_count,
-    COALESCE(
-        submission_rollup.failed_submission_count,
-        0::BIGINT
-    ) AS failed_submission_count,
-    CASE
-        WHEN COALESCE(submission_rollup.accepted_submission_count, 0::BIGINT) > 0 THEN 'solved'
-        WHEN COALESCE(submission_rollup.failed_submission_count, 0::BIGINT) > 0 THEN 'wrong'
-        ELSE 'unattempted'
-    END AS problem_state
-FROM users user_table
-CROSS JOIN problems problem_table
-LEFT JOIN submission_rollup
-    ON submission_rollup.user_id = user_table.user_id
-    AND submission_rollup.problem_id = problem_table.problem_id;
+    submission_table.user_id,
+    submission_table.problem_id,
+    COUNT(*)::BIGINT AS submission_count,
+    COUNT(*) FILTER(
+        WHERE submission_table.status = 'accepted'::submission_status
+    )::BIGINT AS accepted_submission_count,
+    COUNT(*) FILTER(
+        WHERE submission_table.status IN (
+            'wrong_answer'::submission_status,
+            'time_limit_exceeded'::submission_status,
+            'memory_limit_exceeded'::submission_status,
+            'runtime_error'::submission_status,
+            'compile_error'::submission_status,
+            'output_exceeded'::submission_status
+        )
+    )::BIGINT AS failed_submission_count
+FROM submissions submission_table
+GROUP BY submission_table.user_id, submission_table.problem_id;
 
 CREATE VIEW user_wrong_problem_list AS
-SELECT *
-FROM user_problem_list
-WHERE problem_state = 'wrong';
+SELECT
+    user_problem_attempt_summary.user_id,
+    user_problem_attempt_summary.problem_id,
+    user_problem_attempt_summary.submission_count,
+    user_problem_attempt_summary.accepted_submission_count,
+    user_problem_attempt_summary.failed_submission_count,
+    'wrong'::TEXT AS problem_state
+FROM user_problem_attempt_summary
+WHERE user_problem_attempt_summary.accepted_submission_count = 0
+  AND user_problem_attempt_summary.failed_submission_count > 0;
+
+CREATE INDEX IF NOT EXISTS submissions_user_problem_idx
+    ON submissions(user_id, problem_id);
 
 INSERT INTO schema_migrations(version)
-VALUES('user_problem_schema_v4')
+VALUES('user_problem_schema_v6')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

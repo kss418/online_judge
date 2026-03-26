@@ -163,13 +163,18 @@ std::expected<void, error_code> problem_core_service::delete_problem(
 
 std::expected<std::vector<problem_dto::summary>, error_code> problem_core_service::list_problems(
     db_connection& connection,
-    const problem_dto::list_filter& filter_value
+    const problem_dto::list_filter& filter_value,
+    std::optional<std::int64_t> viewer_user_id_opt
 ){
     return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_dto::summary>, error_code> {
-            return problem_core_util::list_problems(transaction, filter_value);
+            return problem_core_util::list_problems(
+                transaction,
+                filter_value,
+                viewer_user_id_opt
+            );
         }
     );
 }
