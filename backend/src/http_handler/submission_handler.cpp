@@ -215,9 +215,24 @@ submission_handler::response_type submission_handler::get_submissions(
         );
     }
 
+    const auto total_submission_count_exp = submission_service::count_submissions(
+        db_connection_value,
+        *filter_exp
+    );
+    if(!total_submission_count_exp){
+        return http_response_util::create_4xx_or_500(
+            request,
+            "count submissions",
+            total_submission_count_exp.error()
+        );
+    }
+
     return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
-        json_util::make_submission_list_object(*submission_summary_values_exp)
+        json_util::make_submission_list_object(
+            *submission_summary_values_exp,
+            *total_submission_count_exp
+        )
     );
 }

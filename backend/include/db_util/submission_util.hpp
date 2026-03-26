@@ -87,4 +87,8 @@ namespace submission_util{
         const submission_dto::list_filter& filter_value,
         std::optional<std::int64_t> viewer_user_id_opt = std::nullopt
     );
+    std::expected<std::int64_t, error_code> count_submissions(
+        pqxx::transaction_base& transaction,
+        const submission_dto::list_filter& filter_value
+    );
 }

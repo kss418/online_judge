@@ -59,6 +59,7 @@ register_temp_file authenticated_list_submission_response_file
 register_temp_file solved_state_submission_response_file
 register_temp_file top_submission_response_file
 register_temp_file limited_submission_response_file
+register_temp_file paged_submission_response_file
 register_temp_file invalid_limit_submission_response_file
 register_temp_file submission_history_response_file
 register_temp_file missing_history_response_file
@@ -638,6 +639,15 @@ limited_submission_status_code="$(
 assert_status_code "${limited_submission_status_code}" "200" "${limited_submission_response_file}" "submission limited list"
 print_success_log "submission limited list success"
 
+paged_submission_status_code="$(
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission?user_id=${sign_up_user_id}&problem_id=${problem_id}&limit=1&page=2" \
+        "${paged_submission_response_file}"
+)"
+assert_status_code "${paged_submission_status_code}" "200" "${paged_submission_response_file}" "submission paged list"
+print_success_log "submission paged list success"
+
 invalid_limit_submission_status_code="$(
     send_http_request \
         "GET" \
@@ -856,6 +866,9 @@ submission_count = submission_list.get("submission_count")
 if not isinstance(submission_count, int) or submission_count < 2:
     raise SystemExit("expected submission_count to be at least 2")
 
+if submission_list.get("total_submission_count") != 2:
+    raise SystemExit("expected total_submission_count to be 2")
+
 submissions = submission_list.get("submissions")
 if not isinstance(submissions, list) or len(submissions) < 2:
     raise SystemExit("expected at least two submissions in unfiltered submission list response")
@@ -990,6 +1003,9 @@ expected_language = sys.argv[6]
 if submission_list.get("submission_count") != 2:
     raise SystemExit("expected submission_count to be 2")
 
+if submission_list.get("total_submission_count") != 2:
+    raise SystemExit("expected total_submission_count to be 2")
+
 submissions = submission_list.get("submissions")
 if not isinstance(submissions, list) or len(submissions) != 2:
     raise SystemExit("expected two submissions in submission list response")
@@ -1065,6 +1081,9 @@ expected_language = sys.argv[6]
 if submission_list.get("submission_count") != 2:
     raise SystemExit("expected authenticated submission_count to be 2")
 
+if submission_list.get("total_submission_count") != 2:
+    raise SystemExit("expected authenticated total_submission_count to be 2")
+
 submissions = submission_list.get("submissions")
 if not isinstance(submissions, list) or len(submissions) != 2:
     raise SystemExit("expected two submissions in authenticated submission list response")
@@ -1119,6 +1138,9 @@ expected_language = sys.argv[5]
 
 if submission_list.get("submission_count") != 1:
     raise SystemExit("expected submission_count to be 1 for top filtered submission list response")
+
+if submission_list.get("total_submission_count") != 2:
+    raise SystemExit("expected total_submission_count to be 2 for top filtered submission list response")
 
 submissions = submission_list.get("submissions")
 if not isinstance(submissions, list) or len(submissions) != 1:
@@ -1179,6 +1201,9 @@ expected_language = sys.argv[5]
 if submission_list.get("submission_count") != 1:
     raise SystemExit("expected submission_count to be 1 for limited submission list response")
 
+if submission_list.get("total_submission_count") != 2:
+    raise SystemExit("expected total_submission_count to be 2 for limited submission list response")
+
 submissions = submission_list.get("submissions")
 if not isinstance(submissions, list) or len(submissions) != 1:
     raise SystemExit("expected one submission in limited submission list response")
@@ -1199,6 +1224,53 @@ if submission.get("language") != expected_language:
 PY
 then
     append_log_line "${test_log_temp_file}" "submission limited list validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 \
+    - "${paged_submission_response_file}" \
+    "${submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "${submission_language}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    submission_list = json.load(response_file)
+
+expected_submission_id = int(sys.argv[2])
+expected_user_id = int(sys.argv[3])
+expected_problem_id = int(sys.argv[4])
+expected_language = sys.argv[5]
+
+if submission_list.get("submission_count") != 1:
+    raise SystemExit("expected submission_count to be 1 for paged submission list response")
+
+if submission_list.get("total_submission_count") != 2:
+    raise SystemExit("expected total_submission_count to be 2 for paged submission list response")
+
+submissions = submission_list.get("submissions")
+if not isinstance(submissions, list) or len(submissions) != 1:
+    raise SystemExit("expected one submission in paged submission list response")
+
+submission = submissions[0]
+
+if submission.get("submission_id") != expected_submission_id:
+    raise SystemExit("submission_id mismatch in paged submission list response")
+
+if submission.get("user_id") != expected_user_id:
+    raise SystemExit("user_id mismatch in paged submission list response")
+
+if submission.get("problem_id") != expected_problem_id:
+    raise SystemExit("problem_id mismatch in paged submission list response")
+
+if submission.get("language") != expected_language:
+    raise SystemExit("language mismatch in paged submission list response")
+PY
+then
+    append_log_line "${test_log_temp_file}" "submission paged list validation failed"
     publish_failure_logs
     exit 1
 fi

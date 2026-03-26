@@ -308,10 +308,12 @@ boost::json::array json_util::make_submission_summary_array(
 }
 
 boost::json::object json_util::make_submission_list_object(
-    const std::vector<submission_dto::summary>& summary_values
+    const std::vector<submission_dto::summary>& summary_values,
+    std::int64_t total_submission_count
 ){
     boost::json::object response_object;
     response_object["submission_count"] = static_cast<std::int64_t>(summary_values.size());
+    response_object["total_submission_count"] = total_submission_count;
     response_object["submissions"] = make_submission_summary_array(summary_values);
     return response_object;
 }

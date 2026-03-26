@@ -5,6 +5,49 @@
 
 #include <string>
 
+namespace{
+    void append_submission_list_filters(
+        std::string& query,
+        pqxx::params& query_params,
+        int& query_param_index,
+        const submission_dto::list_filter& filter_value,
+        bool include_top_submission_id
+    ){
+        if(include_top_submission_id && filter_value.top_submission_id_opt){
+            query +=
+                " AND submission_table.submission_id <= $" + std::to_string(query_param_index++);
+            query_params.append(*filter_value.top_submission_id_opt);
+        }
+        if(filter_value.user_id_opt){
+            query +=
+                " AND submission_table.user_id = $" + std::to_string(query_param_index++);
+            query_params.append(*filter_value.user_id_opt);
+        }
+        if(filter_value.problem_id_opt){
+            query +=
+                " AND submission_table.problem_id = $" + std::to_string(query_param_index++);
+            query_params.append(*filter_value.problem_id_opt);
+        }
+        if(filter_value.status_opt){
+            query +=
+                " AND submission_table.status = $" + std::to_string(query_param_index++) +
+                "::submission_status";
+            query_params.append(*filter_value.status_opt);
+        }
+    }
+
+    bool has_invalid_submission_list_filter(const submission_dto::list_filter& filter_value){
+        return
+            (filter_value.top_submission_id_opt && *filter_value.top_submission_id_opt <= 0) ||
+            (filter_value.page_opt && *filter_value.page_opt <= 0) ||
+            (filter_value.user_id_opt && *filter_value.user_id_opt <= 0) ||
+            (filter_value.problem_id_opt && *filter_value.problem_id_opt <= 0) ||
+            (filter_value.limit_opt && *filter_value.limit_opt <= 0) ||
+            (filter_value.status_opt && !parse_submission_status(*filter_value.status_opt)) ||
+            (filter_value.top_submission_id_opt && filter_value.page_opt);
+    }
+}
+
 std::expected<submission_dto::history_list, error_code> submission_util::get_submission_history(
     pqxx::transaction_base& transaction,
     std::int64_t submission_id
@@ -515,18 +558,18 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_util:
     std::optional<std::int64_t> viewer_user_id_opt
 ){
     if(
-        (filter_value.top_submission_id_opt && *filter_value.top_submission_id_opt <= 0) ||
-        (filter_value.user_id_opt && *filter_value.user_id_opt <= 0) ||
-        (filter_value.problem_id_opt && *filter_value.problem_id_opt <= 0) ||
-        (filter_value.limit_opt && *filter_value.limit_opt <= 0) ||
-        (viewer_user_id_opt && *viewer_user_id_opt <= 0) ||
-        (filter_value.status_opt && !parse_submission_status(*filter_value.status_opt))
+        has_invalid_submission_list_filter(filter_value) ||
+        (viewer_user_id_opt && *viewer_user_id_opt <= 0)
     ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
     const std::int32_t limit =
         filter_value.limit_opt.value_or(submission_dto::DEFAULT_LIST_LIMIT);
+    const std::int64_t offset =
+        filter_value.page_opt
+            ? static_cast<std::int64_t>(*filter_value.page_opt - 1) * static_cast<std::int64_t>(limit)
+            : 0;
 
     std::string submission_list_query =
         "SELECT "
@@ -570,32 +613,22 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_util:
     }
 
     submission_list_query += "WHERE 1 = 1";
-
-    if(filter_value.top_submission_id_opt){
-        submission_list_query +=
-            " AND submission_table.submission_id <= $" + std::to_string(query_param_index++);
-        query_params.append(*filter_value.top_submission_id_opt);
-    }
-    if(filter_value.user_id_opt){
-        submission_list_query +=
-            " AND submission_table.user_id = $" + std::to_string(query_param_index++);
-        query_params.append(*filter_value.user_id_opt);
-    }
-    if(filter_value.problem_id_opt){
-        submission_list_query +=
-            " AND submission_table.problem_id = $" + std::to_string(query_param_index++);
-        query_params.append(*filter_value.problem_id_opt);
-    }
-    if(filter_value.status_opt){
-        submission_list_query +=
-            " AND submission_table.status = $" + std::to_string(query_param_index++) +
-            "::submission_status";
-        query_params.append(*filter_value.status_opt);
-    }
+    append_submission_list_filters(
+        submission_list_query,
+        query_params,
+        query_param_index,
+        filter_value,
+        true
+    );
 
     submission_list_query +=
         " ORDER BY submission_table.submission_id DESC LIMIT $" + std::to_string(query_param_index++);
     query_params.append(limit);
+
+    if(filter_value.page_opt){
+        submission_list_query += " OFFSET $" + std::to_string(query_param_index++);
+        query_params.append(offset);
+    }
 
     const auto submission_summary_query = transaction.exec(
         submission_list_query,
@@ -603,4 +636,38 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_util:
     );
 
     return submission_dto::make_summary_list_from_result(submission_summary_query);
+}
+
+std::expected<std::int64_t, error_code> submission_util::count_submissions(
+    pqxx::transaction_base& transaction,
+    const submission_dto::list_filter& filter_value
+){
+    if(has_invalid_submission_list_filter(filter_value)){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    std::string submission_count_query =
+        "SELECT COUNT(*) "
+        "FROM submissions submission_table "
+        "WHERE 1 = 1";
+    pqxx::params query_params;
+    int query_param_index = 1;
+
+    append_submission_list_filters(
+        submission_count_query,
+        query_params,
+        query_param_index,
+        filter_value,
+        false
+    );
+
+    const auto submission_count_result = transaction.exec(
+        submission_count_query,
+        query_params
+    );
+    if(submission_count_result.empty()){
+        return std::unexpected(error_code::create(errno_error::unknown_error));
+    }
+
+    return submission_count_result[0][0].as<std::int64_t>();
 }

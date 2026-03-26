@@ -5,6 +5,10 @@ export async function getSubmissionList(options = {}){
   const { bearerToken = '' } = options
   const searchParams = new URLSearchParams()
 
+  if (Number.isInteger(options.page) && options.page > 0) {
+    searchParams.set('page', String(options.page))
+  }
+
   if (Number.isInteger(options.limit) && options.limit > 0) {
     searchParams.set('limit', String(options.limit))
   }
@@ -34,6 +38,10 @@ export async function getSubmissionList(options = {}){
 
   return {
     ...response,
+    submission_count: Number(response.submission_count ?? 0),
+    total_submission_count: Number(
+      response.total_submission_count ?? response.submission_count ?? 0
+    ),
     submissions: normalizeProblemStateRecords(response.submissions)
   }
 }

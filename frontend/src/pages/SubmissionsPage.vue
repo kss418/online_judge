@@ -21,10 +21,18 @@
       </div>
 
       <div class="submission-summary-bar">
-        <StatusBadge
-          :label="isLoading ? '불러오는 중' : `${submissionCount}개 제출`"
-          :tone="errorMessage ? 'danger' : 'neutral'"
-        />
+        <div class="submission-summary-group">
+          <StatusBadge
+            :label="isLoading ? '불러오는 중' : `${formatCount(totalSubmissionCount)}개 제출`"
+            :tone="errorMessage ? 'danger' : 'neutral'"
+          />
+          <span
+            v-if="!isLoading && totalSubmissionCount"
+            class="submission-summary-text"
+          >
+            {{ visibleRangeText }}
+          </span>
+        </div>
       </div>
 
       <div v-if="isLoading" class="empty-state">
@@ -35,7 +43,7 @@
         <p>{{ errorMessage }}</p>
       </div>
 
-      <div v-else-if="!submissionCount" class="empty-state">
+      <div v-else-if="!totalSubmissionCount" class="empty-state">
         <p>등록된 제출이 아직 없습니다.</p>
       </div>
 
@@ -109,6 +117,76 @@
             </span>
           </div>
         </div>
+      </div>
+
+      <div
+        v-if="!isLoading && !errorMessage && totalSubmissionCount > listLimit"
+        class="submission-pagination"
+      >
+        <div class="pagination-controls">
+          <button
+            type="button"
+            class="ghost-button pagination-button"
+            :disabled="currentPage === 1"
+            @click="goToPage(currentPage - 1)"
+          >
+            이전
+          </button>
+
+          <div class="pagination-pages">
+            <template
+              v-for="item in paginationItems"
+              :key="item.key"
+            >
+              <button
+                v-if="item.type === 'page'"
+                type="button"
+                class="pagination-page"
+                :class="{ 'is-active': item.value === currentPage }"
+                @click="goToPage(item.value)"
+              >
+                {{ item.value }}
+              </button>
+              <span
+                v-else
+                class="pagination-ellipsis"
+                aria-hidden="true"
+              >
+                ...
+              </span>
+            </template>
+          </div>
+
+          <button
+            type="button"
+            class="ghost-button pagination-button"
+            :disabled="currentPage === totalPages"
+            @click="goToPage(currentPage + 1)"
+          >
+            다음
+          </button>
+        </div>
+
+        <form class="pagination-jump" @submit.prevent="submitPageJump">
+          <label class="sr-only" for="submission-page-jump">페이지 이동</label>
+          <input
+            id="submission-page-jump"
+            v-model="pageJumpInput"
+            class="pagination-jump-input"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            :max="totalPages"
+            :placeholder="`1-${totalPages}`"
+          />
+          <button
+            type="submit"
+            class="ghost-button pagination-jump-button"
+            :disabled="isLoading"
+          >
+            이동
+          </button>
+        </form>
       </div>
     </article>
   </section>
@@ -187,6 +265,9 @@ const isLoading = ref(true)
 const errorMessage = ref('')
 const submissions = ref([])
 const hasLoadedOnce = ref(false)
+const currentPage = ref(1)
+const pageJumpInput = ref('')
+const totalSubmissionCount = ref(0)
 const sourceDialogOpen = ref(false)
 const isLoadingSource = ref(false)
 const sourceErrorMessage = ref('')
@@ -200,6 +281,60 @@ const authenticatedBearerToken = computed(() =>
   authState.initialized && isAuthenticated.value ? authState.token : ''
 )
 const submissionCount = computed(() => submissions.value.length)
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(totalSubmissionCount.value / listLimit))
+)
+const visibleRangeText = computed(() => {
+  if (!totalSubmissionCount.value || !submissionCount.value) {
+    return ''
+  }
+
+  const start = (currentPage.value - 1) * listLimit + 1
+  const end = Math.min(currentPage.value * listLimit, totalSubmissionCount.value)
+  return `${formatCount(start)}-${formatCount(end)} / ${formatCount(totalSubmissionCount.value)}`
+})
+const paginationItems = computed(() => {
+  const pages = new Set([
+    1,
+    totalPages.value,
+    currentPage.value - 1,
+    currentPage.value,
+    currentPage.value + 1
+  ])
+
+  const sortedPages = Array.from(pages)
+    .filter((pageNumber) => pageNumber >= 1 && pageNumber <= totalPages.value)
+    .sort((left, right) => left - right)
+
+  const items = []
+
+  sortedPages.forEach((pageNumber, index) => {
+    const previousPage = sortedPages[index - 1]
+
+    if (index > 0) {
+      if (pageNumber - previousPage === 2) {
+        items.push({
+          type: 'page',
+          value: previousPage + 1,
+          key: `page-${previousPage + 1}`
+        })
+      } else if (pageNumber - previousPage > 2) {
+        items.push({
+          type: 'ellipsis',
+          key: `ellipsis-${previousPage}-${pageNumber}`
+        })
+      }
+    }
+
+    items.push({
+      type: 'page',
+      value: pageNumber,
+      key: `page-${pageNumber}`
+    })
+  })
+
+  return items
+})
 const numericProblemId = computed(() => {
   const problemIdParam = Array.isArray(route.params.problemId)
     ? route.params.problemId[0]
@@ -298,6 +433,12 @@ let relativeTimeRefreshTimer = null
 
 function formatCount(value){
   return countFormatter.format(value)
+}
+
+function resetPagination(){
+  currentPage.value = 1
+  pageJumpInput.value = ''
+  totalSubmissionCount.value = 0
 }
 
 function normalizeSubmittedAt(value){
@@ -535,7 +676,10 @@ function startRelativeTimeRefresh(){
   }, 1000)
 }
 
-async function loadSubmissions(){
+async function loadSubmissions(options = {}){
+  const targetPageNumber = Number.isInteger(options.pageNumber) && options.pageNumber > 0
+    ? options.pageNumber
+    : currentPage.value
   const requestId = ++latestLoadRequestId
   isLoading.value = true
   errorMessage.value = ''
@@ -553,6 +697,7 @@ async function loadSubmissions(){
   try {
     const response = await getSubmissionList({
       limit: listLimit,
+      page: targetPageNumber,
       problemId: numericProblemId.value ?? undefined,
       userId: activeUserId.value ?? undefined,
       bearerToken: authenticatedBearerToken.value
@@ -562,7 +707,7 @@ async function loadSubmissions(){
       return
     }
 
-    submissions.value = Array.isArray(response.submissions)
+    const normalizedSubmissions = Array.isArray(response.submissions)
       ? response.submissions
         .map((submission) => {
           const normalizedSubmittedAt = normalizeSubmittedAt(submission.created_at)
@@ -582,6 +727,26 @@ async function loadSubmissions(){
         })
         .sort((left, right) => right.submission_id - left.submission_id)
       : []
+
+    const normalizedTotalSubmissionCount = Number(
+      response.total_submission_count ?? response.submission_count ?? normalizedSubmissions.length
+    )
+    const nextTotalPages =
+      normalizedTotalSubmissionCount > 0
+        ? Math.max(1, Math.ceil(normalizedTotalSubmissionCount / listLimit))
+        : 1
+
+    if (normalizedTotalSubmissionCount > 0 && targetPageNumber > nextTotalPages) {
+      currentPage.value = nextTotalPages
+      loadSubmissions({
+        pageNumber: nextTotalPages
+      })
+      return
+    }
+
+    submissions.value = normalizedSubmissions
+    totalSubmissionCount.value = normalizedTotalSubmissionCount
+    currentPage.value = normalizedTotalSubmissionCount > 0 ? targetPageNumber : 1
     hasLoadedOnce.value = true
   } catch (error) {
     if (requestId !== latestLoadRequestId) {
@@ -592,12 +757,39 @@ async function loadSubmissions(){
       ? error.message
       : '제출 목록을 불러오지 못했습니다.'
     submissions.value = []
+    totalSubmissionCount.value = 0
     hasLoadedOnce.value = true
   } finally {
     if (requestId === latestLoadRequestId) {
       isLoading.value = false
     }
   }
+}
+
+function goToPage(pageNumber){
+  if (isLoading.value) {
+    return
+  }
+
+  const clampedPageNumber = Math.min(Math.max(pageNumber, 1), totalPages.value)
+  if (clampedPageNumber === currentPage.value) {
+    return
+  }
+
+  loadSubmissions({
+    pageNumber: clampedPageNumber
+  })
+}
+
+function submitPageJump(){
+  const parsedPage = Number.parseInt(pageJumpInput.value, 10)
+
+  if (Number.isNaN(parsedPage)) {
+    return
+  }
+
+  goToPage(parsedPage)
+  pageJumpInput.value = ''
 }
 
 onMounted(async () => {
@@ -622,6 +814,7 @@ watch([
     return
   }
 
+  resetPagination()
   loadSubmissions()
 })
 
@@ -630,7 +823,17 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
     return
   }
 
+  if (isMineScope.value) {
+    resetPagination()
+  }
+
   loadSubmissions()
+})
+
+watch(totalPages, (pageCount) => {
+  if (currentPage.value > pageCount) {
+    currentPage.value = pageCount
+  }
 })
 
 onUnmounted(() => {
@@ -676,6 +879,19 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.submission-summary-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.submission-summary-text {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  font-weight: 600;
 }
 
 .submission-table-wrapper {
@@ -897,6 +1113,106 @@ onUnmounted(() => {
   transform: translateY(-1px);
 }
 
+.submission-pagination {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: 0.25rem;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pagination-button {
+  min-width: 88px;
+}
+
+.pagination-pages {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.pagination-jump {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-left: auto;
+}
+
+.pagination-jump-input {
+  width: 7rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink-strong);
+  font: inherit;
+}
+
+.pagination-jump-input:focus {
+  outline: 2px solid rgba(217, 119, 6, 0.18);
+  border-color: rgba(217, 119, 6, 0.5);
+}
+
+.pagination-page {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink-strong);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.pagination-page:hover {
+  transform: translateY(-1px);
+}
+
+.pagination-page.is-active {
+  color: white;
+  background: linear-gradient(135deg, #d97706, #ea580c);
+  border-color: transparent;
+}
+
+.pagination-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .submission-source-backdrop {
   position: fixed;
   inset: 0;
@@ -954,6 +1270,22 @@ onUnmounted(() => {
 }
 
 @media (max-width: 720px) {
+  .submission-summary-bar,
+  .submission-pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pagination-controls,
+  .pagination-jump {
+    justify-content: center;
+    margin-left: 0;
+  }
+
+  .pagination-jump-input {
+    width: 100%;
+  }
+
   .submission-table {
     min-width: 980px;
   }

@@ -73,7 +73,8 @@ namespace json_util{
         const std::vector<submission_dto::summary>& summary_values
     );
     boost::json::object make_submission_list_object(
-        const std::vector<submission_dto::summary>& summary_values
+        const std::vector<submission_dto::summary>& summary_values,
+        std::int64_t total_submission_count
     );
 
     boost::json::object make_problem_created_object(const problem_dto::created& created_value);

@@ -282,3 +282,16 @@ submission_service::list_submissions(
         }
     );
 }
+
+std::expected<std::int64_t, error_code> submission_service::count_submissions(
+    db_connection& connection,
+    const submission_dto::list_filter& filter_value
+){
+    return db_service_util::with_retry_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<std::int64_t, error_code> {
+            return submission_util::count_submissions(transaction, filter_value);
+        }
+    );
+}

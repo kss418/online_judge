@@ -90,6 +90,7 @@ namespace submission_dto{
 
     struct list_filter{
         std::optional<std::int64_t> top_submission_id_opt = std::nullopt;
+        std::optional<std::int32_t> page_opt = std::nullopt;
         std::optional<std::int64_t> user_id_opt = std::nullopt;
         std::optional<std::int64_t> problem_id_opt = std::nullopt;
         std::optional<std::string> status_opt = std::nullopt;

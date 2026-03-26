@@ -52,6 +52,27 @@ submission_dto::make_list_filter_from_query_params(
 ){
     list_filter filter_value;
     for(const auto& query_param : query_params){
+        if(query_param.key == "page"){
+            if(filter_value.page_opt){
+                return std::unexpected(dto_validation_error{
+                    .code = "duplicate_query_parameter",
+                    .message = "duplicate query parameter: page",
+                    .field_opt = "page"
+                });
+            }
+
+            const auto page_opt = string_util::parse_positive_int32(query_param.value);
+            if(!page_opt){
+                return std::unexpected(dto_validation_error{
+                    .code = "invalid_query_parameter",
+                    .message = "invalid query parameter: page",
+                    .field_opt = "page"
+                });
+            }
+
+            filter_value.page_opt = *page_opt;
+            continue;
+        }
         if(query_param.key == "top"){
             if(filter_value.top_submission_id_opt){
                 return std::unexpected(dto_validation_error{
@@ -162,6 +183,14 @@ submission_dto::make_list_filter_from_query_params(
             .code = "unsupported_query_parameter",
             .message = "unsupported query parameter: " + std::string{query_param.key},
             .field_opt = std::string{query_param.key}
+        });
+    }
+
+    if(filter_value.top_submission_id_opt && filter_value.page_opt){
+        return std::unexpected(dto_validation_error{
+            .code = "invalid_query_parameter",
+            .message = "query parameters top and page cannot be combined",
+            .field_opt = "page"
         });
     }
 
