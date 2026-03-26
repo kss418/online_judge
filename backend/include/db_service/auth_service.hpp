@@ -26,4 +26,7 @@ namespace auth_service{
         std::int64_t user_id,
         bool is_admin
     );
+    std::expected<auth_dto::user_summary_list, error_code> get_user_list(
+        db_connection& connection_value
+    );
 }

@@ -4,6 +4,73 @@ HTTP API handled by `user_router`.
 
 ## endpoint
 
+### `GET /api/user`
+
+Get the full user list for management. This endpoint is admin-only.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `user_count` | `int64` | total user count in the response |
+| `users` | `array` | ordered by admin first, then `user_id` ascending |
+
+Each item in `users` contains:
+
+| field | type | note |
+|---|---|---|
+| `user_id` | `int64` | user id |
+| `user_name` | `string` | display name |
+| `user_login_id` | `string \| null` | login id when available |
+| `is_admin` | `boolean` | admin flag |
+| `created_at` | `string` | sign-up timestamp |
+
+Example:
+
+```json
+{
+  "user_count": 2,
+  "users": [
+    {
+      "user_id": 1,
+      "user_name": "admin",
+      "user_login_id": "admin",
+      "is_admin": true,
+      "created_at": "2026-03-26 13:10:11.000000+09"
+    },
+    {
+      "user_id": 7,
+      "user_name": "alice",
+      "user_login_id": "alice",
+      "is_admin": false,
+      "created_at": "2026-03-26 13:14:02.000000+09"
+    }
+  ]
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
 ### `GET /api/user/me`
 
 Get the currently authenticated user profile. This endpoint requires a bearer token.

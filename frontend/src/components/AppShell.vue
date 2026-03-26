@@ -88,7 +88,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import AuthDialog from '@/components/AuthDialog.vue'
@@ -100,23 +100,35 @@ const isAuthDialogOpen = ref(false)
 const authDialogMode = ref('login')
 const { authState, isAuthenticated, initializeAuth, logout } = useAuth()
 
-const navItems = [
-  {
-    to: '/',
-    label: 'Overview',
-    hint: '서비스 안내와 상태'
-  },
-  {
-    to: '/problems',
-    label: 'Problems',
-    hint: '문제 탐색과 상세 보기'
-  },
-  {
-    to: '/submissions',
-    label: 'Submissions',
-    hint: '제출 목록'
+const navItems = computed(() => {
+  const items = [
+    {
+      to: '/',
+      label: 'Overview',
+      hint: '서비스 안내와 상태'
+    },
+    {
+      to: '/problems',
+      label: 'Problems',
+      hint: '문제 탐색과 상세 보기'
+    },
+    {
+      to: '/submissions',
+      label: 'Submissions',
+      hint: '제출 목록'
+    }
+  ]
+
+  if (authState.currentUser?.is_admin) {
+    items.push({
+      to: '/admin/users',
+      label: 'Users',
+      hint: '관리자용 유저 관리'
+    })
   }
-]
+
+  return items
+})
 
 function isActive(path){
   return path === '/'

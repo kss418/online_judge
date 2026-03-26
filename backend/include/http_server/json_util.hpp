@@ -26,6 +26,15 @@ namespace json_util{
         bool is_admin
     );
     boost::json::object make_user_me_object(const auth_dto::identity& auth_identity_value);
+    boost::json::object make_user_summary_object(
+        const auth_dto::user_summary& user_summary_value
+    );
+    boost::json::array make_user_summary_array(
+        const auth_dto::user_summary_list& user_summary_values
+    );
+    boost::json::object make_user_list_object(
+        const auth_dto::user_summary_list& user_summary_values
+    );
     boost::json::object make_supported_language_object(
         const language_util::supported_language& supported_language_value
     );

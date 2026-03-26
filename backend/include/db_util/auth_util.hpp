@@ -38,6 +38,10 @@ namespace auth_util{
         bool is_admin
     );
 
+    std::expected<auth_dto::user_summary_list, error_code> get_user_list(
+        pqxx::transaction_base& transaction
+    );
+
     std::expected<bool, error_code> update_expires_at(
         pqxx::transaction_base& transaction,
         const auth_dto::hashed_token& hashed_token_value,

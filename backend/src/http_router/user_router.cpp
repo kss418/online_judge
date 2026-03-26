@@ -16,6 +16,10 @@ user_router::response_type user_router::route(
     }
 
     const auto& path_segments = *path_segments_opt;
+    if(path_segments.empty()){
+        return handle_user_list(request);
+    }
+
     if(path_segments.size() == 1 && path_segments[0] == "me"){
         return handle_user_me(request);
     }
@@ -30,6 +34,17 @@ user_router::response_type user_router::route(
     }
 
     return http_response_util::create_not_found(request);
+}
+
+user_router::response_type user_router::handle_user_list(const request_type& request){
+    if(request.method() == boost::beast::http::verb::get){
+        return user_handler::get_user_list(
+            request,
+            db_connection_
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
 }
 
 user_router::response_type user_router::handle_user_me(const request_type& request){

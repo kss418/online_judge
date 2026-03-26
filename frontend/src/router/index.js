@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+import AdminUsersPage from '@/pages/AdminUsersPage.vue'
 import HomePage from '@/pages/HomePage.vue'
 import ProblemDetailPage from '@/pages/ProblemDetailPage.vue'
 import ProblemSubmitPage from '@/pages/ProblemSubmitPage.vue'
@@ -41,6 +42,11 @@ const routes = [
     path: '/submissions',
     name: 'submissions',
     component: SubmissionsPage
+  },
+  {
+    path: '/admin/users',
+    name: 'admin-users',
+    component: AdminUsersPage
   }
 ]
 

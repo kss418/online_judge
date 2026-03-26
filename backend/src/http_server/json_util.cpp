@@ -43,6 +43,43 @@ boost::json::object json_util::make_user_me_object(const auth_dto::identity& aut
     return response_object;
 }
 
+boost::json::object json_util::make_user_summary_object(
+    const auth_dto::user_summary& user_summary_value
+){
+    boost::json::object response_object;
+    response_object["user_id"] = user_summary_value.user_id;
+    response_object["user_name"] = user_summary_value.user_name;
+    if(user_summary_value.user_login_id_opt){
+        response_object["user_login_id"] = *user_summary_value.user_login_id_opt;
+    }
+    else{
+        response_object["user_login_id"] = nullptr;
+    }
+    response_object["is_admin"] = user_summary_value.is_admin;
+    response_object["created_at"] = user_summary_value.created_at;
+    return response_object;
+}
+
+boost::json::array json_util::make_user_summary_array(
+    const auth_dto::user_summary_list& user_summary_values
+){
+    boost::json::array response_array;
+    response_array.reserve(user_summary_values.size());
+    for(const auto& user_summary_value : user_summary_values){
+        response_array.push_back(make_user_summary_object(user_summary_value));
+    }
+    return response_array;
+}
+
+boost::json::object json_util::make_user_list_object(
+    const auth_dto::user_summary_list& user_summary_values
+){
+    boost::json::object response_object;
+    response_object["user_count"] = static_cast<std::int64_t>(user_summary_values.size());
+    response_object["users"] = make_user_summary_array(user_summary_values);
+    return response_object;
+}
+
 boost::json::object json_util::make_supported_language_object(
     const language_util::supported_language& supported_language_value
 ){

@@ -64,3 +64,31 @@ user_handler::response_type user_handler::put_user_admin(
         handle_authenticated
     );
 }
+
+user_handler::response_type user_handler::get_user_list(
+    const request_type& request,
+    db_connection& db_connection_value
+){
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto user_list_exp = auth_service::get_user_list(db_connection_value);
+        if(!user_list_exp){
+            return http_response_util::create_4xx_or_500(
+                request,
+                "get user list",
+                user_list_exp.error()
+            );
+        }
+
+        return http_response_util::create_json(
+            request,
+            boost::beast::http::status::ok,
+            json_util::make_user_list_object(*user_list_exp)
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}

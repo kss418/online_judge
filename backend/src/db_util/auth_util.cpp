@@ -127,6 +127,38 @@ std::expected<bool, error_code> auth_util::update_admin_status(
     return update_result.affected_rows() > 0;
 }
 
+std::expected<auth_dto::user_summary_list, error_code> auth_util::get_user_list(
+    pqxx::transaction_base& transaction
+){
+    const auto user_list_result = transaction.exec(
+        "SELECT "
+        "user_id, "
+        "user_name, "
+        "user_login_id, "
+        "is_admin, "
+        "created_at::text "
+        "FROM users "
+        "ORDER BY is_admin DESC, user_id ASC"
+    );
+
+    auth_dto::user_summary_list user_summary_values;
+    user_summary_values.reserve(user_list_result.size());
+
+    for(const auto& user_row : user_list_result){
+        auth_dto::user_summary user_summary_value;
+        user_summary_value.user_id = user_row[0].as<std::int64_t>();
+        user_summary_value.user_name = user_row[1].as<std::string>();
+        if(!user_row[2].is_null()){
+            user_summary_value.user_login_id_opt = user_row[2].as<std::string>();
+        }
+        user_summary_value.is_admin = user_row[3].as<bool>();
+        user_summary_value.created_at = user_row[4].as<std::string>();
+        user_summary_values.push_back(std::move(user_summary_value));
+    }
+
+    return user_summary_values;
+}
+
 std::expected<bool, error_code> auth_util::update_expires_at(
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_token& hashed_token_value,

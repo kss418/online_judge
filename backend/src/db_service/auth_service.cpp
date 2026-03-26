@@ -143,3 +143,15 @@ std::expected<bool, error_code> auth_service::update_admin_status(
         }
     );
 }
+
+std::expected<auth_dto::user_summary_list, error_code> auth_service::get_user_list(
+    db_connection& connection_value
+){
+    return db_service_util::with_retry_read_transaction(
+        connection_value,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<auth_dto::user_summary_list, error_code> {
+            return auth_util::get_user_list(transaction);
+        }
+    );
+}

@@ -9,6 +9,7 @@
 #include <expected>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace auth_dto{
     struct token{
@@ -53,6 +54,16 @@ namespace auth_dto{
         std::string user_name;
         std::string token;
     };
+
+    struct user_summary{
+        std::int64_t user_id = 0;
+        std::string user_name;
+        std::optional<std::string> user_login_id_opt;
+        bool is_admin = false;
+        std::string created_at;
+    };
+
+    using user_summary_list = std::vector<user_summary>;
 
     std::expected<sign_up_request, dto_validation_error> make_sign_up_request_from_json(
         const boost::json::object& json
