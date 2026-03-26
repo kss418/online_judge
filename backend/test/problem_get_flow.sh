@@ -27,6 +27,8 @@ base_url="${PROBLEM_GET_FLOW_TEST_BASE_URL:-http://127.0.0.1:${http_port}}"
 http_server_bin="${PROBLEM_GET_FLOW_TEST_HTTP_SERVER_BIN:-${project_root}/http_server}"
 test_db_name="problem_get_flow_test_$$_$(date +%s)"
 test_database_created="0"
+user_login_id="${PROBLEM_GET_FLOW_TEST_LOGIN_ID:-problem_get_flow_test_$(date +%s)_$$}"
+raw_password="${PROBLEM_GET_FLOW_TEST_PASSWORD:-password123!}"
 test_log_path=""
 server_log_path=""
 server_pid=""
@@ -35,8 +37,11 @@ server_log_name="test_problem_get_flow_server.log"
 init_flow_test
 register_temp_file test_log_temp_file
 register_temp_file server_log_temp_file
+register_temp_file sign_up_response_file
 register_temp_file full_problem_response_file
+register_temp_file authenticated_full_problem_response_file
 register_temp_file blank_problem_response_file
+register_temp_file authenticated_blank_problem_response_file
 register_temp_file missing_problem_response_file
 
 create_full_problem(){
@@ -146,6 +151,7 @@ export DB_NAME="${test_db_name}"
 
 append_log_line "${test_log_temp_file}" "base_url=${base_url}"
 append_log_line "${test_log_temp_file}" "test_db_name=${test_db_name}"
+append_log_line "${test_log_temp_file}" "user_login_id=${user_login_id}"
 
 apply_test_database_migrations
 ensure_dedicated_http_server
@@ -154,9 +160,43 @@ full_problem_id="$(create_full_problem)"
 blank_problem_id="$(create_blank_problem)"
 missing_problem_id=$((blank_problem_id + 999999))
 
+read -r sign_up_user_id sign_up_token <<EOF
+$(sign_up_user "${user_login_id}" "${raw_password}" "${sign_up_response_file}" "problem get flow")
+EOF
+
 append_log_line "${test_log_temp_file}" "full_problem_id=${full_problem_id}"
 append_log_line "${test_log_temp_file}" "blank_problem_id=${blank_problem_id}"
 append_log_line "${test_log_temp_file}" "missing_problem_id=${missing_problem_id}"
+append_log_line "${test_log_temp_file}" "sign_up_user_id=${sign_up_user_id}"
+
+if ! PGPASSWORD="${DB_PASSWORD}" psql \
+    -X \
+    -h "${DB_HOST}" \
+    -p "${DB_PORT}" \
+    -U "${DB_USER}" \
+    -d "${DB_NAME}" \
+    -v sign_up_user_id="${sign_up_user_id}" \
+    -v full_problem_id="${full_problem_id}" \
+    -v blank_problem_id="${blank_problem_id}" \
+    -v ON_ERROR_STOP=1 <<'SQL' >>"${test_log_temp_file}" 2>&1
+INSERT INTO submissions(
+    user_id,
+    problem_id,
+    language,
+    source_code,
+    status,
+    created_at,
+    updated_at
+)
+VALUES
+    (:'sign_up_user_id', :'full_problem_id', 'cpp17', 'accepted code', 'accepted', '2026-01-01T00:00:01Z', '2026-01-01T00:00:01Z'),
+    (:'sign_up_user_id', :'blank_problem_id', 'cpp17', 'wrong code', 'wrong_answer', '2026-01-01T00:00:02Z', '2026-01-01T00:00:02Z');
+SQL
+then
+    append_log_line "${test_log_temp_file}" "problem get submission fixture insert failed"
+    publish_failure_logs
+    exit 1
+fi
 
 send_http_request_and_assert_status \
     "GET" \
@@ -201,6 +241,9 @@ if statement != expected_statement:
 if response.get("sample_count") != 1:
     raise SystemExit("sample_count mismatch")
 
+if response.get("user_problem_state", "missing") is not None:
+    raise SystemExit("expected null user_problem_state for anonymous request")
+
 if "testcase_count" in response:
     raise SystemExit("unexpected testcase_count field")
 
@@ -230,6 +273,38 @@ then
 fi
 
 print_success_log "problem detail response validated"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${full_problem_id}" \
+    "${authenticated_full_problem_response_file}" \
+    "200" \
+    "authenticated full problem get" \
+    "${sign_up_token}"
+
+if ! python3 - "${authenticated_full_problem_response_file}" "${full_problem_id}" <<'PY'
+import json
+import sys
+
+response_file_path = sys.argv[1]
+expected_problem_id = int(sys.argv[2])
+
+with open(response_file_path, encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("problem_id") != expected_problem_id:
+    raise SystemExit("authenticated problem_id mismatch")
+
+if response.get("user_problem_state") != "solved":
+    raise SystemExit("expected solved user_problem_state")
+PY
+then
+    append_log_line "${test_log_temp_file}" "authenticated full problem response validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+print_success_log "authenticated problem detail response validated"
 
 send_http_request_and_assert_status \
     "GET" \
@@ -274,6 +349,9 @@ if response.get("samples") != []:
 
 if response.get("statistics") != {"submission_count": 0, "accepted_count": 0}:
     raise SystemExit("blank statistics mismatch")
+
+if response.get("user_problem_state", "missing") is not None:
+    raise SystemExit("expected null user_problem_state for anonymous blank request")
 PY
 then
     append_log_line "${test_log_temp_file}" "blank problem response validation failed"
@@ -282,6 +360,38 @@ then
 fi
 
 print_success_log "blank problem response validated"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${blank_problem_id}" \
+    "${authenticated_blank_problem_response_file}" \
+    "200" \
+    "authenticated blank problem get" \
+    "${sign_up_token}"
+
+if ! python3 - "${authenticated_blank_problem_response_file}" "${blank_problem_id}" <<'PY'
+import json
+import sys
+
+response_file_path = sys.argv[1]
+expected_problem_id = int(sys.argv[2])
+
+with open(response_file_path, encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("problem_id") != expected_problem_id:
+    raise SystemExit("authenticated blank problem_id mismatch")
+
+if response.get("user_problem_state") != "wrong":
+    raise SystemExit("expected wrong user_problem_state")
+PY
+then
+    append_log_line "${test_log_temp_file}" "authenticated blank problem response validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+print_success_log "authenticated blank problem response validated"
 
 send_http_request_and_assert_status \
     "GET" \

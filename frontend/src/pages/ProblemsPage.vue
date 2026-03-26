@@ -80,7 +80,14 @@
         >
           <strong class="problem-id">#{{ problem.problem_id }}</strong>
           <div class="problem-main">
-            <strong>{{ problem.title }}</strong>
+            <div class="problem-title-line">
+              <strong>{{ problem.title }}</strong>
+              <StatusBadge
+                v-if="problem.user_problem_state"
+                :label="getProblemStateLabel(problem.user_problem_state)"
+                :tone="getProblemStateTone(problem.user_problem_state)"
+              />
+            </div>
           </div>
           <div class="problem-stats" aria-label="problem statistics">
             <div class="problem-counts">
@@ -181,6 +188,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 import { getProblemList } from '@/api/problem'
 import StatusBadge from '@/components/StatusBadge.vue'
+import { useAuth } from '@/composables/useAuth'
 
 const isLoading = ref(true)
 const errorMessage = ref('')
@@ -189,13 +197,19 @@ const searchKeyword = ref('')
 const problems = ref([])
 const currentPage = ref(1)
 const pageJumpInput = ref('')
+const hasLoadedOnce = ref(false)
 const countFormatter = new Intl.NumberFormat()
 const rateFormatter = new Intl.NumberFormat('ko-KR', {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1
 })
+const { authState, isAuthenticated, initializeAuth } = useAuth()
 
 const pageSize = 50
+const authenticatedBearerToken = computed(() =>
+  authState.initialized && isAuthenticated.value ? authState.token : ''
+)
+let latestLoadRequestId = 0
 
 const problemCount = computed(() => problems.value.length)
 const sortedProblems = computed(() =>
@@ -267,28 +281,43 @@ watch(totalPages, (pageCount) => {
 })
 
 async function loadProblems(){
+  const requestId = ++latestLoadRequestId
   isLoading.value = true
   errorMessage.value = ''
 
   try {
     const response = await getProblemList({
-      title: searchKeyword.value
+      title: searchKeyword.value,
+      bearerToken: authenticatedBearerToken.value
     })
+
+    if (requestId !== latestLoadRequestId) {
+      return
+    }
 
     problems.value = Array.isArray(response.problems)
       ? response.problems.map((problem) => ({
         ...problem,
         accepted_count: Number(problem.accepted_count ?? 0),
-        submission_count: Number(problem.submission_count ?? 0)
+        submission_count: Number(problem.submission_count ?? 0),
+        user_problem_state: normalizeProblemState(problem.user_problem_state)
       }))
       : []
+    hasLoadedOnce.value = true
   } catch (error) {
+    if (requestId !== latestLoadRequestId) {
+      return
+    }
+
     errorMessage.value = error instanceof Error
       ? error.message
       : '문제 목록을 불러오지 못했습니다.'
     problems.value = []
+    hasLoadedOnce.value = true
   } finally {
-    isLoading.value = false
+    if (requestId === latestLoadRequestId) {
+      isLoading.value = false
+    }
   }
 }
 
@@ -337,7 +366,35 @@ function formatAcceptanceRate(acceptedCount, submissionCount){
   return `${rateFormatter.format(rate)}%`
 }
 
-onMounted(() => {
+function normalizeProblemState(problemState){
+  return problemState === 'solved' || problemState === 'wrong'
+    ? problemState
+    : null
+}
+
+function getProblemStateLabel(problemState){
+  return problemState === 'solved' ? '성공' : '실패'
+}
+
+function getProblemStateTone(problemState){
+  return problemState === 'solved' ? 'success' : 'danger'
+}
+
+onMounted(async () => {
+  if (!authState.initialized) {
+    await initializeAuth()
+  }
+
+  if (!hasLoadedOnce.value) {
+    loadProblems()
+  }
+})
+
+watch(authenticatedBearerToken, (nextToken, previousToken) => {
+  if (nextToken === previousToken) {
+    return
+  }
+
   loadProblems()
 })
 </script>
@@ -458,9 +515,15 @@ onMounted(() => {
   min-width: 0;
 }
 
+.problem-title-line {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .problem-main strong {
   display: block;
-  margin-bottom: 0.2rem;
 }
 
 .problem-stats {

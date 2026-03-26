@@ -82,6 +82,42 @@ std::expected<problem_dto::version, error_code> problem_core_util::get_version(
     return version_value;
 }
 
+std::expected<std::optional<std::string>, error_code> problem_core_util::get_user_problem_state(
+    pqxx::transaction_base& transaction,
+    const problem_dto::reference& problem_reference_value,
+    std::int64_t user_id
+){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
+    if(problem_id <= 0 || user_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto state_query_result = transaction.exec(
+        "SELECT accepted_submission_count, failed_submission_count "
+        "FROM user_problem_attempt_summary "
+        "WHERE user_id = $1 AND problem_id = $2",
+        pqxx::params{user_id, problem_id}
+    );
+
+    if(state_query_result.empty()){
+        return std::optional<std::string>{};
+    }
+
+    const std::int64_t accepted_submission_count =
+        state_query_result[0][0].as<std::int64_t>();
+    const std::int64_t failed_submission_count =
+        state_query_result[0][1].as<std::int64_t>();
+
+    if(accepted_submission_count > 0){
+        return std::optional<std::string>{"solved"};
+    }
+    if(failed_submission_count > 0){
+        return std::optional<std::string>{"wrong"};
+    }
+
+    return std::optional<std::string>{};
+}
+
 std::expected<problem_dto::created, error_code> problem_core_util::create_problem(
     pqxx::transaction_base& transaction,
     const problem_dto::create_request& create_request_value

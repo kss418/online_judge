@@ -53,6 +53,24 @@ std::expected<problem_dto::version, error_code> problem_core_service::get_versio
     );
 }
 
+std::expected<std::optional<std::string>, error_code> problem_core_service::get_user_problem_state(
+    db_connection& connection,
+    const problem_dto::reference& problem_reference_value,
+    std::int64_t user_id
+){
+    return db_service_util::with_retry_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<std::optional<std::string>, error_code> {
+            return problem_core_util::get_user_problem_state(
+                transaction,
+                problem_reference_value,
+                user_id
+            );
+        }
+    );
+}
+
 std::expected<problem_dto::created, error_code> problem_core_service::create_problem(
     db_connection& connection,
     const problem_dto::create_request& create_request_value

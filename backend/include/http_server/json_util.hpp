@@ -118,6 +118,7 @@ namespace json_util{
         const problem_content_dto::limits& limits_value,
         const std::optional<problem_content_dto::statement>& statement_opt,
         const std::vector<problem_content_dto::sample>& sample_values,
-        const problem_content_dto::statistics& statistics_value
+        const problem_content_dto::statistics& statistics_value,
+        const std::optional<std::string>& user_problem_state_opt
     );
 }

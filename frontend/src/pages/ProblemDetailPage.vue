@@ -20,7 +20,14 @@
           <div>
             <p class="panel-kicker">problem</p>
             <div class="detail-title-row">
-              <h3>#{{ problemDetail.problem_id }} {{ problemDetail.title }}</h3>
+              <div class="detail-title-copy">
+                <h3>#{{ problemDetail.problem_id }} {{ problemDetail.title }}</h3>
+                <StatusBadge
+                  v-if="problemDetail.user_problem_state"
+                  :label="getProblemStateLabel(problemDetail.user_problem_state)"
+                  :tone="getProblemStateTone(problemDetail.user_problem_state)"
+                />
+              </div>
               <div class="detail-title-actions">
                 <RouterLink
                   v-if="isAuthenticated"
@@ -156,13 +163,15 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { getProblemDetail } from '@/api/problem'
+import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
-const { isAuthenticated, initializeAuth } = useAuth()
+const { authState, isAuthenticated, initializeAuth } = useAuth()
 const isLoading = ref(true)
 const errorMessage = ref('')
 const problemDetail = ref(null)
+const hasLoadedOnce = ref(false)
 const countFormatter = new Intl.NumberFormat()
 const rateFormatter = new Intl.NumberFormat('ko-KR', {
   minimumFractionDigits: 1,
@@ -170,6 +179,10 @@ const rateFormatter = new Intl.NumberFormat('ko-KR', {
 })
 
 const numericProblemId = computed(() => Number.parseInt(route.params.problemId, 10))
+const authenticatedBearerToken = computed(() =>
+  authState.initialized && isAuthenticated.value ? authState.token : ''
+)
+let latestLoadRequestId = 0
 
 const acceptanceRate = computed(() => {
   const statistics = problemDetail.value?.statistics
@@ -187,6 +200,7 @@ watch(numericProblemId, () => {
 })
 
 async function loadProblemDetail(){
+  const requestId = ++latestLoadRequestId
   isLoading.value = true
   errorMessage.value = ''
 
@@ -198,7 +212,13 @@ async function loadProblemDetail(){
   }
 
   try {
-    const response = await getProblemDetail(numericProblemId.value)
+    const response = await getProblemDetail(numericProblemId.value, {
+      bearerToken: authenticatedBearerToken.value
+    })
+
+    if (requestId !== latestLoadRequestId) {
+      return
+    }
 
     problemDetail.value = {
       ...response,
@@ -216,15 +236,24 @@ async function loadProblemDetail(){
         output_format: response.statement?.output_format ?? '',
         note: response.statement?.note ?? ''
       },
-      samples: Array.isArray(response.samples) ? response.samples : []
+      samples: Array.isArray(response.samples) ? response.samples : [],
+      user_problem_state: normalizeProblemState(response.user_problem_state)
     }
+    hasLoadedOnce.value = true
   } catch (error) {
+    if (requestId !== latestLoadRequestId) {
+      return
+    }
+
     errorMessage.value = error instanceof Error
       ? error.message
       : '문제 정보를 불러오지 못했습니다.'
     problemDetail.value = null
+    hasLoadedOnce.value = true
   } finally {
-    isLoading.value = false
+    if (requestId === latestLoadRequestId) {
+      isLoading.value = false
+    }
   }
 }
 
@@ -232,8 +261,35 @@ function formatCount(value){
   return countFormatter.format(value)
 }
 
-onMounted(() => {
-  initializeAuth()
+function normalizeProblemState(problemState){
+  return problemState === 'solved' || problemState === 'wrong'
+    ? problemState
+    : null
+}
+
+function getProblemStateLabel(problemState){
+  return problemState === 'solved' ? '성공' : '실패'
+}
+
+function getProblemStateTone(problemState){
+  return problemState === 'solved' ? 'success' : 'danger'
+}
+
+onMounted(async () => {
+  if (!authState.initialized) {
+    await initializeAuth()
+  }
+
+  if (!hasLoadedOnce.value) {
+    loadProblemDetail()
+  }
+})
+
+watch(authenticatedBearerToken, (nextToken, previousToken) => {
+  if (nextToken === previousToken) {
+    return
+  }
+
   loadProblemDetail()
 })
 </script>
@@ -276,6 +332,13 @@ onMounted(() => {
 .detail-title-row {
   display: flex;
   gap: 0.9rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.detail-title-copy {
+  display: flex;
+  gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
 }

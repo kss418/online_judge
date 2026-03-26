@@ -27,6 +27,11 @@ namespace problem_core_service{
         db_connection& connection,
         const problem_dto::reference& problem_reference_value
     );
+    std::expected<std::optional<std::string>, error_code> get_user_problem_state(
+        db_connection& connection,
+        const problem_dto::reference& problem_reference_value,
+        std::int64_t user_id
+    );
 
     std::expected<problem_dto::created, error_code> create_problem(
         db_connection& connection,

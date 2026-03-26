@@ -445,7 +445,8 @@ boost::json::object json_util::make_problem_detail_object(
     const problem_content_dto::limits& limits_value,
     const std::optional<problem_content_dto::statement>& statement_opt,
     const std::vector<problem_content_dto::sample>& sample_values,
-    const problem_content_dto::statistics& statistics_value
+    const problem_content_dto::statistics& statistics_value,
+    const std::optional<std::string>& user_problem_state_opt
 ){
     boost::json::object response_object;
     response_object["problem_id"] = problem_reference_value.problem_id;
@@ -460,6 +461,12 @@ boost::json::object json_util::make_problem_detail_object(
     }
     else{
         response_object["statement"] = nullptr;
+    }
+    if(user_problem_state_opt){
+        response_object["user_problem_state"] = *user_problem_state_opt;
+    }
+    else{
+        response_object["user_problem_state"] = nullptr;
     }
 
     return response_object;

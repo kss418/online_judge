@@ -95,11 +95,17 @@ If no problems match the filter, the endpoint returns `200 OK` with an empty `pr
 
 ### `GET /api/problem/{problem_id}`
 
-Get a public problem detail view. This endpoint returns visible metadata, limits, statement content when present, public samples, and aggregate submission statistics. Hidden testcases are not exposed.
+Get a public problem detail view. This endpoint returns visible metadata, limits, statement content when present, public samples, and aggregate submission statistics. When a valid bearer token is provided, the response also includes the current user's state for the problem. Hidden testcases are not exposed.
 
 #### request
 
 - request body: none
+- optional header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | no | format: `Bearer <token>`; when present and valid, `user_problem_state` is populated |
+
 - path parameter:
 
 | field | type | note |
@@ -133,6 +139,7 @@ Get a public problem detail view. This endpoint returns visible metadata, limits
 | `statistics` | `object` | aggregate submission statistics |
 | `statistics.submission_count` | `int64` | number of submissions |
 | `statistics.accepted_count` | `int64` | number of accepted submissions |
+| `user_problem_state` | `string \| null` | `solved`, `wrong`, or `null`; `null` is returned for anonymous requests, unattempted problems, and pending-only submissions |
 
 Example:
 
@@ -162,12 +169,14 @@ Example:
   "statistics": {
     "submission_count": 12,
     "accepted_count": 7
-  }
+  },
+  "user_problem_state": "solved"
 }
 ```
 
 #### error response
 
+- invalid, expired, or malformed bearer token when `Authorization` is provided: `401 Unauthorized`
 - unknown `problem_id`: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 

@@ -57,6 +57,14 @@ problem_handler::response_type problem_handler::get_problem(
     db_connection& db_connection_value,
     std::int64_t problem_id
 ){
+    const auto auth_identity_opt_exp = http_util::try_optional_auth_bearer(
+        request,
+        db_connection_value
+    );
+    if(!auth_identity_opt_exp){
+        return std::move(auth_identity_opt_exp.error());
+    }
+
     problem_dto::reference problem_reference_value{problem_id};
     const auto exists_problem_exp = problem_core_service::exists_problem(
         db_connection_value,
@@ -158,6 +166,24 @@ problem_handler::response_type problem_handler::get_problem(
         );
     }
 
+    std::optional<std::string> user_problem_state_opt = std::nullopt;
+    if(auth_identity_opt_exp->has_value()){
+        const auto user_problem_state_exp = problem_core_service::get_user_problem_state(
+            db_connection_value,
+            problem_reference_value,
+            auth_identity_opt_exp->value().user_id
+        );
+        if(!user_problem_state_exp){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::internal_server_error,
+                "internal_server_error",
+                "failed to get user problem state: " + to_string(user_problem_state_exp.error())
+            );
+        }
+        user_problem_state_opt = *user_problem_state_exp;
+    }
+
     return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
@@ -168,7 +194,8 @@ problem_handler::response_type problem_handler::get_problem(
             *limits_exp,
             statement_opt,
             *samples_exp,
-            *statistics_exp
+            *statistics_exp,
+            user_problem_state_opt
         )
     );
 }
