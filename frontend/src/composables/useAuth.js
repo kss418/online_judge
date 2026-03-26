@@ -10,7 +10,7 @@ import {
 
 const authTokenStorageKey = 'online_judge.auth_token'
 
-function normalizePermissionLevel(value, fallbackIsAdmin = false){
+function normalizePermissionLevel(value){
   const numericValue = Number(value)
 
   if (Number.isInteger(numericValue) && numericValue >= 0 && numericValue <= 2) {
@@ -25,7 +25,7 @@ function normalizePermissionLevel(value, fallbackIsAdmin = false){
     return 1
   }
 
-  return fallbackIsAdmin ? 1 : 0
+  return 0
 }
 
 function getRoleName(permissionLevel){
@@ -45,17 +45,13 @@ function normalizeCurrentUser(user){
     return null
   }
 
-  const permissionLevel = normalizePermissionLevel(
-    user.permission_level,
-    Boolean(user.is_admin)
-  )
+  const permissionLevel = normalizePermissionLevel(user.permission_level)
 
   return {
     id: Number(user.id ?? user.user_id ?? 0),
     user_name: user.user_name ?? '',
     permission_level: permissionLevel,
-    role_name: user.role_name || getRoleName(permissionLevel),
-    is_admin: permissionLevel >= 1
+    role_name: user.role_name || getRoleName(permissionLevel)
   }
 }
 
@@ -101,8 +97,7 @@ function setSession(session){
     user_id: session.user_id,
     user_name: session.user_name,
     permission_level: session.permission_level,
-    role_name: session.role_name,
-    is_admin: session.is_admin
+    role_name: session.role_name
   })
   writeStoredToken(session.token)
 }

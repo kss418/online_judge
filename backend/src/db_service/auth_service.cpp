@@ -1,4 +1,5 @@
 #include "db_service/auth_service.hpp"
+#include "common/permission_util.hpp"
 #include "db_service/db_service_util.hpp"
 #include "db_util/auth_util.hpp"
 #include "common/crypto_util.hpp"
@@ -123,7 +124,10 @@ std::expected<bool, error_code> auth_service::update_permission_level(
     std::int64_t user_id,
     std::int32_t permission_level
 ){
-    if(user_id <= 0 || permission_level < 0){
+    if(
+        user_id <= 0 ||
+        !permission_util::is_valid_permission_level(permission_level)
+    ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 

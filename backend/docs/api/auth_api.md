@@ -40,7 +40,6 @@ Example:
 | `user_id` | `int64` | created user id |
 | `permission_level` | `int32` | currently `0` on sign-up |
 | `role_name` | `string` | currently `user` on sign-up |
-| `is_admin` | `boolean` | derived from `permission_level >= 1`; currently `false` on sign-up |
 | `user_name` | `string` | stored display name |
 | `token` | `string` | raw bearer token |
 
@@ -51,7 +50,6 @@ Example:
   "user_id": 1,
   "permission_level": 0,
   "role_name": "user",
-  "is_admin": false,
   "user_name": "Alice",
   "token": "..."
 }
@@ -131,7 +129,6 @@ Example:
 | `user_id` | `int64` | authenticated user id |
 | `permission_level` | `int32` | current permission level |
 | `role_name` | `string` | derived role label |
-| `is_admin` | `boolean` | derived from `permission_level >= 1` |
 | `user_name` | `string` | stored display name |
 | `token` | `string` | newly issued raw bearer token |
 
@@ -142,7 +139,6 @@ Example:
   "user_id": 1,
   "permission_level": 1,
   "role_name": "admin",
-  "is_admin": true,
   "user_name": "Alice",
   "token": "..."
 }

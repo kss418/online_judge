@@ -126,14 +126,9 @@ std::expected<bool, error_code> auth_util::update_permission_level(
         "UPDATE users "
         "SET "
         "permission_level = $2, "
-        "is_admin = ($2::INTEGER >= $3::INTEGER), "
         "updated_at = NOW() "
         "WHERE user_id = $1",
-        pqxx::params{
-            user_id,
-            permission_level,
-            permission_util::ADMIN
-        }
+        pqxx::params{user_id, permission_level}
     );
 
     return update_result.affected_rows() > 0;

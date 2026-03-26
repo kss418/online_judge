@@ -226,14 +226,13 @@ async function loadUsers(){
     }
 
     users.value = responseUsers.map((user) => {
-      const permissionLevel = normalizePermissionLevel(user.permission_level, user.is_admin)
+      const permissionLevel = normalizePermissionLevel(user.permission_level)
       const normalizedUser = {
         user_id: Number(user.user_id ?? 0),
         user_name: user.user_name ?? '',
         user_login_id: user.user_login_id ?? '',
         permission_level: permissionLevel,
         role_name: user.role_name || getRoleName(permissionLevel),
-        is_admin: permissionLevel >= 1,
         created_at: typeof user.created_at === 'string' ? user.created_at : '',
         ...normalizeCreatedAt(user.created_at)
       }
@@ -279,8 +278,7 @@ async function handleSavePermission(user){
         ? {
           ...currentUser,
           permission_level: nextPermissionLevel,
-          role_name: getRoleName(nextPermissionLevel),
-          is_admin: nextPermissionLevel >= 1
+          role_name: getRoleName(nextPermissionLevel)
         }
         : currentUser
     )
@@ -301,7 +299,7 @@ async function handleSavePermission(user){
   }
 }
 
-function normalizePermissionLevel(value, fallbackIsAdmin = false){
+function normalizePermissionLevel(value){
   const numericValue = Number(value)
 
   if (Number.isInteger(numericValue) && numericValue >= 0 && numericValue <= 2) {
@@ -316,7 +314,7 @@ function normalizePermissionLevel(value, fallbackIsAdmin = false){
     return 1
   }
 
-  return fallbackIsAdmin ? 1 : 0
+  return 0
 }
 
 function getRoleName(permissionLevel){

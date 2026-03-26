@@ -37,7 +37,6 @@ Each item in `users` contains:
 | `user_login_id` | `string \| null` | login id when available |
 | `permission_level` | `int32` | numeric permission level |
 | `role_name` | `string` | derived role label |
-| `is_admin` | `boolean` | derived from `permission_level >= 1` |
 | `created_at` | `string` | sign-up timestamp |
 
 Example:
@@ -52,7 +51,6 @@ Example:
       "user_login_id": "admin",
       "permission_level": 2,
       "role_name": "superadmin",
-      "is_admin": true,
       "created_at": "2026-03-26 13:10:11.000000+09"
     },
     {
@@ -61,7 +59,6 @@ Example:
       "user_login_id": "alice",
       "permission_level": 0,
       "role_name": "user",
-      "is_admin": false,
       "created_at": "2026-03-26 13:14:02.000000+09"
     }
   ]
@@ -102,7 +99,6 @@ Get the currently authenticated user profile. This endpoint requires a bearer to
 | `user_name` | `string` | current display name |
 | `permission_level` | `int32` | current permission level |
 | `role_name` | `string` | derived role label |
-| `is_admin` | `boolean` | derived from `permission_level >= 1` |
 
 Example:
 
@@ -111,8 +107,7 @@ Example:
   "id": 7,
   "user_name": "Alice",
   "permission_level": 1,
-  "role_name": "admin",
-  "is_admin": true
+  "role_name": "admin"
 }
 ```
 
@@ -180,7 +175,6 @@ Update an existing user's numeric permission level. This endpoint is admin-only.
 | `user_id` | `int64` | updated user id |
 | `permission_level` | `int32` | stored permission level |
 | `role_name` | `string` | derived role label |
-| `is_admin` | `boolean` | derived from `permission_level >= 1` |
 
 Example:
 
@@ -188,8 +182,7 @@ Example:
 {
   "user_id": 7,
   "permission_level": 2,
-  "role_name": "superadmin",
-  "is_admin": true
+  "role_name": "superadmin"
 }
 ```
 

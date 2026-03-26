@@ -51,7 +51,6 @@ CREATE TABLE IF NOT EXISTS users(
     user_login_id TEXT,
     user_password_hash TEXT,
     permission_level INTEGER NOT NULL DEFAULT 0,
-    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT users_user_name_not_blank CHECK(user_name <> ''),
@@ -70,9 +69,24 @@ UPDATE users
 SET user_name = COALESCE(NULLIF(user_login_id, ''), 'user_' || user_id::TEXT)
 WHERE user_name IS NULL OR user_name = '';
 
-UPDATE users
-SET permission_level = CASE WHEN is_admin THEN 1 ELSE 0 END
-WHERE permission_level IS NULL;
+DO $do$
+BEGIN
+    IF EXISTS(
+        SELECT 1
+        FROM information_schema.columns
+        WHERE
+            table_schema = 'public' AND
+            table_name = 'users' AND
+            column_name = 'is_admin'
+    ) THEN
+        EXECUTE $sql$
+            UPDATE users
+            SET permission_level = CASE WHEN is_admin THEN 1 ELSE 0 END
+            WHERE permission_level IS NULL
+        $sql$;
+    END IF;
+END
+$do$;
 
 UPDATE users
 SET permission_level = CASE
@@ -90,10 +104,6 @@ WHERE permission_level IS DISTINCT FROM CASE
     ELSE 0
 END;
 
-UPDATE users
-SET is_admin = (permission_level >= 1)
-WHERE is_admin IS DISTINCT FROM (permission_level >= 1);
-
 ALTER TABLE users
     ALTER COLUMN user_name SET NOT NULL;
 
@@ -109,6 +119,9 @@ ALTER TABLE users
 ALTER TABLE users
     ADD CONSTRAINT users_permission_level_check
         CHECK(permission_level BETWEEN 0 AND 2);
+
+ALTER TABLE users
+    DROP COLUMN IF EXISTS is_admin;
 
 CREATE TABLE IF NOT EXISTS auth_tokens(
     token_id BIGSERIAL PRIMARY KEY,
@@ -215,7 +228,7 @@ CREATE INDEX IF NOT EXISTS auth_tokens_active_user_expires_idx
     WHERE revoked_at IS NULL;
 
 INSERT INTO schema_migrations(version)
-VALUES('auth_schema_v8')
+VALUES('auth_schema_v9')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

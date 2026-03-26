@@ -366,7 +366,7 @@ std::expected<auth_dto::identity, http_util::response_type> http_util::try_admin
     if(!auth_identity_exp){
         return std::unexpected(std::move(auth_identity_exp.error()));
     }
-    if(!permission_util::is_admin(auth_identity_exp->permission_level)){
+    if(!permission_util::has_admin_access(auth_identity_exp->permission_level)){
         return std::unexpected(http_response_util::create_bearer_error(
             request,
             "admin_bearer_token_required",
@@ -381,7 +381,7 @@ bool http_util::is_owner_or_admin(
     const auth_dto::identity& auth_identity_value,
     std::int64_t owner_user_id
 ){
-    return permission_util::is_admin(auth_identity_value.permission_level) ||
+    return permission_util::has_admin_access(auth_identity_value.permission_level) ||
         auth_identity_value.user_id == owner_user_id;
 }
 

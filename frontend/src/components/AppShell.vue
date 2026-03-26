@@ -38,7 +38,7 @@
               <div class="auth-session-user">
                 <strong>{{ authState.currentUser.user_name }}</strong>
                 <StatusBadge
-                  v-if="authState.currentUser.is_admin"
+                  v-if="authState.currentUser.permission_level >= 1"
                   :label="getRoleBadgeLabel(authState.currentUser)"
                   tone="warning"
                 />

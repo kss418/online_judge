@@ -400,7 +400,7 @@ function canViewSource(submission){
     return false
   }
 
-  if (authState.currentUser.is_admin) {
+  if (Number(authState.currentUser.permission_level ?? 0) >= 1) {
     return true
   }
 

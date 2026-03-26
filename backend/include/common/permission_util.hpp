@@ -12,20 +12,20 @@ namespace permission_util{
         return permission_level >= USER && permission_level <= SUPERADMIN;
     }
 
-    inline constexpr bool is_admin(std::int32_t permission_level){
+    inline constexpr bool has_admin_access(std::int32_t permission_level){
         return permission_level >= ADMIN;
     }
 
-    inline constexpr bool is_superadmin(std::int32_t permission_level){
+    inline constexpr bool has_superadmin_access(std::int32_t permission_level){
         return permission_level >= SUPERADMIN;
     }
 
     inline constexpr std::string_view role_name(std::int32_t permission_level){
-        if(is_superadmin(permission_level)){
+        if(has_superadmin_access(permission_level)){
             return "superadmin";
         }
 
-        if(is_admin(permission_level)){
+        if(has_admin_access(permission_level)){
             return "admin";
         }
 

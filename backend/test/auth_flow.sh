@@ -109,20 +109,25 @@ with open(login_response_file_path, encoding="utf-8") as response_file:
     login_response = json.load(response_file)
 
 sign_up_user_id = sign_up_response.get("user_id")
-sign_up_is_admin = sign_up_response.get("is_admin")
+sign_up_permission_level = sign_up_response.get("permission_level")
+sign_up_role_name = sign_up_response.get("role_name")
 sign_up_user_name = sign_up_response.get("user_name")
 sign_up_token = sign_up_response.get("token")
 
 login_user_id = login_response.get("user_id")
-login_is_admin = login_response.get("is_admin")
+login_permission_level = login_response.get("permission_level")
+login_role_name = login_response.get("role_name")
 login_user_name = login_response.get("user_name")
 login_token = login_response.get("token")
 
 if not isinstance(sign_up_user_id, int) or sign_up_user_id <= 0:
     raise SystemExit("invalid user_id in sign-up response")
 
-if sign_up_is_admin is not False:
-    raise SystemExit("expected is_admin to be false for new user")
+if sign_up_permission_level != 0:
+    raise SystemExit("expected permission_level to be 0 for new user")
+
+if sign_up_role_name != "user":
+    raise SystemExit("expected role_name to be user for new user")
 
 if sign_up_user_name != expected_user_name:
     raise SystemExit("sign-up response user_name mismatch")
@@ -133,8 +138,11 @@ if not isinstance(sign_up_token, str) or not sign_up_token:
 if login_user_id != sign_up_user_id:
     raise SystemExit("login response user_id does not match sign-up response")
 
-if login_is_admin is not False:
-    raise SystemExit("expected is_admin to stay false after login")
+if login_permission_level != 0:
+    raise SystemExit("expected permission_level to stay 0 after login")
+
+if login_role_name != "user":
+    raise SystemExit("expected role_name to stay user after login")
 
 if login_user_name != expected_user_name:
     raise SystemExit("login response user_name mismatch")
@@ -179,8 +187,14 @@ if current_user.get("id") != expected_user_id:
 if current_user.get("user_name") != expected_user_name:
     raise SystemExit("current user user_name mismatch before promote")
 
-if current_user.get("is_admin") is not False:
-    raise SystemExit("expected current user is_admin to be false before promote")
+if current_user.get("permission_level") != 0:
+    raise SystemExit("expected current user permission_level to be 0 before promote")
+
+if current_user.get("role_name") != "user":
+    raise SystemExit("expected current user role_name to be user before promote")
+
+if "is_admin" in current_user:
+    raise SystemExit("did not expect is_admin in current user response")
 PY
 then
     append_log_line "${test_log_temp_file}" "current user validation failed before promote"
@@ -271,8 +285,14 @@ if current_user.get("id") != expected_user_id:
 if current_user.get("user_name") != expected_user_name:
     raise SystemExit("current user user_name mismatch after promote")
 
-if current_user.get("is_admin") is not True:
-    raise SystemExit("expected current user is_admin to be true after promote")
+if current_user.get("permission_level") != 1:
+    raise SystemExit("expected current user permission_level to be 1 after promote")
+
+if current_user.get("role_name") != "admin":
+    raise SystemExit("expected current user role_name to be admin after promote")
+
+if "is_admin" in current_user:
+    raise SystemExit("did not expect is_admin in current user response")
 PY
 then
     append_log_line "${test_log_temp_file}" "current user validation failed after promote"
@@ -319,17 +339,26 @@ if unauthorized_promote_response.get("error", {}).get("code") != "admin_bearer_t
 if promote_admin_response.get("user_id") != expected_second_user_id:
     raise SystemExit("promote admin response user_id mismatch")
 
-if promote_admin_response.get("is_admin") is not True:
-    raise SystemExit("expected promoted user to be admin in promote admin response")
+if promote_admin_response.get("permission_level") != 1:
+    raise SystemExit("expected promoted user permission_level to be 1")
+
+if promote_admin_response.get("role_name") != "admin":
+    raise SystemExit("expected promoted user role_name to be admin")
 
 if second_login_response.get("user_id") != expected_second_user_id:
     raise SystemExit("second login response user_id mismatch")
 
-if second_login_response.get("is_admin") is not True:
-    raise SystemExit("expected second login response is_admin to be true after promotion")
+if second_login_response.get("permission_level") != 1:
+    raise SystemExit("expected second login response permission_level to be 1 after promotion")
+
+if second_login_response.get("role_name") != "admin":
+    raise SystemExit("expected second login response role_name to be admin after promotion")
 
 if second_login_response.get("user_name") != expected_second_user_name:
     raise SystemExit("expected second login response user_name to be preserved")
+
+if "is_admin" in promote_admin_response or "is_admin" in second_login_response:
+    raise SystemExit("did not expect is_admin in auth responses")
 PY
 then
     append_log_line "${test_log_temp_file}" "admin promote validation failed"
