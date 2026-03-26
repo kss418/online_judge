@@ -2,10 +2,9 @@
   <div class="app-shell">
     <aside class="shell-sidebar">
       <div class="brand-block">
-        <p class="brand-eyebrow">online judge</p>
-        <h1>Frontend Studio</h1>
+        <h1>Online Judge</h1>
         <p class="brand-copy">
-          백엔드 API와 연결되는 Vue + Vite 작업 공간입니다.
+          문제를 탐색하고 코드를 제출한 뒤 결과와 기록을 확인할 수 있습니다.
         </p>
       </div>
 
@@ -21,11 +20,6 @@
           <span class="nav-hint">{{ item.hint }}</span>
         </RouterLink>
       </nav>
-
-      <div class="sidebar-panel">
-        <p class="sidebar-panel-label">API Base</p>
-        <code>{{ apiBaseUrl }}</code>
-      </div>
     </aside>
 
     <div class="shell-main">
@@ -97,7 +91,6 @@
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
-import { apiBaseUrl } from '@/api/http'
 import AuthDialog from '@/components/AuthDialog.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
@@ -111,12 +104,12 @@ const navItems = [
   {
     to: '/',
     label: 'Overview',
-    hint: 'backend 연결 상태'
+    hint: '서비스 안내와 상태'
   },
   {
     to: '/problems',
     label: 'Problems',
-    hint: '문제 화면 뼈대'
+    hint: '문제 탐색과 상세 보기'
   },
   {
     to: '/submissions',

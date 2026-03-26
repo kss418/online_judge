@@ -80,7 +80,6 @@ code {
   letter-spacing: -0.03em;
 }
 
-.brand-eyebrow,
 .panel-kicker,
 .command-label,
 .sidebar-panel-label {
@@ -406,6 +405,17 @@ code {
 .command-card code {
   display: block;
   word-break: break-word;
+}
+
+.overview-feature-title {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--ink-strong);
+}
+
+.overview-feature-copy {
+  margin: 0;
+  color: var(--ink-soft);
 }
 
 .info-stack,

@@ -4,7 +4,7 @@
       <div class="panel-header">
         <div>
           <p class="panel-kicker">overview</p>
-          <h3>프론트 시작점이 준비됐습니다</h3>
+          <h3>문제를 풀고 제출 결과를 확인해보세요</h3>
         </div>
         <StatusBadge
           :label="statusLabel"
@@ -13,18 +13,31 @@
       </div>
 
       <p class="lead-copy">
-        이 화면은 백엔드와 연결되는 가장 얇은 기본 셸입니다. 지금은 시스템 상태와 지원 언어만 확인하고,
-        다음 단계에서 로그인/문제목록/제출 화면을 차례대로 붙이면 됩니다.
+        이 사이트에서는 문제를 탐색하고 코드를 제출한 뒤 채점 결과와 제출 기록을 한곳에서 확인할 수
+        있습니다. 로그인하면 내가 이미 해결한 문제인지, 아직 시도 중인 문제인지도 함께 볼 수 있습니다.
       </p>
 
       <div class="command-grid">
         <div class="command-card">
-          <p class="command-label">backend</p>
-          <code>cd backend && HTTP_PORT=8080 ./http_server</code>
+          <p class="command-label">browse</p>
+          <strong class="overview-feature-title">문제 탐색</strong>
+          <p class="overview-feature-copy">
+            문제 목록에서 번호와 제목을 빠르게 찾고, 상세 페이지에서 제한과 예제를 확인할 수 있습니다.
+          </p>
         </div>
         <div class="command-card">
-          <p class="command-label">frontend</p>
-          <code>cd frontend && npm run dev</code>
+          <p class="command-label">submit</p>
+          <strong class="overview-feature-title">풀이 제출</strong>
+          <p class="overview-feature-copy">
+            지원 언어로 코드를 제출하고 채점 상태가 바뀌는 흐름을 바로 확인할 수 있습니다.
+          </p>
+        </div>
+        <div class="command-card">
+          <p class="command-label">track</p>
+          <strong class="overview-feature-title">기록 확인</strong>
+          <p class="overview-feature-copy">
+            제출 목록과 문제 상태 색상으로 내 풀이 진행 상황과 최근 결과를 한눈에 볼 수 있습니다.
+          </p>
         </div>
       </div>
     </article>
@@ -33,12 +46,12 @@
       <div class="panel-header">
         <div>
           <p class="panel-kicker">health</p>
-          <h3>백엔드 연결 확인</h3>
+          <h3>서비스 상태</h3>
         </div>
       </div>
 
       <div v-if="isLoading" class="empty-state">
-        <p>백엔드 상태를 확인하는 중입니다.</p>
+        <p>서비스 상태를 확인하는 중입니다.</p>
       </div>
 
       <div v-else-if="errorMessage" class="empty-state error-state">
@@ -81,30 +94,6 @@
         >
           <strong>{{ language.language }}</strong>
           <span>{{ language.source_extension }}</span>
-        </div>
-      </div>
-    </article>
-
-    <article class="panel">
-      <div class="panel-header">
-        <div>
-          <p class="panel-kicker">next steps</p>
-          <h3>다음 작업 추천</h3>
-        </div>
-      </div>
-
-      <div class="todo-list">
-        <div class="todo-item">
-          <strong>1. 로그인 페이지 연결</strong>
-          <p>회원가입, 로그인, 토큰 갱신 흐름을 먼저 붙이면 이후 페이지 접근 제어가 편해집니다.</p>
-        </div>
-        <div class="todo-item">
-          <strong>2. 문제 목록 화면 구현</strong>
-          <p>검색/필터/정렬보다 먼저 기본 목록과 상세 이동부터 붙이는 편이 빠릅니다.</p>
-        </div>
-        <div class="todo-item">
-          <strong>3. 제출 목록과 상세</strong>
-          <p>채점 상태와 결과를 보는 화면을 분리하면 운영과 디버깅이 쉬워집니다.</p>
         </div>
       </div>
     </article>
@@ -155,7 +144,7 @@ async function loadOverview(){
   } catch (error) {
     errorMessage.value = error instanceof Error
       ? error.message
-      : '백엔드와 연결할 수 없습니다.'
+      : '서비스와 연결할 수 없습니다.'
   } finally {
     isLoading.value = false
   }
