@@ -43,7 +43,7 @@
         <div class="submission-table">
           <div class="submission-table-head">
             <span>제출번호</span>
-            <span>닉네임</span>
+            <span class="submission-table-head-user">닉네임</span>
             <span>문제번호</span>
             <span>결과</span>
             <span>실행시간</span>
@@ -700,6 +700,10 @@ onUnmounted(() => {
   color: var(--ink-soft);
 }
 
+.submission-table-head-user {
+  margin-left: -1.5rem;
+}
+
 .submission-row + .submission-row {
   border-top: 1px solid rgba(20, 33, 61, 0.08);
 }
@@ -789,6 +793,10 @@ onUnmounted(() => {
 .submission-cell.is-metric,
 .submission-cell.is-language {
   font-weight: 600;
+}
+
+.submission-cell.is-user {
+  margin-left: -1.5rem;
 }
 
 .submission-problem-link {
