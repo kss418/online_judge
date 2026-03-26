@@ -110,7 +110,7 @@ const navItems = computed(() => {
     {
       to: '/problems',
       label: 'Problems',
-      hint: '문제 탐색과 상세 보기'
+      hint: '문제 목록'
     },
     {
       to: '/submissions',
