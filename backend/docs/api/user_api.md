@@ -139,13 +139,13 @@ Examples:
 }
 ```
 
-### `PUT /api/user/{user_id}/permission`
+### `PUT /api/user/{user_id}/admin`
 
-Update an existing user's numeric permission level. This endpoint is superadmin-only.
+Promote an existing user to the `admin` role. This endpoint is superadmin-only.
 
 #### request
 
-- content-type: `application/json`
+- request body: none
 - required header:
 
 | header | required | note |
@@ -158,12 +158,6 @@ Update an existing user's numeric permission level. This endpoint is superadmin-
 |---|---|---|
 | `user_id` | `int64` | must be positive |
 
-- body fields:
-
-| field | type | required | note |
-|---|---|---|---|
-| `permission_level` | `int32` | yes | must be one of `0`, `1`, `2` |
-
 #### success response
 
 - status: `200 OK`
@@ -173,16 +167,16 @@ Update an existing user's numeric permission level. This endpoint is superadmin-
 | field | type | note |
 |---|---|---|
 | `user_id` | `int64` | updated user id |
-| `permission_level` | `int32` | stored permission level |
-| `role_name` | `string` | derived role label |
+| `permission_level` | `int32` | always `1` |
+| `role_name` | `string` | always `admin` |
 
 Example:
 
 ```json
 {
   "user_id": 7,
-  "permission_level": 2,
-  "role_name": "superadmin"
+  "permission_level": 1,
+  "role_name": "admin"
 }
 ```
 

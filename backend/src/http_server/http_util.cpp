@@ -95,39 +95,6 @@ std::optional<std::int32_t> http_util::get_positive_int32_field(
     return static_cast<std::int32_t>(*int64_value_opt);
 }
 
-std::optional<std::int32_t> http_util::get_non_negative_int32_field(
-    const boost::json::object& object,
-    std::string_view key
-){
-    const auto* value = object.if_contains(key);
-    if(value == nullptr){
-        return std::nullopt;
-    }
-
-    if(value->is_int64()){
-        const auto int64_value = value->as_int64();
-        if(
-            int64_value < 0 ||
-            int64_value > std::numeric_limits<std::int32_t>::max()
-        ){
-            return std::nullopt;
-        }
-
-        return static_cast<std::int32_t>(int64_value);
-    }
-
-    if(value->is_uint64()){
-        const auto uint64_value = value->as_uint64();
-        if(uint64_value > static_cast<std::uint64_t>(std::numeric_limits<std::int32_t>::max())){
-            return std::nullopt;
-        }
-
-        return static_cast<std::int32_t>(uint64_value);
-    }
-
-    return std::nullopt;
-}
-
 std::optional<std::vector<std::string_view>> http_util::parse_path(
     std::string_view prefix,
     std::string_view path

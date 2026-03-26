@@ -42,10 +42,6 @@ namespace auth_dto{
         std::string password_hash;
     };
 
-    struct permission_update_request{
-        std::int32_t permission_level = 0;
-    };
-
     struct identity{
         std::int64_t user_id = 0;
         std::int32_t permission_level = 0;
@@ -76,11 +72,6 @@ namespace auth_dto{
     std::expected<credentials, dto_validation_error> make_credentials_from_json(
         const boost::json::object& json
     );
-    std::expected<permission_update_request, dto_validation_error>
-    make_permission_update_request_from_json(
-        const boost::json::object& json
-    );
-
     std::expected<hashed_sign_up_request, error_code> hash_sign_up_request(
         const sign_up_request& sign_up_request_value
     );

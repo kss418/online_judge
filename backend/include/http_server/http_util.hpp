@@ -82,10 +82,6 @@ namespace http_util{
         const boost::json::object& object,
         std::string_view key
     );
-    std::optional<std::int32_t> get_non_negative_int32_field(
-        const boost::json::object& object,
-        std::string_view key
-    );
     std::optional<std::vector<std::string_view>> parse_path(
         std::string_view prefix,
         std::string_view path

@@ -4,9 +4,9 @@
       <div class="admin-users-toolbar">
         <div>
           <p class="panel-kicker">admin</p>
-          <h3>유저 관리</h3>
+          <h3>권한 관리</h3>
           <p class="admin-users-copy">
-            가입한 사용자를 확인하고 권한 숫자(예: 0=user, 1=admin, 2=superadmin)를 관리할 수 있습니다.
+            가입한 사용자를 확인하고 어드민 승격과 유저 강등을 관리할 수 있습니다.
           </p>
         </div>
 
@@ -32,7 +32,7 @@
       </div>
 
       <div v-else-if="!isAuthenticated" class="empty-state">
-        <p>유저 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.</p>
+        <p>권한 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.</p>
       </div>
 
       <div v-else-if="!canManageUsers" class="empty-state error-state">
@@ -131,23 +131,27 @@
                 </span>
               </time>
               <div class="admin-user-actions">
-                <input
-                  v-model.number="permissionDrafts[user.user_id]"
-                  class="field-input admin-user-permission-input"
-                  type="number"
-                  min="0"
-                  max="2"
-                  step="1"
-                  :disabled="!canEditPermissions || savingUserId === user.user_id"
-                />
                 <button
+                  v-if="user.permission_level === 0"
                   type="button"
                   class="ghost-button admin-user-action-button"
-                  :disabled="!canEditPermissions || savingUserId === user.user_id || !isPermissionDirty(user)"
-                  @click="handleSavePermission(user)"
+                  :disabled="!canEditPermissions || savingUserId === user.user_id"
+                  @click="handlePromoteToAdmin(user)"
                 >
-                  {{ savingUserId === user.user_id ? '저장 중...' : '권한 저장' }}
+                  {{ savingUserId === user.user_id ? '처리 중...' : '어드민 승격' }}
                 </button>
+                <button
+                  v-else-if="user.permission_level === 1"
+                  type="button"
+                  class="ghost-button admin-user-action-button"
+                  :disabled="!canEditPermissions || savingUserId === user.user_id"
+                  @click="handleDemoteToUser(user)"
+                >
+                  {{ savingUserId === user.user_id ? '처리 중...' : '유저 강등' }}
+                </button>
+                <span v-else class="admin-user-action-placeholder">
+                  변경 불가
+                </span>
               </div>
             </div>
           </div>
@@ -158,9 +162,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
-import { getUserList, updateUserPermissionLevel } from '@/api/user'
+import { demoteUserToUser, getUserList, promoteUserToAdmin } from '@/api/user'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
 
@@ -170,7 +174,6 @@ const errorMessage = ref('')
 const actionMessage = ref('')
 const savingUserId = ref(0)
 const users = ref([])
-const permissionDrafts = reactive({})
 const nowTimestamp = ref(Date.now())
 let latestLoadRequestId = 0
 let relativeTimeRefreshTimer = null
@@ -227,13 +230,9 @@ async function loadUsers(){
 
     const responseUsers = Array.isArray(response.users) ? response.users : []
 
-    for (const key of Object.keys(permissionDrafts)) {
-      delete permissionDrafts[key]
-    }
-
     users.value = responseUsers.map((user) => {
       const permissionLevel = normalizePermissionLevel(user.permission_level)
-      const normalizedUser = {
+      return {
         user_id: Number(user.user_id ?? 0),
         user_name: user.user_name ?? '',
         user_login_id: user.user_login_id ?? '',
@@ -242,9 +241,6 @@ async function loadUsers(){
         created_at: typeof user.created_at === 'string' ? user.created_at : '',
         ...normalizeCreatedAt(user.created_at)
       }
-
-      permissionDrafts[normalizedUser.user_id] = permissionLevel
-      return normalizedUser
     })
   } catch (error) {
     if (requestId !== latestLoadRequestId) {
@@ -262,17 +258,19 @@ async function loadUsers(){
   }
 }
 
-async function handleSavePermission(user){
+async function handlePromoteToAdmin(user){
+  return handleRoleAction(user, permissionLevelToRole.admin)
+}
+
+async function handleDemoteToUser(user){
+  return handleRoleAction(user, permissionLevelToRole.user)
+}
+
+async function handleRoleAction(user, nextPermissionLevel){
   if (!authState.token || !canEditPermissions.value) {
     if (!canEditPermissions.value) {
       errorMessage.value = '권한 변경은 슈퍼어드민만 할 수 있습니다.'
     }
-    return
-  }
-
-  const nextPermissionLevel = Number(permissionDrafts[user.user_id])
-  if (!Number.isInteger(nextPermissionLevel) || nextPermissionLevel < 0 || nextPermissionLevel > 2) {
-    errorMessage.value = '권한 레벨은 0, 1, 2 중 하나여야 합니다.'
     return
   }
 
@@ -281,7 +279,12 @@ async function handleSavePermission(user){
   actionMessage.value = ''
 
   try {
-    await updateUserPermissionLevel(user.user_id, nextPermissionLevel, authState.token)
+    if (nextPermissionLevel === permissionLevelToRole.admin) {
+      await promoteUserToAdmin(user.user_id, authState.token)
+    } else {
+      await demoteUserToUser(user.user_id, authState.token)
+    }
+
     users.value = users.value.map((currentUser) =>
       currentUser.user_id === user.user_id
         ? {
@@ -292,21 +295,27 @@ async function handleSavePermission(user){
         : currentUser
     )
 
-    permissionDrafts[user.user_id] = nextPermissionLevel
-
     if (user.user_id === currentUserId.value) {
       await refreshCurrentUser()
     }
 
-    actionMessage.value = `${user.user_name} 님의 권한을 ${nextPermissionLevel}로 저장했습니다.`
+    actionMessage.value = nextPermissionLevel === permissionLevelToRole.admin
+      ? `${user.user_name} 님을 어드민으로 승격했습니다.`
+      : `${user.user_name} 님을 유저로 강등했습니다.`
   } catch (error) {
     errorMessage.value = error instanceof Error
       ? error.message
-      : '권한 레벨을 적용하지 못했습니다.'
+      : '권한 변경을 적용하지 못했습니다.'
   } finally {
     savingUserId.value = 0
   }
 }
+
+const permissionLevelToRole = Object.freeze({
+  user: 0,
+  admin: 1,
+  superadmin: 2
+})
 
 function normalizePermissionLevel(value){
   const numericValue = Number(value)
@@ -351,19 +360,15 @@ function formatPermissionLabel(permissionLevel){
 }
 
 function getPermissionTone(permissionLevel){
-  if (permissionLevel >= 2) {
+  if (permissionLevel >= permissionLevelToRole.superadmin) {
     return 'danger'
   }
 
-  if (permissionLevel >= 1) {
+  if (permissionLevel >= permissionLevelToRole.admin) {
     return 'warning'
   }
 
   return 'neutral'
-}
-
-function isPermissionDirty(user){
-  return Number(permissionDrafts[user.user_id]) !== user.permission_level
 }
 
 function normalizeCreatedAt(value){
@@ -649,15 +654,16 @@ onUnmounted(() => {
   gap: 0.65rem;
 }
 
-.admin-user-permission-input {
-  width: 7rem;
-  min-height: 2.4rem;
-}
-
 .admin-user-action-button {
   min-height: 2.4rem;
   padding-inline: 0.95rem;
   white-space: nowrap;
+}
+
+.admin-user-action-placeholder {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 @media (max-width: 1120px) {
