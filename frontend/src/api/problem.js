@@ -73,3 +73,10 @@ export function deleteProblem(problemId, token){
     bearerToken: token
   })
 }
+
+export function rejudgeProblem(problemId, token){
+  return requestJson(`/problem/${problemId}/rejudge`, {
+    method: 'POST',
+    bearerToken: token
+  })
+}

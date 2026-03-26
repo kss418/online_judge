@@ -166,12 +166,22 @@
                   </p>
                 </div>
 
-                <RouterLink
-                  class="ghost-button"
-                  :to="{ name: 'problem-detail', params: { problemId: selectedProblemDetail.problem_id } }"
-                >
-                  문제 보기
-                </RouterLink>
+                <div class="admin-problem-editor-header-actions">
+                  <button
+                    type="button"
+                    class="ghost-button admin-problem-rejudge-button"
+                    :disabled="Boolean(busySection)"
+                    @click="openRejudgeDialog"
+                  >
+                    재채점
+                  </button>
+                  <RouterLink
+                    class="ghost-button"
+                    :to="{ name: 'problem-detail', params: { problemId: selectedProblemDetail.problem_id } }"
+                  >
+                    문제 보기
+                  </RouterLink>
+                </div>
               </div>
 
               <article class="admin-problem-editor-section">
@@ -341,6 +351,92 @@
 
   <Teleport to="body">
     <div
+      v-if="rejudgeDialogOpen"
+      class="admin-problem-delete-backdrop"
+      @pointerdown="handleRejudgeBackdropPointerDown"
+      @click.self="handleRejudgeBackdropClick"
+    >
+      <section
+        class="admin-problem-delete-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="admin-problem-rejudge-title"
+      >
+        <div class="admin-problem-delete-header">
+          <div>
+            <p class="panel-kicker">confirm rejudge</p>
+            <h3 id="admin-problem-rejudge-title">문제 재채점 확인</h3>
+            <p class="auth-dialog-copy">
+              아래 두 값을 모두 정확히 다시 입력해야 재채점을 요청할 수 있습니다.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="icon-button"
+            aria-label="닫기"
+            :disabled="isRejudgingProblem"
+            @click="closeRejudgeDialog"
+          >
+            ×
+          </button>
+        </div>
+
+        <div v-if="selectedProblemDetail" class="admin-problem-delete-summary">
+          <strong>#{{ formatCount(selectedProblemDetail.problem_id) }} {{ selectedProblemDetail.title }}</strong>
+          <p class="admin-problem-confirm-copy">
+            현재 문제의 `accepted`, `wrong_answer` 제출을 다시 채점 대기열에 넣습니다.
+          </p>
+        </div>
+
+        <div class="field-block">
+          <label class="field-label" for="rejudge-problem-id-confirm">문제 번호 다시 입력</label>
+          <input
+            id="rejudge-problem-id-confirm"
+            v-model="rejudgeConfirmProblemId"
+            class="field-input"
+            type="text"
+            inputmode="numeric"
+            :disabled="isRejudgingProblem"
+            placeholder="예: 1000"
+          />
+        </div>
+
+        <div class="field-block">
+          <label class="field-label" for="rejudge-problem-title-confirm">문제 제목 다시 입력</label>
+          <input
+            id="rejudge-problem-title-confirm"
+            v-model="rejudgeConfirmTitle"
+            class="field-input"
+            type="text"
+            :disabled="isRejudgingProblem"
+            placeholder="문제 제목"
+          />
+        </div>
+
+        <div class="dialog-actions">
+          <button
+            type="button"
+            class="ghost-button"
+            :disabled="isRejudgingProblem"
+            @click="closeRejudgeDialog"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            class="primary-button admin-problem-rejudge-confirm"
+            :disabled="!canRejudgeSelectedProblem"
+            @click="handleRejudgeProblem"
+          >
+            {{ isRejudgingProblem ? '요청 중...' : '재채점 확정' }}
+          </button>
+        </div>
+      </section>
+    </div>
+  </Teleport>
+
+  <Teleport to="body">
+    <div
       v-if="deleteDialogOpen"
       class="admin-problem-delete-backdrop"
       @pointerdown="handleDeleteBackdropPointerDown"
@@ -431,6 +527,7 @@ import {
   deleteProblem,
   getProblemDetail,
   getProblemList,
+  rejudgeProblem,
   updateProblemLimits,
   updateProblemStatement,
   updateProblemTitle
@@ -461,6 +558,10 @@ const inputFormatDraft = ref('')
 const outputFormatDraft = ref('')
 const noteDraft = ref('')
 const busySection = ref('')
+const rejudgeDialogOpen = ref(false)
+const rejudgeConfirmProblemId = ref('')
+const rejudgeConfirmTitle = ref('')
+const isRejudgeBackdropInteraction = ref(false)
 const deleteDialogOpen = ref(false)
 const deleteConfirmProblemId = ref('')
 const deleteConfirmTitle = ref('')
@@ -481,6 +582,7 @@ const isCreatingProblem = computed(() => busySection.value === 'create')
 const isSavingTitle = computed(() => busySection.value === 'title')
 const isSavingLimits = computed(() => busySection.value === 'limits')
 const isSavingStatement = computed(() => busySection.value === 'statement')
+const isRejudgingProblem = computed(() => busySection.value === 'rejudge')
 const isDeletingProblem = computed(() => busySection.value === 'delete')
 const canSaveTitle = computed(() => {
   if (!selectedProblemDetail.value || !authState.token || busySection.value) {
@@ -538,6 +640,17 @@ const canDeleteSelectedProblem = computed(() => {
     deleteConfirmTitle.value === selectedProblemDetail.value.title
   )
 })
+const canRejudgeSelectedProblem = computed(() => {
+  if (!selectedProblemDetail.value || !rejudgeDialogOpen.value || busySection.value) {
+    return false
+  }
+
+  const expectedProblemId = String(selectedProblemDetail.value.problem_id)
+  return (
+    rejudgeConfirmProblemId.value.trim() === expectedProblemId &&
+    rejudgeConfirmTitle.value === selectedProblemDetail.value.title
+  )
+})
 
 watch(
   () => [authState.initialized, authState.token, authState.currentUser?.permission_level],
@@ -570,6 +683,7 @@ function resetPageState(){
   actionErrorMessage.value = ''
   actionMessage.value = ''
   busySection.value = ''
+  closeRejudgeDialog(true)
   closeDeleteDialog(true)
   resetEditorDrafts()
 }
@@ -974,6 +1088,17 @@ function openDeleteDialog(){
   deleteDialogOpen.value = true
 }
 
+function openRejudgeDialog(){
+  if (!selectedProblemDetail.value || busySection.value) {
+    return
+  }
+
+  rejudgeConfirmProblemId.value = ''
+  rejudgeConfirmTitle.value = ''
+  isRejudgeBackdropInteraction.value = false
+  rejudgeDialogOpen.value = true
+}
+
 function closeDeleteDialog(force = false){
   if (!force && isDeletingProblem.value) {
     return
@@ -985,8 +1110,23 @@ function closeDeleteDialog(force = false){
   deleteConfirmTitle.value = ''
 }
 
+function closeRejudgeDialog(force = false){
+  if (!force && isRejudgingProblem.value) {
+    return
+  }
+
+  rejudgeDialogOpen.value = false
+  isRejudgeBackdropInteraction.value = false
+  rejudgeConfirmProblemId.value = ''
+  rejudgeConfirmTitle.value = ''
+}
+
 function handleDeleteBackdropPointerDown(event){
   isDeleteBackdropInteraction.value = event.target === event.currentTarget
+}
+
+function handleRejudgeBackdropPointerDown(event){
+  isRejudgeBackdropInteraction.value = event.target === event.currentTarget
 }
 
 function handleDeleteBackdropClick(){
@@ -995,6 +1135,37 @@ function handleDeleteBackdropClick(){
   }
 
   closeDeleteDialog()
+}
+
+function handleRejudgeBackdropClick(){
+  if (!isRejudgeBackdropInteraction.value) {
+    return
+  }
+
+  closeRejudgeDialog()
+}
+
+async function handleRejudgeProblem(){
+  if (!authState.token || !selectedProblemDetail.value || !canRejudgeSelectedProblem.value) {
+    return
+  }
+
+  const rejudgingProblemId = selectedProblemDetail.value.problem_id
+  busySection.value = 'rejudge'
+  actionErrorMessage.value = ''
+  actionMessage.value = ''
+
+  try {
+    await rejudgeProblem(rejudgingProblemId, authState.token)
+    closeRejudgeDialog(true)
+    actionMessage.value = `문제 #${formatCount(rejudgingProblemId)} 재채점을 요청했습니다.`
+  } catch (error) {
+    actionErrorMessage.value = error instanceof Error
+      ? error.message
+      : '문제 재채점을 요청하지 못했습니다.'
+  } finally {
+    busySection.value = ''
+  }
 }
 
 async function handleDeleteProblem(){
@@ -1220,6 +1391,13 @@ onMounted(() => {
   align-items: start;
 }
 
+.admin-problem-editor-header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .admin-problem-editor-section {
   display: grid;
   gap: 1rem;
@@ -1274,9 +1452,35 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
+.admin-problem-rejudge-button,
+.admin-problem-rejudge-confirm,
 .admin-problem-danger-button,
 .admin-problem-delete-confirm {
   min-width: 8.5rem;
+}
+
+.admin-problem-rejudge-button {
+  min-width: 6.25rem;
+  padding-inline: 0.95rem;
+  color: var(--warning);
+  background: rgba(255, 247, 237, 0.96);
+  border-color: rgba(180, 83, 9, 0.18);
+}
+
+.admin-problem-rejudge-confirm {
+  background: linear-gradient(135deg, #d97706, #ea580c);
+  box-shadow: 0 12px 28px rgba(217, 119, 6, 0.28);
+}
+
+.admin-problem-danger-button {
+  color: var(--danger);
+  background: rgba(254, 242, 242, 0.96);
+  border-color: rgba(185, 28, 28, 0.18);
+}
+
+.admin-problem-delete-confirm {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  box-shadow: 0 12px 28px rgba(185, 28, 28, 0.24);
 }
 
 .admin-problem-delete-backdrop {
@@ -1315,6 +1519,11 @@ onMounted(() => {
   border: 1px solid rgba(185, 28, 28, 0.16);
   background: rgba(255, 243, 243, 0.82);
   color: var(--danger);
+}
+
+.admin-problem-confirm-copy {
+  margin: 0.4rem 0 0;
+  color: var(--ink-soft);
 }
 
 .compact-state {
