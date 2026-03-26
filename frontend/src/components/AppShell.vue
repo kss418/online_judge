@@ -121,6 +121,12 @@ const navItems = computed(() => {
 
   if (authState.currentUser?.permission_level >= 1) {
     items.push({
+      to: '/admin/problems',
+      label: 'Problem Admin',
+      hint: '문제 관리'
+    })
+
+    items.push({
       to: '/admin/users',
       label: 'Privilege',
       hint: '권한 관리'

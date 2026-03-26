@@ -34,3 +34,42 @@ export async function getProblemDetail(problemId, options = {}){
 
   return normalizeProblemStateRecord(response)
 }
+
+export function createProblem(payload, token){
+  return requestJson('/problem', {
+    method: 'POST',
+    body: payload,
+    bearerToken: token
+  })
+}
+
+export function updateProblemTitle(problemId, payload, token){
+  return requestJson(`/problem/${problemId}/title`, {
+    method: 'PUT',
+    body: payload,
+    bearerToken: token
+  })
+}
+
+export function updateProblemLimits(problemId, payload, token){
+  return requestJson(`/problem/${problemId}/limits`, {
+    method: 'PUT',
+    body: payload,
+    bearerToken: token
+  })
+}
+
+export function updateProblemStatement(problemId, payload, token){
+  return requestJson(`/problem/${problemId}/statement`, {
+    method: 'PUT',
+    body: payload,
+    bearerToken: token
+  })
+}
+
+export function deleteProblem(problemId, token){
+  return requestJson(`/problem/${problemId}`, {
+    method: 'DELETE',
+    bearerToken: token
+  })
+}
