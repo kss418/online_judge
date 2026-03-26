@@ -3,7 +3,7 @@
     <article class="panel admin-users-panel">
       <div class="admin-users-toolbar">
         <div>
-          <p class="panel-kicker">admin</p>
+          <p class="panel-kicker">Privilege</p>
           <h3>권한 관리</h3>
           <p class="admin-users-copy">
             가입한 사용자를 확인하고 어드민 승격과 유저 강등을 관리할 수 있습니다.
@@ -111,7 +111,6 @@
                   :label="formatPermissionLabel(user.permission_level)"
                   :tone="getPermissionTone(user.permission_level)"
                 />
-                <span class="admin-user-role-level">Lv. {{ user.permission_level }}</span>
               </div>
               <time
                 class="admin-user-created-at"
@@ -149,9 +148,7 @@
                 >
                   {{ savingUserId === user.user_id ? '처리 중...' : '유저 강등' }}
                 </button>
-                <span v-else class="admin-user-action-placeholder">
-                  변경 불가
-                </span>
+                <span v-else class="admin-user-action-placeholder" aria-hidden="true"></span>
               </div>
             </div>
           </div>
@@ -559,8 +556,7 @@ onUnmounted(() => {
 
 .admin-user-self,
 .admin-user-login-id,
-.admin-user-created-at,
-.admin-user-role-level {
+.admin-user-created-at {
   color: var(--ink-soft);
 }
 
@@ -571,10 +567,7 @@ onUnmounted(() => {
 .admin-user-role {
   display: grid;
   gap: 0.3rem;
-}
-
-.admin-user-role-level {
-  font-size: 0.82rem;
+  justify-items: start;
 }
 
 .admin-user-created-at {
@@ -661,9 +654,8 @@ onUnmounted(() => {
 }
 
 .admin-user-action-placeholder {
-  color: var(--ink-soft);
-  font-size: 0.9rem;
-  font-weight: 600;
+  display: inline-block;
+  min-height: 2.4rem;
 }
 
 @media (max-width: 1120px) {

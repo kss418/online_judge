@@ -40,7 +40,7 @@
                 <StatusBadge
                   v-if="authState.currentUser.permission_level >= 1"
                   :label="getRoleBadgeLabel(authState.currentUser)"
-                  tone="warning"
+                  :tone="getRoleBadgeTone(authState.currentUser)"
                 />
               </div>
             </div>
@@ -159,6 +159,14 @@ function getRoleBadgeLabel(user){
   }
 
   return user.role_name === 'superadmin' ? 'SuperAdmin' : 'Admin'
+}
+
+function getRoleBadgeTone(user){
+  if (!user) {
+    return 'neutral'
+  }
+
+  return user.role_name === 'superadmin' ? 'danger' : 'warning'
 }
 
 onMounted(() => {
