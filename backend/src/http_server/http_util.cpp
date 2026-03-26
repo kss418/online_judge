@@ -377,6 +377,25 @@ std::expected<auth_dto::identity, http_util::response_type> http_util::try_admin
     return *auth_identity_exp;
 }
 
+std::expected<auth_dto::identity, http_util::response_type> http_util::try_superadmin_auth_bearer(
+    const request_type& request,
+    db_connection& db_connection
+){
+    const auto auth_identity_exp = try_auth_bearer(request, db_connection);
+    if(!auth_identity_exp){
+        return std::unexpected(std::move(auth_identity_exp.error()));
+    }
+    if(!permission_util::has_superadmin_access(auth_identity_exp->permission_level)){
+        return std::unexpected(http_response_util::create_bearer_error(
+            request,
+            "superadmin_bearer_token_required",
+            "superadmin bearer token required"
+        ));
+    }
+
+    return *auth_identity_exp;
+}
+
 bool http_util::is_owner_or_admin(
     const auth_dto::identity& auth_identity_value,
     std::int64_t owner_user_id

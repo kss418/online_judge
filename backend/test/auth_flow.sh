@@ -49,9 +49,12 @@ register_temp_file logout_response_file
 register_temp_file second_logout_response_file
 register_temp_file second_sign_up_response_file
 register_temp_file second_login_response_file
+register_temp_file third_login_response_file
 register_temp_file user_me_response_file
 register_temp_file promote_admin_response_file
+register_temp_file demote_user_response_file
 register_temp_file unauthorized_promote_response_file
+register_temp_file unauthorized_demote_response_file
 register_temp_file duplicate_user_name_response_file
 
 trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
@@ -247,11 +250,11 @@ send_http_request_and_assert_status \
 print_success_log "unauthorized promote success"
 assert_json_error_code \
     "${unauthorized_promote_response_file}" \
-    "admin_bearer_token_required" \
+    "superadmin_bearer_token_required" \
     "unauthorized promote"
 
-promote_admin_user "${login_user_id}" "auth flow" >/dev/null
-print_success_log "bootstrap admin promote success"
+promote_superadmin_user "${login_user_id}" "auth flow" >/dev/null
+print_success_log "bootstrap superadmin promote success"
 
 send_http_request_and_assert_status \
     "PUT" \
@@ -285,11 +288,11 @@ if current_user.get("id") != expected_user_id:
 if current_user.get("user_name") != expected_user_name:
     raise SystemExit("current user user_name mismatch after promote")
 
-if current_user.get("permission_level") != 1:
-    raise SystemExit("expected current user permission_level to be 1 after promote")
+if current_user.get("permission_level") != 2:
+    raise SystemExit("expected current user permission_level to be 2 after promote")
 
-if current_user.get("role_name") != "admin":
-    raise SystemExit("expected current user role_name to be admin after promote")
+if current_user.get("role_name") != "superadmin":
+    raise SystemExit("expected current user role_name to be superadmin after promote")
 
 if "is_admin" in current_user:
     raise SystemExit("did not expect is_admin in current user response")
@@ -333,7 +336,7 @@ with open(sys.argv[3], encoding="utf-8") as response_file:
 expected_second_user_id = int(sys.argv[4])
 expected_second_user_name = sys.argv[5]
 
-if unauthorized_promote_response.get("error", {}).get("code") != "admin_bearer_token_required":
+if unauthorized_promote_response.get("error", {}).get("code") != "superadmin_bearer_token_required":
     raise SystemExit("unexpected error code for unauthorized promote response")
 
 if promote_admin_response.get("user_id") != expected_second_user_id:
@@ -365,6 +368,87 @@ then
     publish_failure_logs
     exit 1
 fi
+
+second_login_token="$(read_json_field "${second_login_response_file}" "token" "string")"
+send_http_request_and_assert_status \
+    "PUT" \
+    "${base_url}/api/user/${login_user_id}/user" \
+    "${unauthorized_demote_response_file}" \
+    "401" \
+    "unauthorized demote by admin" \
+    "${second_login_token}"
+print_success_log "unauthorized demote by admin success"
+assert_json_error_code \
+    "${unauthorized_demote_response_file}" \
+    "superadmin_bearer_token_required" \
+    "unauthorized demote by admin"
+
+send_http_request_and_assert_status \
+    "PUT" \
+    "${base_url}/api/user/${second_user_id}/user" \
+    "${demote_user_response_file}" \
+    "200" \
+    "demote user" \
+    "${login_token}"
+print_success_log "demote user success"
+
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/auth/login" \
+    "${third_login_response_file}" \
+    "200" \
+    "third login" \
+    "" \
+    "${second_login_request_body}"
+print_success_log "third login success"
+
+if ! python3 \
+    - "${demote_user_response_file}" \
+    "${third_login_response_file}" \
+    "${second_user_id}" \
+    "${second_user_name}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    demote_user_response = json.load(response_file)
+
+with open(sys.argv[2], encoding="utf-8") as response_file:
+    third_login_response = json.load(response_file)
+
+expected_second_user_id = int(sys.argv[3])
+expected_second_user_name = sys.argv[4]
+
+if demote_user_response.get("user_id") != expected_second_user_id:
+    raise SystemExit("demote user response user_id mismatch")
+
+if demote_user_response.get("permission_level") != 0:
+    raise SystemExit("expected demoted user permission_level to be 0")
+
+if demote_user_response.get("role_name") != "user":
+    raise SystemExit("expected demoted user role_name to be user")
+
+if third_login_response.get("user_id") != expected_second_user_id:
+    raise SystemExit("third login response user_id mismatch")
+
+if third_login_response.get("permission_level") != 0:
+    raise SystemExit("expected third login response permission_level to be 0 after demotion")
+
+if third_login_response.get("role_name") != "user":
+    raise SystemExit("expected third login response role_name to be user after demotion")
+
+if third_login_response.get("user_name") != expected_second_user_name:
+    raise SystemExit("expected third login response user_name to be preserved")
+
+if "is_admin" in demote_user_response or "is_admin" in third_login_response:
+    raise SystemExit("did not expect is_admin in demotion responses")
+PY
+then
+    append_log_line "${test_log_temp_file}" "user demotion validation failed"
+    publish_failure_logs
+    exit 1
+fi
+print_success_log "user demotion success"
 
 renew_status_code="$(
     send_http_request \

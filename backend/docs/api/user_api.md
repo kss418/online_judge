@@ -141,7 +141,7 @@ Examples:
 
 ### `PUT /api/user/{user_id}/permission`
 
-Update an existing user's numeric permission level. This endpoint is admin-only.
+Update an existing user's numeric permission level. This endpoint is superadmin-only.
 
 #### request
 
@@ -150,7 +150,7 @@ Update an existing user's numeric permission level. This endpoint is admin-only.
 
 | header | required | note |
 |---|---|---|
-| `Authorization` | yes | format: `Bearer <admin-token>` |
+| `Authorization` | yes | format: `Bearer <superadmin-token>` |
 
 - path parameter:
 
@@ -190,7 +190,56 @@ Example:
 
 - missing or malformed bearer token: `401 Unauthorized`
 - invalid, expired, or revoked token: `401 Unauthorized`
-- authenticated but not admin: `401 Unauthorized`
+- authenticated but not superadmin: `401 Unauthorized`
+- unknown `user_id`: `404 Not Found`
+- unexpected internal failure: `500 Internal Server Error`
+
+### `PUT /api/user/{user_id}/user`
+
+Demote an existing user to the regular `user` role. This endpoint is superadmin-only.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <superadmin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `user_id` | `int64` | must be positive |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `user_id` | `int64` | updated user id |
+| `permission_level` | `int32` | always `0` |
+| `role_name` | `string` | always `user` |
+
+Example:
+
+```json
+{
+  "user_id": 7,
+  "permission_level": 0,
+  "role_name": "user"
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not superadmin: `401 Unauthorized`
 - unknown `user_id`: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 
@@ -201,8 +250,8 @@ Examples:
 ```json
 {
   "error": {
-    "code": "admin_bearer_token_required",
-    "message": "admin bearer token required"
+    "code": "superadmin_bearer_token_required",
+    "message": "superadmin bearer token required"
   }
 }
 ```

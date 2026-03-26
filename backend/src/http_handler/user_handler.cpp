@@ -59,7 +59,48 @@ user_handler::response_type user_handler::put_user_admin(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return http_util::with_superadmin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
+user_handler::response_type user_handler::put_user_regular(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t user_id
+){
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto update_permission_level_exp = auth_service::update_permission_level(
+            db_connection_value,
+            user_id,
+            permission_util::USER
+        );
+        if(!update_permission_level_exp){
+            return http_response_util::create_4xx_or_500(
+                request,
+                "update permission level",
+                update_permission_level_exp.error()
+            );
+        }
+        if(!update_permission_level_exp.value()){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::not_found,
+                "user_not_found",
+                "user not found"
+            );
+        }
+
+        return http_response_util::create_json(
+            request,
+            boost::beast::http::status::ok,
+            json_util::make_user_permission_object(user_id, permission_util::USER)
+        );
+    };
+
+    return http_util::with_superadmin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -112,7 +153,7 @@ user_handler::response_type user_handler::put_user_permission(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return http_util::with_superadmin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated

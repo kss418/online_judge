@@ -118,6 +118,10 @@ namespace http_util{
         const request_type& request,
         db_connection& db_connection
     );
+    std::expected<auth_dto::identity, response_type> try_superadmin_auth_bearer(
+        const request_type& request,
+        db_connection& db_connection
+    );
     bool is_owner_or_admin(
         const auth_dto::identity& auth_identity_value,
         std::int64_t owner_user_id
@@ -145,6 +149,22 @@ namespace http_util{
         callback_type&& callback
     ){
         const auto auth_identity_exp = try_admin_auth_bearer(request, db_connection);
+        if(!auth_identity_exp){
+            return std::move(auth_identity_exp.error());
+        }
+
+        return std::invoke(
+            std::forward<callback_type>(callback),
+            *auth_identity_exp
+        );
+    }
+    template <typename callback_type>
+    response_type with_superadmin_auth_bearer(
+        const request_type& request,
+        db_connection& db_connection,
+        callback_type&& callback
+    ){
+        const auto auth_identity_exp = try_superadmin_auth_bearer(request, db_connection);
         if(!auth_identity_exp){
             return std::move(auth_identity_exp.error());
         }

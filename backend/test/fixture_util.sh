@@ -413,6 +413,45 @@ SQL
     printf '%s\n' "${promoted_user_id}"
 }
 
+promote_superadmin_user(){
+    local user_id="$1"
+    local failure_context="${2:-fixture}"
+    local promoted_user_id=""
+
+    require_db_env
+
+    if [[ -z "${user_id}" ]]; then
+        echo "missing user_id" >&2
+        exit 1
+    fi
+
+    promoted_user_id="$(
+        PGPASSWORD="${DB_PASSWORD}" psql \
+            -X \
+            -h "${DB_HOST}" \
+            -p "${DB_PORT}" \
+            -U "${DB_USER}" \
+            -d "${DB_NAME}" \
+            -v ON_ERROR_STOP=1 \
+            -qAt <<SQL | sed -n '1p'
+UPDATE users
+SET permission_level = 2, updated_at = NOW()
+WHERE user_id = ${user_id}
+RETURNING user_id;
+SQL
+    )"
+
+    if [[ "${promoted_user_id}" != "${user_id}" ]]; then
+        append_log_line "${test_log_temp_file}" "superadmin promotion failed: user_id=${user_id}"
+        publish_fixture_failure_logs
+        echo "${failure_context} superadmin promotion failed" >&2
+        exit 1
+    fi
+
+    append_log_line "${test_log_temp_file}" "superadmin promotion succeeded: user_id=${user_id}"
+    printf '%s\n' "${promoted_user_id}"
+}
+
 read_problem_id_from_create_problem_response(){
     local response_file_path="$1"
 

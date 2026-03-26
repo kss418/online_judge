@@ -44,6 +44,10 @@
           <p>{{ actionMessage }}</p>
         </div>
 
+        <div v-if="!canEditPermissions" class="admin-users-feedback is-warning">
+          <p>권한 변경은 슈퍼어드민만 할 수 있습니다.</p>
+        </div>
+
         <div v-if="isLoading" class="empty-state">
           <p>유저 목록을 불러오는 중입니다.</p>
         </div>
@@ -134,11 +138,12 @@
                   min="0"
                   max="2"
                   step="1"
+                  :disabled="!canEditPermissions || savingUserId === user.user_id"
                 />
                 <button
                   type="button"
                   class="ghost-button admin-user-action-button"
-                  :disabled="savingUserId === user.user_id || !isPermissionDirty(user)"
+                  :disabled="!canEditPermissions || savingUserId === user.user_id || !isPermissionDirty(user)"
                   @click="handleSavePermission(user)"
                 >
                   {{ savingUserId === user.user_id ? '저장 중...' : '권한 저장' }}
@@ -171,6 +176,7 @@ let latestLoadRequestId = 0
 let relativeTimeRefreshTimer = null
 
 const canManageUsers = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 1)
+const canEditPermissions = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 2)
 const currentUserId = computed(() => Number(authState.currentUser?.id ?? 0))
 const superAdminCount = computed(() =>
   users.value.filter((user) => user.permission_level === 2).length
@@ -257,7 +263,10 @@ async function loadUsers(){
 }
 
 async function handleSavePermission(user){
-  if (!authState.token) {
+  if (!authState.token || !canEditPermissions.value) {
+    if (!canEditPermissions.value) {
+      errorMessage.value = '권한 변경은 슈퍼어드민만 할 수 있습니다.'
+    }
     return
   }
 
@@ -495,6 +504,12 @@ onUnmounted(() => {
   color: var(--success);
   background: var(--success-soft);
   border-color: rgba(15, 118, 110, 0.16);
+}
+
+.admin-users-feedback.is-warning {
+  color: var(--warning);
+  background: rgba(201, 92, 39, 0.08);
+  border-color: rgba(201, 92, 39, 0.18);
 }
 
 .admin-users-summary {
