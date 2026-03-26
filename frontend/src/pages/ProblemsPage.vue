@@ -189,6 +189,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { getProblemList } from '@/api/problem'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
+import {
+  getProblemStateLabel,
+  getProblemStateTone
+} from '@/utils/problemState'
 
 const isLoading = ref(true)
 const errorMessage = ref('')
@@ -299,8 +303,7 @@ async function loadProblems(){
       ? response.problems.map((problem) => ({
         ...problem,
         accepted_count: Number(problem.accepted_count ?? 0),
-        submission_count: Number(problem.submission_count ?? 0),
-        user_problem_state: normalizeProblemState(problem.user_problem_state)
+        submission_count: Number(problem.submission_count ?? 0)
       }))
       : []
     hasLoadedOnce.value = true
@@ -364,20 +367,6 @@ function formatAcceptanceRate(acceptedCount, submissionCount){
 
   const rate = (acceptedCount / submissionCount) * 100
   return `${rateFormatter.format(rate)}%`
-}
-
-function normalizeProblemState(problemState){
-  return problemState === 'solved' || problemState === 'wrong'
-    ? problemState
-    : null
-}
-
-function getProblemStateLabel(problemState){
-  return problemState === 'solved' ? '성공' : '실패'
-}
-
-function getProblemStateTone(problemState){
-  return problemState === 'solved' ? 'success' : 'danger'
 }
 
 onMounted(async () => {

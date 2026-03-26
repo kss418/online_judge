@@ -1,6 +1,10 @@
 import { requestJson } from '@/api/http'
+import {
+  normalizeProblemStateRecord,
+  normalizeProblemStateRecords
+} from '@/utils/problemState'
 
-export function getProblemList(options = {}){
+export async function getProblemList(options = {}){
   const { bearerToken = '', title = '' } = options
   const searchParams = new URLSearchParams()
 
@@ -11,15 +15,22 @@ export function getProblemList(options = {}){
   const queryString = searchParams.toString()
   const path = queryString ? `/problem?${queryString}` : '/problem'
 
-  return requestJson(path, {
+  const response = await requestJson(path, {
     bearerToken
   })
+
+  return {
+    ...response,
+    problems: normalizeProblemStateRecords(response.problems)
+  }
 }
 
-export function getProblemDetail(problemId, options = {}){
+export async function getProblemDetail(problemId, options = {}){
   const { bearerToken = '' } = options
 
-  return requestJson(`/problem/${problemId}`, {
+  const response = await requestJson(`/problem/${problemId}`, {
     bearerToken
   })
+
+  return normalizeProblemStateRecord(response)
 }

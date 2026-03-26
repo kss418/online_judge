@@ -267,13 +267,18 @@ std::expected<void, error_code> submission_service::finalize_submission(
 std::expected<std::vector<submission_dto::summary>, error_code>
 submission_service::list_submissions(
     db_connection& connection,
-    const submission_dto::list_filter& filter_value
+    const submission_dto::list_filter& filter_value,
+    std::optional<std::int64_t> viewer_user_id_opt
 ){
     return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<submission_dto::summary>, error_code> {
-            return submission_util::list_submissions(transaction, filter_value);
+            return submission_util::list_submissions(
+                transaction,
+                filter_value,
+                viewer_user_id_opt
+            );
         }
     );
 }

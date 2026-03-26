@@ -64,6 +64,7 @@
             </span>
             <RouterLink
               class="submission-problem-link"
+              :class="getProblemStateTextClass(submission.user_problem_state)"
               :to="{ name: 'problem-detail', params: { problemId: submission.problem_id } }"
             >
               #{{ formatCount(submission.problem_id) }}
@@ -155,12 +156,13 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { getSubmissionList, getSubmissionSource } from '@/api/submission'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
+import { getProblemStateTextClass } from '@/utils/problemState'
 
 const route = useRoute()
 const { authState, isAuthenticated, initializeAuth } = useAuth()
@@ -168,6 +170,7 @@ const listLimit = 50
 const isLoading = ref(true)
 const errorMessage = ref('')
 const submissions = ref([])
+const hasLoadedOnce = ref(false)
 const sourceDialogOpen = ref(false)
 const isLoadingSource = ref(false)
 const sourceErrorMessage = ref('')
@@ -175,6 +178,9 @@ const sourceDetail = ref(null)
 const activeSourceSubmissionId = ref(null)
 const copyState = ref('idle')
 const countFormatter = new Intl.NumberFormat()
+const authenticatedBearerToken = computed(() =>
+  authState.initialized && isAuthenticated.value ? authState.token : ''
+)
 const submissionCount = computed(() => submissions.value.length)
 const numericProblemId = computed(() => {
   const problemIdParam = Array.isArray(route.params.problemId)
@@ -269,6 +275,7 @@ const statusToneMap = {
 }
 
 let copyStateResetTimer = null
+let latestLoadRequestId = 0
 
 function formatCount(value){
   return countFormatter.format(value)
@@ -411,18 +418,17 @@ async function copySourceCode(){
 }
 
 async function loadSubmissions(){
+  const requestId = ++latestLoadRequestId
   isLoading.value = true
   errorMessage.value = ''
-
-  if (isMineScope.value && authState.isInitializing) {
-    submissions.value = []
-    return
-  }
 
   if (isMineScope.value && !isAuthenticated.value) {
     submissions.value = []
     errorMessage.value = '내 제출을 보려면 로그인하세요.'
-    isLoading.value = false
+    if (requestId === latestLoadRequestId) {
+      isLoading.value = false
+    }
+    hasLoadedOnce.value = true
     return
   }
 
@@ -430,8 +436,13 @@ async function loadSubmissions(){
     const response = await getSubmissionList({
       limit: listLimit,
       problemId: numericProblemId.value ?? undefined,
-      userId: activeUserId.value ?? undefined
+      userId: activeUserId.value ?? undefined,
+      bearerToken: authenticatedBearerToken.value
     })
+
+    if (requestId !== latestLoadRequestId) {
+      return
+    }
 
     submissions.value = Array.isArray(response.submissions)
       ? response.submissions
@@ -446,28 +457,54 @@ async function loadSubmissions(){
         }))
         .sort((left, right) => right.submission_id - left.submission_id)
       : []
+    hasLoadedOnce.value = true
   } catch (error) {
+    if (requestId !== latestLoadRequestId) {
+      return
+    }
+
     errorMessage.value = error instanceof Error
       ? error.message
       : '제출 목록을 불러오지 못했습니다.'
     submissions.value = []
+    hasLoadedOnce.value = true
   } finally {
-    isLoading.value = false
+    if (requestId === latestLoadRequestId) {
+      isLoading.value = false
+    }
   }
 }
 
-initializeAuth()
+onMounted(async () => {
+  if (!authState.initialized) {
+    await initializeAuth()
+  }
+
+  if (!hasLoadedOnce.value) {
+    loadSubmissions()
+  }
+})
 
 watch([
   () => route.name,
   numericProblemId,
   numericUserId,
-  isMineScope,
-  () => authState.isInitializing,
-  () => authState.currentUser?.id
+  isMineScope
 ], () => {
+  if (!authState.initialized) {
+    return
+  }
+
   loadSubmissions()
-}, { immediate: true })
+})
+
+watch(authenticatedBearerToken, (nextToken, previousToken) => {
+  if (!authState.initialized || nextToken === previousToken) {
+    return
+  }
+
+  loadSubmissions()
+})
 </script>
 
 <style scoped>
@@ -578,6 +615,22 @@ watch([
 
 .submission-problem-link:hover {
   color: var(--accent);
+}
+
+.submission-problem-link.problem-state-text--solved {
+  color: var(--success);
+}
+
+.submission-problem-link.problem-state-text--wrong {
+  color: var(--danger);
+}
+
+.submission-problem-link.problem-state-text--solved:hover {
+  color: var(--success);
+}
+
+.submission-problem-link.problem-state-text--wrong:hover {
+  color: var(--danger);
 }
 
 .submission-language-button {

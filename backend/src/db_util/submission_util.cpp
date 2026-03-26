@@ -113,6 +113,7 @@ submission_util::get_wa_or_ac_submissions(
         "submission_table.score, "
         "submission_table.elapsed_ms, "
         "submission_table.max_rss_kb, "
+        "NULL::text, "
         "submission_table.created_at::text, "
         "submission_table.updated_at::text "
         "FROM submissions submission_table "
@@ -510,13 +511,15 @@ std::expected<submission_dto::finalize_result, error_code> submission_util::fina
 
 std::expected<std::vector<submission_dto::summary>, error_code> submission_util::list_submissions(
     pqxx::transaction_base& transaction,
-    const submission_dto::list_filter& filter_value
+    const submission_dto::list_filter& filter_value,
+    std::optional<std::int64_t> viewer_user_id_opt
 ){
     if(
         (filter_value.top_submission_id_opt && *filter_value.top_submission_id_opt <= 0) ||
         (filter_value.user_id_opt && *filter_value.user_id_opt <= 0) ||
         (filter_value.problem_id_opt && *filter_value.problem_id_opt <= 0) ||
         (filter_value.limit_opt && *filter_value.limit_opt <= 0) ||
+        (viewer_user_id_opt && *viewer_user_id_opt <= 0) ||
         (filter_value.status_opt && !parse_submission_status(*filter_value.status_opt))
     ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
@@ -536,14 +539,37 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_util:
         "submission_table.score, "
         "submission_table.elapsed_ms, "
         "submission_table.max_rss_kb, "
+        ;
+    if(viewer_user_id_opt){
+        submission_list_query +=
+            "CASE "
+            "WHEN viewer_problem_state.accepted_submission_count > 0 THEN 'solved' "
+            "WHEN viewer_problem_state.failed_submission_count > 0 THEN 'wrong' "
+            "ELSE NULL "
+            "END, ";
+    }
+    else{
+        submission_list_query += "NULL::text, ";
+    }
+
+    submission_list_query +=
         "submission_table.created_at::text, "
         "submission_table.updated_at::text "
         "FROM submissions submission_table "
         "JOIN users user_table "
-        "ON user_table.user_id = submission_table.user_id "
-        "WHERE 1 = 1";
+        "ON user_table.user_id = submission_table.user_id ";
     pqxx::params query_params;
     int query_param_index = 1;
+
+    if(viewer_user_id_opt){
+        submission_list_query +=
+            "LEFT JOIN user_problem_attempt_summary viewer_problem_state "
+            "ON viewer_problem_state.problem_id = submission_table.problem_id "
+            "AND viewer_problem_state.user_id = $" + std::to_string(query_param_index++) + " ";
+        query_params.append(*viewer_user_id_opt);
+    }
+
+    submission_list_query += "WHERE 1 = 1";
 
     if(filter_value.top_submission_id_opt){
         submission_list_query +=

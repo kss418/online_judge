@@ -55,6 +55,8 @@ register_temp_file all_submission_response_file
 register_temp_file submission_detail_response_file
 register_temp_file missing_submission_response_file
 register_temp_file list_submission_response_file
+register_temp_file authenticated_list_submission_response_file
+register_temp_file solved_state_submission_response_file
 register_temp_file top_submission_response_file
 register_temp_file limited_submission_response_file
 register_temp_file invalid_limit_submission_response_file
@@ -604,6 +606,20 @@ list_submission_status_code="$(
 assert_status_code "${list_submission_status_code}" "200" "${list_submission_response_file}" "submission list"
 print_success_log "submission list success"
 
+authenticated_list_submission_status_code="$(
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission?top=${second_submission_id}&user_id=${sign_up_user_id}&problem_id=${problem_id}&status=queued" \
+        "${authenticated_list_submission_response_file}" \
+        "${sign_up_token}"
+)"
+assert_status_code \
+    "${authenticated_list_submission_status_code}" \
+    "200" \
+    "${authenticated_list_submission_response_file}" \
+    "authenticated submission list"
+print_success_log "authenticated submission list success"
+
 top_submission_status_code="$(
     send_http_request \
         "GET" \
@@ -875,6 +891,9 @@ for submission in (latest_submission, older_submission):
     if submission.get("max_rss_kb", "missing") is not None:
         raise SystemExit("expected unfiltered submission list max_rss_kb to be null before judging")
 
+    if submission.get("user_problem_state", "missing") is not None:
+        raise SystemExit("expected unfiltered submission list user_problem_state to be null")
+
     if "source_code" in submission:
         raise SystemExit("unfiltered submission list response must not expose source_code")
 PY
@@ -1020,6 +1039,63 @@ for submission in submissions:
 PY
 then
     append_log_line "${test_log_temp_file}" "submission list validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 \
+    - "${authenticated_list_submission_response_file}" \
+    "${submission_id}" \
+    "${second_submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "${submission_language}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    submission_list = json.load(response_file)
+
+expected_first_submission_id = int(sys.argv[2])
+expected_second_submission_id = int(sys.argv[3])
+expected_user_id = int(sys.argv[4])
+expected_problem_id = int(sys.argv[5])
+expected_language = sys.argv[6]
+
+if submission_list.get("submission_count") != 2:
+    raise SystemExit("expected authenticated submission_count to be 2")
+
+submissions = submission_list.get("submissions")
+if not isinstance(submissions, list) or len(submissions) != 2:
+    raise SystemExit("expected two submissions in authenticated submission list response")
+
+latest_submission = submissions[0]
+older_submission = submissions[1]
+
+if latest_submission.get("submission_id") != expected_second_submission_id:
+    raise SystemExit("expected newest submission to appear first in authenticated list")
+
+if older_submission.get("submission_id") != expected_first_submission_id:
+    raise SystemExit("expected older submission to appear second in authenticated list")
+
+for submission in submissions:
+    if submission.get("user_id") != expected_user_id:
+        raise SystemExit("user_id mismatch in authenticated submission list response")
+
+    if submission.get("problem_id") != expected_problem_id:
+        raise SystemExit("problem_id mismatch in authenticated submission list response")
+
+    if submission.get("language") != expected_language:
+        raise SystemExit("language mismatch in authenticated submission list response")
+
+    if submission.get("status") != "queued":
+        raise SystemExit("expected authenticated submission list status to be queued")
+
+    if submission.get("user_problem_state", "missing") is not None:
+        raise SystemExit("expected authenticated queued submission list user_problem_state to be null")
+PY
+then
+    append_log_line "${test_log_temp_file}" "authenticated submission list validation failed"
     publish_failure_logs
     exit 1
 fi
@@ -1237,6 +1313,55 @@ then
     append_log_line "${test_log_temp_file}" "problem rejudge setup failed"
     publish_failure_logs
     echo "problem rejudge setup failed" >&2
+    exit 1
+fi
+
+solved_state_submission_status_code="$(
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission?user_id=${sign_up_user_id}&problem_id=${problem_id}" \
+        "${solved_state_submission_response_file}" \
+        "${sign_up_token}"
+)"
+assert_status_code \
+    "${solved_state_submission_status_code}" \
+    "200" \
+    "${solved_state_submission_response_file}" \
+    "solved state submission list"
+print_success_log "solved state submission list success"
+
+if ! python3 \
+    - "${solved_state_submission_response_file}" \
+    "${submission_id}" \
+    "${second_submission_id}" \
+    "${third_submission_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    submission_list = json.load(response_file)
+
+expected_submission_ids = {
+    int(sys.argv[2]),
+    int(sys.argv[3]),
+    int(sys.argv[4]),
+}
+
+submissions = submission_list.get("submissions")
+if not isinstance(submissions, list) or len(submissions) != 3:
+    raise SystemExit("expected three submissions in solved state submission list response")
+
+returned_submission_ids = {submission.get("submission_id") for submission in submissions}
+if returned_submission_ids != expected_submission_ids:
+    raise SystemExit("submission ids mismatch in solved state submission list response")
+
+for submission in submissions:
+    if submission.get("user_problem_state") != "solved":
+        raise SystemExit("expected solved user_problem_state in solved state submission list response")
+PY
+then
+    append_log_line "${test_log_temp_file}" "solved state submission list validation failed"
+    publish_failure_logs
     exit 1
 fi
 

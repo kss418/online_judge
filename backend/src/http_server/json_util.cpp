@@ -193,6 +193,13 @@ boost::json::object json_util::make_submission_summary_object(
         response_object["max_rss_kb"] = nullptr;
     }
 
+    if(summary_value.user_problem_state_opt){
+        response_object["user_problem_state"] = *summary_value.user_problem_state_opt;
+    }
+    else{
+        response_object["user_problem_state"] = nullptr;
+    }
+
     return response_object;
 }
 

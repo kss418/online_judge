@@ -84,6 +84,7 @@ namespace submission_util{
 
     std::expected<std::vector<submission_dto::summary>, error_code> list_submissions(
         pqxx::transaction_base& transaction,
-        const submission_dto::list_filter& filter_value
+        const submission_dto::list_filter& filter_value,
+        std::optional<std::int64_t> viewer_user_id_opt = std::nullopt
     );
 }

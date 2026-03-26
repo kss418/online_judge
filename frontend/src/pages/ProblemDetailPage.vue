@@ -165,6 +165,10 @@ import { useRoute } from 'vue-router'
 import { getProblemDetail } from '@/api/problem'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
+import {
+  getProblemStateLabel,
+  getProblemStateTone
+} from '@/utils/problemState'
 
 const route = useRoute()
 const { authState, isAuthenticated, initializeAuth } = useAuth()
@@ -236,8 +240,7 @@ async function loadProblemDetail(){
         output_format: response.statement?.output_format ?? '',
         note: response.statement?.note ?? ''
       },
-      samples: Array.isArray(response.samples) ? response.samples : [],
-      user_problem_state: normalizeProblemState(response.user_problem_state)
+      samples: Array.isArray(response.samples) ? response.samples : []
     }
     hasLoadedOnce.value = true
   } catch (error) {
@@ -259,20 +262,6 @@ async function loadProblemDetail(){
 
 function formatCount(value){
   return countFormatter.format(value)
-}
-
-function normalizeProblemState(problemState){
-  return problemState === 'solved' || problemState === 'wrong'
-    ? problemState
-    : null
-}
-
-function getProblemStateLabel(problemState){
-  return problemState === 'solved' ? '성공' : '실패'
-}
-
-function getProblemStateTone(problemState){
-  return problemState === 'solved' ? 'success' : 'danger'
 }
 
 onMounted(async () => {

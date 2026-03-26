@@ -184,14 +184,28 @@ submission_handler::response_type submission_handler::get_submissions(
     const request_type& request,
     db_connection& db_connection_value
 ){
+    const auto auth_identity_opt_exp = http_util::try_optional_auth_bearer(
+        request,
+        db_connection_value
+    );
+    if(!auth_identity_opt_exp){
+        return std::move(auth_identity_opt_exp.error());
+    }
+
     const auto filter_exp = http_util::parse_submission_list_filter_or_400(request);
     if(!filter_exp){
         return std::move(filter_exp.error());
     }
 
+    std::optional<std::int64_t> viewer_user_id_opt = std::nullopt;
+    if(auth_identity_opt_exp->has_value()){
+        viewer_user_id_opt = auth_identity_opt_exp->value().user_id;
+    }
+
     const auto submission_summary_values_exp = submission_service::list_submissions(
         db_connection_value,
-        *filter_exp
+        *filter_exp,
+        viewer_user_id_opt
     );
     if(!submission_summary_values_exp){
         return http_response_util::create_4xx_or_500(

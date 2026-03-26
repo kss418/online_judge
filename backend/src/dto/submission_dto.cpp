@@ -304,8 +304,11 @@ submission_dto::summary submission_dto::make_summary_from_row(
     if(!submission_summary_row[8].is_null()){
         summary_value.max_rss_kb_opt = submission_summary_row[8].as<std::int64_t>();
     }
-    summary_value.created_at = submission_summary_row[9].as<std::string>();
-    summary_value.updated_at = submission_summary_row[10].as<std::string>();
+    if(!submission_summary_row[9].is_null()){
+        summary_value.user_problem_state_opt = submission_summary_row[9].as<std::string>();
+    }
+    summary_value.created_at = submission_summary_row[10].as<std::string>();
+    summary_value.updated_at = submission_summary_row[11].as<std::string>();
     return summary_value;
 }
 

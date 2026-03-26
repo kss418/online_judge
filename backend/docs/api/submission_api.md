@@ -392,11 +392,17 @@ Example:
 
 ### `GET /api/submission?user_id=...&problem_id=...&status=...`
 
-List submissions using optional filters. This endpoint is public and does not require authentication.
+List submissions using optional filters. This endpoint is public, and authentication is optional.
 
 #### request
 
-- required header: none
+- request body: none
+- optional header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | no | format: `Bearer <token>`; when present and valid, `user_problem_state` is populated |
+
 - supported query parameters:
 
 | field | type | required | note |
@@ -443,6 +449,7 @@ Each submission summary contains:
 | `score` | `int16 \| null` | score, null before judging finishes |
 | `elapsed_ms` | `int64 \| null` | max elapsed wall-clock time among executed testcases; `null` before execution starts or when compilation fails |
 | `max_rss_kb` | `int64 \| null` | max resident set size among executed testcases in kilobytes; `null` before execution starts or when compilation fails |
+| `user_problem_state` | `string \| null` | `solved`, `wrong`, or `null`; `null` is returned for anonymous requests, unattempted problems, and pending-only submissions |
 | `created_at` | `string` | creation timestamp |
 | `updated_at` | `string` | last update timestamp |
 
@@ -461,6 +468,7 @@ Example:
       "score": 100,
       "elapsed_ms": 612,
       "max_rss_kb": 18432,
+      "user_problem_state": "solved",
       "created_at": "2026-03-19 14:02:11.123456+09",
       "updated_at": "2026-03-19 14:02:12.123456+09"
     },
@@ -473,6 +481,7 @@ Example:
       "score": 100,
       "elapsed_ms": 31,
       "max_rss_kb": 12288,
+      "user_problem_state": "solved",
       "created_at": "2026-03-19 13:58:44.000000+09",
       "updated_at": "2026-03-19 13:58:45.000000+09"
     }
@@ -482,6 +491,7 @@ Example:
 
 #### error response
 
+- invalid, expired, or revoked bearer token: `401 Unauthorized`
 - invalid query string or duplicate query parameter: `400 Bad Request`
 - invalid query parameter value: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`

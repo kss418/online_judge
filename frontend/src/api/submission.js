@@ -1,6 +1,8 @@
 import { requestJson } from '@/api/http'
+import { normalizeProblemStateRecords } from '@/utils/problemState'
 
-export function getSubmissionList(options = {}){
+export async function getSubmissionList(options = {}){
+  const { bearerToken = '' } = options
   const searchParams = new URLSearchParams()
 
   if (Number.isInteger(options.limit) && options.limit > 0) {
@@ -26,7 +28,14 @@ export function getSubmissionList(options = {}){
   const queryString = searchParams.toString()
   const path = queryString ? `/submission?${queryString}` : '/submission'
 
-  return requestJson(path)
+  const response = await requestJson(path, {
+    bearerToken
+  })
+
+  return {
+    ...response,
+    submissions: normalizeProblemStateRecords(response.submissions)
+  }
 }
 
 export function getSubmissionSource(submissionId, token){
