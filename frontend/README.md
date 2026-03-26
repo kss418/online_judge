@@ -7,6 +7,8 @@
 - Node.js `20.19+` or `22.12+`
 - npm `10+`
 
+If you use `nvm`, this workspace includes `frontend/.nvmrc` with `22.12.0`.
+
 ## First Run
 
 ```bash
@@ -52,4 +54,29 @@ Then start the frontend:
 ```bash
 cd frontend
 npm run dev
+```
+
+## Cloudflare Tunnel Dev Script
+
+If you want to open the backend, judge server, frontend dev server, and a Cloudflare quick tunnel in one shot, run:
+
+```bash
+./scripts/dev_tunnel.sh
+```
+
+The script:
+
+- loads `backend/.env`
+- checks the frontend Node.js version before starting any long-running process
+- starts `backend/http_server`
+- starts `backend/judge_server`
+- creates a Cloudflare quick tunnel for `http://127.0.0.1:5173`
+- passes the tunnel host into Vite `allowedHosts` automatically at runtime
+
+You can stop everything with `Ctrl+C`.
+
+If your default `node` is too old, you can point the script to another install:
+
+```bash
+FRONTEND_BIN_DIR=/path/to/node/bin ./scripts/dev_tunnel.sh
 ```
