@@ -407,24 +407,18 @@ List submissions using optional filters. This endpoint is public, and authentica
 
 | field | type | required | note |
 |---|---|---|---|
-| `top` | `int64` | no | return submissions with `submission_id <= top`; must be positive |
-| `page` | `int32` | no | 1-based page number; must be positive; cannot be combined with `top` |
+| `page` | `int32` | no | 1-based page number; must be positive |
 | `user_id` | `int64` | no | must be positive |
 | `problem_id` | `int64` | no | must be positive |
 | `status` | `string` | no | one of `queued`, `judging`, `accepted`, `wrong_answer`, `time_limit_exceeded`, `memory_limit_exceeded`, `runtime_error`, `compile_error`, `output_exceeded` |
 | `limit` | `int32` | no | page size; must be positive; defaults to 50 |
 
-All query parameters are optional. If omitted, the endpoint returns the full submission list. Parameters can be combined.
+All query parameters are optional. If omitted, the endpoint returns the first page using the default `limit`. Parameters can be combined.
 The response returns submissions ordered by `submission_id` descending.
 When `page` is used, the server applies page-based pagination with the given `limit`.
-When `top` is used, the server applies cursor-style pagination.
-If both `page` and `top` are omitted, the first page is returned.
+If `page` is omitted, the first page is returned.
 
 Example:
-
-```text
-GET /api/submission?top=120&user_id=7&problem_id=3&status=accepted
-```
 
 ```text
 GET /api/submission?page=2&limit=50&user_id=7&problem_id=3
@@ -443,7 +437,7 @@ GET /api/submission
 | field | type | note |
 |---|---|---|
 | `submission_count` | `int64` | number of returned submissions on the current page |
-| `total_submission_count` | `int64` | total number of submissions matching the filters, ignoring `page` and `top` |
+| `total_submission_count` | `int64` | total number of submissions matching the filters, ignoring `page` |
 | `submissions` | `array` | newest-first submission summaries |
 
 Each submission summary contains:
@@ -504,7 +498,6 @@ Example:
 - invalid, expired, or revoked bearer token: `401 Unauthorized`
 - invalid query string or duplicate query parameter: `400 Bad Request`
 - invalid query parameter value: `400 Bad Request`
-- invalid `page` + `top` combination: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
 If no submissions match the filters, the endpoint returns `200 OK` with an empty `submissions` array.

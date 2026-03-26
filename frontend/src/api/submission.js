@@ -25,10 +25,6 @@ export async function getSubmissionList(options = {}){
     searchParams.set('status', options.status.trim())
   }
 
-  if (Number.isInteger(options.top) && options.top > 0) {
-    searchParams.set('top', String(options.top))
-  }
-
   const queryString = searchParams.toString()
   const path = queryString ? `/submission?${queryString}` : '/submission'
 

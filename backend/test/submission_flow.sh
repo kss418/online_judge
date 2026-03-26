@@ -57,10 +57,10 @@ register_temp_file missing_submission_response_file
 register_temp_file list_submission_response_file
 register_temp_file authenticated_list_submission_response_file
 register_temp_file solved_state_submission_response_file
-register_temp_file top_submission_response_file
 register_temp_file limited_submission_response_file
 register_temp_file paged_submission_response_file
 register_temp_file invalid_limit_submission_response_file
+register_temp_file invalid_top_submission_response_file
 register_temp_file submission_history_response_file
 register_temp_file missing_history_response_file
 register_temp_file submission_source_response_file
@@ -601,7 +601,7 @@ print_success_log "submission list without filter success"
 list_submission_status_code="$(
     send_http_request \
         "GET" \
-        "${base_url}/api/submission?top=${second_submission_id}&user_id=${sign_up_user_id}&problem_id=${problem_id}&status=queued" \
+        "${base_url}/api/submission?user_id=${sign_up_user_id}&problem_id=${problem_id}&status=queued" \
         "${list_submission_response_file}"
 )"
 assert_status_code "${list_submission_status_code}" "200" "${list_submission_response_file}" "submission list"
@@ -610,7 +610,7 @@ print_success_log "submission list success"
 authenticated_list_submission_status_code="$(
     send_http_request \
         "GET" \
-        "${base_url}/api/submission?top=${second_submission_id}&user_id=${sign_up_user_id}&problem_id=${problem_id}&status=queued" \
+        "${base_url}/api/submission?user_id=${sign_up_user_id}&problem_id=${problem_id}&status=queued" \
         "${authenticated_list_submission_response_file}" \
         "${sign_up_token}"
 )"
@@ -620,15 +620,6 @@ assert_status_code \
     "${authenticated_list_submission_response_file}" \
     "authenticated submission list"
 print_success_log "authenticated submission list success"
-
-top_submission_status_code="$(
-    send_http_request \
-        "GET" \
-        "${base_url}/api/submission?top=${submission_id}&user_id=${sign_up_user_id}&problem_id=${problem_id}&status=queued" \
-        "${top_submission_response_file}"
-)"
-assert_status_code "${top_submission_status_code}" "200" "${top_submission_response_file}" "submission top list"
-print_success_log "submission top list success"
 
 limited_submission_status_code="$(
     send_http_request \
@@ -656,6 +647,15 @@ invalid_limit_submission_status_code="$(
 )"
 assert_status_code "${invalid_limit_submission_status_code}" "400" "${invalid_limit_submission_response_file}" "submission invalid limit list"
 print_success_log "submission invalid limit list success"
+
+invalid_top_submission_status_code="$(
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission?top=${submission_id}" \
+        "${invalid_top_submission_response_file}"
+)"
+assert_status_code "${invalid_top_submission_status_code}" "400" "${invalid_top_submission_response_file}" "submission invalid top list"
+print_success_log "submission invalid top list success"
 
 if ! python3 \
     - "${submission_history_response_file}" \
@@ -1120,68 +1120,6 @@ then
 fi
 
 if ! python3 \
-    - "${top_submission_response_file}" \
-    "${submission_id}" \
-    "${sign_up_user_id}" \
-    "${problem_id}" \
-    "${submission_language}" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as response_file:
-    submission_list = json.load(response_file)
-
-expected_submission_id = int(sys.argv[2])
-expected_user_id = int(sys.argv[3])
-expected_problem_id = int(sys.argv[4])
-expected_language = sys.argv[5]
-
-if submission_list.get("submission_count") != 1:
-    raise SystemExit("expected submission_count to be 1 for top filtered submission list response")
-
-if submission_list.get("total_submission_count") != 2:
-    raise SystemExit("expected total_submission_count to be 2 for top filtered submission list response")
-
-submissions = submission_list.get("submissions")
-if not isinstance(submissions, list) or len(submissions) != 1:
-    raise SystemExit("expected one submission in top filtered submission list response")
-
-submission = submissions[0]
-
-if submission.get("submission_id") != expected_submission_id:
-    raise SystemExit("submission_id mismatch in top filtered submission list response")
-
-if submission.get("user_id") != expected_user_id:
-    raise SystemExit("user_id mismatch in top filtered submission list response")
-
-if submission.get("problem_id") != expected_problem_id:
-    raise SystemExit("problem_id mismatch in top filtered submission list response")
-
-if submission.get("language") != expected_language:
-    raise SystemExit("language mismatch in top filtered submission list response")
-
-if submission.get("status") != "queued":
-    raise SystemExit("expected top filtered submission list status to be queued")
-
-if submission.get("score", "missing") is not None:
-    raise SystemExit("expected top filtered submission list score to be null before judging")
-
-if submission.get("elapsed_ms", "missing") is not None:
-    raise SystemExit("expected top filtered submission list elapsed_ms to be null before judging")
-
-if submission.get("max_rss_kb", "missing") is not None:
-    raise SystemExit("expected top filtered submission list max_rss_kb to be null before judging")
-
-if "source_code" in submission:
-    raise SystemExit("top filtered submission list response must not expose source_code")
-PY
-then
-    append_log_line "${test_log_temp_file}" "submission top list validation failed"
-    publish_failure_logs
-    exit 1
-fi
-
-if ! python3 \
     - "${limited_submission_response_file}" \
     "${second_submission_id}" \
     "${sign_up_user_id}" \
@@ -1271,6 +1209,31 @@ if submission.get("language") != expected_language:
 PY
 then
     append_log_line "${test_log_temp_file}" "submission paged list validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 \
+    - "${invalid_top_submission_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+error = response.get("error", {})
+
+if error.get("code") != "unsupported_query_parameter":
+    raise SystemExit("unexpected error code for invalid top submission list response")
+
+if error.get("message") != "unsupported query parameter: top":
+    raise SystemExit("unexpected error message for invalid top submission list response")
+
+if error.get("field") != "top":
+    raise SystemExit("unexpected error field for invalid top submission list response")
+PY
+then
+    append_log_line "${test_log_temp_file}" "submission invalid top validation failed"
     publish_failure_logs
     exit 1
 fi

@@ -10,14 +10,8 @@ namespace{
         std::string& query,
         pqxx::params& query_params,
         int& query_param_index,
-        const submission_dto::list_filter& filter_value,
-        bool include_top_submission_id
+        const submission_dto::list_filter& filter_value
     ){
-        if(include_top_submission_id && filter_value.top_submission_id_opt){
-            query +=
-                " AND submission_table.submission_id <= $" + std::to_string(query_param_index++);
-            query_params.append(*filter_value.top_submission_id_opt);
-        }
         if(filter_value.user_id_opt){
             query +=
                 " AND submission_table.user_id = $" + std::to_string(query_param_index++);
@@ -38,13 +32,11 @@ namespace{
 
     bool has_invalid_submission_list_filter(const submission_dto::list_filter& filter_value){
         return
-            (filter_value.top_submission_id_opt && *filter_value.top_submission_id_opt <= 0) ||
             (filter_value.page_opt && *filter_value.page_opt <= 0) ||
             (filter_value.user_id_opt && *filter_value.user_id_opt <= 0) ||
             (filter_value.problem_id_opt && *filter_value.problem_id_opt <= 0) ||
             (filter_value.limit_opt && *filter_value.limit_opt <= 0) ||
-            (filter_value.status_opt && !parse_submission_status(*filter_value.status_opt)) ||
-            (filter_value.top_submission_id_opt && filter_value.page_opt);
+            (filter_value.status_opt && !parse_submission_status(*filter_value.status_opt));
     }
 }
 
@@ -617,8 +609,7 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_util:
         submission_list_query,
         query_params,
         query_param_index,
-        filter_value,
-        true
+        filter_value
     );
 
     submission_list_query +=
@@ -657,8 +648,7 @@ std::expected<std::int64_t, error_code> submission_util::count_submissions(
         submission_count_query,
         query_params,
         query_param_index,
-        filter_value,
-        false
+        filter_value
     );
 
     const auto submission_count_result = transaction.exec(
