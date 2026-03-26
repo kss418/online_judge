@@ -52,7 +52,7 @@
                   :key="language.language"
                   :value="language.language"
                 >
-                  {{ language.language }} (.{{ language.source_extension }})
+                  {{ language.language }} ({{ language.source_extension }})
                 </option>
               </select>
             </div>
@@ -82,7 +82,7 @@
                 v-if="activeLanguage"
                 class="submission-language-hint"
               >
-                확장자 .{{ activeLanguage.source_extension }}
+                확장자 {{ activeLanguage.source_extension }}
               </span>
               <button
                 type="submit"
