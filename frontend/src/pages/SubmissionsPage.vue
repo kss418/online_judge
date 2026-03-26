@@ -46,9 +46,10 @@
             <span>닉네임</span>
             <span>문제번호</span>
             <span>결과</span>
-            <span>시간</span>
+            <span>실행시간</span>
             <span>메모리</span>
             <span>언어</span>
+            <span>제출 시각</span>
           </div>
 
           <div
@@ -91,6 +92,20 @@
             </button>
             <span v-else class="submission-cell is-language">
               {{ submission.language }}
+            </span>
+            <span class="submission-cell is-submitted-at">
+              <span
+                class="submission-relative-time"
+                tabindex="0"
+              >
+                {{ formatRelativeSubmittedAt(submission.created_at_timestamp) }}
+                <span
+                  v-if="submission.created_at_label"
+                  class="submission-time-tooltip"
+                >
+                  {{ submission.created_at_label }}
+                </span>
+              </span>
             </span>
           </div>
         </div>
@@ -156,7 +171,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { getSubmissionList, getSubmissionSource } from '@/api/submission'
@@ -177,6 +192,7 @@ const sourceErrorMessage = ref('')
 const sourceDetail = ref(null)
 const activeSourceSubmissionId = ref(null)
 const copyState = ref('idle')
+const nowTimestamp = ref(Date.now())
 const countFormatter = new Intl.NumberFormat()
 const authenticatedBearerToken = computed(() =>
   authState.initialized && isAuthenticated.value ? authState.token : ''
@@ -276,9 +292,81 @@ const statusToneMap = {
 
 let copyStateResetTimer = null
 let latestLoadRequestId = 0
+let relativeTimeRefreshTimer = null
 
 function formatCount(value){
   return countFormatter.format(value)
+}
+
+function normalizeSubmittedAt(value){
+  if (typeof value !== 'string' || !value.trim()) {
+    return {
+      timestamp: null,
+      label: ''
+    }
+  }
+
+  const trimmedValue = value.trim()
+  const matchedTimestamp = trimmedValue.match(
+    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?([+-]\d{2})(?::?(\d{2}))?$/
+  )
+
+  if (matchedTimestamp) {
+    const [, datePart, timePart, fractionPart = '', offsetHour, offsetMinute = '00'] =
+      matchedTimestamp
+    const normalizedFraction = fractionPart
+      ? `.${fractionPart.slice(0, 3).padEnd(3, '0')}`
+      : ''
+    const parsedTimestamp = Date.parse(
+      `${datePart}T${timePart}${normalizedFraction}${offsetHour}:${offsetMinute}`
+    )
+
+    return {
+      timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
+      label: `${datePart} ${timePart}`
+    }
+  }
+
+  const parsedTimestamp = Date.parse(trimmedValue.replace(' ', 'T'))
+  return {
+    timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
+    label: trimmedValue
+  }
+}
+
+function formatRelativeSubmittedAt(timestamp){
+  if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
+    return '-'
+  }
+
+  const elapsedSeconds = Math.max(1, Math.floor((nowTimestamp.value - timestamp) / 1000))
+
+  if (elapsedSeconds < 60) {
+    return `${elapsedSeconds}초 전`
+  }
+
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60)
+  if (elapsedMinutes < 60) {
+    return `${elapsedMinutes}분 전`
+  }
+
+  const elapsedHours = Math.floor(elapsedMinutes / 60)
+  if (elapsedHours < 24) {
+    return `${elapsedHours}시간 전`
+  }
+
+  const elapsedDays = Math.floor(elapsedHours / 24)
+  if (elapsedDays < 30) {
+    return `${elapsedDays}일 전`
+  }
+
+  const elapsedMonths = Math.floor(elapsedDays / 30)
+  if (elapsedMonths < 12) {
+    return `${elapsedMonths}달 전`
+  }
+
+  const elapsedYears = Math.floor(elapsedDays / 365)
+  return `${elapsedYears}년 전`
 }
 
 function formatElapsedMs(value){
@@ -417,6 +505,21 @@ async function copySourceCode(){
   scheduleCopyStateReset()
 }
 
+function stopRelativeTimeRefresh(){
+  if (relativeTimeRefreshTimer) {
+    clearInterval(relativeTimeRefreshTimer)
+    relativeTimeRefreshTimer = null
+  }
+}
+
+function startRelativeTimeRefresh(){
+  stopRelativeTimeRefresh()
+  nowTimestamp.value = Date.now()
+  relativeTimeRefreshTimer = window.setInterval(() => {
+    nowTimestamp.value = Date.now()
+  }, 1000)
+}
+
 async function loadSubmissions(){
   const requestId = ++latestLoadRequestId
   isLoading.value = true
@@ -446,15 +549,22 @@ async function loadSubmissions(){
 
     submissions.value = Array.isArray(response.submissions)
       ? response.submissions
-        .map((submission) => ({
-          ...submission,
-          submission_id: Number(submission.submission_id),
-          user_id: Number(submission.user_id),
-          problem_id: Number(submission.problem_id),
-          user_name: submission.user_name || `사용자 ${countFormatter.format(submission.user_id)}`,
-          elapsed_ms: typeof submission.elapsed_ms === 'number' ? submission.elapsed_ms : null,
-          max_rss_kb: typeof submission.max_rss_kb === 'number' ? submission.max_rss_kb : null
-        }))
+        .map((submission) => {
+          const normalizedSubmittedAt = normalizeSubmittedAt(submission.created_at)
+
+          return {
+            ...submission,
+            submission_id: Number(submission.submission_id),
+            user_id: Number(submission.user_id),
+            problem_id: Number(submission.problem_id),
+            user_name: submission.user_name || `사용자 ${countFormatter.format(submission.user_id)}`,
+            created_at: typeof submission.created_at === 'string' ? submission.created_at : '',
+            created_at_timestamp: normalizedSubmittedAt.timestamp,
+            created_at_label: normalizedSubmittedAt.label,
+            elapsed_ms: typeof submission.elapsed_ms === 'number' ? submission.elapsed_ms : null,
+            max_rss_kb: typeof submission.max_rss_kb === 'number' ? submission.max_rss_kb : null
+          }
+        })
         .sort((left, right) => right.submission_id - left.submission_id)
       : []
     hasLoadedOnce.value = true
@@ -476,6 +586,8 @@ async function loadSubmissions(){
 }
 
 onMounted(async () => {
+  startRelativeTimeRefresh()
+
   if (!authState.initialized) {
     await initializeAuth()
   }
@@ -504,6 +616,11 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
   }
 
   loadSubmissions()
+})
+
+onUnmounted(() => {
+  stopRelativeTimeRefresh()
+  resetCopyState()
 })
 </script>
 
@@ -551,10 +668,10 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
 }
 
 .submission-table {
-  min-width: 900px;
+  min-width: 1020px;
   border: 1px solid var(--line);
   border-radius: 1.25rem;
-  overflow: hidden;
+  overflow: visible;
   background: rgba(255, 255, 255, 0.76);
 }
 
@@ -563,12 +680,13 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
   display: grid;
   grid-template-columns:
     minmax(88px, 0.9fr)
-    minmax(140px, 1.35fr)
+    minmax(140px, 1.2fr)
     minmax(96px, 0.95fr)
-    minmax(120px, 1.2fr)
-    minmax(96px, 0.95fr)
+    minmax(120px, 1.1fr)
+    minmax(104px, 0.95fr)
     minmax(112px, 1fr)
-    minmax(96px, 0.9fr);
+    minmax(96px, 0.9fr)
+    minmax(124px, 1.1fr);
   column-gap: 1rem;
   align-items: center;
   padding: 0.95rem 1.25rem;
@@ -596,6 +714,76 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
   font-variant-numeric: tabular-nums;
 }
 
+.submission-cell.is-submitted-at {
+  white-space: nowrap;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6C8BCF;
+}
+
+.submission-relative-time {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  cursor: help;
+  outline: none;
+  text-decoration: underline dotted transparent;
+  text-underline-offset: 0.18em;
+  transition:
+    color 140ms ease,
+    text-decoration-color 140ms ease,
+    transform 140ms ease;
+}
+
+.submission-relative-time:hover,
+.submission-relative-time:focus-visible {
+  color: #4E6FB2;
+  text-decoration-color: currentColor;
+  transform: translateY(-1px);
+}
+
+.submission-time-tooltip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.55rem);
+  z-index: 10;
+  min-width: max-content;
+  max-width: 220px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(20, 33, 61, 0.12);
+  border-radius: 12px;
+  background: rgba(20, 33, 61, 0.96);
+  box-shadow: 0 14px 32px rgba(20, 33, 61, 0.18);
+  color: #f8fafc;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.submission-time-tooltip::after {
+  content: '';
+  position: absolute;
+  right: 0.8rem;
+  top: 100%;
+  border-width: 6px 6px 0;
+  border-style: solid;
+  border-color: rgba(20, 33, 61, 0.96) transparent transparent;
+}
+
+.submission-relative-time:hover .submission-time-tooltip,
+.submission-relative-time:focus-visible .submission-time-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .submission-cell.is-number,
 .submission-cell.is-user,
 .submission-cell.is-metric,
@@ -606,15 +794,23 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
 .submission-problem-link {
   min-width: 0;
   font-weight: 700;
-  color: var(--ink-strong);
+  color: #6C8BCF;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: color 160ms ease;
+  text-decoration: underline dotted transparent;
+  text-underline-offset: 0.18em;
+  transition:
+    color 160ms ease,
+    text-decoration-color 160ms ease,
+    transform 160ms ease;
 }
 
-.submission-problem-link:hover {
-  color: var(--accent);
+.submission-problem-link:hover,
+.submission-problem-link:focus-visible {
+  color: #4E6FB2;
+  text-decoration-color: currentColor;
+  transform: translateY(-1px);
 }
 
 .submission-problem-link.problem-state-text--solved {
@@ -625,12 +821,16 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
   color: var(--danger);
 }
 
-.submission-problem-link.problem-state-text--solved:hover {
+.submission-problem-link.problem-state-text--solved:hover,
+.submission-problem-link.problem-state-text--solved:focus-visible {
   color: var(--success);
+  text-decoration-color: currentColor;
 }
 
-.submission-problem-link.problem-state-text--wrong:hover {
+.submission-problem-link.problem-state-text--wrong:hover,
+.submission-problem-link.problem-state-text--wrong:focus-visible {
   color: var(--danger);
+  text-decoration-color: currentColor;
 }
 
 .submission-language-button {
@@ -646,10 +846,32 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
   font-weight: 700;
   cursor: pointer;
   text-align: left;
+  text-decoration: underline dotted transparent;
+  text-underline-offset: 0.18em;
+  transition:
+    color 160ms ease,
+    text-decoration-color 160ms ease,
+    transform 160ms ease;
 }
 
-.submission-language-button:hover {
-  text-decoration: underline;
+.submission-language-button:hover,
+.submission-language-button:focus-visible {
+  text-decoration-color: currentColor;
+  transform: translateY(-1px);
+}
+
+.submission-cell.is-language {
+  text-decoration: underline dotted transparent;
+  text-underline-offset: 0.18em;
+  transition:
+    color 160ms ease,
+    text-decoration-color 160ms ease,
+    transform 160ms ease;
+}
+
+.submission-cell.is-language:hover {
+  text-decoration-color: currentColor;
+  transform: translateY(-1px);
 }
 
 .submission-source-backdrop {
@@ -710,7 +932,7 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
 
 @media (max-width: 720px) {
   .submission-table {
-    min-width: 860px;
+    min-width: 980px;
   }
 }
 </style>
