@@ -12,7 +12,8 @@ Base migration: `scripts/migrate_auth_schema.sh`
 | `user_name` | `text` | no | | display name for the user |
 | `user_login_id` | `text` | yes | | login identifier for local auth |
 | `user_password_hash` | `text` | yes | | password hash for local auth |
-| `is_admin` | `boolean` | no | `false` | source of truth for admin privilege |
+| `permission_level` | `integer` | no | `0` | source of truth for authorization; `0=user`, `1=admin`, `2=superadmin` |
+| `is_admin` | `boolean` | no | `false` | compatibility flag derived from `permission_level >= 1` |
 | `created_at` | `timestamptz` | no | `now()` |  |
 | `updated_at` | `timestamptz` | no | `now()` |  |
 
@@ -22,6 +23,7 @@ Constraints:
 - `users_user_name_not_blank`
 - `users_user_login_id_not_blank`
 - `users_user_password_hash_not_blank`
+- `users_permission_level_check`
 
 Indexes:
 

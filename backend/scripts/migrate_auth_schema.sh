@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS users(
     user_name TEXT NOT NULL,
     user_login_id TEXT,
     user_password_hash TEXT,
+    permission_level INTEGER NOT NULL DEFAULT 0,
     is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -62,12 +63,52 @@ CREATE TABLE IF NOT EXISTS users(
 ALTER TABLE users
     ADD COLUMN IF NOT EXISTS user_name TEXT;
 
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS permission_level INTEGER;
+
 UPDATE users
 SET user_name = COALESCE(NULLIF(user_login_id, ''), 'user_' || user_id::TEXT)
 WHERE user_name IS NULL OR user_name = '';
 
+UPDATE users
+SET permission_level = CASE WHEN is_admin THEN 1 ELSE 0 END
+WHERE permission_level IS NULL;
+
+UPDATE users
+SET permission_level = CASE
+    WHEN permission_level >= 100 THEN 2
+    WHEN permission_level >= 10 THEN 1
+    WHEN permission_level >= 2 THEN 2
+    WHEN permission_level >= 1 THEN 1
+    ELSE 0
+END
+WHERE permission_level IS DISTINCT FROM CASE
+    WHEN permission_level >= 100 THEN 2
+    WHEN permission_level >= 10 THEN 1
+    WHEN permission_level >= 2 THEN 2
+    WHEN permission_level >= 1 THEN 1
+    ELSE 0
+END;
+
+UPDATE users
+SET is_admin = (permission_level >= 1)
+WHERE is_admin IS DISTINCT FROM (permission_level >= 1);
+
 ALTER TABLE users
     ALTER COLUMN user_name SET NOT NULL;
+
+ALTER TABLE users
+    ALTER COLUMN permission_level SET DEFAULT 0;
+
+ALTER TABLE users
+    ALTER COLUMN permission_level SET NOT NULL;
+
+ALTER TABLE users
+    DROP CONSTRAINT IF EXISTS users_permission_level_check;
+
+ALTER TABLE users
+    ADD CONSTRAINT users_permission_level_check
+        CHECK(permission_level BETWEEN 0 AND 2);
 
 CREATE TABLE IF NOT EXISTS auth_tokens(
     token_id BIGSERIAL PRIMARY KEY,
@@ -174,7 +215,7 @@ CREATE INDEX IF NOT EXISTS auth_tokens_active_user_expires_idx
     WHERE revoked_at IS NULL;
 
 INSERT INTO schema_migrations(version)
-VALUES('auth_schema_v6')
+VALUES('auth_schema_v8')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

@@ -10,6 +10,55 @@ import {
 
 const authTokenStorageKey = 'online_judge.auth_token'
 
+function normalizePermissionLevel(value, fallbackIsAdmin = false){
+  const numericValue = Number(value)
+
+  if (Number.isInteger(numericValue) && numericValue >= 0 && numericValue <= 2) {
+    return numericValue
+  }
+
+  if (Number.isInteger(numericValue) && numericValue >= 100) {
+    return 2
+  }
+
+  if (Number.isInteger(numericValue) && numericValue >= 10) {
+    return 1
+  }
+
+  return fallbackIsAdmin ? 1 : 0
+}
+
+function getRoleName(permissionLevel){
+  if (permissionLevel >= 2) {
+    return 'superadmin'
+  }
+
+  if (permissionLevel >= 1) {
+    return 'admin'
+  }
+
+  return 'user'
+}
+
+function normalizeCurrentUser(user){
+  if (!user) {
+    return null
+  }
+
+  const permissionLevel = normalizePermissionLevel(
+    user.permission_level,
+    Boolean(user.is_admin)
+  )
+
+  return {
+    id: Number(user.id ?? user.user_id ?? 0),
+    user_name: user.user_name ?? '',
+    permission_level: permissionLevel,
+    role_name: user.role_name || getRoleName(permissionLevel),
+    is_admin: permissionLevel >= 1
+  }
+}
+
 function readStoredToken(){
   if (typeof window === 'undefined') {
     return ''
@@ -48,11 +97,13 @@ let initializePromise = null
 
 function setSession(session){
   authState.token = session.token
-  authState.currentUser = {
-    id: session.user_id,
+  authState.currentUser = normalizeCurrentUser({
+    user_id: session.user_id,
     user_name: session.user_name,
+    permission_level: session.permission_level,
+    role_name: session.role_name,
     is_admin: session.is_admin
-  }
+  })
   writeStoredToken(session.token)
 }
 
@@ -83,7 +134,7 @@ async function initializeAuth(){
     }
 
     try {
-      const currentUser = await getCurrentUser(authState.token)
+      const currentUser = normalizeCurrentUser(await getCurrentUser(authState.token))
       authState.currentUser = currentUser
 
       try {
@@ -104,6 +155,17 @@ async function initializeAuth(){
   })()
 
   return initializePromise
+}
+
+async function refreshCurrentUser(){
+  if (!authState.token) {
+    clearSession()
+    return null
+  }
+
+  const currentUser = normalizeCurrentUser(await getCurrentUser(authState.token))
+  authState.currentUser = currentUser
+  return currentUser
 }
 
 async function signUp(payload){
@@ -156,6 +218,7 @@ export function useAuth(){
     signUp,
     login,
     logout,
+    refreshCurrentUser,
     clearSession
   }
 }

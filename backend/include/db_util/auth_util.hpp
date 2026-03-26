@@ -32,10 +32,10 @@ namespace auth_util{
         const auth_dto::hashed_token& hashed_token_value
     );
 
-    std::expected<bool, error_code> update_admin_status(
+    std::expected<bool, error_code> update_permission_level(
         pqxx::transaction_base& transaction,
         std::int64_t user_id,
-        bool is_admin
+        std::int32_t permission_level
     );
 
     std::expected<auth_dto::user_summary_list, error_code> get_user_list(

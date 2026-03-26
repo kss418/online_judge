@@ -1,5 +1,7 @@
 #include "http_server/json_util.hpp"
 
+#include "common/permission_util.hpp"
+
 #include <utility>
 
 boost::json::object json_util::make_error_object(
@@ -25,13 +27,15 @@ boost::json::object json_util::make_message_object(std::string_view message){
     return response_object;
 }
 
-boost::json::object json_util::make_user_admin_object(
+boost::json::object json_util::make_user_permission_object(
     std::int64_t user_id,
-    bool is_admin
+    std::int32_t permission_level
 ){
     boost::json::object response_object;
     response_object["user_id"] = user_id;
-    response_object["is_admin"] = is_admin;
+    response_object["permission_level"] = permission_level;
+    response_object["role_name"] = permission_util::role_name(permission_level);
+    response_object["is_admin"] = permission_util::is_admin(permission_level);
     return response_object;
 }
 
@@ -39,7 +43,9 @@ boost::json::object json_util::make_user_me_object(const auth_dto::identity& aut
     boost::json::object response_object;
     response_object["id"] = auth_identity_value.user_id;
     response_object["user_name"] = auth_identity_value.user_name;
-    response_object["is_admin"] = auth_identity_value.is_admin;
+    response_object["permission_level"] = auth_identity_value.permission_level;
+    response_object["role_name"] = permission_util::role_name(auth_identity_value.permission_level);
+    response_object["is_admin"] = permission_util::is_admin(auth_identity_value.permission_level);
     return response_object;
 }
 
@@ -55,7 +61,9 @@ boost::json::object json_util::make_user_summary_object(
     else{
         response_object["user_login_id"] = nullptr;
     }
-    response_object["is_admin"] = user_summary_value.is_admin;
+    response_object["permission_level"] = user_summary_value.permission_level;
+    response_object["role_name"] = permission_util::role_name(user_summary_value.permission_level);
+    response_object["is_admin"] = permission_util::is_admin(user_summary_value.permission_level);
     response_object["created_at"] = user_summary_value.created_at;
     return response_object;
 }
@@ -113,7 +121,9 @@ boost::json::object json_util::make_supported_language_list_object(
 boost::json::object json_util::make_auth_session_object(const auth_dto::session& session_value){
     boost::json::object response_object;
     response_object["user_id"] = session_value.user_id;
-    response_object["is_admin"] = session_value.is_admin;
+    response_object["permission_level"] = session_value.permission_level;
+    response_object["role_name"] = permission_util::role_name(session_value.permission_level);
+    response_object["is_admin"] = permission_util::is_admin(session_value.permission_level);
     response_object["user_name"] = session_value.user_name;
     response_object["token"] = session_value.token;
     return response_object;

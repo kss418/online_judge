@@ -21,9 +21,9 @@ namespace json_util{
         std::optional<std::string> field_opt = std::nullopt
     );
     boost::json::object make_message_object(std::string_view message);
-    boost::json::object make_user_admin_object(
+    boost::json::object make_user_permission_object(
         std::int64_t user_id,
-        bool is_admin
+        std::int32_t permission_level
     );
     boost::json::object make_user_me_object(const auth_dto::identity& auth_identity_value);
     boost::json::object make_user_summary_object(

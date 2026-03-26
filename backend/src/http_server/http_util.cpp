@@ -1,5 +1,6 @@
 #include "http_server/http_util.hpp"
 
+#include "common/permission_util.hpp"
 #include "common/string_util.hpp"
 
 #include <cstdint>
@@ -92,6 +93,39 @@ std::optional<std::int32_t> http_util::get_positive_int32_field(
     }
 
     return static_cast<std::int32_t>(*int64_value_opt);
+}
+
+std::optional<std::int32_t> http_util::get_non_negative_int32_field(
+    const boost::json::object& object,
+    std::string_view key
+){
+    const auto* value = object.if_contains(key);
+    if(value == nullptr){
+        return std::nullopt;
+    }
+
+    if(value->is_int64()){
+        const auto int64_value = value->as_int64();
+        if(
+            int64_value < 0 ||
+            int64_value > std::numeric_limits<std::int32_t>::max()
+        ){
+            return std::nullopt;
+        }
+
+        return static_cast<std::int32_t>(int64_value);
+    }
+
+    if(value->is_uint64()){
+        const auto uint64_value = value->as_uint64();
+        if(uint64_value > static_cast<std::uint64_t>(std::numeric_limits<std::int32_t>::max())){
+            return std::nullopt;
+        }
+
+        return static_cast<std::int32_t>(uint64_value);
+    }
+
+    return std::nullopt;
 }
 
 std::optional<std::vector<std::string_view>> http_util::parse_path(
@@ -332,7 +366,7 @@ std::expected<auth_dto::identity, http_util::response_type> http_util::try_admin
     if(!auth_identity_exp){
         return std::unexpected(std::move(auth_identity_exp.error()));
     }
-    if(!auth_identity_exp->is_admin){
+    if(!permission_util::is_admin(auth_identity_exp->permission_level)){
         return std::unexpected(http_response_util::create_bearer_error(
             request,
             "admin_bearer_token_required",
@@ -347,7 +381,7 @@ bool http_util::is_owner_or_admin(
     const auth_dto::identity& auth_identity_value,
     std::int64_t owner_user_id
 ){
-    return auth_identity_value.is_admin ||
+    return permission_util::is_admin(auth_identity_value.permission_level) ||
         auth_identity_value.user_id == owner_user_id;
 }
 

@@ -1,5 +1,7 @@
 #include "db_util/auth_util.hpp"
 
+#include "common/permission_util.hpp"
+
 std::expected<void, error_code> auth_util::insert_token(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
@@ -60,7 +62,7 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_util::get_toke
     }
 
     const auto token_identity_result = transaction.exec(
-        "SELECT token_table.user_id, user_table.is_admin, user_table.user_name "
+        "SELECT token_table.user_id, user_table.permission_level, user_table.user_name "
         "FROM auth_tokens token_table "
         "JOIN users user_table "
         "ON token_table.user_id = user_table.user_id "
@@ -78,7 +80,7 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_util::get_toke
 
     auth_dto::identity identity_value;
     identity_value.user_id = token_identity_result[0][0].as<std::int64_t>();
-    identity_value.is_admin = token_identity_result[0][1].as<bool>();
+    identity_value.permission_level = token_identity_result[0][1].as<std::int32_t>();
     identity_value.user_name = token_identity_result[0][2].as<std::string>();
     return identity_value;
 }
@@ -108,20 +110,30 @@ std::expected<void, error_code> auth_util::update_last_used_at(
     return {};
 }
 
-std::expected<bool, error_code> auth_util::update_admin_status(
+std::expected<bool, error_code> auth_util::update_permission_level(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
-    bool is_admin
+    std::int32_t permission_level
 ){
-    if(user_id <= 0){
+    if(
+        user_id <= 0 ||
+        !permission_util::is_valid_permission_level(permission_level)
+    ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
     const auto update_result = transaction.exec(
         "UPDATE users "
-        "SET is_admin = $2, updated_at = NOW() "
+        "SET "
+        "permission_level = $2, "
+        "is_admin = ($2::INTEGER >= $3::INTEGER), "
+        "updated_at = NOW() "
         "WHERE user_id = $1",
-        pqxx::params{user_id, is_admin}
+        pqxx::params{
+            user_id,
+            permission_level,
+            permission_util::ADMIN
+        }
     );
 
     return update_result.affected_rows() > 0;
@@ -135,10 +147,10 @@ std::expected<auth_dto::user_summary_list, error_code> auth_util::get_user_list(
         "user_id, "
         "user_name, "
         "user_login_id, "
-        "is_admin, "
+        "permission_level, "
         "created_at::text "
         "FROM users "
-        "ORDER BY is_admin DESC, user_id ASC"
+        "ORDER BY permission_level DESC, user_id ASC"
     );
 
     auth_dto::user_summary_list user_summary_values;
@@ -151,7 +163,7 @@ std::expected<auth_dto::user_summary_list, error_code> auth_util::get_user_list(
         if(!user_row[2].is_null()){
             user_summary_value.user_login_id_opt = user_row[2].as<std::string>();
         }
-        user_summary_value.is_admin = user_row[3].as<bool>();
+        user_summary_value.permission_level = user_row[3].as<std::int32_t>();
         user_summary_value.created_at = user_row[4].as<std::string>();
         user_summary_values.push_back(std::move(user_summary_value));
     }

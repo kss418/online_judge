@@ -1,6 +1,7 @@
 #include "http_handler/user_handler.hpp"
 
 #include "db_service/auth_service.hpp"
+#include "common/permission_util.hpp"
 #include "http_server/http_util.hpp"
 #include "http_server/json_util.hpp"
 
@@ -30,19 +31,19 @@ user_handler::response_type user_handler::put_user_admin(
     std::int64_t user_id
 ){
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto update_admin_status_exp = auth_service::update_admin_status(
+        const auto update_permission_level_exp = auth_service::update_permission_level(
             db_connection_value,
             user_id,
-            true
+            permission_util::ADMIN
         );
-        if(!update_admin_status_exp){
+        if(!update_permission_level_exp){
             return http_response_util::create_4xx_or_500(
                 request,
-                "update admin status",
-                update_admin_status_exp.error()
+                "update permission level",
+                update_permission_level_exp.error()
             );
         }
-        if(!update_admin_status_exp.value()){
+        if(!update_permission_level_exp.value()){
             return http_response_util::create_error(
                 request,
                 boost::beast::http::status::not_found,
@@ -54,7 +55,60 @@ user_handler::response_type user_handler::put_user_admin(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_user_admin_object(user_id, true)
+            json_util::make_user_permission_object(user_id, permission_util::ADMIN)
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
+user_handler::response_type user_handler::put_user_permission(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t user_id
+){
+    const auto permission_update_request_exp =
+        http_util::parse_json_dto_or_400<auth_dto::permission_update_request>(
+            request,
+            auth_dto::make_permission_update_request_from_json
+        );
+    if(!permission_update_request_exp){
+        return std::move(permission_update_request_exp.error());
+    }
+
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto update_permission_level_exp = auth_service::update_permission_level(
+            db_connection_value,
+            user_id,
+            permission_update_request_exp->permission_level
+        );
+        if(!update_permission_level_exp){
+            return http_response_util::create_4xx_or_500(
+                request,
+                "update permission level",
+                update_permission_level_exp.error()
+            );
+        }
+        if(!update_permission_level_exp.value()){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::not_found,
+                "user_not_found",
+                "user not found"
+            );
+        }
+
+        return http_response_util::create_json(
+            request,
+            boost::beast::http::status::ok,
+            json_util::make_user_permission_object(
+                user_id,
+                permission_update_request_exp->permission_level
+            )
         );
     };
 

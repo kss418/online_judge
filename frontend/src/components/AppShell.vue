@@ -39,7 +39,7 @@
                 <strong>{{ authState.currentUser.user_name }}</strong>
                 <StatusBadge
                   v-if="authState.currentUser.is_admin"
-                  label="Admin"
+                  :label="getRoleBadgeLabel(authState.currentUser)"
                   tone="warning"
                 />
               </div>
@@ -119,7 +119,7 @@ const navItems = computed(() => {
     }
   ]
 
-  if (authState.currentUser?.is_admin) {
+  if (authState.currentUser?.permission_level >= 1) {
     items.push({
       to: '/admin/users',
       label: 'Users',
@@ -151,6 +151,14 @@ function closeAuthDialog(){
 
 async function handleLogout(){
   await logout()
+}
+
+function getRoleBadgeLabel(user){
+  if (!user) {
+    return 'User'
+  }
+
+  return user.role_name === 'superadmin' ? 'SuperAdmin' : 'Admin'
 }
 
 onMounted(() => {

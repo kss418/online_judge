@@ -42,15 +42,19 @@ namespace auth_dto{
         std::string password_hash;
     };
 
+    struct permission_update_request{
+        std::int32_t permission_level = 0;
+    };
+
     struct identity{
         std::int64_t user_id = 0;
-        bool is_admin = false;
+        std::int32_t permission_level = 0;
         std::string user_name;
     };
 
     struct session{
         std::int64_t user_id = 0;
-        bool is_admin = false;
+        std::int32_t permission_level = 0;
         std::string user_name;
         std::string token;
     };
@@ -59,7 +63,7 @@ namespace auth_dto{
         std::int64_t user_id = 0;
         std::string user_name;
         std::optional<std::string> user_login_id_opt;
-        bool is_admin = false;
+        std::int32_t permission_level = 0;
         std::string created_at;
     };
 
@@ -70,6 +74,10 @@ namespace auth_dto{
     );
 
     std::expected<credentials, dto_validation_error> make_credentials_from_json(
+        const boost::json::object& json
+    );
+    std::expected<permission_update_request, dto_validation_error>
+    make_permission_update_request_from_json(
         const boost::json::object& json
     );
 

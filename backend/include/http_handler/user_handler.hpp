@@ -26,4 +26,10 @@ namespace user_handler{
         db_connection& db_connection_value,
         std::int64_t user_id
     );
+
+    response_type put_user_permission(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t user_id
+    );
 }

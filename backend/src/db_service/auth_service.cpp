@@ -118,28 +118,28 @@ std::expected<bool, error_code> auth_service::revoke_token(
     );
 }
 
-std::expected<bool, error_code> auth_service::update_admin_status(
+std::expected<bool, error_code> auth_service::update_permission_level(
     db_connection& connection_value,
     std::int64_t user_id,
-    bool is_admin
+    std::int32_t permission_level
 ){
-    if(user_id <= 0){
+    if(user_id <= 0 || permission_level < 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
     return db_service_util::with_retry_write_transaction(
         connection_value,
         [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
-            const auto update_admin_status_exp = auth_util::update_admin_status(
+            const auto update_permission_level_exp = auth_util::update_permission_level(
                 transaction,
                 user_id,
-                is_admin
+                permission_level
             );
-            if(!update_admin_status_exp){
-                return std::unexpected(update_admin_status_exp.error());
+            if(!update_permission_level_exp){
+                return std::unexpected(update_permission_level_exp.error());
             }
 
-            return *update_admin_status_exp;
+            return *update_permission_level_exp;
         }
     );
 }

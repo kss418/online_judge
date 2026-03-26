@@ -21,10 +21,10 @@ namespace auth_service{
         db_connection& connection_value,
         const auth_dto::token& token_value
     );
-    std::expected<bool, error_code> update_admin_status(
+    std::expected<bool, error_code> update_permission_level(
         db_connection& connection_value,
         std::int64_t user_id,
-        bool is_admin
+        std::int32_t permission_level
     );
     std::expected<auth_dto::user_summary_list, error_code> get_user_list(
         db_connection& connection_value

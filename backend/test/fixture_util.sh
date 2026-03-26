@@ -396,7 +396,7 @@ promote_admin_user(){
             -v ON_ERROR_STOP=1 \
             -qAt <<SQL | sed -n '1p'
 UPDATE users
-SET is_admin = TRUE, updated_at = NOW()
+SET permission_level = 1, is_admin = TRUE, updated_at = NOW()
 WHERE user_id = ${user_id}
 RETURNING user_id;
 SQL

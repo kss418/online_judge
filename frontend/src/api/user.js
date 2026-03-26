@@ -12,3 +12,13 @@ export function promoteUserToAdmin(userId, token){
     bearerToken: token
   })
 }
+
+export function updateUserPermissionLevel(userId, permissionLevel, token){
+  return requestJson(`/user/${userId}/permission`, {
+    method: 'PUT',
+    bearerToken: token,
+    body: {
+      permission_level: permissionLevel
+    }
+  })
+}

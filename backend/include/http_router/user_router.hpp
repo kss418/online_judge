@@ -29,5 +29,10 @@ private:
         std::int64_t user_id
     );
 
+    response_type handle_user_permission(
+        const request_type& request,
+        std::int64_t user_id
+    );
+
     db_connection& db_connection_;
 };
