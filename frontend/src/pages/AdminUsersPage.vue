@@ -106,7 +106,18 @@
                 class="admin-user-created-at"
                 :datetime="user.created_at"
               >
-                {{ formatCreatedAt(user.created_at) }}
+                <span
+                  class="admin-user-relative-time"
+                  tabindex="0"
+                >
+                  {{ formatRelativeCreatedAt(user.created_at_timestamp) }}
+                  <span
+                    v-if="user.created_at_label"
+                    class="admin-user-time-tooltip"
+                  >
+                    {{ user.created_at_label }}
+                  </span>
+                </span>
               </time>
               <div class="admin-user-actions">
                 <button
@@ -129,7 +140,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { getUserList, promoteUserToAdmin } from '@/api/user'
 import StatusBadge from '@/components/StatusBadge.vue'
@@ -141,22 +152,14 @@ const errorMessage = ref('')
 const actionMessage = ref('')
 const promotingUserId = ref(0)
 const users = ref([])
+const nowTimestamp = ref(Date.now())
 let latestLoadRequestId = 0
+let relativeTimeRefreshTimer = null
 
 const canManageUsers = computed(() => Boolean(authState.currentUser?.is_admin))
 const currentUserId = computed(() => Number(authState.currentUser?.id ?? 0))
 const adminCount = computed(() => users.value.filter((user) => user.is_admin).length)
 const regularUserCount = computed(() => users.value.length - adminCount.value)
-
-const dateTimeFormatter = new Intl.DateTimeFormat('ko-KR', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: false
-})
 
 watch(
   () => [authState.initialized, authState.token, authState.currentUser?.is_admin],
@@ -201,7 +204,8 @@ async function loadUsers(){
       user_name: user.user_name ?? '',
       user_login_id: user.user_login_id ?? '',
       is_admin: Boolean(user.is_admin),
-      created_at: user.created_at ?? ''
+      created_at: typeof user.created_at === 'string' ? user.created_at : '',
+      ...normalizeCreatedAt(user.created_at)
     }))
   } catch (error) {
     if (requestId !== latestLoadRequestId) {
@@ -245,23 +249,99 @@ async function handlePromote(user){
   }
 }
 
-function formatCreatedAt(value){
-  if (!value) {
+function normalizeCreatedAt(value){
+  if (typeof value !== 'string' || !value.trim()) {
+    return {
+      created_at_timestamp: null,
+      created_at_label: ''
+    }
+  }
+
+  const trimmedValue = value.trim()
+  const matchedTimestamp = trimmedValue.match(
+    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?([+-]\d{2})(?::?(\d{2}))?$/
+  )
+
+  if (matchedTimestamp) {
+    const [, datePart, timePart, fractionPart = '', offsetHour, offsetMinute = '00'] =
+      matchedTimestamp
+    const normalizedFraction = fractionPart
+      ? `.${fractionPart.slice(0, 3).padEnd(3, '0')}`
+      : ''
+    const parsedTimestamp = Date.parse(
+      `${datePart}T${timePart}${normalizedFraction}${offsetHour}:${offsetMinute}`
+    )
+
+    return {
+      created_at_timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
+      created_at_label: `${datePart} ${timePart}`
+    }
+  }
+
+  const parsedTimestamp = Date.parse(trimmedValue.replace(' ', 'T'))
+  return {
+    created_at_timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
+    created_at_label: trimmedValue
+  }
+}
+
+function formatRelativeCreatedAt(timestamp){
+  if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
     return '-'
   }
 
-  const normalizedValue = value.includes(' ') ? value.replace(' ', 'T') : value
-  const parsedDate = new Date(normalizedValue)
+  const elapsedSeconds = Math.max(1, Math.floor((nowTimestamp.value - timestamp) / 1000))
 
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value
+  if (elapsedSeconds < 60) {
+    return `${elapsedSeconds}초 전`
   }
 
-  return dateTimeFormatter.format(parsedDate)
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60)
+  if (elapsedMinutes < 60) {
+    return `${elapsedMinutes}분 전`
+  }
+
+  const elapsedHours = Math.floor(elapsedMinutes / 60)
+  if (elapsedHours < 24) {
+    return `${elapsedHours}시간 전`
+  }
+
+  const elapsedDays = Math.floor(elapsedHours / 24)
+  if (elapsedDays < 30) {
+    return `${elapsedDays}일 전`
+  }
+
+  const elapsedMonths = Math.floor(elapsedDays / 30)
+  if (elapsedMonths < 12) {
+    return `${elapsedMonths}달 전`
+  }
+
+  const elapsedYears = Math.floor(elapsedDays / 365)
+  return `${elapsedYears}년 전`
+}
+
+function stopRelativeTimeRefresh(){
+  if (relativeTimeRefreshTimer) {
+    clearInterval(relativeTimeRefreshTimer)
+    relativeTimeRefreshTimer = null
+  }
+}
+
+function startRelativeTimeRefresh(){
+  stopRelativeTimeRefresh()
+  nowTimestamp.value = Date.now()
+  relativeTimeRefreshTimer = window.setInterval(() => {
+    nowTimestamp.value = Date.now()
+  }, 1000)
 }
 
 onMounted(() => {
+  startRelativeTimeRefresh()
   initializeAuth()
+})
+
+onUnmounted(() => {
+  stopRelativeTimeRefresh()
 })
 </script>
 
@@ -360,7 +440,73 @@ onMounted(() => {
 }
 
 .admin-user-created-at {
+  white-space: nowrap;
   font-size: 0.92rem;
+  font-weight: 600;
+  color: #6C8BCF;
+}
+
+.admin-user-relative-time {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  cursor: help;
+  outline: none;
+  text-decoration: underline dotted transparent;
+  text-underline-offset: 0.18em;
+  transition:
+    color 140ms ease,
+    text-decoration-color 140ms ease,
+    transform 140ms ease;
+}
+
+.admin-user-relative-time:hover,
+.admin-user-relative-time:focus-visible {
+  color: #4E6FB2;
+  text-decoration-color: currentColor;
+  transform: translateY(-1px);
+}
+
+.admin-user-time-tooltip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.55rem);
+  z-index: 10;
+  min-width: max-content;
+  max-width: 220px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(20, 33, 61, 0.12);
+  border-radius: 12px;
+  background: rgba(20, 33, 61, 0.96);
+  box-shadow: 0 14px 32px rgba(20, 33, 61, 0.18);
+  color: #f8fafc;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.admin-user-time-tooltip::after {
+  content: '';
+  position: absolute;
+  right: 0.8rem;
+  top: 100%;
+  border-width: 6px 6px 0;
+  border-style: solid;
+  border-color: rgba(20, 33, 61, 0.96) transparent transparent;
+}
+
+.admin-user-relative-time:hover .admin-user-time-tooltip,
+.admin-user-relative-time:focus-visible .admin-user-time-tooltip {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .admin-user-actions {

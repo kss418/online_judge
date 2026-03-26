@@ -123,7 +123,7 @@ const navItems = computed(() => {
     items.push({
       to: '/admin/users',
       label: 'Users',
-      hint: '관리자용 유저 관리'
+      hint: '유저 관리'
     })
   }
 
