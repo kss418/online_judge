@@ -117,7 +117,8 @@
     <div
       v-if="sourceDialogOpen"
       class="submission-source-backdrop"
-      @click.self="closeSourceDialog"
+      @pointerdown="handleSourceBackdropPointerDown"
+      @click.self="handleSourceBackdropClick"
     >
       <section
         class="submission-source-dialog"
@@ -192,6 +193,7 @@ const sourceErrorMessage = ref('')
 const sourceDetail = ref(null)
 const activeSourceSubmissionId = ref(null)
 const copyState = ref('idle')
+const isSourceBackdropInteraction = ref(false)
 const nowTimestamp = ref(Date.now())
 const countFormatter = new Intl.NumberFormat()
 const authenticatedBearerToken = computed(() =>
@@ -450,12 +452,25 @@ function fallbackCopyText(text){
 }
 
 function closeSourceDialog(){
+  isSourceBackdropInteraction.value = false
   sourceDialogOpen.value = false
   isLoadingSource.value = false
   sourceErrorMessage.value = ''
   sourceDetail.value = null
   activeSourceSubmissionId.value = null
   resetCopyState()
+}
+
+function handleSourceBackdropPointerDown(event){
+  isSourceBackdropInteraction.value = event.target === event.currentTarget
+}
+
+function handleSourceBackdropClick(){
+  if (!isSourceBackdropInteraction.value) {
+    return
+  }
+
+  closeSourceDialog()
 }
 
 async function openSourceDialog(submission){

@@ -3,7 +3,8 @@
     <div
       v-if="open"
       class="auth-dialog-backdrop"
-      @click.self="handleClose"
+      @pointerdown="handleBackdropPointerDown"
+      @click.self="handleBackdropClick"
     >
       <section
         class="auth-dialog"
@@ -170,6 +171,7 @@ const { authState, login, signUp } = useAuth()
 
 const activeMode = ref('login')
 const submitErrorMessage = ref('')
+const isBackdropInteraction = ref(false)
 
 const loginForm = reactive({
   user_login_id: '',
@@ -198,6 +200,10 @@ watch(
 watch(
   () => props.open,
   (isOpen) => {
+    if (!isOpen) {
+      isBackdropInteraction.value = false
+    }
+
     if (isOpen) {
       submitErrorMessage.value = ''
     }
@@ -214,7 +220,20 @@ function handleClose(){
     return
   }
 
+  isBackdropInteraction.value = false
   emit('close')
+}
+
+function handleBackdropPointerDown(event){
+  isBackdropInteraction.value = event.target === event.currentTarget
+}
+
+function handleBackdropClick(){
+  if (!isBackdropInteraction.value) {
+    return
+  }
+
+  handleClose()
 }
 
 function clearForms(){
