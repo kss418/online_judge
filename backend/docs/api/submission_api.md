@@ -390,7 +390,7 @@ Example:
 }
 ```
 
-### `GET /api/submission?user_id=...&problem_id=...&status=...`
+### `GET /api/submission?user_id=...&problem_id=...&language=...&status=...`
 
 List submissions using optional filters. This endpoint is public, and authentication is optional.
 
@@ -410,6 +410,7 @@ List submissions using optional filters. This endpoint is public, and authentica
 | `page` | `int32` | no | 1-based page number; must be positive |
 | `user_id` | `int64` | no | must be positive |
 | `problem_id` | `int64` | no | must be positive |
+| `language` | `string` | no | one of the supported submission languages such as `cpp` or `python` |
 | `status` | `string` | no | one of `queued`, `judging`, `accepted`, `wrong_answer`, `time_limit_exceeded`, `memory_limit_exceeded`, `runtime_error`, `compile_error`, `output_exceeded` |
 | `limit` | `int32` | no | page size; must be positive; defaults to 50 |
 
@@ -422,6 +423,10 @@ Example:
 
 ```text
 GET /api/submission?page=2&limit=50&user_id=7&problem_id=3
+```
+
+```text
+GET /api/submission?problem_id=3&language=cpp&status=accepted
 ```
 
 ```text

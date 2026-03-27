@@ -1,5 +1,6 @@
 #include "db_repository/submission_repository.hpp"
 #include "db_repository/problem_statistics_repository.hpp"
+#include "common/language_util.hpp"
 
 #include <pqxx/pqxx>
 
@@ -22,6 +23,11 @@ namespace{
                 " AND submission_table.problem_id = $" + std::to_string(query_param_index++);
             query_params.append(*filter_value.problem_id_opt);
         }
+        if(filter_value.language_opt){
+            query +=
+                " AND submission_table.language = $" + std::to_string(query_param_index++);
+            query_params.append(*filter_value.language_opt);
+        }
         if(filter_value.status_opt){
             query +=
                 " AND submission_table.status = $" + std::to_string(query_param_index++) +
@@ -35,6 +41,10 @@ namespace{
             (filter_value.page_opt && *filter_value.page_opt <= 0) ||
             (filter_value.user_id_opt && *filter_value.user_id_opt <= 0) ||
             (filter_value.problem_id_opt && *filter_value.problem_id_opt <= 0) ||
+            (
+                filter_value.language_opt &&
+                !language_util::find_supported_language(*filter_value.language_opt)
+            ) ||
             (filter_value.limit_opt && *filter_value.limit_opt <= 0) ||
             (filter_value.status_opt && !parse_submission_status(*filter_value.status_opt));
     }

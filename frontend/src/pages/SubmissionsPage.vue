@@ -35,6 +35,82 @@
         </div>
       </div>
 
+      <div class="submission-filter-bar">
+        <div class="submission-filter-fields">
+          <div
+            v-if="!hasFixedProblemId"
+            class="submission-filter-group"
+          >
+            <label class="submission-filter-label" for="submission-problem-filter">문제 번호</label>
+            <input
+              id="submission-problem-filter"
+              v-model="selectedProblemIdFilter"
+              class="submission-filter-input"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              placeholder="문제 번호"
+              :disabled="isLoading"
+            />
+          </div>
+
+          <div class="submission-filter-group">
+            <label class="submission-filter-label" for="submission-status-filter">상태 필터</label>
+            <select
+              id="submission-status-filter"
+              v-model="selectedStatusFilter"
+              class="submission-filter-select"
+              :disabled="isLoading"
+            >
+              <option
+                v-for="option in submissionStatusOptions"
+                :key="option.value || 'all'"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </option>
+            </select>
+          </div>
+
+          <div class="submission-filter-group">
+            <label class="submission-filter-label" for="submission-language-filter">언어 필터</label>
+            <select
+              id="submission-language-filter"
+              v-model="selectedLanguageFilter"
+              class="submission-filter-select"
+              :disabled="isLoadingLanguages"
+            >
+              <option
+                v-for="option in submissionLanguageFilterOptions"
+                :key="option.value || 'all'"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="submission-filter-actions">
+          <button
+            type="button"
+            class="ghost-button"
+            :disabled="isLoading || !canResetFilters"
+            @click="resetSubmissionFilters"
+          >
+            초기화
+          </button>
+          <button
+            type="button"
+            class="primary-button"
+            :disabled="isLoading || !canApplyFilters"
+            @click="applySubmissionFilters"
+          >
+            적용
+          </button>
+        </div>
+      </div>
+
       <div v-if="isLoading" class="empty-state">
         <p>제출 목록을 불러오는 중입니다.</p>
       </div>
@@ -289,8 +365,9 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
+import { getSupportedLanguages } from '@/api/http'
 import {
   getSubmissionDetail,
   getSubmissionList,
@@ -303,12 +380,23 @@ import { useNotice } from '@/composables/useNotice'
 import { getProblemStateTextClass } from '@/utils/problemState'
 
 const route = useRoute()
+const router = useRouter()
 const { authState, isAuthenticated, initializeAuth } = useAuth()
 const { showErrorNotice, showSuccessNotice } = useNotice()
 const listLimit = 50
 const submissionPollingIntervalMs = 2000
 const pollingSubmissionStatuses = new Set(['queued', 'judging'])
+const submissionStatusOptions = [
+  { value: '', label: '전체' },
+  { value: 'accepted', label: '정답' },
+  { value: 'wrong_answer', label: '오답' },
+  { value: 'time_limit_exceeded', label: '시간 초과' },
+  { value: 'memory_limit_exceeded', label: '메모리 초과' },
+  { value: 'runtime_error', label: '런타임 에러' },
+  { value: 'compile_error', label: '컴파일 에러' }
+]
 const isLoading = ref(true)
+const isLoadingLanguages = ref(true)
 const errorMessage = ref('')
 const actionMessage = ref('')
 const actionErrorMessage = ref('')
@@ -327,6 +415,10 @@ const isSourceBackdropInteraction = ref(false)
 const nowTimestamp = ref(Date.now())
 const rejudgingSubmissionIds = ref([])
 const isDocumentVisible = ref(typeof document === 'undefined' ? true : !document.hidden)
+const selectedProblemIdFilter = ref('')
+const selectedStatusFilter = ref('')
+const selectedLanguageFilter = ref('')
+const supportedSubmissionLanguages = ref([])
 const countFormatter = new Intl.NumberFormat()
 const authenticatedBearerToken = computed(() =>
   authState.initialized && isAuthenticated.value ? authState.token : ''
@@ -334,7 +426,119 @@ const authenticatedBearerToken = computed(() =>
 const canManageSubmissionRejudge = computed(() =>
   Number(authState.currentUser?.permission_level ?? 0) >= 1
 )
+const validSubmissionStatusFilterValues = new Set(
+  submissionStatusOptions
+    .map((option) => option.value)
+    .filter(Boolean)
+)
+const submissionLanguageFilterOptions = computed(() => {
+  const options = [{ value: '', label: '전체' }]
+  const seenLanguages = new Set([''])
+  const candidateLanguages = [
+    ...supportedSubmissionLanguages.value,
+    appliedLanguageFilter.value,
+    selectedLanguageFilter.value
+  ]
+
+  candidateLanguages.forEach((language) => {
+    if (!language || seenLanguages.has(language)) {
+      return
+    }
+
+    seenLanguages.add(language)
+    options.push({
+      value: language,
+      label: language
+    })
+  })
+
+  return options
+})
 const submissionCount = computed(() => submissions.value.length)
+const fixedProblemId = computed(() => {
+  const problemIdParam = Array.isArray(route.params.problemId)
+    ? route.params.problemId[0]
+    : route.params.problemId
+  const parsedProblemId = Number.parseInt(problemIdParam, 10)
+
+  return Number.isInteger(parsedProblemId) && parsedProblemId > 0
+    ? parsedProblemId
+    : null
+})
+const hasFixedProblemId = computed(() => fixedProblemId.value !== null)
+const appliedProblemIdFilter = computed(() => {
+  if (hasFixedProblemId.value) {
+    return ''
+  }
+
+  const problemIdQuery = Array.isArray(route.query.problemId)
+    ? route.query.problemId[0]
+    : route.query.problemId
+  const parsedProblemId = Number.parseInt(problemIdQuery, 10)
+
+  return Number.isInteger(parsedProblemId) && parsedProblemId > 0
+    ? String(parsedProblemId)
+    : ''
+})
+const appliedStatusFilter = computed(() => {
+  const routeStatus = Array.isArray(route.query.status)
+    ? route.query.status[0]
+    : route.query.status
+
+  if (typeof routeStatus !== 'string') {
+    return ''
+  }
+
+  return validSubmissionStatusFilterValues.has(routeStatus)
+    ? routeStatus
+    : ''
+})
+const appliedLanguageFilter = computed(() => {
+  const routeLanguage = Array.isArray(route.query.language)
+    ? route.query.language[0]
+    : route.query.language
+
+  return typeof routeLanguage === 'string'
+    ? routeLanguage.trim()
+    : ''
+})
+const hasAppliedStatusFilter = computed(() => Boolean(appliedStatusFilter.value))
+const normalizedSelectedProblemIdFilter = computed(() => {
+  if (hasFixedProblemId.value) {
+    return ''
+  }
+
+  const trimmedProblemId = normalizeProblemIdFilterInputValue(selectedProblemIdFilter.value)
+  if (!trimmedProblemId) {
+    return ''
+  }
+
+  const parsedProblemId = Number.parseInt(trimmedProblemId, 10)
+  return Number.isInteger(parsedProblemId) && parsedProblemId > 0
+    ? String(parsedProblemId)
+    : null
+})
+const hasInvalidProblemIdFilter = computed(() =>
+  !hasFixedProblemId.value && normalizedSelectedProblemIdFilter.value === null
+)
+const canApplyFilters = computed(() =>
+  !hasInvalidProblemIdFilter.value &&
+  (
+    selectedStatusFilter.value !== appliedStatusFilter.value ||
+    selectedLanguageFilter.value !== appliedLanguageFilter.value ||
+    (!hasFixedProblemId.value && normalizedSelectedProblemIdFilter.value !== appliedProblemIdFilter.value)
+  )
+)
+const canResetFilters = computed(() =>
+  Boolean(selectedStatusFilter.value) ||
+  Boolean(selectedLanguageFilter.value) ||
+  hasAppliedStatusFilter.value ||
+  Boolean(appliedLanguageFilter.value) ||
+  (!hasFixedProblemId.value && (
+    Boolean(normalizeProblemIdFilterInputValue(selectedProblemIdFilter.value)) ||
+    Boolean(appliedProblemIdFilter.value)
+  ))
+)
 const pollingSubmissionIds = computed(() =>
   submissions.value
     .filter((submission) => pollingSubmissionStatuses.has(submission.status))
@@ -414,17 +618,12 @@ const paginationItems = computed(() => {
   return items
 })
 const numericProblemId = computed(() => {
-  const problemIdParam = Array.isArray(route.params.problemId)
-    ? route.params.problemId[0]
-    : route.params.problemId
-  const problemIdQuery = Array.isArray(route.query.problemId)
-    ? route.query.problemId[0]
-    : route.query.problemId
-  const sourceValue = problemIdParam || problemIdQuery
+  if (fixedProblemId.value !== null) {
+    return fixedProblemId.value
+  }
 
-  const parsedProblemId = Number.parseInt(sourceValue, 10)
-  return Number.isInteger(parsedProblemId) && parsedProblemId > 0
-    ? parsedProblemId
+  return appliedProblemIdFilter.value
+    ? Number.parseInt(appliedProblemIdFilter.value, 10)
     : null
 })
 const isMineScope = computed(() => {
@@ -524,6 +723,14 @@ function formatCount(value){
   return countFormatter.format(value)
 }
 
+function normalizeProblemIdFilterInputValue(value){
+  if (value === null || typeof value === 'undefined') {
+    return ''
+  }
+
+  return String(value).trim()
+}
+
 function normalizeSubmissionMetric(value){
   if (value === null || typeof value === 'undefined' || value === '') {
     return null
@@ -537,6 +744,83 @@ function resetPagination(){
   currentPage.value = 1
   pageJumpInput.value = ''
   totalSubmissionCount.value = 0
+}
+
+async function loadSupportedSubmissionLanguages(){
+  isLoadingLanguages.value = true
+
+  try {
+    const response = await getSupportedLanguages()
+    const languages = Array.isArray(response.languages) ? response.languages : []
+
+    supportedSubmissionLanguages.value = languages
+      .map((language) => typeof language?.language === 'string' ? language.language.trim() : '')
+      .filter((language, index, values) => language && values.indexOf(language) === index)
+  } catch {
+    supportedSubmissionLanguages.value = []
+  } finally {
+    isLoadingLanguages.value = false
+  }
+}
+
+function makeSubmissionFilterQuery(problemId, status, language){
+  const nextQuery = {
+    ...route.query
+  }
+
+  if (!hasFixedProblemId.value) {
+    if (problemId) {
+      nextQuery.problemId = problemId
+    } else {
+      delete nextQuery.problemId
+    }
+  }
+
+  if (status) {
+    nextQuery.status = status
+  } else {
+    delete nextQuery.status
+  }
+
+  if (language) {
+    nextQuery.language = language
+  } else {
+    delete nextQuery.language
+  }
+
+  return nextQuery
+}
+
+async function applySubmissionFilters(){
+  if (isLoading.value || !canApplyFilters.value) {
+    return
+  }
+
+  await router.replace({
+    name: route.name,
+    params: route.params,
+    query: makeSubmissionFilterQuery(
+      normalizedSelectedProblemIdFilter.value || '',
+      selectedStatusFilter.value,
+      selectedLanguageFilter.value
+    )
+  })
+}
+
+async function resetSubmissionFilters(){
+  selectedProblemIdFilter.value = ''
+  selectedStatusFilter.value = ''
+  selectedLanguageFilter.value = ''
+
+  if (isLoading.value || !canResetFilters.value) {
+    return
+  }
+
+  await router.replace({
+    name: route.name,
+    params: route.params,
+    query: makeSubmissionFilterQuery('', '', '')
+  })
 }
 
 function normalizeSubmittedAt(value){
@@ -675,6 +959,7 @@ function shouldPollSubmissions(){
   return !isLoading.value &&
     !errorMessage.value &&
     isDocumentVisible.value &&
+    !hasAppliedStatusFilter.value &&
     pollingSubmissionIds.value.length > 0
 }
 
@@ -958,6 +1243,8 @@ async function loadSubmissions(options = {}){
       page: targetPageNumber,
       problemId: numericProblemId.value ?? undefined,
       userId: activeUserId.value ?? undefined,
+      language: appliedLanguageFilter.value || undefined,
+      status: appliedStatusFilter.value || undefined,
       bearerToken: authenticatedBearerToken.value
     })
 
@@ -1053,10 +1340,15 @@ function submitPageJump(){
 onMounted(async () => {
   startRelativeTimeRefresh()
   handleDocumentVisibilityChange()
+  selectedProblemIdFilter.value = appliedProblemIdFilter.value
+  selectedStatusFilter.value = appliedStatusFilter.value
+  selectedLanguageFilter.value = appliedLanguageFilter.value
 
   if (typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', handleDocumentVisibilityChange)
   }
+
+  loadSupportedSubmissionLanguages()
 
   if (!authState.initialized) {
     await initializeAuth()
@@ -1071,7 +1363,9 @@ watch([
   () => route.name,
   numericProblemId,
   numericUserId,
-  isMineScope
+  isMineScope,
+  appliedLanguageFilter,
+  appliedStatusFilter
 ], () => {
   if (!authState.initialized) {
     return
@@ -1080,6 +1374,32 @@ watch([
   resetPagination()
   loadSubmissions()
 })
+
+watch(
+  appliedProblemIdFilter,
+  (problemId) => {
+    if (!hasFixedProblemId.value) {
+      selectedProblemIdFilter.value = problemId
+    }
+  },
+  { immediate: true }
+)
+
+watch(
+  appliedStatusFilter,
+  (status) => {
+    selectedStatusFilter.value = status
+  },
+  { immediate: true }
+)
+
+watch(
+  appliedLanguageFilter,
+  (language) => {
+    selectedLanguageFilter.value = language
+  },
+  { immediate: true }
+)
 
 watch(authenticatedBearerToken, (nextToken, previousToken) => {
   if (!authState.initialized || nextToken === previousToken) {
@@ -1180,11 +1500,68 @@ onUnmounted(() => {
   gap: 1rem;
 }
 
+.submission-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.submission-filter-fields {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
 .submission-summary-group {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.submission-filter-group,
+.submission-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.submission-filter-label {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.submission-filter-select {
+  min-width: 12rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-strong);
+  font: inherit;
+}
+
+.submission-filter-input {
+  width: 9rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-strong);
+  font: inherit;
+}
+
+.submission-filter-input:focus,
+.submission-filter-select:focus {
+  outline: 2px solid rgba(217, 119, 6, 0.18);
+  border-color: rgba(217, 119, 6, 0.5);
 }
 
 .submission-summary-text {
@@ -1634,6 +2011,8 @@ onUnmounted(() => {
 }
 
 @media (max-width: 720px) {
+  .submission-filter-fields,
+  .submission-filter-bar,
   .submission-summary-bar,
   .submission-pagination {
     flex-direction: column;

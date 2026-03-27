@@ -32,17 +32,14 @@ raw_password="${SUBMISSION_FLOW_TEST_PASSWORD:-password123}"
 test_db_name="submission_flow_test_$$_$(date +%s)"
 test_database_created="0"
 submission_language="${SUBMISSION_FLOW_TEST_LANGUAGE:-cpp}"
+second_submission_language="${SUBMISSION_FLOW_TEST_SECOND_LANGUAGE:-python}"
 submission_source_code="${SUBMISSION_FLOW_TEST_SOURCE_CODE:-#include <iostream>
 int main(){
     std::cout << 0 << '\n';
     return 0;
 }
 }"
-second_submission_source_code="${SUBMISSION_FLOW_TEST_SECOND_SOURCE_CODE:-#include <iostream>
-int main(){
-    std::cout << 1 << '\n';
-    return 0;
-}
+second_submission_source_code="${SUBMISSION_FLOW_TEST_SECOND_SOURCE_CODE:-print(1)
 }"
 test_log_path=""
 server_log_path=""
@@ -59,6 +56,7 @@ register_temp_file authenticated_list_submission_response_file
 register_temp_file solved_state_submission_response_file
 register_temp_file limited_submission_response_file
 register_temp_file paged_submission_response_file
+register_temp_file language_filtered_submission_response_file
 register_temp_file invalid_limit_submission_response_file
 register_temp_file invalid_top_submission_response_file
 register_temp_file submission_history_response_file
@@ -213,7 +211,7 @@ PY
 )"
 
 second_submission_request_body="$(
-    python3 - "${submission_language}" "${second_submission_source_code}" <<'PY'
+    python3 - "${second_submission_language}" "${second_submission_source_code}" <<'PY'
 import json
 import sys
 
@@ -621,6 +619,19 @@ assert_status_code \
     "authenticated submission list"
 print_success_log "authenticated submission list success"
 
+language_filtered_submission_status_code="$(
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission?user_id=${sign_up_user_id}&problem_id=${problem_id}&language=${second_submission_language}" \
+        "${language_filtered_submission_response_file}"
+)"
+assert_status_code \
+    "${language_filtered_submission_status_code}" \
+    "200" \
+    "${language_filtered_submission_response_file}" \
+    "language filtered submission list"
+print_success_log "language filtered submission list success"
+
 limited_submission_status_code="$(
     send_http_request \
         "GET" \
@@ -849,7 +860,8 @@ if ! python3 \
     "${second_submission_id}" \
     "${sign_up_user_id}" \
     "${problem_id}" \
-    "${submission_language}" <<'PY'
+    "${submission_language}" \
+    "${second_submission_language}" <<'PY'
 import json
 import sys
 
@@ -860,7 +872,8 @@ expected_first_submission_id = int(sys.argv[2])
 expected_second_submission_id = int(sys.argv[3])
 expected_user_id = int(sys.argv[4])
 expected_problem_id = int(sys.argv[5])
-expected_language = sys.argv[6]
+expected_older_language = sys.argv[6]
+expected_latest_language = sys.argv[7]
 
 submission_count = submission_list.get("submission_count")
 if not isinstance(submission_count, int) or submission_count < 2:
@@ -882,6 +895,11 @@ if latest_submission.get("submission_id") != expected_second_submission_id:
 if older_submission.get("submission_id") != expected_first_submission_id:
     raise SystemExit("expected second newest submission to appear second in unfiltered list")
 
+expected_languages_by_submission_id = {
+    expected_first_submission_id: expected_older_language,
+    expected_second_submission_id: expected_latest_language,
+}
+
 for submission in (latest_submission, older_submission):
     if submission.get("user_id") != expected_user_id:
         raise SystemExit("user_id mismatch in unfiltered submission list response")
@@ -889,6 +907,7 @@ for submission in (latest_submission, older_submission):
     if submission.get("problem_id") != expected_problem_id:
         raise SystemExit("problem_id mismatch in unfiltered submission list response")
 
+    expected_language = expected_languages_by_submission_id.get(submission.get("submission_id"))
     if submission.get("language") != expected_language:
         raise SystemExit("language mismatch in unfiltered submission list response")
 
@@ -987,7 +1006,8 @@ if ! python3 \
     "${second_submission_id}" \
     "${sign_up_user_id}" \
     "${problem_id}" \
-    "${submission_language}" <<'PY'
+    "${submission_language}" \
+    "${second_submission_language}" <<'PY'
 import json
 import sys
 
@@ -998,7 +1018,8 @@ expected_first_submission_id = int(sys.argv[2])
 expected_second_submission_id = int(sys.argv[3])
 expected_user_id = int(sys.argv[4])
 expected_problem_id = int(sys.argv[5])
-expected_language = sys.argv[6]
+expected_older_language = sys.argv[6]
+expected_latest_language = sys.argv[7]
 
 if submission_list.get("submission_count") != 2:
     raise SystemExit("expected submission_count to be 2")
@@ -1019,6 +1040,11 @@ if latest_submission.get("submission_id") != expected_second_submission_id:
 if older_submission.get("submission_id") != expected_first_submission_id:
     raise SystemExit("expected older submission to appear second")
 
+expected_languages_by_submission_id = {
+    expected_first_submission_id: expected_older_language,
+    expected_second_submission_id: expected_latest_language,
+}
+
 for submission in submissions:
     if submission.get("user_id") != expected_user_id:
         raise SystemExit("user_id mismatch in submission list response")
@@ -1026,6 +1052,7 @@ for submission in submissions:
     if submission.get("problem_id") != expected_problem_id:
         raise SystemExit("problem_id mismatch in submission list response")
 
+    expected_language = expected_languages_by_submission_id.get(submission.get("submission_id"))
     if submission.get("language") != expected_language:
         raise SystemExit("language mismatch in submission list response")
 
@@ -1065,7 +1092,8 @@ if ! python3 \
     "${second_submission_id}" \
     "${sign_up_user_id}" \
     "${problem_id}" \
-    "${submission_language}" <<'PY'
+    "${submission_language}" \
+    "${second_submission_language}" <<'PY'
 import json
 import sys
 
@@ -1076,7 +1104,8 @@ expected_first_submission_id = int(sys.argv[2])
 expected_second_submission_id = int(sys.argv[3])
 expected_user_id = int(sys.argv[4])
 expected_problem_id = int(sys.argv[5])
-expected_language = sys.argv[6]
+expected_older_language = sys.argv[6]
+expected_latest_language = sys.argv[7]
 
 if submission_list.get("submission_count") != 2:
     raise SystemExit("expected authenticated submission_count to be 2")
@@ -1097,6 +1126,11 @@ if latest_submission.get("submission_id") != expected_second_submission_id:
 if older_submission.get("submission_id") != expected_first_submission_id:
     raise SystemExit("expected older submission to appear second in authenticated list")
 
+expected_languages_by_submission_id = {
+    expected_first_submission_id: expected_older_language,
+    expected_second_submission_id: expected_latest_language,
+}
+
 for submission in submissions:
     if submission.get("user_id") != expected_user_id:
         raise SystemExit("user_id mismatch in authenticated submission list response")
@@ -1104,6 +1138,7 @@ for submission in submissions:
     if submission.get("problem_id") != expected_problem_id:
         raise SystemExit("problem_id mismatch in authenticated submission list response")
 
+    expected_language = expected_languages_by_submission_id.get(submission.get("submission_id"))
     if submission.get("language") != expected_language:
         raise SystemExit("language mismatch in authenticated submission list response")
 
@@ -1120,11 +1155,58 @@ then
 fi
 
 if ! python3 \
+    - "${language_filtered_submission_response_file}" \
+    "${second_submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "${second_submission_language}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    submission_list = json.load(response_file)
+
+expected_submission_id = int(sys.argv[2])
+expected_user_id = int(sys.argv[3])
+expected_problem_id = int(sys.argv[4])
+expected_language = sys.argv[5]
+
+if submission_list.get("submission_count") != 1:
+    raise SystemExit("expected submission_count to be 1 for language filtered submission list response")
+
+if submission_list.get("total_submission_count") != 1:
+    raise SystemExit("expected total_submission_count to be 1 for language filtered submission list response")
+
+submissions = submission_list.get("submissions")
+if not isinstance(submissions, list) or len(submissions) != 1:
+    raise SystemExit("expected one submission in language filtered submission list response")
+
+submission = submissions[0]
+
+if submission.get("submission_id") != expected_submission_id:
+    raise SystemExit("submission_id mismatch in language filtered submission list response")
+
+if submission.get("user_id") != expected_user_id:
+    raise SystemExit("user_id mismatch in language filtered submission list response")
+
+if submission.get("problem_id") != expected_problem_id:
+    raise SystemExit("problem_id mismatch in language filtered submission list response")
+
+if submission.get("language") != expected_language:
+    raise SystemExit("language mismatch in language filtered submission list response")
+PY
+then
+    append_log_line "${test_log_temp_file}" "language filtered submission list validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 \
     - "${limited_submission_response_file}" \
     "${second_submission_id}" \
     "${sign_up_user_id}" \
     "${problem_id}" \
-    "${submission_language}" <<'PY'
+    "${second_submission_language}" <<'PY'
 import json
 import sys
 

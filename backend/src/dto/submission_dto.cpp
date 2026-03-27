@@ -115,6 +115,35 @@ submission_dto::make_list_filter_from_query_params(
             filter_value.problem_id_opt = *problem_id_opt;
             continue;
         }
+        if(query_param.key == "language"){
+            if(filter_value.language_opt){
+                return std::unexpected(dto_validation_error{
+                    .code = "duplicate_query_parameter",
+                    .message = "duplicate query parameter: language",
+                    .field_opt = "language"
+                });
+            }
+
+            if(query_param.value.empty()){
+                return std::unexpected(dto_validation_error{
+                    .code = "invalid_query_parameter",
+                    .message = "invalid query parameter: language",
+                    .field_opt = "language"
+                });
+            }
+
+            const auto language_opt = language_util::find_supported_language(query_param.value);
+            if(!language_opt){
+                return std::unexpected(dto_validation_error{
+                    .code = "invalid_query_parameter",
+                    .message = "invalid query parameter: language",
+                    .field_opt = "language"
+                });
+            }
+
+            filter_value.language_opt = std::string{language_opt->language};
+            continue;
+        }
         if(query_param.key == "status"){
             if(filter_value.status_opt){
                 return std::unexpected(dto_validation_error{

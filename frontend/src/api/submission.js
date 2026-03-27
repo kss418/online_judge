@@ -21,6 +21,10 @@ export async function getSubmissionList(options = {}){
     searchParams.set('user_id', String(options.userId))
   }
 
+  if (options.language?.trim()) {
+    searchParams.set('language', options.language.trim())
+  }
+
   if (options.status?.trim()) {
     searchParams.set('status', options.status.trim())
   }

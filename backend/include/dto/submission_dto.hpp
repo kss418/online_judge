@@ -92,6 +92,7 @@ namespace submission_dto{
         std::optional<std::int32_t> page_opt = std::nullopt;
         std::optional<std::int64_t> user_id_opt = std::nullopt;
         std::optional<std::int64_t> problem_id_opt = std::nullopt;
+        std::optional<std::string> language_opt = std::nullopt;
         std::optional<std::string> status_opt = std::nullopt;
         std::optional<std::int32_t> limit_opt = std::nullopt;
     };
