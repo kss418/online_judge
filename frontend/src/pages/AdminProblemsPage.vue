@@ -183,7 +183,15 @@
               <div class="admin-problem-editor-header">
                 <div>
                   <p class="panel-kicker">editor</p>
-                  <h3>#{{ formatCount(selectedProblemDetail.problem_id) }} {{ selectedProblemDetail.title }}</h3>
+                  <h3 class="admin-problem-heading">
+                    <span class="admin-problem-heading-id-group">
+                      <span class="admin-problem-heading-id">
+                        #{{ formatCount(selectedProblemDetail.problem_id) }}
+                      </span>
+                      <span class="admin-problem-heading-divider" aria-hidden="true">·</span>
+                    </span>
+                    <span class="admin-problem-heading-text">{{ selectedProblemDetail.title }}</span>
+                  </h3>
                   <p class="admin-problem-editor-copy">
                     선택한 문제의 제목, 제한, 설명, 공개 예제를 바로 저장할 수 있습니다.
                   </p>
@@ -2092,6 +2100,39 @@ onMounted(() => {
   justify-content: space-between;
   gap: 1rem;
   align-items: start;
+}
+
+.admin-problem-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  min-width: 0;
+  margin: 0;
+}
+
+.admin-problem-heading-id-group {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+
+.admin-problem-heading-id {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.admin-problem-heading-divider {
+  color: rgba(20, 33, 61, 0.34);
+  font-weight: 700;
+}
+
+.admin-problem-heading-text {
+  min-width: 0;
+  color: var(--ink-strong);
 }
 
 .admin-problem-editor-header-actions {

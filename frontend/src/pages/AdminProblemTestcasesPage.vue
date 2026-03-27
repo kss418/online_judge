@@ -164,15 +164,20 @@
               <div class="admin-testcases-editor-header">
                 <div>
                   <p class="panel-kicker">editor</p>
-                  <h3>#{{ formatCount(problemDetail.problem_id) }} {{ problemDetail.title }}</h3>
+                  <h3 class="admin-testcases-problem-heading">
+                    <span class="admin-testcases-problem-heading-id-group">
+                      <span class="admin-testcases-problem-heading-id">
+                        #{{ formatCount(problemDetail.problem_id) }}
+                      </span>
+                      <span class="admin-testcases-problem-heading-divider" aria-hidden="true">·</span>
+                    </span>
+                    <span class="admin-testcases-problem-heading-text">{{ problemDetail.title }}</span>
+                  </h3>
                   <p class="admin-testcases-editor-copy">
                     요약 리스트에서 특정 테스트케이스를 고르고, 선택한 항목만 편집해서 저장할 수 있습니다.
                   </p>
                 </div>
                 <div class="admin-testcases-editor-side">
-                  <p class="admin-testcases-editor-current-problem">
-                    #{{ formatCount(problemDetail.problem_id) }} {{ problemDetail.title }}
-                  </p>
                   <div class="admin-testcases-editor-actions">
                     <RouterLink
                       class="ghost-button"
@@ -1532,6 +1537,38 @@ onMounted(async () => {
 
 .admin-testcases-editor-header h3 {
   margin: 0;
+}
+
+.admin-testcases-problem-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.admin-testcases-problem-heading-id-group {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+
+.admin-testcases-problem-heading-id {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.admin-testcases-problem-heading-divider {
+  color: rgba(20, 33, 61, 0.34);
+  font-weight: 700;
+}
+
+.admin-testcases-problem-heading-text {
+  min-width: 0;
+  color: var(--ink-strong);
 }
 
 .admin-testcases-editor-side {

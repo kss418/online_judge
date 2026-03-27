@@ -15,7 +15,13 @@
             <p class="panel-kicker">problem</p>
             <div class="detail-title-row">
               <div class="detail-title-copy">
-                <h3>#{{ problemDetail.problem_id }} {{ problemDetail.title }}</h3>
+                <h3>
+                  <span class="detail-title-id-group">
+                    <span class="detail-title-id">#{{ problemDetail.problem_id }}</span>
+                    <span class="detail-title-divider" aria-hidden="true">·</span>
+                  </span>
+                  <span class="detail-title-text">{{ problemDetail.title }}</span>
+                </h3>
                 <StatusBadge
                   v-if="problemDetail.user_problem_state"
                   class="detail-title-status-badge"
@@ -350,9 +356,37 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
 
 .detail-title-copy h3 {
   margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
   font-size: clamp(1.7rem, 2vw, 2.2rem);
   line-height: 1.12;
   letter-spacing: -0.02em;
+}
+
+.detail-title-id-group {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+
+.detail-title-id {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.detail-title-divider {
+  color: rgba(20, 33, 61, 0.34);
+  font-weight: 700;
+}
+
+.detail-title-text {
+  min-width: 0;
+  color: var(--ink-strong);
 }
 
 .detail-title-status-badge {
