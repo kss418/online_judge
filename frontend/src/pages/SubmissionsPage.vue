@@ -273,6 +273,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import {
+  getSubmissionDetail,
   getSubmissionList,
   getSubmissionSource,
   rejudgeSubmission
@@ -286,6 +287,8 @@ const route = useRoute()
 const { authState, isAuthenticated, initializeAuth } = useAuth()
 const { showErrorNotice, showSuccessNotice } = useNotice()
 const listLimit = 50
+const submissionPollingIntervalMs = 2000
+const pollingSubmissionStatuses = new Set(['queued', 'judging'])
 const isLoading = ref(true)
 const errorMessage = ref('')
 const actionMessage = ref('')
@@ -304,6 +307,7 @@ const copyState = ref('idle')
 const isSourceBackdropInteraction = ref(false)
 const nowTimestamp = ref(Date.now())
 const rejudgingSubmissionIds = ref([])
+const isDocumentVisible = ref(typeof document === 'undefined' ? true : !document.hidden)
 const countFormatter = new Intl.NumberFormat()
 const authenticatedBearerToken = computed(() =>
   authState.initialized && isAuthenticated.value ? authState.token : ''
@@ -312,6 +316,11 @@ const canManageSubmissionRejudge = computed(() =>
   Number(authState.currentUser?.permission_level ?? 0) >= 1
 )
 const submissionCount = computed(() => submissions.value.length)
+const pollingSubmissionIds = computed(() =>
+  submissions.value
+    .filter((submission) => pollingSubmissionStatuses.has(submission.status))
+    .map((submission) => submission.submission_id)
+)
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(totalSubmissionCount.value / listLimit))
 )
@@ -489,9 +498,20 @@ const finishedSubmissionStatuses = new Set([
 let copyStateResetTimer = null
 let latestLoadRequestId = 0
 let relativeTimeRefreshTimer = null
+let submissionPollingTimer = null
+let isPollingSubmissionDetails = false
 
 function formatCount(value){
   return countFormatter.format(value)
+}
+
+function normalizeSubmissionMetric(value){
+  if (value === null || typeof value === 'undefined' || value === '') {
+    return null
+  }
+
+  const parsedValue = Number(value)
+  return Number.isFinite(parsedValue) ? parsedValue : null
 }
 
 function resetPagination(){
@@ -630,6 +650,99 @@ function patchSubmission(submissionId, patch){
       }
       : submission
   )
+}
+
+function shouldPollSubmissions(){
+  return !isLoading.value &&
+    !errorMessage.value &&
+    isDocumentVisible.value &&
+    pollingSubmissionIds.value.length > 0
+}
+
+function stopSubmissionPolling(){
+  if (submissionPollingTimer) {
+    clearTimeout(submissionPollingTimer)
+    submissionPollingTimer = null
+  }
+}
+
+function startSubmissionPolling(){
+  if (typeof window === 'undefined' || submissionPollingTimer || isPollingSubmissionDetails || !shouldPollSubmissions()) {
+    return
+  }
+
+  submissionPollingTimer = window.setTimeout(() => {
+    submissionPollingTimer = null
+    pollActiveSubmissions()
+  }, submissionPollingIntervalMs)
+}
+
+function syncSubmissionPolling(){
+  if (!shouldPollSubmissions()) {
+    stopSubmissionPolling()
+    return
+  }
+
+  startSubmissionPolling()
+}
+
+function updateSubmissionFromDetail(detail){
+  const submissionId = Number(detail?.submission_id)
+
+  if (!Number.isInteger(submissionId) || submissionId <= 0) {
+    return
+  }
+
+  submissions.value = submissions.value.map((submission) =>
+    submission.submission_id === submissionId
+      ? {
+        ...submission,
+        status: typeof detail.status === 'string' && detail.status
+          ? detail.status
+          : submission.status,
+        elapsed_ms: normalizeSubmissionMetric(detail.elapsed_ms),
+        max_rss_kb: normalizeSubmissionMetric(detail.max_rss_kb)
+      }
+      : submission
+  )
+}
+
+async function pollActiveSubmissions(){
+  if (isPollingSubmissionDetails || !shouldPollSubmissions()) {
+    return
+  }
+
+  isPollingSubmissionDetails = true
+  const activeSubmissionIds = [...new Set(pollingSubmissionIds.value)]
+
+  try {
+    const results = await Promise.allSettled(
+      activeSubmissionIds.map((submissionId) =>
+        getSubmissionDetail(submissionId, {
+          bearerToken: authenticatedBearerToken.value
+        })
+      )
+    )
+
+    results.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        updateSubmissionFromDetail(result.value)
+      }
+    })
+  } finally {
+    isPollingSubmissionDetails = false
+    syncSubmissionPolling()
+  }
+}
+
+function handleDocumentVisibilityChange(){
+  if (typeof document === 'undefined') {
+    isDocumentVisible.value = true
+  } else {
+    isDocumentVisible.value = !document.hidden
+  }
+
+  syncSubmissionPolling()
 }
 
 function canViewSource(submission){
@@ -918,6 +1031,11 @@ function submitPageJump(){
 
 onMounted(async () => {
   startRelativeTimeRefresh()
+  handleDocumentVisibilityChange()
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', handleDocumentVisibilityChange)
+  }
 
   if (!authState.initialized) {
     await initializeAuth()
@@ -960,9 +1078,22 @@ watch(totalPages, (pageCount) => {
   }
 })
 
+watch(
+  [pollingSubmissionIds, isDocumentVisible, isLoading, errorMessage],
+  () => {
+    syncSubmissionPolling()
+  },
+  { immediate: true }
+)
+
 onUnmounted(() => {
+  stopSubmissionPolling()
   stopRelativeTimeRefresh()
   resetCopyState()
+
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('visibilitychange', handleDocumentVisibilityChange)
+  }
 })
 </script>
 
