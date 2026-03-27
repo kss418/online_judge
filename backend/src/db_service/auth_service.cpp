@@ -1,7 +1,7 @@
 #include "db_service/auth_service.hpp"
 #include "common/permission_util.hpp"
 #include "db_service/db_service_util.hpp"
-#include "db_util/auth_util.hpp"
+#include "db_repository/auth_repository.hpp"
 #include "common/crypto_util.hpp"
 #include "common/token_util.hpp"
 
@@ -26,7 +26,7 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_service::auth_
         connection_value,
         [&](pqxx::work& transaction)
             -> std::expected<std::optional<auth_dto::identity>, error_code> {
-            const auto get_token_identity_exp = auth_util::get_token_identity(
+            const auto get_token_identity_exp = auth_repository::get_token_identity(
                 transaction,
                 hashed_token_value
             );
@@ -37,7 +37,7 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_service::auth_
                 return std::nullopt;
             }
 
-            const auto update_last_used_at_exp = auth_util::update_last_used_at(
+            const auto update_last_used_at_exp = auth_repository::update_last_used_at(
                 transaction,
                 hashed_token_value
             );
@@ -68,7 +68,7 @@ std::expected<bool, error_code> auth_service::renew_token(
     return db_service_util::with_retry_write_transaction(
         connection_value,
         [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
-            const auto update_expires_at_exp = auth_util::update_expires_at(
+            const auto update_expires_at_exp = auth_repository::update_expires_at(
                 transaction,
                 hashed_token_value,
                 token_util::TOKEN_TTL
@@ -103,7 +103,7 @@ std::expected<bool, error_code> auth_service::revoke_token(
     return db_service_util::with_retry_write_transaction(
         connection_value,
         [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
-            const auto revoke_token_exp = auth_util::revoke_token(
+            const auto revoke_token_exp = auth_repository::revoke_token(
                 transaction,
                 hashed_token_value
             );
@@ -134,7 +134,7 @@ std::expected<bool, error_code> auth_service::update_permission_level(
     return db_service_util::with_retry_write_transaction(
         connection_value,
         [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
-            const auto update_permission_level_exp = auth_util::update_permission_level(
+            const auto update_permission_level_exp = auth_repository::update_permission_level(
                 transaction,
                 user_id,
                 permission_level
@@ -155,7 +155,7 @@ std::expected<auth_dto::user_summary_list, error_code> auth_service::get_user_li
         connection_value,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<auth_dto::user_summary_list, error_code> {
-            return auth_util::get_user_list(transaction);
+            return auth_repository::get_user_list(transaction);
         }
     );
 }

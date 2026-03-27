@@ -1,8 +1,8 @@
 #include "db_service/login_service.hpp"
 #include "db_service/db_service_util.hpp"
 #include "common/token_util.hpp"
-#include "db_util/auth_util.hpp"
-#include "db_util/login_util.hpp"
+#include "db_repository/auth_repository.hpp"
+#include "db_repository/login_repository.hpp"
 #include "common/permission_util.hpp"
 
 std::expected<auth_dto::session, error_code> login_service::sign_up(
@@ -26,7 +26,7 @@ std::expected<auth_dto::session, error_code> login_service::sign_up(
     return db_service_util::with_retry_write_transaction(
         connection_value,
         [&](pqxx::work& transaction) -> std::expected<auth_dto::session, error_code> {
-            const auto user_id_exp = login_util::create_user(
+            const auto user_id_exp = login_repository::create_user(
                 transaction,
                 *hashed_sign_up_request_exp
             );
@@ -34,7 +34,7 @@ std::expected<auth_dto::session, error_code> login_service::sign_up(
                 return std::unexpected(user_id_exp.error());
             }
 
-            const auto insert_token_exp = auth_util::insert_token(
+            const auto insert_token_exp = auth_repository::insert_token(
                 transaction,
                 *user_id_exp,
                 hashed_token_value,
@@ -69,7 +69,7 @@ std::expected<std::optional<auth_dto::session>, error_code> login_service::login
         connection_value,
         [&](pqxx::work& transaction)
             -> std::expected<std::optional<auth_dto::session>, error_code> {
-            const auto login_identity_exp = login_util::get_login_identity(
+            const auto login_identity_exp = login_repository::get_login_identity(
                 transaction,
                 *hashed_credentials_exp
             );
@@ -87,7 +87,7 @@ std::expected<std::optional<auth_dto::session>, error_code> login_service::login
             auth_dto::hashed_token hashed_token_value;
             hashed_token_value.token_hash = issued_token_exp->token_hash;
 
-            const auto insert_token_exp = auth_util::insert_token(
+            const auto insert_token_exp = auth_repository::insert_token(
                 transaction,
                 login_identity_exp->value().user_id,
                 hashed_token_value,

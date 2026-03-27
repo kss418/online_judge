@@ -2,7 +2,7 @@
 
 #include "common/db_connection.hpp"
 #include "common/error_code.hpp"
-#include "db_util/db_util.hpp"
+#include "db_repository/db_repository.hpp"
 
 #include <pqxx/pqxx>
 
@@ -62,7 +62,7 @@ namespace db_service_util{
         int retry_count,
         callback_type&& callback
     ) -> write_transaction_result<callback_type> {
-        return db_util::retry_db_operation(
+        return db_repository::retry_db_operation(
             connection,
             retry_count,
             [&]() -> write_transaction_result<callback_type> {
@@ -110,7 +110,7 @@ namespace db_service_util{
         int retry_count,
         callback_type&& callback
     ) -> read_transaction_result<callback_type> {
-        return db_util::retry_db_operation(
+        return db_repository::retry_db_operation(
             connection,
             retry_count,
             [&]() -> read_transaction_result<callback_type> {

@@ -1,7 +1,7 @@
 #include "db_service/problem_content_service.hpp"
 #include "db_service/db_service_util.hpp"
-#include "db_util/problem_content_util.hpp"
-#include "db_util/problem_core_util.hpp"
+#include "db_repository/problem_content_repository.hpp"
+#include "db_repository/problem_core_repository.hpp"
 
 #include <utility>
 
@@ -13,7 +13,7 @@ std::expected<problem_content_dto::limits, error_code> problem_content_service::
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_content_dto::limits, error_code> {
-            return problem_core_util::get_limits(
+            return problem_core_repository::get_limits(
                 transaction,
                 problem_reference_value
             );
@@ -29,7 +29,7 @@ std::expected<void, error_code> problem_content_service::set_limits(
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            const auto set_limits_exp = problem_core_util::set_limits(
+            const auto set_limits_exp = problem_core_repository::set_limits(
                 transaction,
                 problem_reference_value,
                 limits_value
@@ -38,7 +38,7 @@ std::expected<void, error_code> problem_content_service::set_limits(
                 return std::unexpected(set_limits_exp.error());
             }
 
-            const auto version_exp = problem_core_util::increase_version(
+            const auto version_exp = problem_core_repository::increase_version(
                 transaction,
                 problem_reference_value
             );
@@ -59,7 +59,7 @@ std::expected<problem_content_dto::statement, error_code> problem_content_servic
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_content_dto::statement, error_code> {
-            return problem_content_util::get_statement(
+            return problem_content_repository::get_statement(
                 transaction,
                 problem_reference_value
             );
@@ -75,7 +75,7 @@ std::expected<void, error_code> problem_content_service::set_statement(
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            const auto set_statement_exp = problem_content_util::set_statement(
+            const auto set_statement_exp = problem_content_repository::set_statement(
                 transaction,
                 problem_reference_value,
                 statement
@@ -84,7 +84,7 @@ std::expected<void, error_code> problem_content_service::set_statement(
                 return std::unexpected(set_statement_exp.error());
             }
 
-            const auto version_exp = problem_core_util::increase_version(
+            const auto version_exp = problem_core_repository::increase_version(
                 transaction,
                 problem_reference_value
             );
@@ -110,7 +110,7 @@ std::expected<problem_content_dto::sample, error_code> problem_content_service::
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<problem_content_dto::sample, error_code> {
-            const auto created_sample_exp = problem_content_util::create_sample(
+            const auto created_sample_exp = problem_content_repository::create_sample(
                 transaction,
                 problem_reference_value,
                 sample_value
@@ -136,7 +136,7 @@ std::expected<problem_content_dto::sample, error_code> problem_content_service::
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_content_dto::sample, error_code> {
-            return problem_content_util::get_sample(
+            return problem_content_repository::get_sample(
                 transaction,
                 sample_reference_value
             );
@@ -157,7 +157,7 @@ problem_content_service::list_samples(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_content_dto::sample>, error_code> {
-            return problem_content_util::list_samples(
+            return problem_content_repository::list_samples(
                 transaction,
                 problem_reference_value
             );
@@ -177,7 +177,7 @@ std::expected<void, error_code> problem_content_service::set_sample(
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            const auto set_sample_exp = problem_content_util::set_sample(
+            const auto set_sample_exp = problem_content_repository::set_sample(
                 transaction,
                 sample_reference_value,
                 sample_value
@@ -189,7 +189,7 @@ std::expected<void, error_code> problem_content_service::set_sample(
             problem_dto::reference problem_reference_value{
                 sample_reference_value.problem_id
             };
-            const auto version_exp = problem_core_util::increase_version(
+            const auto version_exp = problem_core_repository::increase_version(
                 transaction,
                 problem_reference_value
             );
@@ -213,7 +213,7 @@ std::expected<void, error_code> problem_content_service::delete_sample(
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            const auto sample_values_exp = problem_content_util::list_samples(
+            const auto sample_values_exp = problem_content_repository::list_samples(
                 transaction,
                 problem_reference_value
             );
@@ -228,7 +228,7 @@ std::expected<void, error_code> problem_content_service::delete_sample(
                 .problem_id = problem_reference_value.problem_id,
                 .sample_order = sample_values_exp->back().order
             };
-            const auto delete_sample_exp = problem_content_util::delete_sample(
+            const auto delete_sample_exp = problem_content_repository::delete_sample(
                 transaction,
                 sample_reference_value
             );
@@ -236,7 +236,7 @@ std::expected<void, error_code> problem_content_service::delete_sample(
                 return std::unexpected(delete_sample_exp.error());
             }
 
-            const auto version_exp = problem_core_util::increase_version(
+            const auto version_exp = problem_core_repository::increase_version(
                 transaction,
                 problem_reference_value
             );

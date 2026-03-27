@@ -1,6 +1,6 @@
 #include "db_service/problem_statistics_service.hpp"
 #include "db_service/db_service_util.hpp"
-#include "db_util/problem_statistics_util.hpp"
+#include "db_repository/problem_statistics_repository.hpp"
 
 std::expected<problem_content_dto::statistics, error_code>
 problem_statistics_service::get_statistics(
@@ -11,7 +11,7 @@ problem_statistics_service::get_statistics(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_content_dto::statistics, error_code> {
-            return problem_statistics_util::get_statistics(
+            return problem_statistics_repository::get_statistics(
                 transaction,
                 problem_reference_value
             );

@@ -1,7 +1,7 @@
 #include "db_service/submission_service.hpp"
 #include "db_service/db_service_util.hpp"
-#include "db_util/problem_statistics_util.hpp"
-#include "db_util/submission_util.hpp"
+#include "db_repository/problem_statistics_repository.hpp"
+#include "db_repository/submission_repository.hpp"
 
 #include <string>
 #include <utility>
@@ -18,7 +18,7 @@ std::expected<submission_dto::history_list, error_code> submission_service::get_
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::history_list, error_code> {
-            return submission_util::get_submission_history(transaction, submission_id);
+            return submission_repository::get_submission_history(transaction, submission_id);
         }
     );
 }
@@ -31,7 +31,7 @@ std::expected<submission_dto::source_detail, error_code> submission_service::get
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::source_detail, error_code> {
-            return submission_util::get_submission_source(transaction, submission_id);
+            return submission_repository::get_submission_source(transaction, submission_id);
         }
     );
 }
@@ -44,7 +44,7 @@ std::expected<submission_dto::detail, error_code> submission_service::get_submis
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::detail, error_code> {
-            return submission_util::get_submission_detail(transaction, submission_id);
+            return submission_repository::get_submission_detail(transaction, submission_id);
         }
     );
 }
@@ -58,7 +58,7 @@ submission_service::get_wa_or_ac_submissions(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<submission_dto::summary>, error_code> {
-            return submission_util::get_wa_or_ac_submissions(
+            return submission_repository::get_wa_or_ac_submissions(
                 transaction,
                 problem_id
             );
@@ -84,7 +84,7 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<submission_dto::created, error_code> {
-            const auto create_submission_exp = submission_util::create_submission(
+            const auto create_submission_exp = submission_repository::create_submission(
                 transaction,
                 create_request_value
             );
@@ -92,17 +92,17 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
                 return std::unexpected(create_submission_exp.error());
             }
 
-            const auto enqueue_submission_exp = submission_util::enqueue_submission(
+            const auto enqueue_submission_exp = submission_repository::enqueue_submission(
                 transaction,
                 create_submission_exp->submission_id,
-                submission_util::NORMAL_SUBMISSION_QUEUE_PRIORITY
+                submission_repository::NORMAL_SUBMISSION_QUEUE_PRIORITY
             );
             if(!enqueue_submission_exp){
                 return std::unexpected(enqueue_submission_exp.error());
             }
 
             const auto increase_submission_count_exp =
-                problem_statistics_util::increase_submission_count(
+                problem_statistics_repository::increase_submission_count(
                     transaction,
                     problem_reference_value
                 );
@@ -122,7 +122,7 @@ std::expected<void, error_code> submission_service::update_submission_status(
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            return submission_util::update_submission_status(
+            return submission_repository::update_submission_status(
                 transaction,
                 status_update_value
             );
@@ -161,7 +161,7 @@ std::expected<void, error_code> submission_service::rejudge(
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            return submission_util::rejudge_submission(
+            return submission_repository::rejudge_submission(
                 transaction,
                 submission_id
             );
@@ -177,7 +177,7 @@ std::expected<void, error_code> submission_service::rejudge_problem(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
             const auto submission_values_exp =
-                submission_util::get_wa_or_ac_submissions(
+                submission_repository::get_wa_or_ac_submissions(
                     transaction,
                     problem_id
                 );
@@ -187,7 +187,7 @@ std::expected<void, error_code> submission_service::rejudge_problem(
 
             for(const auto& submission_value : *submission_values_exp){
                 const auto rejudge_submission_exp =
-                    submission_util::rejudge_submission(
+                    submission_repository::rejudge_submission(
                     transaction,
                     submission_value.submission_id
                 );
@@ -210,7 +210,7 @@ submission_service::lease_submission(
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<std::optional<submission_dto::queued_submission>, error_code> {
-            auto lease_submission_exp = submission_util::lease_submission(
+            auto lease_submission_exp = submission_repository::lease_submission(
                 transaction,
                 lease_request_value
             );
@@ -237,7 +237,7 @@ std::expected<void, error_code> submission_service::finalize_submission(
         connection,
         db_service_util::DB_TRANSACTION_ATTEMPT_COUNT,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            const auto finalize_submission_exp = submission_util::finalize_submission(
+            const auto finalize_submission_exp = submission_repository::finalize_submission(
                 transaction,
                 finalize_request_value
             );
@@ -250,7 +250,7 @@ std::expected<void, error_code> submission_service::finalize_submission(
             };
             if(finalize_submission_exp->should_increase_accepted_count){
                 const auto increase_accepted_count_exp =
-                    problem_statistics_util::increase_accepted_count(
+                    problem_statistics_repository::increase_accepted_count(
                         transaction,
                         problem_reference_value
                     );
@@ -274,7 +274,7 @@ submission_service::list_submissions(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<submission_dto::summary>, error_code> {
-            return submission_util::list_submissions(
+            return submission_repository::list_submissions(
                 transaction,
                 filter_value,
                 viewer_user_id_opt
@@ -291,7 +291,7 @@ std::expected<std::int64_t, error_code> submission_service::count_submissions(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::int64_t, error_code> {
-            return submission_util::count_submissions(transaction, filter_value);
+            return submission_repository::count_submissions(transaction, filter_value);
         }
     );
 }

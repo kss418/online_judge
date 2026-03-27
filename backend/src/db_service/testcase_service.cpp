@@ -1,9 +1,9 @@
 #include "db_service/testcase_service.hpp"
 #include "db_service/db_service_util.hpp"
 
-#include "db_util/problem_content_util.hpp"
-#include "db_util/problem_core_util.hpp"
-#include "db_util/testcase_util.hpp"
+#include "db_repository/problem_content_repository.hpp"
+#include "db_repository/problem_core_repository.hpp"
+#include "db_repository/testcase_repository.hpp"
 
 std::expected<problem_dto::testcase, error_code> testcase_service::create_testcase(
     db_connection& connection,
@@ -18,7 +18,7 @@ std::expected<problem_dto::testcase, error_code> testcase_service::create_testca
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<problem_dto::testcase, error_code> {
-            const auto ensure_statement_exp = problem_content_util::ensure_statement_row(
+            const auto ensure_statement_exp = problem_content_repository::ensure_statement_row(
                 transaction,
                 problem_reference_value
             );
@@ -26,7 +26,7 @@ std::expected<problem_dto::testcase, error_code> testcase_service::create_testca
                 return std::unexpected(ensure_statement_exp.error());
             }
 
-            const auto testcase_count_exp = testcase_util::increase_testcase_count(
+            const auto testcase_count_exp = testcase_repository::increase_testcase_count(
                 transaction,
                 problem_reference_value
             );
@@ -37,7 +37,7 @@ std::expected<problem_dto::testcase, error_code> testcase_service::create_testca
             testcase_reference_value.problem_id = problem_reference_value.problem_id;
             testcase_reference_value.testcase_order = testcase_count_exp->testcase_count;
 
-            const auto created_testcase_exp = testcase_util::create_testcase(
+            const auto created_testcase_exp = testcase_repository::create_testcase(
                 transaction,
                 testcase_reference_value,
                 testcase_value
@@ -46,7 +46,7 @@ std::expected<problem_dto::testcase, error_code> testcase_service::create_testca
                 return std::unexpected(created_testcase_exp.error());
             }
 
-            const auto version_exp = problem_core_util::increase_version(
+            const auto version_exp = problem_core_repository::increase_version(
                 transaction,
                 problem_reference_value
             );
@@ -74,7 +74,7 @@ std::expected<problem_dto::testcase, error_code> testcase_service::get_testcase(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::testcase, error_code> {
-            return testcase_util::get_testcase(
+            return testcase_repository::get_testcase(
                 transaction,
                 testcase_reference_value
             );
@@ -94,7 +94,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_service::get_tes
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::testcase_count, error_code> {
-            return testcase_util::get_testcase_count(
+            return testcase_repository::get_testcase_count(
                 transaction,
                 problem_reference_value
             );
@@ -114,7 +114,7 @@ std::expected<std::vector<problem_dto::testcase>, error_code> testcase_service::
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_dto::testcase>, error_code> {
-            return testcase_util::list_testcases(
+            return testcase_repository::list_testcases(
                 transaction,
                 problem_reference_value
             );
@@ -137,7 +137,7 @@ std::expected<void, error_code> testcase_service::set_testcase(
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            const auto set_testcase_exp = testcase_util::set_testcase(
+            const auto set_testcase_exp = testcase_repository::set_testcase(
                 transaction,
                 testcase_reference_value,
                 testcase_value
@@ -149,7 +149,7 @@ std::expected<void, error_code> testcase_service::set_testcase(
             problem_dto::reference problem_reference_value{
                 testcase_reference_value.problem_id
             };
-            const auto version_exp = problem_core_util::increase_version(
+            const auto version_exp = problem_core_repository::increase_version(
                 transaction,
                 problem_reference_value
             );
@@ -173,7 +173,7 @@ std::expected<void, error_code> testcase_service::delete_testcase(
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            const auto delete_testcase_exp = testcase_util::delete_testcase(
+            const auto delete_testcase_exp = testcase_repository::delete_testcase(
                 transaction,
                 problem_reference_value
             );
@@ -181,7 +181,7 @@ std::expected<void, error_code> testcase_service::delete_testcase(
                 return std::unexpected(delete_testcase_exp.error());
             }
 
-            const auto testcase_count_exp = testcase_util::decrease_testcase_count(
+            const auto testcase_count_exp = testcase_repository::decrease_testcase_count(
                 transaction,
                 problem_reference_value
             );
@@ -189,7 +189,7 @@ std::expected<void, error_code> testcase_service::delete_testcase(
                 return std::unexpected(testcase_count_exp.error());
             }
 
-            const auto version_exp = problem_core_util::increase_version(
+            const auto version_exp = problem_core_repository::increase_version(
                 transaction,
                 problem_reference_value
             );
@@ -213,7 +213,7 @@ std::expected<void, error_code> testcase_service::delete_all_testcases(
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            const auto testcase_count_exp = testcase_util::get_testcase_count(
+            const auto testcase_count_exp = testcase_repository::get_testcase_count(
                 transaction,
                 problem_reference_value
             );
@@ -225,7 +225,7 @@ std::expected<void, error_code> testcase_service::delete_all_testcases(
                 return {};
             }
 
-            const auto delete_all_testcases_exp = testcase_util::delete_all_testcases(
+            const auto delete_all_testcases_exp = testcase_repository::delete_all_testcases(
                 transaction,
                 problem_reference_value
             );
@@ -233,7 +233,7 @@ std::expected<void, error_code> testcase_service::delete_all_testcases(
                 return std::unexpected(delete_all_testcases_exp.error());
             }
 
-            const auto clear_testcase_count_exp = testcase_util::clear_testcase_count(
+            const auto clear_testcase_count_exp = testcase_repository::clear_testcase_count(
                 transaction,
                 problem_reference_value
             );
@@ -241,7 +241,7 @@ std::expected<void, error_code> testcase_service::delete_all_testcases(
                 return std::unexpected(clear_testcase_count_exp.error());
             }
 
-            const auto version_exp = problem_core_util::increase_version(
+            const auto version_exp = problem_core_repository::increase_version(
                 transaction,
                 problem_reference_value
             );
@@ -270,7 +270,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_service::replace
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<problem_dto::testcase_count, error_code> {
-            const auto ensure_statement_exp = problem_content_util::ensure_statement_row(
+            const auto ensure_statement_exp = problem_content_repository::ensure_statement_row(
                 transaction,
                 problem_reference_value
             );
@@ -278,7 +278,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_service::replace
                 return std::unexpected(ensure_statement_exp.error());
             }
 
-            const auto current_testcase_count_exp = testcase_util::get_testcase_count(
+            const auto current_testcase_count_exp = testcase_repository::get_testcase_count(
                 transaction,
                 problem_reference_value
             );
@@ -287,7 +287,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_service::replace
             }
 
             if(current_testcase_count_exp->testcase_count > 0){
-                const auto delete_all_testcases_exp = testcase_util::delete_all_testcases(
+                const auto delete_all_testcases_exp = testcase_repository::delete_all_testcases(
                     transaction,
                     problem_reference_value
                 );
@@ -295,7 +295,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_service::replace
                     return std::unexpected(delete_all_testcases_exp.error());
                 }
 
-                const auto clear_testcase_count_exp = testcase_util::clear_testcase_count(
+                const auto clear_testcase_count_exp = testcase_repository::clear_testcase_count(
                     transaction,
                     problem_reference_value
                 );
@@ -308,7 +308,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_service::replace
                 .testcase_count = 0
             };
             for(const auto& testcase_value : testcase_values){
-                const auto next_testcase_count_exp = testcase_util::increase_testcase_count(
+                const auto next_testcase_count_exp = testcase_repository::increase_testcase_count(
                     transaction,
                     problem_reference_value
                 );
@@ -320,7 +320,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_service::replace
                     .problem_id = problem_reference_value.problem_id,
                     .testcase_order = next_testcase_count_exp->testcase_count
                 };
-                const auto create_testcase_exp = testcase_util::create_testcase(
+                const auto create_testcase_exp = testcase_repository::create_testcase(
                     transaction,
                     testcase_reference_value,
                     testcase_value
@@ -336,7 +336,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_service::replace
                 current_testcase_count_exp->testcase_count > 0 ||
                 !testcase_values.empty()
             ){
-                const auto version_exp = problem_core_util::increase_version(
+                const auto version_exp = problem_core_repository::increase_version(
                     transaction,
                     problem_reference_value
                 );
