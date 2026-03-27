@@ -53,4 +53,14 @@ namespace testcase_util{
         pqxx::transaction_base& transaction,
         const problem_dto::reference& problem_reference_value
     );
+
+    std::expected<void, error_code> delete_all_testcases(
+        pqxx::transaction_base& transaction,
+        const problem_dto::reference& problem_reference_value
+    );
+
+    std::expected<problem_dto::testcase_count, error_code> clear_testcase_count(
+        pqxx::transaction_base& transaction,
+        const problem_dto::reference& problem_reference_value
+    );
 }

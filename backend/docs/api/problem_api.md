@@ -978,3 +978,48 @@ Examples:
   }
 }
 ```
+
+### `DELETE /api/problem/{problem_id}/testcase/all`
+
+Delete all hidden testcases of an existing problem. If no hidden testcases exist, the request still succeeds as a no-op. When one or more hidden testcases are removed, the problem version is incremented so judge-side testcase sync can detect the update.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `message` | `string` | always `problem testcases deleted` |
+
+Example:
+
+```json
+{
+  "message": "problem testcases deleted"
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- unknown `problem_id`: `404 Not Found`
+- unexpected internal failure: `500 Internal Server Error`

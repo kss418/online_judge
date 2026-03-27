@@ -42,10 +42,15 @@ list_testcases_response_file="$(mktemp)"
 update_testcase_response_file="$(mktemp)"
 updated_testcases_response_file="$(mktemp)"
 delete_testcase_response_file="$(mktemp)"
+delete_all_testcases_response_file="$(mktemp)"
 remaining_testcases_response_file="$(mktemp)"
+cleared_testcases_response_file="$(mktemp)"
+delete_all_empty_testcases_response_file="$(mktemp)"
 get_problem_response_file="$(mktemp)"
 updated_problem_response_file="$(mktemp)"
 deleted_problem_response_file="$(mktemp)"
+cleared_problem_response_file="$(mktemp)"
+final_problem_response_file="$(mktemp)"
 
 cleanup(){
     cleanup_http_server
@@ -62,10 +67,15 @@ cleanup(){
         "${update_testcase_response_file}" \
         "${updated_testcases_response_file}" \
         "${delete_testcase_response_file}" \
+        "${delete_all_testcases_response_file}" \
         "${remaining_testcases_response_file}" \
+        "${cleared_testcases_response_file}" \
+        "${delete_all_empty_testcases_response_file}" \
         "${get_problem_response_file}" \
         "${updated_problem_response_file}" \
-        "${deleted_problem_response_file}"
+        "${deleted_problem_response_file}" \
+        "${cleared_problem_response_file}" \
+        "${final_problem_response_file}"
 
 }
 
@@ -432,6 +442,95 @@ if response.get("problem_id") != problem_id:
     raise SystemExit("problem_id mismatch after testcase delete")
 if response.get("version") != 5:
     raise SystemExit("version mismatch after testcase delete")
+PY
+
+send_http_request_and_assert_status \
+    "DELETE" \
+    "${base_url}/api/problem/${problem_id}/testcase/all" \
+    "${delete_all_testcases_response_file}" \
+    "200" \
+    "delete all testcases" \
+    "${sign_up_token}"
+assert_json_message \
+    "${delete_all_testcases_response_file}" \
+    "problem testcases deleted" \
+    "delete all testcases"
+
+print_success_log "problem testcase delete all success"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}/testcase" \
+    "${cleared_testcases_response_file}" \
+    "200" \
+    "list cleared testcases" \
+    "${sign_up_token}"
+
+python3 - "${cleared_testcases_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("testcase_count") != 0:
+    raise SystemExit("unexpected testcase_count after delete all")
+if response.get("testcases") != []:
+    raise SystemExit("unexpected testcase list after delete all")
+PY
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${cleared_problem_response_file}" \
+    "200" \
+    "get problem after delete all testcases"
+
+python3 - "${cleared_problem_response_file}" "${problem_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+problem_id = int(sys.argv[2])
+if response.get("problem_id") != problem_id:
+    raise SystemExit("problem_id mismatch after delete all testcases")
+if response.get("version") != 6:
+    raise SystemExit("version mismatch after delete all testcases")
+PY
+
+send_http_request_and_assert_status \
+    "DELETE" \
+    "${base_url}/api/problem/${problem_id}/testcase/all" \
+    "${delete_all_empty_testcases_response_file}" \
+    "200" \
+    "delete all empty testcases" \
+    "${sign_up_token}"
+assert_json_message \
+    "${delete_all_empty_testcases_response_file}" \
+    "problem testcases deleted" \
+    "delete all empty testcases"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${final_problem_response_file}" \
+    "200" \
+    "get problem after empty delete all testcases"
+
+python3 - "${final_problem_response_file}" "${problem_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+problem_id = int(sys.argv[2])
+if response.get("problem_id") != problem_id:
+    raise SystemExit("problem_id mismatch after empty delete all testcases")
+if response.get("version") != 6:
+    raise SystemExit("version mismatch after empty delete all testcases")
 PY
 
 append_log_line "${test_log_temp_file}" "problem testcase flow test passed"

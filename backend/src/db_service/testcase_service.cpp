@@ -201,3 +201,55 @@ std::expected<void, error_code> testcase_service::delete_testcase(
         }
     );
 }
+
+std::expected<void, error_code> testcase_service::delete_all_testcases(
+    db_connection& connection,
+    const problem_dto::reference& problem_reference_value
+){
+    if(problem_reference_value.problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return db_service_util::with_retry_write_transaction(
+        connection,
+        [&](pqxx::work& transaction) -> std::expected<void, error_code> {
+            const auto testcase_count_exp = testcase_util::get_testcase_count(
+                transaction,
+                problem_reference_value
+            );
+            if(!testcase_count_exp){
+                return std::unexpected(testcase_count_exp.error());
+            }
+
+            if(testcase_count_exp->testcase_count <= 0){
+                return {};
+            }
+
+            const auto delete_all_testcases_exp = testcase_util::delete_all_testcases(
+                transaction,
+                problem_reference_value
+            );
+            if(!delete_all_testcases_exp){
+                return std::unexpected(delete_all_testcases_exp.error());
+            }
+
+            const auto clear_testcase_count_exp = testcase_util::clear_testcase_count(
+                transaction,
+                problem_reference_value
+            );
+            if(!clear_testcase_count_exp){
+                return std::unexpected(clear_testcase_count_exp.error());
+            }
+
+            const auto version_exp = problem_core_util::increase_version(
+                transaction,
+                problem_reference_value
+            );
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
+            }
+
+            return {};
+        }
+    );
+}

@@ -36,4 +36,9 @@ namespace testcase_service{
         db_connection& connection,
         const problem_dto::reference& problem_reference_value
     );
+
+    std::expected<void, error_code> delete_all_testcases(
+        db_connection& connection,
+        const problem_dto::reference& problem_reference_value
+    );
 }

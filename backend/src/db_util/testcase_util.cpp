@@ -226,3 +226,47 @@ std::expected<void, error_code> testcase_util::delete_testcase(
 
     return {};
 }
+
+std::expected<void, error_code> testcase_util::delete_all_testcases(
+    pqxx::transaction_base& transaction,
+    const problem_dto::reference& problem_reference_value
+){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    transaction.exec(
+        "DELETE FROM problem_testcases "
+        "WHERE problem_id = $1",
+        pqxx::params{problem_id}
+    );
+
+    return {};
+}
+
+std::expected<problem_dto::testcase_count, error_code> testcase_util::clear_testcase_count(
+    pqxx::transaction_base& transaction,
+    const problem_dto::reference& problem_reference_value
+){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto clear_result = transaction.exec(
+        "UPDATE problem_statements "
+        "SET testcase_count = 0, updated_at = NOW() "
+        "WHERE problem_id = $1 "
+        "RETURNING testcase_count",
+        pqxx::params{problem_id}
+    );
+
+    if(clear_result.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    problem_dto::testcase_count testcase_count_value;
+    testcase_count_value.testcase_count = clear_result[0][0].as<std::int32_t>();
+    return testcase_count_value;
+}
