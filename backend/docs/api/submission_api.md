@@ -132,8 +132,8 @@ Get a single submission detail view. This endpoint is public and does not requir
 | `score` | `int16 \| null` | score, null before judging finishes |
 | `compile_output` | `string \| null` | compiler stderr when compilation fails |
 | `judge_output` | `string \| null` | runtime or judge stderr when available |
-| `elapsed_ms` | `int64 \| null` | max elapsed wall-clock time among executed testcases; `null` before execution starts or when compilation fails |
-| `max_rss_kb` | `int64 \| null` | max resident set size among executed testcases in kilobytes; `null` before execution starts or when compilation fails |
+| `elapsed_ms` | `int64 \| null` | max elapsed wall-clock time among executed testcases; `null` before execution starts, when compilation fails, or when the final status is `runtime_error` |
+| `max_rss_kb` | `int64 \| null` | max resident set size among executed testcases in kilobytes; `null` before execution starts, when compilation fails, or when the final status is `runtime_error` |
 | `created_at` | `string` | creation timestamp |
 | `updated_at` | `string` | last update timestamp |
 
@@ -463,8 +463,8 @@ Each submission summary contains:
 | `language` | `string` | submitted language |
 | `status` | `string` | current submission status |
 | `score` | `int16 \| null` | score, null before judging finishes |
-| `elapsed_ms` | `int64 \| null` | max elapsed wall-clock time among executed testcases; `null` before execution starts or when compilation fails |
-| `max_rss_kb` | `int64 \| null` | max resident set size among executed testcases in kilobytes; `null` before execution starts or when compilation fails |
+| `elapsed_ms` | `int64 \| null` | max elapsed wall-clock time among executed testcases; `null` before execution starts, when compilation fails, or when the final status is `runtime_error` |
+| `max_rss_kb` | `int64 \| null` | max resident set size among executed testcases in kilobytes; `null` before execution starts, when compilation fails, or when the final status is `runtime_error` |
 | `user_problem_state` | `string \| null` | `solved`, `wrong`, or `null`; `null` is returned for anonymous requests, unattempted problems, and pending-only submissions |
 | `created_at` | `string` | creation timestamp |
 | `updated_at` | `string` | last update timestamp |

@@ -10,6 +10,34 @@ static bool is_queue_empty_error(const error_code& code){
     return code == errno_error::resource_temporarily_unavailable;
 }
 
+static bool should_hide_submission_metrics(std::string_view status){
+    return status == to_string(submission_status::runtime_error);
+}
+
+static submission_dto::detail sanitize_submission_detail_metrics(
+    submission_dto::detail detail_value
+){
+    if(should_hide_submission_metrics(detail_value.status)){
+        detail_value.elapsed_ms_opt = std::nullopt;
+        detail_value.max_rss_kb_opt = std::nullopt;
+    }
+
+    return detail_value;
+}
+
+static std::vector<submission_dto::summary> sanitize_submission_summary_metrics(
+    std::vector<submission_dto::summary> summary_values
+){
+    for(auto& summary_value : summary_values){
+        if(should_hide_submission_metrics(summary_value.status)){
+            summary_value.elapsed_ms_opt = std::nullopt;
+            summary_value.max_rss_kb_opt = std::nullopt;
+        }
+    }
+
+    return summary_values;
+}
+
 std::expected<submission_dto::history_list, error_code> submission_service::get_submission_history(
     db_connection& connection,
     std::int64_t submission_id
@@ -44,7 +72,15 @@ std::expected<submission_dto::detail, error_code> submission_service::get_submis
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::detail, error_code> {
-            return submission_repository::get_submission_detail(transaction, submission_id);
+            const auto submission_detail_exp = submission_repository::get_submission_detail(
+                transaction,
+                submission_id
+            );
+            if(!submission_detail_exp){
+                return std::unexpected(submission_detail_exp.error());
+            }
+
+            return sanitize_submission_detail_metrics(*submission_detail_exp);
         }
     );
 }
@@ -274,11 +310,16 @@ submission_service::list_submissions(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<submission_dto::summary>, error_code> {
-            return submission_repository::list_submissions(
+            const auto summary_values_exp = submission_repository::list_submissions(
                 transaction,
                 filter_value,
                 viewer_user_id_opt
             );
+            if(!summary_values_exp){
+                return std::unexpected(summary_values_exp.error());
+            }
+
+            return sanitize_submission_summary_metrics(std::move(*summary_values_exp));
         }
     );
 }
