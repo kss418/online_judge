@@ -7,48 +7,88 @@
           <h3>문제 목록</h3>
         </div>
 
-        <form class="problem-search" @submit.prevent="submitSearch">
-          <label class="sr-only" for="problem-title-search">문제 제목 검색</label>
-          <input
-            id="problem-title-search"
-            v-model="searchInput"
-            class="problem-search-input"
-            type="search"
-            placeholder="문제 제목 검색"
-          />
-          <button
-            type="submit"
-            class="primary-button problem-search-button"
-            :disabled="isLoading"
-          >
-            검색
-          </button>
-        </form>
+        <div class="problems-toolbar-actions">
+          <div class="problem-summary-group">
+            <StatusBadge
+              :label="isLoading ? 'Loading' : `${problemCount} Problems`"
+              :tone="errorMessage ? 'danger' : 'success'"
+            />
+            <span
+              v-if="!isLoading && problemCount"
+              class="problem-summary-text"
+            >
+              {{ visibleRangeText }}
+            </span>
+          </div>
+
+          <div class="problem-search-row">
+            <form class="problem-search" @submit.prevent="submitSearch">
+              <label class="sr-only" for="problem-title-search">문제 제목 검색</label>
+              <input
+                id="problem-title-search"
+                v-model="searchInput"
+                class="problem-search-input"
+                type="search"
+                placeholder="문제 제목 검색"
+              />
+              <button
+                type="submit"
+                class="primary-button problem-search-button"
+                :disabled="isLoading"
+              >
+                검색
+              </button>
+            </form>
+
+            <button
+              v-if="hasAppliedTitleFilter"
+              type="button"
+              class="ghost-button problem-reset-button"
+              :disabled="isLoading"
+              @click="resetSearch"
+            >
+              검색 초기화
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div class="problem-summary-bar">
-        <div class="problem-summary-group">
-          <StatusBadge
-            :label="isLoading ? 'Loading' : `${problemCount} Problems`"
-            :tone="errorMessage ? 'danger' : 'success'"
-          />
-          <span
-            v-if="!isLoading && problemCount"
-            class="problem-summary-text"
-          >
-            {{ visibleRangeText }}
-          </span>
+      <div class="problem-filter-bar">
+        <div
+          v-if="showProblemStateFilters"
+          class="problem-filter-group problem-state-filter-group"
+        >
+          <div class="problem-filter-chip-list">
+            <button
+              v-for="option in problemStateFilterOptions"
+              :key="option.value || 'all'"
+              type="button"
+              class="ghost-button problem-filter-chip"
+              :class="{ 'is-active': appliedStateFilter === option.value }"
+              :disabled="isLoading"
+              @click="applyStateFilter(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
         </div>
 
-        <button
-          v-if="searchKeyword"
-          type="button"
-          class="ghost-button problem-reset-button"
-          :disabled="isLoading"
-          @click="resetSearch"
-        >
-          검색 초기화
-        </button>
+        <div class="problem-filter-group problem-sort-chip-group">
+          <span class="problem-filter-label">정렬</span>
+          <div class="problem-filter-chip-list">
+            <button
+              v-for="option in problemSortOptions"
+              :key="option.key"
+              type="button"
+              class="ghost-button problem-filter-chip"
+              :class="{ 'is-active': appliedSortKey === option.key }"
+              :disabled="isLoading"
+              @click="cycleSort(option.key)"
+            >
+              {{ getSortButtonLabel(option) }}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div v-if="isLoading" class="empty-state">
@@ -61,15 +101,71 @@
 
       <div v-else-if="!problemCount" class="empty-state">
         <p>
-          {{ searchKeyword ? '검색 조건에 맞는 문제가 없습니다.' : '등록된 문제가 아직 없습니다.' }}
+          {{ emptyStateMessage }}
         </p>
       </div>
 
       <div v-else class="problem-table">
         <div class="problem-table-head">
-          <span>번호</span>
-          <span>제목</span>
-          <span>통계</span>
+          <button
+            type="button"
+            class="problem-table-head-button problem-table-head-button--number"
+            :class="{ 'is-active': appliedSortKey === 'problem_id' }"
+            :title="getSortButtonTitle(problemSortOptionMap.problem_id)"
+            @click="cycleSort('problem_id')"
+          >
+            <span class="problem-table-head-button-text">
+              {{ problemSortOptionMap.problem_id.label }}
+            </span>
+            <span class="problem-table-head-button-indicator">
+              {{ getSortButtonIndicator(problemSortOptionMap.problem_id.key) }}
+            </span>
+          </button>
+          <span class="problem-table-head-label">제목</span>
+          <div class="problem-table-stats-head" aria-label="문제 통계 정렬">
+            <button
+              type="button"
+              class="problem-table-head-button"
+              :class="{ 'is-active': appliedSortKey === 'accepted_count' }"
+              :title="getSortButtonTitle(problemSortOptionMap.accepted_count)"
+              @click="cycleSort('accepted_count')"
+            >
+              <span class="problem-table-head-button-text">
+                {{ problemSortOptionMap.accepted_count.label }}
+              </span>
+              <span class="problem-table-head-button-indicator">
+                {{ getSortButtonIndicator(problemSortOptionMap.accepted_count.key) }}
+              </span>
+            </button>
+            <button
+              type="button"
+              class="problem-table-head-button"
+              :class="{ 'is-active': appliedSortKey === 'submission_count' }"
+              :title="getSortButtonTitle(problemSortOptionMap.submission_count)"
+              @click="cycleSort('submission_count')"
+            >
+              <span class="problem-table-head-button-text">
+                {{ problemSortOptionMap.submission_count.label }}
+              </span>
+              <span class="problem-table-head-button-indicator">
+                {{ getSortButtonIndicator(problemSortOptionMap.submission_count.key) }}
+              </span>
+            </button>
+            <button
+              type="button"
+              class="problem-table-head-button"
+              :class="{ 'is-active': appliedSortKey === 'acceptance_rate' }"
+              :title="getSortButtonTitle(problemSortOptionMap.acceptance_rate)"
+              @click="cycleSort('acceptance_rate')"
+            >
+              <span class="problem-table-head-button-text">
+                {{ problemSortOptionMap.acceptance_rate.label }}
+              </span>
+              <span class="problem-table-head-button-indicator">
+                {{ getSortButtonIndicator(problemSortOptionMap.acceptance_rate.key) }}
+              </span>
+            </button>
+          </div>
         </div>
 
         <RouterLink
@@ -90,22 +186,15 @@
             </div>
           </div>
           <div class="problem-stats" aria-label="problem statistics">
-            <div class="problem-counts">
-              <div class="problem-stat">
-                <span class="problem-stat-label">정답</span>
-                <strong>{{ formatCount(problem.accepted_count) }}</strong>
-              </div>
-              <div class="problem-stat">
-                <span class="problem-stat-label">제출</span>
-                <strong>{{ formatCount(problem.submission_count) }}</strong>
-              </div>
-            </div>
-            <div class="problem-rate">
-              <span class="problem-rate-label">정답률</span>
-              <strong class="problem-rate-value">
-                {{ formatAcceptanceRate(problem.accepted_count, problem.submission_count) }}
-              </strong>
-            </div>
+            <strong class="problem-stat-value">
+              {{ formatCount(problem.accepted_count) }}
+            </strong>
+            <strong class="problem-stat-value">
+              {{ formatCount(problem.submission_count) }}
+            </strong>
+            <strong class="problem-rate-value">
+              {{ formatAcceptanceRate(problem.accepted_count, problem.submission_count) }}
+            </strong>
           </div>
         </RouterLink>
       </div>
@@ -185,6 +274,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { getProblemList } from '@/api/problem'
 import StatusBadge from '@/components/StatusBadge.vue'
@@ -194,12 +284,45 @@ import {
   getProblemStateTone
 } from '@/utils/problemState'
 
+const route = useRoute()
+const router = useRouter()
+const problemSortOptions = [
+  {
+    key: 'problem_id',
+    label: '번호',
+    defaultDirection: 'asc'
+  },
+  {
+    key: 'accepted_count',
+    label: '정답',
+    defaultDirection: 'desc'
+  },
+  {
+    key: 'acceptance_rate',
+    label: '정답률',
+    defaultDirection: 'desc'
+  },
+  {
+    key: 'submission_count',
+    label: '제출',
+    defaultDirection: 'desc'
+  }
+]
+const problemStateFilterOptions = [
+  { value: '', label: '전체' },
+  { value: 'solved', label: '해결' },
+  { value: 'unsolved', label: '미해결' }
+]
+const problemSortOptionMap = Object.fromEntries(
+  problemSortOptions.map((option) => [option.key, option])
+)
+const validProblemSortKeys = new Set(problemSortOptions.map((option) => option.key))
+const validProblemStateFilterValues = new Set(problemStateFilterOptions.map((option) => option.value))
+
 const isLoading = ref(true)
 const errorMessage = ref('')
 const searchInput = ref('')
-const searchKeyword = ref('')
 const problems = ref([])
-const currentPage = ref(1)
 const pageJumpInput = ref('')
 const hasLoadedOnce = ref(false)
 const countFormatter = new Intl.NumberFormat()
@@ -213,18 +336,73 @@ const pageSize = 50
 const authenticatedBearerToken = computed(() =>
   authState.initialized && isAuthenticated.value ? authState.token : ''
 )
-let latestLoadRequestId = 0
-
-const problemCount = computed(() => problems.value.length)
-const sortedProblems = computed(() =>
-  [...problems.value].sort((left, right) => left.problem_id - right.problem_id)
+const showProblemStateFilters = computed(() =>
+  authState.initialized && isAuthenticated.value
 )
+const appliedTitleFilter = computed(() => {
+  const routeTitle = Array.isArray(route.query.title)
+    ? route.query.title[0]
+    : route.query.title
+
+  return typeof routeTitle === 'string'
+    ? routeTitle.trim()
+    : ''
+})
+const hasAppliedTitleFilter = computed(() => Boolean(appliedTitleFilter.value))
+const appliedSortKey = computed(() => {
+  const routeSort = Array.isArray(route.query.sort)
+    ? route.query.sort[0]
+    : route.query.sort
+
+  return normalizeProblemSortKey(routeSort)
+})
+const appliedSortDirection = computed(() => {
+  const routeDirection = Array.isArray(route.query.direction)
+    ? route.query.direction[0]
+    : route.query.direction
+
+  return normalizeProblemSortDirection(routeDirection, appliedSortKey.value)
+})
+const appliedStateFilter = computed(() => {
+  if (!showProblemStateFilters.value) {
+    return ''
+  }
+
+  const routeState = Array.isArray(route.query.state)
+    ? route.query.state[0]
+    : route.query.state
+
+  return normalizeProblemStateFilter(routeState)
+})
+const currentPage = computed(() => {
+  const routePage = Array.isArray(route.query.page)
+    ? route.query.page[0]
+    : route.query.page
+
+  return normalizeProblemPage(routePage)
+})
+const filteredProblems = computed(() => {
+  const visibleProblems = problems.value.filter((problem) => {
+    if (appliedStateFilter.value === 'solved') {
+      return problem.user_problem_state === 'solved'
+    }
+
+    if (appliedStateFilter.value === 'unsolved') {
+      return problem.user_problem_state !== 'solved'
+    }
+
+    return true
+  })
+
+  return [...visibleProblems].sort(compareProblems)
+})
+const problemCount = computed(() => filteredProblems.value.length)
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(problemCount.value / pageSize))
 )
 const pagedProblems = computed(() => {
   const startIndex = (currentPage.value - 1) * pageSize
-  return sortedProblems.value.slice(startIndex, startIndex + pageSize)
+  return filteredProblems.value.slice(startIndex, startIndex + pageSize)
 })
 const visibleRangeText = computed(() => {
   if (!problemCount.value) {
@@ -234,6 +412,13 @@ const visibleRangeText = computed(() => {
   const start = (currentPage.value - 1) * pageSize + 1
   const end = Math.min(currentPage.value * pageSize, problemCount.value)
   return `${start}-${end} / ${problemCount.value}`
+})
+const emptyStateMessage = computed(() => {
+  if (hasAppliedTitleFilter.value || appliedStateFilter.value) {
+    return '조건에 맞는 문제가 없습니다.'
+  }
+
+  return '등록된 문제가 아직 없습니다.'
 })
 const paginationItems = computed(() => {
   const pages = new Set([
@@ -278,11 +463,222 @@ const paginationItems = computed(() => {
   return items
 })
 
+let latestLoadRequestId = 0
+
+watch(appliedTitleFilter, (title) => {
+  searchInput.value = title
+}, {
+  immediate: true
+})
+
+watch(currentPage, () => {
+  pageJumpInput.value = ''
+})
+
 watch(totalPages, (pageCount) => {
   if (currentPage.value > pageCount) {
-    currentPage.value = pageCount
+    void replaceProblemBrowseQuery({
+      page: pageCount
+    })
   }
 })
+
+watch(
+  [appliedTitleFilter, authenticatedBearerToken],
+  ([nextTitle, nextToken], [previousTitle, previousToken]) => {
+    if (!hasLoadedOnce.value) {
+      return
+    }
+
+    if (nextTitle === previousTitle && nextToken === previousToken) {
+      return
+    }
+
+    loadProblems()
+  }
+)
+
+watch(showProblemStateFilters, (canShowFilters, couldShowFilters) => {
+  if (canShowFilters || !couldShowFilters || !route.query.state) {
+    return
+  }
+
+  void replaceProblemBrowseQuery({
+    stateFilter: '',
+    page: 1
+  })
+})
+
+function normalizeProblemSortKey(rawValue){
+  return typeof rawValue === 'string' && validProblemSortKeys.has(rawValue)
+    ? rawValue
+    : 'problem_id'
+}
+
+function getDefaultSortDirection(sortKey){
+  return problemSortOptions.find((option) => option.key === sortKey)?.defaultDirection || 'asc'
+}
+
+function normalizeProblemSortDirection(rawValue, sortKey){
+  if (rawValue === 'asc' || rawValue === 'desc') {
+    return rawValue
+  }
+
+  return getDefaultSortDirection(sortKey)
+}
+
+function normalizeProblemStateFilter(rawValue){
+  return typeof rawValue === 'string' && validProblemStateFilterValues.has(rawValue)
+    ? rawValue
+    : ''
+}
+
+function normalizeProblemPage(rawValue){
+  const parsedPage = Number.parseInt(rawValue, 10)
+  return Number.isInteger(parsedPage) && parsedPage > 0
+    ? parsedPage
+    : 1
+}
+
+function compareAcceptanceRate(left, right){
+  if (left.submission_count <= 0 && right.submission_count <= 0) {
+    return 0
+  }
+
+  if (left.submission_count <= 0) {
+    return -1
+  }
+
+  if (right.submission_count <= 0) {
+    return 1
+  }
+
+  const comparisonValue =
+    (left.accepted_count * right.submission_count) -
+    (right.accepted_count * left.submission_count)
+
+  if (comparisonValue > 0) {
+    return 1
+  }
+
+  if (comparisonValue < 0) {
+    return -1
+  }
+
+  return 0
+}
+
+function compareProblems(left, right){
+  if (appliedSortKey.value === 'problem_id') {
+    return appliedSortDirection.value === 'asc'
+      ? left.problem_id - right.problem_id
+      : right.problem_id - left.problem_id
+  }
+
+  if (appliedSortKey.value === 'acceptance_rate') {
+    const rateComparison = compareAcceptanceRate(left, right)
+
+    if (rateComparison !== 0) {
+      return appliedSortDirection.value === 'asc'
+        ? rateComparison
+        : -rateComparison
+    }
+
+    return left.problem_id - right.problem_id
+  }
+
+  if (appliedSortKey.value === 'accepted_count') {
+    const acceptedCountDifference = left.accepted_count - right.accepted_count
+    if (acceptedCountDifference !== 0) {
+      return appliedSortDirection.value === 'asc'
+        ? acceptedCountDifference
+        : -acceptedCountDifference
+    }
+
+    return left.problem_id - right.problem_id
+  }
+
+  const submissionCountDifference = left.submission_count - right.submission_count
+  if (submissionCountDifference !== 0) {
+    return appliedSortDirection.value === 'asc'
+      ? submissionCountDifference
+      : -submissionCountDifference
+  }
+
+  return left.problem_id - right.problem_id
+}
+
+function buildProblemBrowseQuery(options = {}){
+  const title = options.title ?? appliedTitleFilter.value
+  const sortKey = options.sortKey ?? appliedSortKey.value
+  const sortDirection = options.sortDirection ?? appliedSortDirection.value
+  const stateFilter = options.stateFilter ?? appliedStateFilter.value
+  const page = Number(options.page ?? currentPage.value)
+  const nextQuery = {}
+
+  if (title) {
+    nextQuery.title = title
+  }
+
+  if (sortKey !== 'problem_id' || sortDirection !== getDefaultSortDirection('problem_id')) {
+    nextQuery.sort = sortKey
+  }
+
+  if (sortDirection !== getDefaultSortDirection(sortKey)) {
+    nextQuery.direction = sortDirection
+  }
+
+  if (showProblemStateFilters.value && stateFilter) {
+    nextQuery.state = stateFilter
+  }
+
+  if (Number.isInteger(page) && page > 1) {
+    nextQuery.page = String(page)
+  }
+
+  return nextQuery
+}
+
+function areQueryValuesEqual(leftValue, rightValue){
+  if (Array.isArray(leftValue) || Array.isArray(rightValue)) {
+    const leftValues = Array.isArray(leftValue) ? leftValue : [leftValue]
+    const rightValues = Array.isArray(rightValue) ? rightValue : [rightValue]
+
+    if (leftValues.length !== rightValues.length) {
+      return false
+    }
+
+    return leftValues.every((value, index) => value === rightValues[index])
+  }
+
+  return leftValue === rightValue
+}
+
+function areQueriesEqual(leftQuery, rightQuery){
+  const leftKeys = Object.keys(leftQuery).sort()
+  const rightKeys = Object.keys(rightQuery).sort()
+
+  if (leftKeys.length !== rightKeys.length) {
+    return false
+  }
+
+  return leftKeys.every((key, index) =>
+    key === rightKeys[index] && areQueryValuesEqual(leftQuery[key], rightQuery[key])
+  )
+}
+
+async function replaceProblemBrowseQuery(options = {}){
+  const nextQuery = buildProblemBrowseQuery(options)
+
+  if (areQueriesEqual(route.query, nextQuery)) {
+    return
+  }
+
+  await router.replace({
+    name: 'problems',
+    query: nextQuery
+  })
+}
 
 async function loadProblems(){
   const requestId = ++latestLoadRequestId
@@ -291,7 +687,7 @@ async function loadProblems(){
 
   try {
     const response = await getProblemList({
-      title: searchKeyword.value,
+      title: appliedTitleFilter.value,
       bearerToken: authenticatedBearerToken.value
     })
 
@@ -324,35 +720,88 @@ async function loadProblems(){
   }
 }
 
-function submitSearch(){
-  currentPage.value = 1
-  searchKeyword.value = searchInput.value.trim()
-  loadProblems()
+function getSortButtonIndicator(sortKey){
+  if (appliedSortKey.value !== sortKey) {
+    return '↕'
+  }
+
+  return appliedSortDirection.value === 'asc' ? '↑' : '↓'
 }
 
-function resetSearch(){
-  currentPage.value = 1
+function getSortButtonLabel(option){
+  if (appliedSortKey.value !== option.key) {
+    return option.label
+  }
+
+  return `${option.label} ${appliedSortDirection.value === 'asc' ? '↑' : '↓'}`
+}
+
+function getSortButtonTitle(option){
+  const nextDirection = appliedSortKey.value === option.key
+    ? (appliedSortDirection.value === 'asc' ? 'desc' : 'asc')
+    : getDefaultSortDirection(option.key)
+  const nextDirectionLabel = nextDirection === 'asc' ? '오름차순' : '내림차순'
+
+  return `${option.label} ${nextDirectionLabel} 정렬`
+}
+
+async function cycleSort(sortKey){
+  const nextDirection = appliedSortKey.value === sortKey
+    ? (appliedSortDirection.value === 'asc' ? 'desc' : 'asc')
+    : getDefaultSortDirection(sortKey)
+
+  await replaceProblemBrowseQuery({
+    sortKey,
+    sortDirection: nextDirection,
+    page: 1
+  })
+}
+
+async function applyStateFilter(stateFilter){
+  if (!showProblemStateFilters.value) {
+    return
+  }
+
+  await replaceProblemBrowseQuery({
+    stateFilter,
+    page: 1
+  })
+}
+
+async function submitSearch(){
+  await replaceProblemBrowseQuery({
+    title: searchInput.value.trim(),
+    page: 1
+  })
+}
+
+async function resetSearch(){
   searchInput.value = ''
-  searchKeyword.value = ''
-  loadProblems()
+
+  await replaceProblemBrowseQuery({
+    title: '',
+    page: 1
+  })
 }
 
-function goToPage(pageNumber){
+async function goToPage(pageNumber){
   if (pageNumber < 1 || pageNumber > totalPages.value) {
     return
   }
 
-  currentPage.value = pageNumber
+  await replaceProblemBrowseQuery({
+    page: pageNumber
+  })
 }
 
-function submitPageJump(){
+async function submitPageJump(){
   const parsedPage = Number.parseInt(pageJumpInput.value, 10)
 
   if (Number.isNaN(parsedPage)) {
     return
   }
 
-  goToPage(Math.min(Math.max(parsedPage, 1), totalPages.value))
+  await goToPage(Math.min(Math.max(parsedPage, 1), totalPages.value))
   pageJumpInput.value = ''
 }
 
@@ -378,14 +827,6 @@ onMounted(async () => {
     loadProblems()
   }
 })
-
-watch(authenticatedBearerToken, (nextToken, previousToken) => {
-  if (nextToken === previousToken) {
-    return
-  }
-
-  loadProblems()
-})
 </script>
 
 <style scoped>
@@ -401,9 +842,30 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
   align-items: start;
 }
 
-.problems-copy {
-  margin-top: 0.5rem;
-  margin-bottom: 0;
+.problems-toolbar-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.problem-summary-group {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.problem-search-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .problem-search {
@@ -411,7 +873,7 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
   justify-content: flex-end;
   gap: 0.75rem;
   align-items: center;
-  min-width: min(100%, 420px);
+  min-width: 0;
 }
 
 .problem-search-input {
@@ -435,42 +897,99 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
   flex-shrink: 0;
 }
 
-.problem-summary-bar {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: center;
-}
-
-.problem-summary-group {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
 .problem-summary-text {
   color: var(--ink-soft);
   font-size: 0.92rem;
   font-weight: 600;
 }
 
+.problem-filter-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  padding-inline: 1.25rem;
+}
+
+.problem-filter-group {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.problem-filter-label {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.problem-filter-chip-list {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.problem-filter-chip {
+  min-height: 2.55rem;
+  padding-inline: 1rem;
+}
+
+.problem-filter-chip.is-active {
+  color: white;
+  border-color: transparent;
+  background: linear-gradient(135deg, #d97706, #ea580c);
+  box-shadow: 0 16px 30px rgba(217, 119, 6, 0.22);
+}
+
+.problem-state-filter-group {
+  gap: 0.6rem;
+}
+
+.problem-state-filter-group .problem-filter-label {
+  line-height: 1;
+}
+
+.problem-state-filter-group .problem-filter-chip-list {
+  gap: 0.55rem;
+}
+
+.problem-state-filter-group .problem-filter-chip {
+  min-height: 1.95rem;
+  padding-inline: 0.95rem;
+  font-size: 0.9rem;
+}
+
 .problem-table {
   display: grid;
-  gap: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow:
+    0 18px 36px rgba(20, 33, 61, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.problem-sort-chip-group {
+  display: none;
 }
 
 .problem-table-head,
 .problem-row {
   display: grid;
-  grid-template-columns: 120px minmax(0, 1fr) 280px;
-  gap: 1rem;
+  grid-template-columns: 120px minmax(0, 1fr) 340px;
+  gap: 1.15rem;
   align-items: center;
-  padding: 1rem 1.1rem;
-  border-radius: 20px;
+  padding: 1rem 1.25rem;
 }
 
 .problem-table-head {
+  background: linear-gradient(180deg, rgba(255, 248, 240, 0.96), rgba(255, 255, 255, 0.92));
   color: var(--ink-soft);
   font-size: 0.82rem;
   font-weight: 700;
@@ -478,26 +997,117 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
   letter-spacing: 0.08em;
 }
 
+.problem-table-head-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  width: auto;
+  max-width: 100%;
+  min-height: 2rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid rgba(20, 33, 61, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.problem-table-head-button:hover {
+  color: var(--ink-strong);
+  border-color: rgba(217, 119, 6, 0.22);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 20px rgba(20, 33, 61, 0.06);
+}
+
+.problem-table-head-button.is-active {
+  color: var(--ink-strong);
+  border-color: rgba(217, 119, 6, 0.28);
+  background: rgba(255, 247, 237, 0.96);
+  box-shadow:
+    0 10px 22px rgba(20, 33, 61, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.problem-table-head-button--number {
+  justify-self: start;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.problem-table-head-button-text {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.problem-table-head-button-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  min-height: 1.25rem;
+  border-radius: 999px;
+  background: rgba(20, 33, 61, 0.06);
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.problem-table-head-button.is-active .problem-table-head-button-indicator {
+  background: rgba(217, 119, 6, 0.14);
+  color: #b45309;
+}
+
+.problem-table-head-label {
+  color: inherit;
+}
+
+.problem-table-stats-head {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.problem-table-stats-head .problem-table-head-button {
+  justify-self: end;
+  justify-content: flex-end;
+  text-align: right;
+}
+
 .problem-row {
-  border: 1px solid var(--line);
-  background: var(--surface-strong);
+  background: transparent;
+}
+
+.problem-table-head + .problem-row,
+.problem-row + .problem-row {
+  border-top: 1px solid rgba(20, 33, 61, 0.08);
 }
 
 .problem-row-link:hover {
-  transform: translateY(-1px);
+  background: rgba(255, 247, 237, 0.7);
 }
 
 .problem-row-link {
   color: inherit;
   transition:
-    transform 160ms ease,
     background 160ms ease,
-    border-color 160ms ease;
+    color 160ms ease;
 }
 
 .problem-id {
+  display: block;
   font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
   font-size: 1.05rem;
+  padding-left: 0.75rem;
 }
 
 .problem-main {
@@ -517,48 +1127,23 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
 
 .problem-stats {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
   align-items: center;
-}
-
-.problem-counts {
-  display: grid;
-  gap: 0.45rem;
-  justify-items: start;
-}
-
-.problem-stat-label {
-  color: var(--ink-soft);
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 700;
-}
-
-.problem-stat {
-  display: flex;
-  gap: 0.5rem;
-  align-items: baseline;
-}
-
-.problem-rate {
-  display: grid;
-  gap: 0.2rem;
-  justify-items: end;
+  justify-items: stretch;
   text-align: right;
 }
 
-.problem-rate-label {
-  color: var(--ink-soft);
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+.problem-stat-value,
+.problem-rate-value {
+  display: block;
+  font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
+  font-size: 1.05rem;
+  padding-right: 0.7rem;
 }
 
 .problem-rate-value {
-  font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
-  font-size: 1.05rem;
+  min-width: 4.5rem;
 }
 
 .problem-pagination {
@@ -663,15 +1248,31 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
 
 @media (max-width: 900px) {
   .problems-toolbar,
+  .problems-toolbar-actions,
+  .problem-search-row,
   .problem-search,
-  .problem-summary-bar,
+  .problem-filter-bar,
   .problem-pagination {
     flex-direction: column;
     align-items: stretch;
   }
 
+  .problems-toolbar-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
   .problem-search {
-    min-width: 0;
+    width: 100%;
+  }
+
+  .problem-filter-group {
+    align-items: flex-start;
+  }
+
+  .problem-sort-chip-group {
+    display: flex;
   }
 
   .pagination-controls,
@@ -701,13 +1302,18 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
   }
 
   .problem-stats {
-    grid-template-columns: minmax(0, 1fr);
-    justify-items: start;
-  }
-
-  .problem-rate {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     justify-items: start;
     text-align: left;
+  }
+
+  .problem-stat-value,
+  .problem-rate-value {
+    padding-right: 0;
+  }
+
+  .problem-id {
+    padding-left: 0;
   }
 }
 </style>

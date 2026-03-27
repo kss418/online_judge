@@ -18,13 +18,11 @@
           <p class="panel-kicker">submissions</p>
           <h3>{{ pageTitle }}</h3>
         </div>
-      </div>
 
-      <div class="submission-summary-bar">
-        <div class="submission-summary-group">
+        <div class="submissions-toolbar-actions">
           <StatusBadge
-            :label="isLoading ? '불러오는 중' : `${formatCount(totalSubmissionCount)}개 제출`"
-            :tone="errorMessage ? 'danger' : 'neutral'"
+            :label="isLoading ? 'Loading' : `${formatCount(totalSubmissionCount)} submissions`"
+            :tone="errorMessage ? 'danger' : 'success'"
           />
           <span
             v-if="!isLoading && totalSubmissionCount"
@@ -1492,12 +1490,21 @@ onUnmounted(() => {
   border-color: rgba(20, 33, 61, 0.24);
 }
 
-.submissions-toolbar,
-.submission-summary-bar {
+.submissions-toolbar {
   display: flex;
-  align-items: center;
+  align-items: start;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.submissions-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-left: auto;
 }
 
 .submission-filter-bar {
@@ -1506,6 +1513,7 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
+  padding-inline: 1.25rem;
 }
 
 .submission-filter-fields {
@@ -2011,9 +2019,10 @@ onUnmounted(() => {
 }
 
 @media (max-width: 720px) {
+  .submissions-toolbar,
+  .submissions-toolbar-actions,
   .submission-filter-fields,
   .submission-filter-bar,
-  .submission-summary-bar,
   .submission-pagination {
     flex-direction: column;
     align-items: stretch;
