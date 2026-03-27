@@ -168,6 +168,48 @@
               <article class="admin-testcases-section">
                 <div class="panel-header">
                   <div>
+                    <p class="panel-kicker">upload</p>
+                    <h3>ZIP 업로드</h3>
+                    <p class="admin-testcases-section-copy">
+                      ZIP 업로드 시 기존 테스트케이스는 모두 교체됩니다. `001.in` / `001.out`부터
+                      `999.in` / `999.out`까지 연속 순번만 허용하며, 빈 파일은 허용됩니다.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="admin-testcase-upload-panel">
+                  <label class="field-block">
+                    <span class="field-label">ZIP 파일</span>
+                    <input
+                      :key="testcaseZipInputKey"
+                      class="admin-testcase-file-input"
+                      type="file"
+                      accept=".zip,application/zip"
+                      :disabled="Boolean(busySection)"
+                      @change="handleTestcaseZipFileChange"
+                    />
+                  </label>
+
+                  <p v-if="selectedTestcaseZipName" class="admin-testcase-selected-file">
+                    선택한 파일: {{ selectedTestcaseZipName }}
+                  </p>
+                </div>
+
+                <div class="admin-testcases-actions">
+                  <button
+                    type="button"
+                    class="primary-button"
+                    :disabled="!canUploadTestcaseZip"
+                    @click="handleUploadTestcaseZip"
+                  >
+                    {{ isUploadingTestcaseZip ? '업로드 중...' : 'ZIP 업로드' }}
+                  </button>
+                </div>
+              </article>
+
+              <article class="admin-testcases-section">
+                <div class="panel-header">
+                  <div>
                     <p class="panel-kicker">append</p>
                     <h3>테스트케이스 추가</h3>
                   </div>
@@ -369,6 +411,7 @@ import {
   getProblemDetail,
   getProblemList,
   getProblemTestcases,
+  uploadProblemTestcaseZip,
   updateProblemTestcase
 } from '@/api/problem'
 import StatusBadge from '@/components/StatusBadge.vue'
@@ -399,6 +442,8 @@ const problemDetail = ref(null)
 const testcaseItems = ref([])
 const newTestcaseInput = ref('')
 const newTestcaseOutput = ref('')
+const testcaseZipFile = ref(null)
+const testcaseZipInputKey = ref(0)
 const selectedTestcaseOrder = ref(0)
 const selectedTestcaseInputDraft = ref('')
 const selectedTestcaseOutputDraft = ref('')
@@ -433,14 +478,22 @@ const toolbarStatusTone = computed(() => {
   return 'success'
 })
 const isCreatingTestcase = computed(() => busySection.value === 'create')
+const isUploadingTestcaseZip = computed(() => busySection.value === 'upload')
 const isDeletingLastTestcase = computed(() => busySection.value === 'delete-last')
 const isSavingSelectedTestcase = computed(() => busySection.value === 'save')
+const selectedTestcaseZipName = computed(() => testcaseZipFile.value?.name || '')
 const selectedTestcase = computed(() =>
   testcaseItems.value.find((testcase) => testcase.testcase_order === selectedTestcaseOrder.value) || null
 )
 const canCreateTestcase = computed(() =>
   selectedProblemId.value > 0 &&
   Boolean(authState.token) &&
+  !busySection.value
+)
+const canUploadTestcaseZip = computed(() =>
+  selectedProblemId.value > 0 &&
+  Boolean(authState.token) &&
+  Boolean(testcaseZipFile.value) &&
   !busySection.value
 )
 const canDeleteLastTestcase = computed(() =>
@@ -568,6 +621,8 @@ function resetSelectedProblemState(){
   testcaseItems.value = []
   newTestcaseInput.value = ''
   newTestcaseOutput.value = ''
+  testcaseZipFile.value = null
+  testcaseZipInputKey.value += 1
   selectedTestcaseOrder.value = 0
   selectedTestcaseInputDraft.value = ''
   selectedTestcaseOutputDraft.value = ''
@@ -673,6 +728,23 @@ function handleViewSelectedTestcase(){
   }
 
   selectTestcase(matchedTestcase.testcase_order)
+}
+
+function handleTestcaseZipFileChange(event){
+  const nextFile = event.target?.files?.[0] || null
+  if (!nextFile) {
+    testcaseZipFile.value = null
+    return
+  }
+
+  if (!nextFile.name.toLowerCase().endsWith('.zip')) {
+    testcaseZipFile.value = null
+    testcaseZipInputKey.value += 1
+    showErrorNotice('ZIP 파일만 업로드할 수 있습니다.')
+    return
+  }
+
+  testcaseZipFile.value = nextFile
 }
 
 async function loadProblems(){
@@ -900,6 +972,36 @@ async function handleCreateTestcase(){
   }
 }
 
+async function handleUploadTestcaseZip(){
+  if (!canUploadTestcaseZip.value || !authState.token || !testcaseZipFile.value) {
+    return
+  }
+
+  busySection.value = 'upload'
+  const uploadFile = testcaseZipFile.value
+
+  try {
+    const response = await uploadProblemTestcaseZip(selectedProblemId.value, uploadFile, authState.token)
+    testcaseZipFile.value = null
+    testcaseZipInputKey.value += 1
+    await Promise.all([
+      loadProblems(),
+      loadSelectedProblemData()
+    ])
+
+    const uploadedTestcaseCount = Number(response.testcase_count ?? 0)
+    showSuccessNotice(`테스트케이스 ${formatCount(uploadedTestcaseCount)}개를 업로드했습니다.`)
+  } catch (error) {
+    showErrorNotice(
+      error instanceof Error
+        ? error.message
+        : '테스트케이스 ZIP을 업로드하지 못했습니다.'
+    )
+  } finally {
+    busySection.value = ''
+  }
+}
+
 async function handleDeleteLastTestcase(){
   if (!canDeleteLastTestcase.value || !authState.token) {
     return
@@ -1014,6 +1116,11 @@ onMounted(async () => {
 .admin-testcases-copy {
   margin-top: 0.55rem;
   max-width: 68ch;
+}
+
+.admin-testcases-section-copy {
+  margin: 0.45rem 0 0;
+  color: var(--ink-soft);
 }
 
 .admin-testcases-toolbar-actions {
@@ -1209,6 +1316,28 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   margin-top: 1rem;
+}
+
+.admin-testcase-upload-panel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-testcase-file-input {
+  display: block;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 18px;
+  border: 1px dashed rgba(20, 33, 61, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink-strong);
+  font: inherit;
+}
+
+.admin-testcase-selected-file {
+  margin: 0;
+  color: var(--ink-soft);
+  word-break: break-all;
 }
 
 .admin-testcases-order-form {
