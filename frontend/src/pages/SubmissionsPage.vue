@@ -253,6 +253,25 @@
             <StatusBadge :label="sourceDetail.language" tone="neutral" />
           </div>
           <pre class="submission-source-code"><code>{{ sourceDetail.source_code }}</code></pre>
+          <div
+            v-if="sourceDetail.compile_output || sourceDetail.judge_output"
+            class="submission-source-diagnostics"
+          >
+            <div
+              v-if="sourceDetail.compile_output"
+              class="submission-source-diagnostic"
+            >
+              <p class="submission-source-diagnostic-title">컴파일 출력</p>
+              <pre class="submission-source-diagnostic-log"><code>{{ sourceDetail.compile_output }}</code></pre>
+            </div>
+            <div
+              v-if="sourceDetail.judge_output"
+              class="submission-source-diagnostic"
+            >
+              <p class="submission-source-diagnostic-title">채점 출력</p>
+              <pre class="submission-source-diagnostic-log"><code>{{ sourceDetail.judge_output }}</code></pre>
+            </div>
+          </div>
           <div class="submission-source-actions">
             <button
               type="button"
@@ -866,7 +885,9 @@ async function openSourceDialog(submission){
     sourceDetail.value = {
       submission_id: Number(response.submission_id),
       language: response.language || submission.language,
-      source_code: response.source_code || ''
+      source_code: response.source_code || '',
+      compile_output: typeof response.compile_output === 'string' ? response.compile_output : '',
+      judge_output: typeof response.judge_output === 'string' ? response.judge_output : ''
     }
   } catch (error) {
     sourceErrorMessage.value = error instanceof Error
@@ -1561,6 +1582,38 @@ onUnmounted(() => {
   justify-content: flex-start;
 }
 
+.submission-source-diagnostics {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.submission-source-diagnostic {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.submission-source-diagnostic-title {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.submission-source-diagnostic-log {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(185, 28, 28, 0.14);
+  background: rgba(185, 28, 28, 0.06);
+  overflow: auto;
+  color: var(--danger);
+  font-family: "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .submission-source-actions {
   display: flex;
   justify-content: flex-end;
@@ -1576,6 +1629,8 @@ onUnmounted(() => {
   font-family: "SFMono-Regular", "Consolas", monospace;
   font-size: 0.92rem;
   line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 @media (max-width: 720px) {
