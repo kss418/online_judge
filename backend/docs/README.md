@@ -2,6 +2,8 @@
 
 - API documents live in [`api/`](./api).
 - Schema documents live in [`schema/`](./schema).
+- `judge_server` sandbox execution requires `nsjail` and the
+  `JUDGE_NSJAIL_PATH` / `JUDGE_JAVA_COMPILER_PATH` environment variables.
 
 ## structure
 

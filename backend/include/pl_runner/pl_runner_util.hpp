@@ -14,9 +14,11 @@
 class pl_runner_util{
 public:
     struct prepared_source{
-        std::optional<temp_file> binary_file_;
+        std::filesystem::path workspace_host_path_;
         std::vector<std::string> run_command_args_;
         std::optional<sandbox_runner::run_result> compile_failed_run_result_;
+        sandbox_runner::mount_profile mount_profile_ =
+            sandbox_runner::mount_profile::default_profile;
 
         bool is_runnable() const noexcept{
             return !compile_failed_run_result_.has_value();
@@ -42,5 +44,6 @@ private:
     std::mutex initialize_mutex_;
     std::optional<std::filesystem::path> cpp_compiler_path_;
     std::optional<std::filesystem::path> python_path_;
+    std::optional<std::filesystem::path> java_compiler_path_;
     std::optional<std::filesystem::path> java_runtime_path_;
 };

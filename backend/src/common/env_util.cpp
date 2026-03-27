@@ -11,10 +11,27 @@ std::expected<std::string, error_code> env_util::require_env(const char* key){
     return std::string(value);
 }
 
-std::expected<void, error_code> env_util::require_all_envs(){
+std::expected<void, error_code> env_util::require_http_server_envs(){
     const auto env_values_exp = require_envs(
         {
             "HTTP_PORT",
+            "DB_USER",
+            "DB_PASSWORD",
+            "DB_HOST",
+            "DB_PORT",
+            "DB_NAME"
+        }
+    );
+    if(!env_values_exp){
+        return std::unexpected(env_values_exp.error());
+    }
+
+    return {};
+}
+
+std::expected<void, error_code> env_util::require_judge_server_envs(){
+    const auto env_values_exp = require_envs(
+        {
             "DB_USER",
             "DB_PASSWORD",
             "DB_HOST",
@@ -26,8 +43,10 @@ std::expected<void, error_code> env_util::require_all_envs(){
             "MAX_CONCURRENT_JOBS",
             "JUDGE_SOURCE_ROOT",
             "TESTCASE_PATH",
+            "JUDGE_NSJAIL_PATH",
             "JUDGE_CPP_COMPILER_PATH",
             "JUDGE_PYTHON_PATH",
+            "JUDGE_JAVA_COMPILER_PATH",
             "JUDGE_JAVA_RUNTIME_PATH"
         }
     );
@@ -36,6 +55,10 @@ std::expected<void, error_code> env_util::require_all_envs(){
     }
 
     return {};
+}
+
+std::expected<void, error_code> env_util::require_all_envs(){
+    return require_judge_server_envs();
 }
 
 std::expected<std::vector<std::string>, error_code> env_util::require_envs(

@@ -65,6 +65,7 @@ namespace file_util{
     std::expected<bool, error_code> exists(const std::filesystem::path& file_path);
     std::expected<void, error_code> create_directories(const std::filesystem::path& directory_path);
     std::expected<void, error_code> remove_file(const std::filesystem::path& file_path);
+    std::expected<void, error_code> remove_all(const std::filesystem::path& file_path);
     std::expected<std::string, error_code> read_file_content(
         const std::filesystem::path& file_path
     );

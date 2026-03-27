@@ -150,6 +150,23 @@ std::expected<void, error_code> file_util::remove_file(const std::filesystem::pa
     );
 }
 
+std::expected<void, error_code> file_util::remove_all(const std::filesystem::path& file_path){
+    return retry_file_operation(
+        FILE_OPERATION_ATTEMPT_COUNT,
+        [&]() -> std::expected<void, error_code> {
+            std::error_code remove_ec;
+            std::filesystem::remove_all(file_path, remove_ec);
+            if(remove_ec){
+                return std::unexpected(
+                    error_code::create(error_code::map_errno(remove_ec.value()))
+                );
+            }
+
+            return std::expected<void, error_code>{};
+        }
+    );
+}
+
 std::expected<std::int32_t, error_code> file_util::read_int32_file(
     const std::filesystem::path& file_path
 ){

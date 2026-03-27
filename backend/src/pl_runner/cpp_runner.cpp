@@ -1,105 +1,58 @@
 #include "pl_runner/cpp_runner.hpp"
 
-#include "common/unique_fd.hpp"
+#include "judge_core/judge_util.hpp"
+#include "judge_core/sandbox_runner.hpp"
 
-#include <cerrno>
-#include <sys/wait.h>
-#include <unistd.h>
+namespace{
+    constexpr std::chrono::milliseconds COMPILE_TIME_LIMIT{30000};
+    constexpr std::int64_t COMPILE_MEMORY_LIMIT_MB = 1024;
+}
 
 std::expected<cpp_runner::compile_result, error_code> cpp_runner::compile(
     const path& source_file_path,
     const path& compiler_path
 ){
-    auto binary_file_exp = temp_file::create("/tmp/oj_binary_XXXXXX");
-    if(!binary_file_exp){
-        return std::unexpected(binary_file_exp.error());
+    const path workspace_host_path = source_file_path.parent_path();
+    const path binary_host_path = workspace_host_path / "program.out";
+    const path binary_sandbox_path = judge_util::instance().make_sandbox_path(
+        workspace_host_path,
+        binary_host_path
+    );
+    const path source_sandbox_path = judge_util::instance().make_sandbox_path(
+        workspace_host_path,
+        source_file_path
+    );
+    if(binary_sandbox_path.empty() || source_sandbox_path.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    int stderr_pipe[2];
-    if(pipe(stderr_pipe) < 0){
-        return std::unexpected(error_code::create(syscall_error::pipe_failed));
-    }
+    sandbox_runner::run_options run_options_value;
+    run_options_value.workspace_host_path = workspace_host_path;
+    run_options_value.time_limit = COMPILE_TIME_LIMIT;
+    run_options_value.memory_limit_mb = COMPILE_MEMORY_LIMIT_MB;
+    run_options_value.policy = sandbox_runner::policy_profile::compile;
 
-    unique_fd read_fd = unique_fd(stderr_pipe[0]);
-    unique_fd write_fd = unique_fd(stderr_pipe[1]);
-    const pid_t pid = fork();
-    if(pid < 0){
-        return std::unexpected(error_code::create(syscall_error::fork_failed));
-    }
-
-    if(pid == 0){
-        dup2(write_fd.get(), STDERR_FILENO);
-        write_fd.close();
-        read_fd.close();
-
-        std::vector<char*> argv = {
-            const_cast<char*>(compiler_path.c_str()),
-            const_cast<char*>("-std=c++23"),
-            const_cast<char*>("-O2"),
-            const_cast<char*>("-pipe"),
-            const_cast<char*>(source_file_path.c_str()),
-            const_cast<char*>("-o"),
-            const_cast<char*>(binary_file_exp->get_path().c_str()),
-            nullptr
-        };
-
-        execv(compiler_path.c_str(), argv.data());
-        _exit(127);
-    }
-
-    write_fd.close();
-    std::string stderr_text;
-    char buffer[4096];
-    while(true){
-        const ssize_t read_size = read(read_fd.get(), buffer, sizeof(buffer));
-        if(read_size > 0){
-            stderr_text.append(buffer, static_cast<std::size_t>(read_size));
-            continue;
-        }
-
-        if(read_size == 0){
-            break;
-        }
-
-        const int error_number = errno;
-        if(error_number == EINTR){
-            continue;
-        }
-
-        return std::unexpected(error_code::create(error_code::map_errno(error_number)));
-    }
-    read_fd.close();
-
-    int status = 0;
-    while(true){
-        if(waitpid(pid, &status, 0) == pid){
-            break;
-        }
-
-        const int error_number = errno;
-        if(error_number == EINTR){
-            continue;
-        }
-
-        return std::unexpected(error_code::create(syscall_error::waitpid_failed));
-    }
-
-    if(WIFSIGNALED(status)){
-        return std::unexpected(error_code::create(error_code::map_signal(WTERMSIG(status))));
-    }
-
-    if(!WIFEXITED(status)){
-        return std::unexpected(error_code::create(syscall_error::waitpid_failed));
+    const auto compile_run_exp = sandbox_runner::run(
+        {
+            compiler_path.string(),
+            "-std=c++23",
+            "-O2",
+            "-pipe",
+            source_sandbox_path.string(),
+            "-o",
+            binary_sandbox_path.string()
+        },
+        run_options_value
+    );
+    if(!compile_run_exp){
+        return std::unexpected(compile_run_exp.error());
     }
 
     compile_result compile_result_value;
-    compile_result_value.binary_file_ = std::move(*binary_file_exp);
-    compile_result_value.binary_file_.close_fd();
-    compile_result_value.run_command_args_.push_back(
-        compile_result_value.binary_file_.get_path().string()
-    );
-    compile_result_value.exit_code_ = WEXITSTATUS(status);
-    compile_result_value.stderr_text_ = std::move(stderr_text);
+    compile_result_value.workspace_host_path_ = workspace_host_path;
+    compile_result_value.run_command_args_.push_back(binary_sandbox_path.string());
+    compile_result_value.exit_code_ = compile_run_exp->exit_code_;
+    compile_result_value.stderr_text_ = std::move(compile_run_exp->stderr_text_);
     return compile_result_value;
 }
 
@@ -120,7 +73,7 @@ std::expected<pl_runner_util::prepared_source, error_code> cpp_runner::prepare(
     }
 
     pl_runner_util::prepared_source prepared_source_value;
-    prepared_source_value.binary_file_ = std::move(compile_cpp_exp->binary_file_);
+    prepared_source_value.workspace_host_path_ = compile_cpp_exp->workspace_host_path_;
     prepared_source_value.run_command_args_ = std::move(compile_cpp_exp->run_command_args_);
     return prepared_source_value;
 }

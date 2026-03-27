@@ -76,6 +76,10 @@ namespace submission_repository{
         pqxx::transaction_base& transaction,
         const submission_dto::lease_request& lease_request_value
     );
+    std::expected<void, error_code> release_submission_lease(
+        pqxx::transaction_base& transaction,
+        std::int64_t submission_id
+    );
 
     std::expected<submission_dto::finalize_result, error_code> finalize_submission(
         pqxx::transaction_base& transaction,

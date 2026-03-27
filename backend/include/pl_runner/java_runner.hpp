@@ -12,6 +12,7 @@ namespace java_runner{
     using path = std::filesystem::path;
 
     struct compile_result{
+        path workspace_host_path_;
         std::vector<std::string> run_command_args_;
         int exit_code_ = 0;
         std::string stderr_text_;
@@ -23,11 +24,13 @@ namespace java_runner{
 
     std::expected<compile_result, error_code> compile(
         const path& source_file_path,
+        const path& java_compiler_path,
         const path& java_runtime_path
     );
 
     std::expected<pl_runner_util::prepared_source, error_code> prepare(
         const path& source_file_path,
+        const path& java_compiler_path,
         const path& java_runtime_path
     );
 }

@@ -265,6 +265,37 @@ submission_service::lease_submission(
     );
 }
 
+std::expected<void, error_code> submission_service::requeue_submission_immediately(
+    db_connection& connection,
+    std::int64_t submission_id,
+    std::optional<std::string> reason_opt
+){
+    const std::optional<std::string> queued_reason_opt = std::move(reason_opt);
+    return db_service_util::with_retry_write_transaction(
+        connection,
+        [&](pqxx::work& transaction) -> std::expected<void, error_code> {
+            const submission_dto::status_update status_update_value =
+                submission_dto::make_status_update(
+                    submission_id,
+                    submission_status::queued,
+                    queued_reason_opt
+                );
+            const auto update_submission_status_exp = submission_repository::update_submission_status(
+                transaction,
+                status_update_value
+            );
+            if(!update_submission_status_exp){
+                return std::unexpected(update_submission_status_exp.error());
+            }
+
+            return submission_repository::release_submission_lease(
+                transaction,
+                submission_id
+            );
+        }
+    );
+}
+
 std::expected<void, error_code> submission_service::finalize_submission(
     db_connection& connection,
     const submission_dto::finalize_request& finalize_request_value

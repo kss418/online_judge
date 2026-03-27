@@ -15,10 +15,14 @@ RUN apt-get update \
         curl \
         flex \
         git \
+        libnl-route-3-dev \
+        libprotobuf-dev \
         libtool \
         ninja-build \
+        openjdk-21-jdk-headless \
         perl \
         pkg-config \
+        protobuf-compiler \
         python3 \
         unzip \
         zip \
@@ -41,6 +45,10 @@ RUN cmake -S . -B build -G Ninja \
         -DVCPKG_INSTALLED_DIR=/workspace/vcpkg_installed \
     && cmake --build build -j --target http_server judge_server
 
+RUN git clone --depth 1 https://github.com/google/nsjail.git /tmp/nsjail \
+    && make -C /tmp/nsjail \
+    && install -Dm755 /tmp/nsjail/nsjail /usr/local/bin/nsjail
+
 FROM ubuntu:24.04 AS runtime_base
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -59,20 +67,29 @@ ENV HTTP_PORT=8080
 EXPOSE 8080
 CMD ["./http_server"]
 
-FROM runtime_base AS judge_runtime
+FROM build AS judge_runtime
+WORKDIR /app
+
+ARG JUDGE_NSJAIL_PATH=""
 ARG JUDGE_CPP_COMPILER_PATH=""
 ARG JUDGE_PYTHON_PATH=""
+ARG JUDGE_JAVA_COMPILER_PATH=""
 ARG JUDGE_JAVA_RUNTIME_PATH=""
 
 RUN set -eux; \
-    packages=""; \
+    if [ -n "${JUDGE_NSJAIL_PATH}" ]; then \
+        nsjail_name="$(basename "${JUDGE_NSJAIL_PATH}")"; \
+        if [ "${nsjail_name}" != "nsjail" ]; then \
+            echo "unsupported JUDGE_NSJAIL_PATH: ${JUDGE_NSJAIL_PATH}" >&2; \
+            exit 1; \
+        fi; \
+    fi; \
     if [ -n "${JUDGE_CPP_COMPILER_PATH}" ]; then \
         cpp_compiler_name="$(basename "${JUDGE_CPP_COMPILER_PATH}")"; \
         if [ "${cpp_compiler_name}" != "g++" ]; then \
             echo "unsupported JUDGE_CPP_COMPILER_PATH: ${JUDGE_CPP_COMPILER_PATH}" >&2; \
             exit 1; \
         fi; \
-        packages="${packages} g++"; \
     fi; \
     if [ -n "${JUDGE_PYTHON_PATH}" ]; then \
         python_name="$(basename "${JUDGE_PYTHON_PATH}")"; \
@@ -80,7 +97,13 @@ RUN set -eux; \
             echo "unsupported JUDGE_PYTHON_PATH: ${JUDGE_PYTHON_PATH}" >&2; \
             exit 1; \
         fi; \
-        packages="${packages} python3"; \
+    fi; \
+    if [ -n "${JUDGE_JAVA_COMPILER_PATH}" ]; then \
+        javac_name="$(basename "${JUDGE_JAVA_COMPILER_PATH}")"; \
+        if [ "${javac_name}" != "javac" ]; then \
+            echo "unsupported JUDGE_JAVA_COMPILER_PATH: ${JUDGE_JAVA_COMPILER_PATH}" >&2; \
+            exit 1; \
+        fi; \
     fi; \
     if [ -n "${JUDGE_JAVA_RUNTIME_PATH}" ]; then \
         java_name="$(basename "${JUDGE_JAVA_RUNTIME_PATH}")"; \
@@ -88,13 +111,8 @@ RUN set -eux; \
             echo "unsupported JUDGE_JAVA_RUNTIME_PATH: ${JUDGE_JAVA_RUNTIME_PATH}" >&2; \
             exit 1; \
         fi; \
-        packages="${packages} openjdk-21-jdk-headless"; \
     fi; \
-    if [ -n "${packages}" ]; then \
-        apt-get update; \
-        apt-get install -y --no-install-recommends ${packages}; \
-        rm -rf /var/lib/apt/lists/*; \
-    fi; \
+    install -Dm755 /workspace/judge_server /app/judge_server; \
     if [ -n "${JUDGE_CPP_COMPILER_PATH}" ] && [ "${JUDGE_CPP_COMPILER_PATH}" != "/usr/bin/g++" ]; then \
         mkdir -p "$(dirname "${JUDGE_CPP_COMPILER_PATH}")"; \
         ln -sf /usr/bin/g++ "${JUDGE_CPP_COMPILER_PATH}"; \
@@ -103,10 +121,16 @@ RUN set -eux; \
         mkdir -p "$(dirname "${JUDGE_PYTHON_PATH}")"; \
         ln -sf /usr/bin/python3 "${JUDGE_PYTHON_PATH}"; \
     fi; \
+    if [ -n "${JUDGE_NSJAIL_PATH}" ] && [ "${JUDGE_NSJAIL_PATH}" != "/usr/local/bin/nsjail" ]; then \
+        mkdir -p "$(dirname "${JUDGE_NSJAIL_PATH}")"; \
+        ln -sf /usr/local/bin/nsjail "${JUDGE_NSJAIL_PATH}"; \
+    fi; \
+    if [ -n "${JUDGE_JAVA_COMPILER_PATH}" ] && [ "${JUDGE_JAVA_COMPILER_PATH}" != "/usr/bin/javac" ]; then \
+        mkdir -p "$(dirname "${JUDGE_JAVA_COMPILER_PATH}")"; \
+        ln -sf /usr/bin/javac "${JUDGE_JAVA_COMPILER_PATH}"; \
+    fi; \
     if [ -n "${JUDGE_JAVA_RUNTIME_PATH}" ] && [ "${JUDGE_JAVA_RUNTIME_PATH}" != "/usr/bin/java" ]; then \
         mkdir -p "$(dirname "${JUDGE_JAVA_RUNTIME_PATH}")"; \
         ln -sf /usr/bin/java "${JUDGE_JAVA_RUNTIME_PATH}"; \
     fi
-
-COPY --from=build /workspace/judge_server /app/judge_server
 CMD ["./judge_server"]

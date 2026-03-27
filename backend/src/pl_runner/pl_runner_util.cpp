@@ -18,6 +18,7 @@ void pl_runner_util::initialize_if_needed(){
     if(
         cpp_compiler_path_.has_value() &&
         python_path_.has_value() &&
+        java_compiler_path_.has_value() &&
         java_runtime_path_.has_value()
     ){
         return;
@@ -31,6 +32,11 @@ void pl_runner_util::initialize_if_needed(){
     const char* python_path = std::getenv("JUDGE_PYTHON_PATH");
     if(python_path != nullptr && *python_path != '\0'){
         python_path_ = std::filesystem::path(python_path);
+    }
+
+    const char* java_compiler_path = std::getenv("JUDGE_JAVA_COMPILER_PATH");
+    if(java_compiler_path != nullptr && *java_compiler_path != '\0'){
+        java_compiler_path_ = std::filesystem::path(java_compiler_path);
     }
 
     const char* java_runtime_path = std::getenv("JUDGE_JAVA_RUNTIME_PATH");
@@ -72,11 +78,20 @@ std::expected<pl_runner_util::prepared_source, error_code> pl_runner_util::prepa
     }
 
     if(extension == ".java"){
-        if(!java_runtime_path_.has_value() || java_runtime_path_->empty()){
+        if(
+            !java_compiler_path_.has_value() ||
+            java_compiler_path_->empty() ||
+            !java_runtime_path_.has_value() ||
+            java_runtime_path_->empty()
+        ){
             return std::unexpected(error_code::create(errno_error::invalid_argument));
         }
 
-        return java_runner::prepare(source_file_path, *java_runtime_path_);
+        return java_runner::prepare(
+            source_file_path,
+            *java_compiler_path_,
+            *java_runtime_path_
+        );
     }
 
     return std::unexpected(error_code::create(errno_error::invalid_argument));

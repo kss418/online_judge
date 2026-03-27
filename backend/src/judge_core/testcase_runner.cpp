@@ -51,12 +51,15 @@ std::expected<sandbox_runner::run_result, error_code> testcase_runner::run_one_t
         return *prepared_source_value.compile_failed_run_result_;
     }
 
-    return sandbox_runner::run(
-        prepared_source_value.run_command_args_,
-        input_path,
-        std::chrono::milliseconds{problem_limits_value.time_ms},
-        problem_limits_value.memory_mb
-    );
+    sandbox_runner::run_options run_options_value;
+    run_options_value.workspace_host_path = prepared_source_value.workspace_host_path_;
+    run_options_value.input_path_opt = input_path;
+    run_options_value.time_limit = std::chrono::milliseconds{problem_limits_value.time_ms};
+    run_options_value.memory_limit_mb = problem_limits_value.memory_mb;
+    run_options_value.policy = sandbox_runner::policy_profile::run;
+    run_options_value.mounts = prepared_source_value.mount_profile_;
+
+    return sandbox_runner::run(prepared_source_value.run_command_args_, run_options_value);
 }
 
 std::expected<testcase_runner::run_batch, error_code> testcase_runner::run_all_testcases(

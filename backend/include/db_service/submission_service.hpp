@@ -66,6 +66,11 @@ namespace submission_service{
         db_connection& connection,
         const submission_dto::lease_request& lease_request_value
     );
+    std::expected<void, error_code> requeue_submission_immediately(
+        db_connection& connection,
+        std::int64_t submission_id,
+        std::optional<std::string> reason_opt = std::nullopt
+    );
     std::expected<void, error_code> finalize_submission(
         db_connection& connection,
         const submission_dto::finalize_request& finalize_request_value

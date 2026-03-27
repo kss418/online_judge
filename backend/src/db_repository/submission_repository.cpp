@@ -487,6 +487,29 @@ std::expected<submission_dto::queued_submission, error_code> submission_reposito
     return queued_submission_value;
 }
 
+std::expected<void, error_code> submission_repository::release_submission_lease(
+    pqxx::transaction_base& transaction,
+    std::int64_t submission_id
+){
+    if(submission_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto update_result = transaction.exec(
+        "UPDATE submission_queue "
+        "SET "
+        "available_at = NOW(), "
+        "leased_until = NOW() "
+        "WHERE submission_id = $1",
+        pqxx::params{submission_id}
+    );
+    if(update_result.affected_rows() == 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return {};
+}
+
 std::expected<submission_dto::finalize_result, error_code> submission_repository::finalize_submission(
     pqxx::transaction_base& transaction,
     const submission_dto::finalize_request& finalize_request_value

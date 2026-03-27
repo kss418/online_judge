@@ -62,6 +62,11 @@ private:
     std::expected<std::filesystem::path, error_code> prepare_submission(
         const submission_dto::queued_submission& queued_submission_value
     );
+    std::expected<void, error_code> cleanup_submission_workspace(std::int64_t submission_id);
+    std::expected<void, error_code> requeue_submission(
+        std::int64_t submission_id,
+        std::string reason
+    );
     std::expected<process_submission_data, error_code> judge_submission(
         const std::filesystem::path& source_file_path,
         std::int64_t problem_id

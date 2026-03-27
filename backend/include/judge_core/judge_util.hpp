@@ -27,10 +27,18 @@ public:
     static judge_util& instance();
 
     std::expected<std::filesystem::path, error_code> make_source_directory_path();
+    std::expected<std::filesystem::path, error_code> make_submission_workspace_path(
+        std::int64_t submission_id
+    );
     std::expected<std::filesystem::path, error_code> make_source_file_path(
         std::int64_t submission_id,
         std::string_view language
     );
+    std::filesystem::path sandbox_workspace_path() const;
+    std::filesystem::path make_sandbox_path(
+        const std::filesystem::path& host_workspace_path,
+        const std::filesystem::path& host_path
+    ) const;
 
     std::vector<std::string> normalize_output(const std::string& output);
 

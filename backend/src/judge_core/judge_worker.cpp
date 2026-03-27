@@ -133,7 +133,8 @@ judge_worker::finalize_submission_data judge_worker::make_finalize_submission_da
     if(
         submission_status_value == submission_status::runtime_error ||
         submission_status_value == submission_status::time_limit_exceeded ||
-        submission_status_value == submission_status::memory_limit_exceeded
+        submission_status_value == submission_status::memory_limit_exceeded ||
+        submission_status_value == submission_status::output_exceeded
     ){
         finalize_submission_data_value.judge_output = run_results.front().stderr_text_;
     }
@@ -155,6 +156,9 @@ std::expected<judge_result, error_code> judge_worker::check_result(
     for(const auto& run_result : run_batch_value.run_results){
         if(run_result.time_limit_exceeded_){
             return judge_result::time_limit_exceeded;
+        }
+        if(run_result.output_exceeded_){
+            return judge_result::output_exceeded;
         }
         if(run_result.memory_limit_exceeded_){
             return judge_result::memory_limit_exceeded;
@@ -194,14 +198,28 @@ std::expected<void, error_code> judge_worker::run(){
         );
         
         if(!process_submission_exp){
-            const auto mark_queued_exp = submission_service::mark_queued(
-                db_connection_,
+            const auto cleanup_workspace_exp = cleanup_submission_workspace(
                 queued_submission_value.submission_id
             );
-            if(!mark_queued_exp){
-                return std::unexpected(mark_queued_exp.error());
+            if(!cleanup_workspace_exp){
+                return std::unexpected(cleanup_workspace_exp.error());
+            }
+
+            const auto requeue_submission_exp = requeue_submission(
+                queued_submission_value.submission_id,
+                to_string(process_submission_exp.error())
+            );
+            if(!requeue_submission_exp){
+                return std::unexpected(requeue_submission_exp.error());
             }
             continue;
+        }
+
+        const auto cleanup_workspace_exp = cleanup_submission_workspace(
+            queued_submission_value.submission_id
+        );
+        if(!cleanup_workspace_exp){
+            return std::unexpected(cleanup_workspace_exp.error());
         }
     }
 }
@@ -303,6 +321,23 @@ std::expected<void, error_code> judge_worker::finalize_submission(
 std::expected<std::filesystem::path, error_code> judge_worker::prepare_submission(
     const submission_dto::queued_submission& queued_submission_value
 ){
+    const auto workspace_path_exp = judge_util::instance().make_submission_workspace_path(
+        queued_submission_value.submission_id
+    );
+    if(!workspace_path_exp){
+        return std::unexpected(workspace_path_exp.error());
+    }
+
+    const auto cleanup_workspace_exp = file_util::remove_all(*workspace_path_exp);
+    if(!cleanup_workspace_exp){
+        return std::unexpected(cleanup_workspace_exp.error());
+    }
+
+    const auto create_workspace_exp = file_util::create_directories(*workspace_path_exp);
+    if(!create_workspace_exp){
+        return std::unexpected(create_workspace_exp.error());
+    }
+
     const auto source_file_path_exp = judge_util::instance().make_source_file_path(
         queued_submission_value.submission_id,
         queued_submission_value.language
@@ -327,6 +362,30 @@ std::expected<std::filesystem::path, error_code> judge_worker::prepare_submissio
     }
 
     return *source_file_path_exp;
+}
+
+std::expected<void, error_code> judge_worker::cleanup_submission_workspace(
+    std::int64_t submission_id
+){
+    const auto workspace_path_exp = judge_util::instance().make_submission_workspace_path(
+        submission_id
+    );
+    if(!workspace_path_exp){
+        return std::unexpected(workspace_path_exp.error());
+    }
+
+    return file_util::remove_all(*workspace_path_exp);
+}
+
+std::expected<void, error_code> judge_worker::requeue_submission(
+    std::int64_t submission_id,
+    std::string reason
+){
+    return submission_service::requeue_submission_immediately(
+        db_connection_,
+        submission_id,
+        std::move(reason)
+    );
 }
 
 std::expected<std::optional<submission_dto::queued_submission>, error_code> judge_worker::lease_submission(){

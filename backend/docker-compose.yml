@@ -14,11 +14,14 @@ services:
       context: .
       target: judge_runtime
       args:
+        JUDGE_NSJAIL_PATH: "${JUDGE_NSJAIL_PATH:-}"
         JUDGE_CPP_COMPILER_PATH: "${JUDGE_CPP_COMPILER_PATH:-}"
         JUDGE_PYTHON_PATH: "${JUDGE_PYTHON_PATH:-}"
+        JUDGE_JAVA_COMPILER_PATH: "${JUDGE_JAVA_COMPILER_PATH:-}"
         JUDGE_JAVA_RUNTIME_PATH: "${JUDGE_JAVA_RUNTIME_PATH:-}"
     env_file:
       - .env
     profiles:
       - manual
+    privileged: true
     command: ["./judge_server"]

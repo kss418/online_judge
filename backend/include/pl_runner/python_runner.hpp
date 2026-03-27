@@ -12,6 +12,7 @@ namespace python_runner{
     using path = std::filesystem::path;
 
     struct compile_result{
+        path workspace_host_path_;
         std::vector<std::string> run_command_args_;
         int exit_code_ = 0;
         std::string stderr_text_;

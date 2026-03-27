@@ -3,6 +3,7 @@
 #include "common/db_connection.hpp"
 #include "db_event/submission_event_listener.hpp"
 #include "judge_core/judge_worker.hpp"
+#include "judge_core/sandbox_runner.hpp"
 
 #include <chrono>
 #include <expected>
@@ -29,9 +30,16 @@ std::expected<submission_event_listener, error_code> create_submission_event_lis
 }
 
 int main(){
-    const auto require_all_envs_exp = env_util::require_all_envs();
-    if(!require_all_envs_exp){
+    const auto require_judge_envs_exp = env_util::require_judge_server_envs();
+    if(!require_judge_envs_exp){
         std::cerr << "required environment variables are missing\n";
+        return 1;
+    }
+
+    const auto sandbox_self_check_exp = sandbox_runner::startup_self_check();
+    if(!sandbox_self_check_exp){
+        std::cerr << "sandbox startup self-check failed: "
+                  << to_string(sandbox_self_check_exp.error()) << '\n';
         return 1;
     }
 
