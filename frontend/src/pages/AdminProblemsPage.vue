@@ -162,7 +162,7 @@
                   <p class="panel-kicker">editor</p>
                   <h3>#{{ formatCount(selectedProblemDetail.problem_id) }} {{ selectedProblemDetail.title }}</h3>
                   <p class="admin-problem-editor-copy">
-                    선택한 문제의 제목, 제한, 설명을 바로 저장할 수 있습니다.
+                    선택한 문제의 제목, 제한, 설명, 공개 예제를 바로 저장할 수 있습니다.
                   </p>
                 </div>
 
@@ -209,7 +209,7 @@
                     :disabled="!canSaveTitle"
                     @click="handleSaveTitle"
                   >
-                    {{ isSavingTitle ? '저장 중...' : '제목 저장' }}
+                    {{ isSavingTitle ? '저장 중...' : '저장' }}
                   </button>
                 </div>
               </article>
@@ -255,7 +255,7 @@
                     :disabled="!canSaveLimits"
                     @click="handleSaveLimits"
                   >
-                    {{ isSavingLimits ? '저장 중...' : '제한 저장' }}
+                    {{ isSavingLimits ? '저장 중...' : '저장' }}
                   </button>
                 </div>
               </article>
@@ -314,8 +314,91 @@
                     :disabled="!canSaveStatement"
                     @click="handleSaveStatement"
                   >
-                    {{ isSavingStatement ? '저장 중...' : '설명 저장' }}
+                    {{ isSavingStatement ? '저장 중...' : '저장' }}
                   </button>
+                </div>
+              </article>
+
+              <article class="admin-problem-editor-section">
+                <div class="panel-header admin-sample-section-header">
+                  <div>
+                    <p class="panel-kicker">samples</p>
+                    <h3>공개 예제</h3>
+                    <p class="admin-problem-section-copy">
+                      문제 상세 페이지에 노출되는 공개 예제를 행별로 관리합니다. 추가 시 빈 샘플이 생성되며, 삭제 버튼은 마지막 샘플에만 표시됩니다.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    class="ghost-button"
+                    :disabled="!canCreateSample"
+                    @click="handleCreateSample"
+                  >
+                    {{ isCreatingSample ? '추가 중...' : '샘플 추가' }}
+                  </button>
+                </div>
+
+                <div v-if="!sampleDrafts.length" class="empty-state compact-state">
+                  <p>등록된 공개 예제가 아직 없습니다.</p>
+                </div>
+
+                <div v-else class="admin-sample-list">
+                  <article
+                    v-for="sampleDraft in sampleDrafts"
+                    :key="sampleDraft.sample_order"
+                    class="admin-sample-card"
+                  >
+                    <div class="admin-sample-card-header">
+                      <div>
+                        <p class="panel-kicker">sample {{ formatCount(sampleDraft.sample_order) }}</p>
+                        <h3>예제 {{ formatCount(sampleDraft.sample_order) }}</h3>
+                      </div>
+
+                      <button
+                        v-if="isLastSample(sampleDraft.sample_order)"
+                        type="button"
+                        class="ghost-button admin-sample-delete-button"
+                        :disabled="!canDeleteLastSample"
+                        @click="handleDeleteLastSample"
+                      >
+                        {{ isDeletingLastSample ? '삭제 중...' : '샘플 삭제' }}
+                      </button>
+                    </div>
+
+                    <div class="admin-problem-form-grid">
+                      <label class="field-block">
+                        <span class="field-label">입력</span>
+                        <textarea
+                          v-model="sampleDraft.sample_input"
+                          class="admin-problem-textarea admin-sample-textarea"
+                          spellcheck="false"
+                          placeholder="빈 입력도 허용됩니다."
+                        />
+                      </label>
+
+                      <label class="field-block">
+                        <span class="field-label">출력</span>
+                        <textarea
+                          v-model="sampleDraft.sample_output"
+                          class="admin-problem-textarea admin-sample-textarea"
+                          spellcheck="false"
+                          placeholder="빈 출력도 허용됩니다."
+                        />
+                      </label>
+                    </div>
+
+                    <div class="admin-problem-section-actions">
+                      <button
+                        type="button"
+                        class="primary-button"
+                        :disabled="!canSaveSample(sampleDraft.sample_order)"
+                        @click="handleSaveSample(sampleDraft.sample_order)"
+                      >
+                        {{ isSavingSample(sampleDraft.sample_order) ? '저장 중...' : '저장' }}
+                      </button>
+                    </div>
+                  </article>
                 </div>
               </article>
 
@@ -524,11 +607,14 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 import {
   createProblem,
+  createProblemSample,
   deleteProblem,
+  deleteProblemSample,
   getProblemDetail,
   getProblemList,
   rejudgeProblem,
   updateProblemLimits,
+  updateProblemSample,
   updateProblemStatement,
   updateProblemTitle
 } from '@/api/problem'
@@ -557,6 +643,7 @@ const descriptionDraft = ref('')
 const inputFormatDraft = ref('')
 const outputFormatDraft = ref('')
 const noteDraft = ref('')
+const sampleDrafts = ref([])
 const busySection = ref('')
 const rejudgeDialogOpen = ref(false)
 const rejudgeConfirmProblemId = ref('')
@@ -582,8 +669,20 @@ const isCreatingProblem = computed(() => busySection.value === 'create')
 const isSavingTitle = computed(() => busySection.value === 'title')
 const isSavingLimits = computed(() => busySection.value === 'limits')
 const isSavingStatement = computed(() => busySection.value === 'statement')
+const isCreatingSample = computed(() => busySection.value === 'sample:create')
+const isDeletingLastSample = computed(() => busySection.value === 'sample:delete-last')
 const isRejudgingProblem = computed(() => busySection.value === 'rejudge')
 const isDeletingProblem = computed(() => busySection.value === 'delete')
+const canCreateSample = computed(() =>
+  Boolean(selectedProblemDetail.value) &&
+  Boolean(authState.token) &&
+  !busySection.value
+)
+const canDeleteLastSample = computed(() =>
+  Boolean(selectedProblemDetail.value?.samples.length) &&
+  Boolean(authState.token) &&
+  !busySection.value
+)
 const canSaveTitle = computed(() => {
   if (!selectedProblemDetail.value || !authState.token || busySection.value) {
     return false
@@ -696,6 +795,7 @@ function resetEditorDrafts(){
   inputFormatDraft.value = ''
   outputFormatDraft.value = ''
   noteDraft.value = ''
+  sampleDrafts.value = []
 }
 
 function formatCount(value){
@@ -726,7 +826,31 @@ function normalizeProblemDetail(response){
       input_format: response.statement?.input_format ?? '',
       output_format: response.statement?.output_format ?? '',
       note: response.statement?.note ?? ''
-    }
+    },
+    samples: normalizeProblemSamples(response.samples)
+  }
+}
+
+function normalizeProblemSamples(samples){
+  if (!Array.isArray(samples)) {
+    return []
+  }
+
+  return samples
+    .map((sample) => ({
+      sample_order: Number(sample.sample_order ?? 0),
+      sample_input: sample.sample_input ?? '',
+      sample_output: sample.sample_output ?? ''
+    }))
+    .filter((sample) => sample.sample_order > 0)
+    .sort((leftSample, rightSample) => leftSample.sample_order - rightSample.sample_order)
+}
+
+function makeSampleDraft(sample){
+  return {
+    sample_order: sample.sample_order,
+    sample_input: sample.sample_input,
+    sample_output: sample.sample_output
   }
 }
 
@@ -738,6 +862,7 @@ function assignEditorDrafts(problemDetail){
   inputFormatDraft.value = problemDetail.statement.input_format
   outputFormatDraft.value = problemDetail.statement.output_format
   noteDraft.value = problemDetail.statement.note
+  sampleDrafts.value = problemDetail.samples.map(makeSampleDraft)
 }
 
 function mergeProblemSummary(problemId, patch){
@@ -749,6 +874,77 @@ function mergeProblemSummary(problemId, patch){
       }
       : problem
   )
+}
+
+function getSelectedProblemSample(sampleOrder){
+  return selectedProblemDetail.value?.samples.find((sample) => sample.sample_order === sampleOrder) || null
+}
+
+function getSampleDraft(sampleOrder){
+  return sampleDrafts.value.find((sample) => sample.sample_order === sampleOrder) || null
+}
+
+function isSavingSample(sampleOrder){
+  return busySection.value === makeSampleBusyKey(sampleOrder)
+}
+
+function makeSampleBusyKey(sampleOrder){
+  return `sample:${sampleOrder}`
+}
+
+function canSaveSample(sampleOrder){
+  if (!selectedProblemDetail.value || !authState.token || busySection.value) {
+    return false
+  }
+
+  const selectedSample = getSelectedProblemSample(sampleOrder)
+  const sampleDraft = getSampleDraft(sampleOrder)
+  if (!selectedSample || !sampleDraft) {
+    return false
+  }
+
+  return (
+    sampleDraft.sample_input !== selectedSample.sample_input ||
+    sampleDraft.sample_output !== selectedSample.sample_output
+  )
+}
+
+function isLastSample(sampleOrder){
+  const samples = selectedProblemDetail.value?.samples || []
+  if (!samples.length) {
+    return false
+  }
+
+  return samples[samples.length - 1].sample_order === sampleOrder
+}
+
+function setSelectedProblemSamples(samples){
+  if (!selectedProblemDetail.value) {
+    return
+  }
+
+  const normalizedSamples = normalizeProblemSamples(samples)
+  selectedProblemDetail.value = {
+    ...selectedProblemDetail.value,
+    samples: normalizedSamples
+  }
+  sampleDrafts.value = normalizedSamples.map(makeSampleDraft)
+}
+
+function incrementSelectedProblemVersion(problemId){
+  const selectedProblem = selectedProblemDetail.value
+  if (!selectedProblem || selectedProblem.problem_id !== problemId) {
+    return
+  }
+
+  const nextVersion = selectedProblem.version + 1
+  selectedProblemDetail.value = {
+    ...selectedProblem,
+    version: nextVersion
+  }
+  mergeProblemSummary(problemId, {
+    version: nextVersion
+  })
 }
 
 async function hydrateProblemLimits(problemIds){
@@ -1077,6 +1273,114 @@ async function handleSaveStatement(){
   }
 }
 
+async function handleCreateSample(){
+  if (!authState.token || !selectedProblemDetail.value || !canCreateSample.value) {
+    return
+  }
+
+  const problemId = selectedProblemDetail.value.problem_id
+  busySection.value = 'sample:create'
+  actionErrorMessage.value = ''
+  actionMessage.value = ''
+
+  try {
+    const response = await createProblemSample(problemId, {
+      sample_input: '',
+      sample_output: ''
+    }, authState.token)
+
+    const nextSampleOrder = Number(response.sample_order ?? selectedProblemDetail.value.samples.length + 1)
+    setSelectedProblemSamples([
+      ...selectedProblemDetail.value.samples,
+      {
+        sample_order: nextSampleOrder,
+        sample_input: '',
+        sample_output: ''
+      }
+    ])
+    incrementSelectedProblemVersion(problemId)
+    actionMessage.value = `예제 ${formatCount(nextSampleOrder)}를 추가했습니다.`
+  } catch (error) {
+    actionErrorMessage.value = error instanceof Error
+      ? error.message
+      : '공개 예제를 추가하지 못했습니다.'
+  } finally {
+    busySection.value = ''
+  }
+}
+
+async function handleSaveSample(sampleOrder){
+  if (!authState.token || !selectedProblemDetail.value || !canSaveSample(sampleOrder)) {
+    return
+  }
+
+  const problemId = selectedProblemDetail.value.problem_id
+  const sampleDraft = getSampleDraft(sampleOrder)
+  if (!sampleDraft) {
+    return
+  }
+
+  busySection.value = makeSampleBusyKey(sampleOrder)
+  actionErrorMessage.value = ''
+  actionMessage.value = ''
+
+  try {
+    const response = await updateProblemSample(problemId, sampleOrder, {
+      sample_input: sampleDraft.sample_input,
+      sample_output: sampleDraft.sample_output
+    }, authState.token)
+
+    setSelectedProblemSamples(selectedProblemDetail.value.samples.map((sample) =>
+      sample.sample_order === sampleOrder
+        ? {
+          ...sample,
+          sample_input: response.sample_input ?? sampleDraft.sample_input,
+          sample_output: response.sample_output ?? sampleDraft.sample_output
+        }
+        : sample
+    ))
+    incrementSelectedProblemVersion(problemId)
+    actionMessage.value = `예제 ${formatCount(sampleOrder)}를 저장했습니다.`
+  } catch (error) {
+    actionErrorMessage.value = error instanceof Error
+      ? error.message
+      : '공개 예제를 저장하지 못했습니다.'
+  } finally {
+    busySection.value = ''
+  }
+}
+
+async function handleDeleteLastSample(){
+  if (!authState.token || !selectedProblemDetail.value || !canDeleteLastSample.value) {
+    return
+  }
+
+  const problemId = selectedProblemDetail.value.problem_id
+  const lastSample = selectedProblemDetail.value.samples[selectedProblemDetail.value.samples.length - 1]
+  if (!lastSample) {
+    return
+  }
+
+  busySection.value = 'sample:delete-last'
+  actionErrorMessage.value = ''
+  actionMessage.value = ''
+
+  try {
+    await deleteProblemSample(problemId, authState.token)
+    setSelectedProblemSamples(selectedProblemDetail.value.samples.filter(
+      (sample) => sample.sample_order !== lastSample.sample_order
+    ))
+    incrementSelectedProblemVersion(problemId)
+    actionMessage.value = `예제 ${formatCount(lastSample.sample_order)}를 삭제했습니다.`
+  } catch (error) {
+    actionErrorMessage.value = error instanceof Error
+      ? error.message
+      : '공개 예제를 삭제하지 못했습니다.'
+  } finally {
+    busySection.value = ''
+  }
+}
+
 function openDeleteDialog(){
   if (!selectedProblemDetail.value || busySection.value) {
     return
@@ -1309,6 +1613,7 @@ onMounted(() => {
 .admin-problem-list-caption,
 .admin-problem-list-count,
 .admin-problem-editor-copy,
+.admin-problem-section-copy,
 .admin-problem-danger-copy {
   margin: 0;
   color: var(--ink-soft);
@@ -1412,6 +1717,13 @@ onMounted(() => {
   background: rgba(255, 250, 250, 0.88);
 }
 
+.admin-sample-section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
 .admin-problem-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1437,6 +1749,38 @@ onMounted(() => {
 
 .admin-problem-textarea.is-note {
   min-height: 7rem;
+}
+
+.admin-sample-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-sample-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(20, 33, 61, 0.08);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.admin-sample-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.admin-sample-textarea {
+  min-height: 9rem;
+  font-family: "SFMono-Regular", "Consolas", monospace;
+}
+
+.admin-sample-delete-button {
+  color: var(--danger);
+  background: rgba(254, 242, 242, 0.96);
+  border-color: rgba(185, 28, 28, 0.18);
 }
 
 .admin-problem-textarea:focus {
@@ -1532,7 +1876,9 @@ onMounted(() => {
 
 @media (max-width: 1100px) {
   .admin-problems-toolbar,
-  .admin-problem-editor-header {
+  .admin-problem-editor-header,
+  .admin-sample-section-header,
+  .admin-sample-card-header {
     flex-direction: column;
   }
 
