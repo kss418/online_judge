@@ -1,9 +1,13 @@
 #include "http_core/http_session.hpp"
+#include "http_core/json_util.hpp"
 #include "http_core/http_server.hpp"
 
 #include <boost/asio/error.hpp>
+#include <boost/beast/http/error.hpp>
+#include <boost/beast/http/field.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/write.hpp>
+#include <boost/beast/version.hpp>
 
 #include <iostream>
 #include <memory>
@@ -29,6 +33,14 @@ http_session::http_session(tcp::socket socket, std::shared_ptr<http_server> http
     socket_(std::move(socket)),
     http_server_(std::move(http_server)){}
 
+bool http_session::should_respond_to_read_error(const boost::system::error_code& ec){
+    const auto& http_error_category =
+        boost::beast::http::make_error_code(boost::beast::http::error::bad_method).category();
+    return
+        ec == boost::beast::http::error::body_limit ||
+        ec.category() == http_error_category;
+}
+
 std::expected<void, error_code> http_session::run(){
     if(!socket_.is_open()){
         return std::unexpected(error_code::create(boost_error::bad_descriptor));
@@ -44,12 +56,14 @@ void http_session::handle_error(error_code code) const{
 
 void http_session::read(){
     request_ = {};
+    request_parser_.emplace();
+    request_parser_->body_limit(max_request_body_size_bytes);
 
     auto self = shared_from_this();
     boost::beast::http::async_read(
         socket_,
         buffer_,
-        request_,
+        *request_parser_,
         [self](boost::system::error_code ec, std::size_t bytes_transferred){
             self->on_read(ec, bytes_transferred);
         }
@@ -66,21 +80,22 @@ void http_session::on_read(boost::system::error_code ec, std::size_t bytes_trans
     }
 
     if(ec){
+        if(should_respond_to_read_error(ec)){
+            auto response = std::make_shared<response_type>(create_read_error_response(ec));
+            request_parser_.reset();
+            write_response(response);
+            return;
+        }
+
         handle_error(error_code::map_boost_error_code(ec));
         return;
     }
 
-    auto response = std::make_shared<response_type>(create_response());
-    const bool should_close = response->need_eof();
+    request_ = request_parser_->release();
+    request_parser_.reset();
 
-    auto self = shared_from_this();
-    boost::beast::http::async_write(
-        socket_,
-        *response,
-        [self, response, should_close](boost::system::error_code ec, std::size_t write_bytes){
-            self->on_write(should_close, ec, write_bytes);
-        }
-    );
+    auto response = std::make_shared<response_type>(create_response());
+    write_response(response);
 }
 
 void http_session::on_write(
@@ -102,6 +117,19 @@ void http_session::on_write(
     read();
 }
 
+void http_session::write_response(std::shared_ptr<response_type> response){
+    const bool should_close = response->need_eof();
+
+    auto self = shared_from_this();
+    boost::beast::http::async_write(
+        socket_,
+        *response,
+        [self, response, should_close](boost::system::error_code ec, std::size_t write_bytes){
+            self->on_write(should_close, ec, write_bytes);
+        }
+    );
+}
+
 std::expected<void, error_code> http_session::close(){
     boost::system::error_code ec;
     socket_.shutdown(tcp::socket::shutdown_send, ec);
@@ -115,4 +143,35 @@ std::expected<void, error_code> http_session::close(){
 
 http_session::response_type http_session::create_response() const{
     return http_server_->handle(request_);
+}
+
+http_session::response_type http_session::create_read_error_response(
+    const boost::system::error_code& ec
+) const{
+    const auto status = ec == boost::beast::http::error::body_limit
+        ? boost::beast::http::status::payload_too_large
+        : boost::beast::http::status::bad_request;
+    const auto error_code_text = ec == boost::beast::http::error::body_limit
+        ? "payload_too_large"
+        : "bad_request";
+    const std::string error_message = ec == boost::beast::http::error::body_limit
+        ? "request body too large"
+        : "bad request: " + ec.message();
+    const unsigned http_version =
+        request_parser_ && request_parser_->get().version() != 0
+            ? request_parser_->get().version()
+            : 11;
+
+    response_type response{status, http_version};
+    response.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+    response.set(
+        boost::beast::http::field::content_type,
+        "application/json; charset=utf-8"
+    );
+    response.keep_alive(false);
+    response.body() = boost::json::serialize(
+        json_util::make_error_object(error_code_text, error_message)
+    ) + "\n";
+    response.prepare_payload();
+    return response;
 }

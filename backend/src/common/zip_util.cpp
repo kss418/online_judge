@@ -8,7 +8,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-namespace{
+namespace zip_util_internal{
     std::string trim_line_endings(std::string_view value){
         std::string trimmed(value);
         while(!trimmed.empty() && (trimmed.back() == '\n' || trimmed.back() == '\r')){
@@ -104,7 +104,7 @@ namespace{
 std::expected<std::vector<std::string>, error_code> zip_util::list_entry_names(
     const std::filesystem::path& archive_path
 ){
-    const auto archive_listing_exp = run_unzip_command_capture_output({
+    const auto archive_listing_exp = zip_util_internal::run_unzip_command_capture_output({
         "unzip",
         "-Z1",
         archive_path.string()
@@ -121,7 +121,7 @@ std::expected<std::vector<std::string>, error_code> zip_util::list_entry_names(
         const std::string_view raw_line = line_end == std::string_view::npos
             ? archive_listing.substr(line_begin)
             : archive_listing.substr(line_begin, line_end - line_begin);
-        const std::string entry_name = trim_line_endings(raw_line);
+        const std::string entry_name = zip_util_internal::trim_line_endings(raw_line);
         if(!entry_name.empty()){
             entry_names.push_back(entry_name);
         }
@@ -139,7 +139,7 @@ std::expected<void, error_code> zip_util::extract_to_directory(
     const std::filesystem::path& archive_path,
     const std::filesystem::path& output_directory_path
 ){
-    const auto extract_exp = run_unzip_command_capture_output({
+    const auto extract_exp = zip_util_internal::run_unzip_command_capture_output({
         "unzip",
         "-qq",
         archive_path.string(),

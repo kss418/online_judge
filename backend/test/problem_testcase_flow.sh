@@ -54,6 +54,7 @@ replaced_testcases_response_file="$(mktemp)"
 replaced_problem_response_file="$(mktemp)"
 invalid_unpaired_zip_response_file="$(mktemp)"
 invalid_duplicate_zip_response_file="$(mktemp)"
+invalid_malformed_zip_response_file="$(mktemp)"
 get_problem_response_file="$(mktemp)"
 updated_problem_response_file="$(mktemp)"
 deleted_problem_response_file="$(mktemp)"
@@ -63,6 +64,7 @@ valid_testcase_zip_path="$(mktemp)"
 replace_testcase_zip_path="$(mktemp)"
 invalid_unpaired_zip_path="$(mktemp)"
 invalid_duplicate_zip_path="$(mktemp)"
+invalid_malformed_zip_path="$(mktemp)"
 
 cleanup(){
     cleanup_http_server
@@ -91,6 +93,7 @@ cleanup(){
         "${replaced_problem_response_file}" \
         "${invalid_unpaired_zip_response_file}" \
         "${invalid_duplicate_zip_response_file}" \
+        "${invalid_malformed_zip_response_file}" \
         "${get_problem_response_file}" \
         "${updated_problem_response_file}" \
         "${deleted_problem_response_file}" \
@@ -99,7 +102,8 @@ cleanup(){
         "${valid_testcase_zip_path}" \
         "${replace_testcase_zip_path}" \
         "${invalid_unpaired_zip_path}" \
-        "${invalid_duplicate_zip_path}"
+        "${invalid_duplicate_zip_path}" \
+        "${invalid_malformed_zip_path}"
 
 }
 
@@ -800,6 +804,26 @@ assert_json_field_equals \
     "error.code" \
     "invalid_testcase_zip" \
     "reject duplicate testcase zip code"
+
+python3 - "${invalid_malformed_zip_path}" <<'PY'
+import sys
+
+with open(sys.argv[1], "wb") as invalid_zip_file:
+    invalid_zip_file.write(b"not-a-zip\n" * 200000)
+PY
+
+send_zip_request_and_assert_status \
+    "${base_url}/api/problem/${problem_id}/testcase/zip" \
+    "${invalid_malformed_zip_path}" \
+    "${invalid_malformed_zip_response_file}" \
+    "400" \
+    "reject malformed testcase zip" \
+    "${sign_up_token}"
+assert_json_field_equals \
+    "${invalid_malformed_zip_response_file}" \
+    "error.code" \
+    "invalid_testcase_zip" \
+    "reject malformed testcase zip code"
 
 send_http_request_and_assert_status \
     "GET" \

@@ -5,11 +5,14 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/message.hpp>
+#include <boost/beast/http/parser.hpp>
 #include <boost/beast/http/string_body.hpp>
 #include <boost/system/error_code.hpp>
 #include <cstddef>
+#include <cstdint>
 #include <expected>
 #include <memory>
+#include <optional>
 
 class http_server;
 
@@ -25,18 +28,25 @@ public:
 
     std::expected<void, error_code> run();
 private:
+    static constexpr std::uint64_t max_request_body_size_bytes = 32ULL * 1024ULL * 1024ULL;
+
     explicit http_session(tcp::socket socket, std::shared_ptr<http_server> http_server);
 
+    static bool should_respond_to_read_error(const boost::system::error_code& ec);
     void handle_error(error_code code) const;
     void read();
     void on_read(boost::system::error_code ec, std::size_t bytes_transferred);
     void on_write(bool should_close, boost::system::error_code ec, std::size_t bytes_transferred);
+    void write_response(std::shared_ptr<response_type> response);
     std::expected<void, error_code> close();
 
     response_type create_response() const;
+    response_type create_read_error_response(const boost::system::error_code& ec) const;
 
     tcp::socket socket_;
     boost::beast::flat_buffer buffer_;
     request_type request_;
+    std::optional<boost::beast::http::request_parser<boost::beast::http::string_body>>
+        request_parser_;
     std::shared_ptr<http_server> http_server_;
 };
