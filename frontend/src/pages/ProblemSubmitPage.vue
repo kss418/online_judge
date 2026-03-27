@@ -59,12 +59,32 @@
 
             <div class="submission-field">
               <label for="submission-source">소스 코드</label>
-              <textarea
-                id="submission-source"
-                v-model="sourceCode"
-                class="submission-editor"
-                spellcheck="false"
-              />
+              <div
+                class="submission-editor-shell"
+                :class="{ 'is-readonly': isSubmittingSubmission }"
+              >
+                <div class="submission-editor-gutter" aria-hidden="true">
+                  <span
+                    v-for="lineNumber in editorLineNumbers"
+                    :key="lineNumber"
+                    class="submission-editor-line-number"
+                  >
+                    {{ lineNumber }}
+                  </span>
+                </div>
+                <textarea
+                  id="submission-source"
+                  ref="sourceEditorElement"
+                  v-model="sourceCode"
+                  class="submission-editor-input"
+                  spellcheck="false"
+                  wrap="off"
+                  :readonly="isSubmittingSubmission"
+                  :placeholder="editorPlaceholder"
+                  @input="handleSourceEditorInput"
+                  @keydown="handleEditorKeydown"
+                />
+              </div>
             </div>
 
             <p v-if="languageErrorMessage" class="submission-feedback is-error">
@@ -100,7 +120,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getSupportedLanguages } from '@/api/http'
@@ -122,6 +142,7 @@ const languageErrorMessage = ref('')
 const supportedLanguages = ref([])
 const selectedLanguage = ref('')
 const sourceCode = ref('')
+const sourceEditorElement = ref(null)
 
 const isSubmittingSubmission = ref(false)
 const submitErrorMessage = ref('')
@@ -130,6 +151,64 @@ const submissionSuccessMessage = ref('')
 const activeLanguage = computed(() =>
   supportedLanguages.value.find((language) => language.language === selectedLanguage.value) || null
 )
+
+const editorLineCount = computed(() =>
+  Math.max(1, sourceCode.value.split('\n').length)
+)
+
+const editorLineNumbers = computed(() =>
+  Array.from({ length: editorLineCount.value }, (_, index) => index + 1)
+)
+
+const editorPlaceholder = computed(() => {
+  if (!activeLanguage.value) {
+    return '// 언어를 선택하면 예시 형식이 바뀝니다.'
+  }
+
+  const languageName = String(activeLanguage.value.language || '').toLowerCase()
+  const sourceExtension = String(activeLanguage.value.source_extension || '').toLowerCase()
+
+  if (languageName.includes('cpp') || sourceExtension === '.cpp') {
+    return [
+      '#include <bits/stdc++.h>',
+      '',
+      'using namespace std;',
+      '',
+      'int main(){',
+      '    ios::sync_with_stdio(false);',
+      '    cin.tie(nullptr);',
+      '',
+      '    return 0;',
+      '}'
+    ].join('\n')
+  }
+
+  if (languageName.includes('python') || sourceExtension === '.py') {
+    return [
+      'import sys',
+      '',
+      'def main():',
+      '    input = sys.stdin.readline',
+      '',
+      '',
+      "if __name__ == '__main__':",
+      '    main()'
+    ].join('\n')
+  }
+
+  if (languageName.includes('java') || sourceExtension === '.java') {
+    return [
+      'import java.io.*;',
+      '',
+      'public class Main {',
+      '    public static void main(String[] args) throws Exception {',
+      '    }',
+      '}'
+    ].join('\n')
+  }
+
+  return '// 여기에 코드를 작성하세요.'
+})
 
 const canSubmit = computed(() =>
   isAuthenticated.value &&
@@ -144,6 +223,10 @@ watch(numericProblemId, () => {
   submissionSuccessMessage.value = ''
   sourceCode.value = ''
   loadProblemDetail()
+})
+
+watch(sourceCode, () => {
+  scheduleEditorResize()
 })
 
 watch(supportedLanguages, (languages) => {
@@ -215,6 +298,154 @@ async function loadSupportedLanguageList(){
   }
 }
 
+function scheduleEditorResize(){
+  nextTick(() => {
+    resizeEditorHeight()
+  })
+}
+
+function resizeEditorHeight(){
+  if (!sourceEditorElement.value) {
+    return
+  }
+
+  sourceEditorElement.value.style.height = 'auto'
+  sourceEditorElement.value.style.height = `${Math.max(sourceEditorElement.value.scrollHeight, 320)}px`
+}
+
+function handleSourceEditorInput(){
+  scheduleEditorResize()
+}
+
+function handleEditorKeydown(event){
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    event.preventDefault()
+    void submitSolution()
+    return
+  }
+
+  if (event.key !== 'Tab' || !sourceEditorElement.value || isSubmittingSubmission.value) {
+    return
+  }
+
+  event.preventDefault()
+
+  const textarea = sourceEditorElement.value
+  const selectionStart = textarea.selectionStart
+  const selectionEnd = textarea.selectionEnd
+
+  if (event.shiftKey) {
+    outdentEditorSelection(selectionStart, selectionEnd)
+    return
+  }
+
+  indentEditorSelection(selectionStart, selectionEnd)
+}
+
+function indentEditorSelection(selectionStart, selectionEnd){
+  const indentText = '    '
+
+  if (selectionStart === selectionEnd) {
+    const nextValue =
+      `${sourceCode.value.slice(0, selectionStart)}${indentText}${sourceCode.value.slice(selectionEnd)}`
+    updateEditorValue(
+      nextValue,
+      selectionStart + indentText.length,
+      selectionStart + indentText.length
+    )
+    return
+  }
+
+  const blockRange = getSelectedLineRange(sourceCode.value, selectionStart, selectionEnd)
+  const selectedBlock = sourceCode.value.slice(blockRange.lineStart, blockRange.lineEnd)
+  const selectedLines = selectedBlock.split('\n')
+  const indentedBlock = selectedLines
+    .map((line) => `${indentText}${line}`)
+    .join('\n')
+
+  const nextValue =
+    `${sourceCode.value.slice(0, blockRange.lineStart)}${indentedBlock}${sourceCode.value.slice(blockRange.lineEnd)}`
+
+  updateEditorValue(
+    nextValue,
+    selectionStart + indentText.length,
+    selectionEnd + (indentText.length * selectedLines.length)
+  )
+}
+
+function outdentEditorSelection(selectionStart, selectionEnd){
+  const blockRange = getSelectedLineRange(sourceCode.value, selectionStart, selectionEnd)
+  const selectedBlock = sourceCode.value.slice(blockRange.lineStart, blockRange.lineEnd)
+  const selectedLines = selectedBlock.split('\n')
+  const removedIndentSizes = selectedLines.map((line) => getOutdentWidth(line))
+  const totalRemovedIndent = removedIndentSizes.reduce((sum, width) => sum + width, 0)
+
+  if (!totalRemovedIndent) {
+    return
+  }
+
+  const outdentedBlock = selectedLines
+    .map((line, index) => line.slice(removedIndentSizes[index]))
+    .join('\n')
+
+  const nextValue =
+    `${sourceCode.value.slice(0, blockRange.lineStart)}${outdentedBlock}${sourceCode.value.slice(blockRange.lineEnd)}`
+
+  const removedBeforeSelectionStart =
+    selectionStart > blockRange.lineStart ? removedIndentSizes[0] : 0
+  const nextSelectionStart =
+    selectionStart === selectionEnd
+      ? Math.max(blockRange.lineStart, selectionStart - removedIndentSizes[0])
+      : Math.max(blockRange.lineStart, selectionStart - removedBeforeSelectionStart)
+  const nextSelectionEnd = Math.max(nextSelectionStart, selectionEnd - totalRemovedIndent)
+
+  updateEditorValue(
+    nextValue,
+    nextSelectionStart,
+    nextSelectionEnd
+  )
+}
+
+function getSelectedLineRange(value, selectionStart, selectionEnd){
+  const lineStart = value.lastIndexOf('\n', Math.max(0, selectionStart - 1)) + 1
+  const normalizedSelectionEnd =
+    selectionEnd > selectionStart && value[selectionEnd - 1] === '\n'
+      ? selectionEnd - 1
+      : selectionEnd
+  const lineEnd = value.indexOf('\n', normalizedSelectionEnd)
+
+  return {
+    lineStart,
+    lineEnd: lineEnd === -1 ? value.length : lineEnd
+  }
+}
+
+function getOutdentWidth(line){
+  if (line.startsWith('\t')) {
+    return 1
+  }
+
+  let leadingSpaceCount = 0
+  while (leadingSpaceCount < 4 && line[leadingSpaceCount] === ' ') {
+    leadingSpaceCount += 1
+  }
+  return leadingSpaceCount
+}
+
+function updateEditorValue(nextValue, selectionStart, selectionEnd){
+  sourceCode.value = nextValue
+
+  nextTick(() => {
+    if (!sourceEditorElement.value) {
+      return
+    }
+
+    sourceEditorElement.value.focus()
+    sourceEditorElement.value.setSelectionRange(selectionStart, selectionEnd)
+    resizeEditorHeight()
+  })
+}
+
 async function submitSolution(){
   if (!isAuthenticated.value || !authState.token) {
     submitErrorMessage.value = '제출하려면 로그인하세요.'
@@ -267,6 +498,7 @@ onMounted(() => {
   initializeAuth()
   loadProblemDetail()
   loadSupportedLanguageList()
+  scheduleEditorResize()
 })
 </script>
 
@@ -337,11 +569,8 @@ onMounted(() => {
 }
 
 .submission-select,
-.submission-editor {
+.submission-editor-input {
   width: 100%;
-  border-radius: 18px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.92);
   color: var(--ink-strong);
   font: inherit;
 }
@@ -351,16 +580,61 @@ onMounted(() => {
   padding: 0.75rem 0.95rem;
 }
 
-.submission-editor {
+.submission-editor-shell {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  border-radius: 20px;
+  border: 1px solid rgba(20, 33, 61, 0.14);
+  background:
+    linear-gradient(90deg, rgba(148, 163, 184, 0.12) 0, rgba(148, 163, 184, 0.12) 4.4rem, rgba(255, 255, 255, 0.96) 4.4rem, rgba(255, 255, 255, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  overflow: hidden;
+}
+
+.submission-editor-shell.is-readonly {
+  opacity: 0.84;
+}
+
+.submission-editor-gutter {
+  display: grid;
+  align-content: start;
+  min-width: 4.4rem;
+  padding: 1rem 0.7rem 1rem 0.95rem;
+  border-right: 1px solid rgba(20, 33, 61, 0.08);
+  background: rgba(148, 163, 184, 0.06);
+  color: rgba(71, 85, 105, 0.88);
+  font-family: "IBM Plex Mono", "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.92rem;
+  line-height: 1.7;
+  text-align: right;
+  user-select: none;
+}
+
+.submission-editor-line-number {
+  display: block;
+}
+
+.submission-editor-input {
   min-height: 20rem;
-  padding: 1rem;
-  resize: vertical;
-  font-family: "SFMono-Regular", "Consolas", monospace;
-  line-height: 1.55;
+  padding: 1rem 1rem 1rem 1.15rem;
+  border: 0;
+  background: transparent;
+  resize: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: pre;
+  font-family: "IBM Plex Mono", "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.96rem;
+  line-height: 1.7;
+  tab-size: 4;
+}
+
+.submission-editor-input::placeholder {
+  color: rgba(71, 85, 105, 0.72);
 }
 
 .submission-select:focus,
-.submission-editor:focus {
+.submission-editor-input:focus {
   outline: 2px solid rgba(217, 119, 6, 0.18);
   border-color: rgba(217, 119, 6, 0.5);
 }
@@ -403,6 +677,24 @@ onMounted(() => {
 
   .submission-actions {
     align-items: stretch;
+  }
+
+  .submission-editor-shell {
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+    background:
+      linear-gradient(90deg, rgba(148, 163, 184, 0.12) 0, rgba(148, 163, 184, 0.12) 3.5rem, rgba(255, 255, 255, 0.96) 3.5rem, rgba(255, 255, 255, 0.96) 100%);
+  }
+
+  .submission-editor-gutter {
+    min-width: 3.5rem;
+    padding-left: 0.7rem;
+    padding-right: 0.55rem;
+    font-size: 0.84rem;
+  }
+
+  .submission-editor-input {
+    padding-left: 0.85rem;
+    font-size: 0.9rem;
   }
 }
 </style>
