@@ -43,13 +43,45 @@
         <div class="admin-problems-layout">
           <aside class="admin-problem-list-panel">
             <form class="admin-problem-search" @submit.prevent="submitSearch">
-              <label class="sr-only" for="admin-problem-title-search">문제 검색</label>
+              <div class="admin-problem-search-mode-switch" role="tablist" aria-label="문제 검색 방식">
+                <button
+                  type="button"
+                  class="ghost-button admin-problem-search-mode-button"
+                  :class="{ 'is-active': searchMode === 'title' }"
+                  :aria-pressed="searchMode === 'title'"
+                  @click="setSearchMode('title')"
+                >
+                  제목 검색
+                </button>
+                <button
+                  type="button"
+                  class="ghost-button admin-problem-search-mode-button"
+                  :class="{ 'is-active': searchMode === 'problem-id' }"
+                  :aria-pressed="searchMode === 'problem-id'"
+                  @click="setSearchMode('problem-id')"
+                >
+                  번호 검색
+                </button>
+              </div>
               <input
+                v-if="searchMode === 'title'"
                 id="admin-problem-title-search"
-                v-model="searchInput"
+                v-model="titleSearchInput"
                 class="field-input admin-problem-search-input"
                 type="search"
+                aria-label="문제 제목 검색"
                 placeholder="문제 제목 검색"
+              />
+              <input
+                v-else
+                id="admin-problem-id-search"
+                v-model="problemIdSearchInput"
+                class="field-input admin-problem-search-input"
+                type="text"
+                inputmode="numeric"
+                aria-label="문제 번호 검색"
+                placeholder="예: 123"
+                @input="handleProblemIdSearchInput"
               />
               <button
                 type="submit"
@@ -59,7 +91,7 @@
                 검색
               </button>
               <button
-                v-if="searchKeyword"
+                v-if="hasAppliedSearch"
                 type="button"
                 class="ghost-button"
                 :disabled="isLoadingProblems || Boolean(busySection)"
@@ -93,9 +125,7 @@
             </form>
 
             <div class="admin-problem-list-header">
-              <p class="admin-problem-list-caption">
-                {{ searchKeyword ? `"${searchKeyword}" 검색 결과` : '전체 문제' }}
-              </p>
+              <p class="admin-problem-list-caption">{{ problemListCaption }}</p>
               <span class="admin-problem-list-count">{{ formatCount(problemCount) }}개</span>
             </div>
 
@@ -108,9 +138,7 @@
             </div>
 
             <div v-else-if="!problemCount" class="empty-state compact-state">
-              <p>
-                {{ searchKeyword ? '검색 조건에 맞는 문제가 없습니다.' : '등록된 문제가 아직 없습니다.' }}
-              </p>
+              <p>{{ emptyProblemListMessage }}</p>
             </div>
 
             <div v-else class="admin-problem-list">
@@ -644,7 +672,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import {
   createProblem,
@@ -668,6 +696,7 @@ const { authState, isAuthenticated, initializeAuth } = useAuth()
 const { showErrorNotice, showSuccessNotice } = useNotice()
 const countFormatter = new Intl.NumberFormat()
 const route = useRoute()
+const router = useRouter()
 
 const isLoadingProblems = ref(true)
 const isLoadingDetail = ref(false)
@@ -675,8 +704,9 @@ const listErrorMessage = ref('')
 const detailErrorMessage = ref('')
 const actionErrorMessage = ref('')
 const actionMessage = ref('')
-const searchInput = ref('')
-const searchKeyword = ref('')
+const searchMode = ref('title')
+const titleSearchInput = ref('')
+const problemIdSearchInput = ref('')
 const newProblemTitle = ref('')
 const problems = ref([])
 const selectedProblemId = ref(0)
@@ -816,6 +846,56 @@ const preferredProblemIdFromRoute = computed(() => {
     ? parsedValue
     : 0
 })
+const routeSearchMode = computed(() => {
+  const rawValue = Array.isArray(route.query.searchMode)
+    ? route.query.searchMode[0]
+    : route.query.searchMode
+
+  return rawValue === 'problem-id' ? 'problem-id' : 'title'
+})
+const routeTitleSearch = computed(() => {
+  const rawValue = Array.isArray(route.query.searchTitle)
+    ? route.query.searchTitle[0]
+    : route.query.searchTitle
+
+  return String(rawValue ?? '').trim()
+})
+const routeProblemIdSearch = computed(() => {
+  const rawValue = Array.isArray(route.query.searchProblemId)
+    ? route.query.searchProblemId[0]
+    : route.query.searchProblemId
+
+  return parsePositiveInteger(rawValue)
+})
+const hasAppliedSearch = computed(() => {
+  if (routeSearchMode.value === 'problem-id') {
+    return routeProblemIdSearch.value != null
+  }
+
+  return Boolean(routeTitleSearch.value)
+})
+const problemListCaption = computed(() => {
+  if (routeSearchMode.value === 'problem-id' && routeProblemIdSearch.value != null) {
+    return `문제 #${formatCount(routeProblemIdSearch.value)} 검색 결과`
+  }
+
+  if (routeTitleSearch.value) {
+    return `"${routeTitleSearch.value}" 검색 결과`
+  }
+
+  return '전체 문제'
+})
+const emptyProblemListMessage = computed(() => {
+  if (routeSearchMode.value === 'problem-id' && routeProblemIdSearch.value != null) {
+    return `문제 #${formatCount(routeProblemIdSearch.value)}를 찾지 못했습니다.`
+  }
+
+  if (routeTitleSearch.value) {
+    return '검색 조건에 맞는 문제가 없습니다.'
+  }
+
+  return '등록된 문제가 아직 없습니다.'
+})
 
 watch(
   actionMessage,
@@ -849,6 +929,7 @@ watch(
       return
     }
 
+    syncSearchControlsFromRoute()
     void loadProblems({
       preferredProblemId: preferredProblemIdFromRoute.value || selectedProblemId.value
     })
@@ -867,9 +948,27 @@ watch(
   }
 )
 
+watch(
+  () => [routeSearchMode.value, routeTitleSearch.value, routeProblemIdSearch.value],
+  () => {
+    if (!authState.initialized || !isAuthenticated.value || !canManageProblems.value) {
+      return
+    }
+
+    syncSearchControlsFromRoute()
+    void loadProblems({
+      preferredProblemId:
+        routeSearchMode.value === 'problem-id'
+          ? routeProblemIdSearch.value || selectedProblemId.value
+          : selectedProblemId.value
+    })
+  }
+)
+
 function resetPageState(){
-  searchInput.value = ''
-  searchKeyword.value = ''
+  searchMode.value = 'title'
+  titleSearchInput.value = ''
+  problemIdSearchInput.value = ''
   newProblemTitle.value = ''
   problems.value = []
   selectedProblemId.value = 0
@@ -882,6 +981,61 @@ function resetPageState(){
   closeRejudgeDialog(true)
   closeDeleteDialog(true)
   resetEditorDrafts()
+}
+
+function syncSearchControlsFromRoute(){
+  searchMode.value = routeSearchMode.value
+  titleSearchInput.value = routeTitleSearch.value
+  problemIdSearchInput.value = routeProblemIdSearch.value != null
+    ? String(routeProblemIdSearch.value)
+    : ''
+}
+
+function setSearchMode(nextMode){
+  searchMode.value = nextMode
+}
+
+function handleProblemIdSearchInput(event){
+  const normalizedValue = String(event.target?.value ?? '').replace(/\D+/g, '')
+  problemIdSearchInput.value = normalizedValue
+}
+
+function buildSearchQuery(mode, options = {}){
+  const nextQuery = {}
+  const selectedProblemIdFromRoute = Array.isArray(route.query.problemId)
+    ? route.query.problemId[0]
+    : route.query.problemId
+
+  if (selectedProblemIdFromRoute) {
+    nextQuery.problemId = String(selectedProblemIdFromRoute)
+  }
+
+  if (mode === 'problem-id') {
+    const nextProblemId = parsePositiveInteger(options.problemId)
+    if (nextProblemId != null) {
+      nextQuery.searchMode = 'problem-id'
+      nextQuery.searchProblemId = String(nextProblemId)
+    }
+
+    return nextQuery
+  }
+
+  const nextTitle = String(options.title ?? '').trim()
+  if (nextTitle) {
+    nextQuery.searchMode = 'title'
+    nextQuery.searchTitle = nextTitle
+  }
+
+  return nextQuery
+}
+
+function isSameSearchQuery(nextQuery){
+  const currentQuery = buildSearchQuery(routeSearchMode.value, {
+    title: routeTitleSearch.value,
+    problemId: routeProblemIdSearch.value
+  })
+
+  return JSON.stringify(currentQuery) === JSON.stringify(nextQuery)
 }
 
 function resetEditorDrafts(){
@@ -1103,8 +1257,14 @@ async function loadProblems(options = {}){
   actionErrorMessage.value = ''
 
   try {
+    const activeTitleSearch = routeSearchMode.value === 'title'
+      ? routeTitleSearch.value
+      : ''
+    const activeProblemIdSearch = routeSearchMode.value === 'problem-id'
+      ? routeProblemIdSearch.value
+      : null
     const response = await getProblemList({
-      title: searchKeyword.value,
+      title: activeTitleSearch,
       bearerToken: authState.token
     })
 
@@ -1113,7 +1273,11 @@ async function loadProblems(options = {}){
     }
 
     const responseProblems = Array.isArray(response.problems) ? response.problems : []
-    problems.value = responseProblems.map((problem) => ({
+    const filteredProblems = activeProblemIdSearch == null
+      ? responseProblems
+      : responseProblems.filter((problem) => Number(problem.problem_id ?? 0) === activeProblemIdSearch)
+
+    problems.value = filteredProblems.map((problem) => ({
       problem_id: Number(problem.problem_id ?? 0),
       title: problem.title ?? '',
       version: Number(problem.version ?? 0),
@@ -1216,14 +1380,43 @@ async function selectProblem(problemId, options = {}){
 }
 
 function submitSearch(){
-  searchKeyword.value = searchInput.value.trim()
-  void loadProblems({ preferredProblemId: selectedProblemId.value })
+  if (searchMode.value === 'problem-id') {
+    const nextProblemId = parsePositiveInteger(problemIdSearchInput.value)
+    if (nextProblemId == null) {
+      showErrorNotice('문제 번호를 입력하세요.')
+      return
+    }
+
+    const nextQuery = buildSearchQuery('problem-id', {
+      problemId: nextProblemId
+    })
+    void applySearchQuery(nextQuery, nextProblemId)
+    return
+  }
+
+  const nextTitle = titleSearchInput.value.trim()
+  const nextQuery = buildSearchQuery('title', {
+    title: nextTitle
+  })
+  void applySearchQuery(nextQuery, selectedProblemId.value)
 }
 
 function resetSearch(){
-  searchInput.value = ''
-  searchKeyword.value = ''
-  void loadProblems({ preferredProblemId: selectedProblemId.value })
+  searchMode.value = 'title'
+  titleSearchInput.value = ''
+  problemIdSearchInput.value = ''
+  void applySearchQuery(buildSearchQuery('title'), selectedProblemId.value)
+}
+
+async function applySearchQuery(nextQuery, preferredProblemId){
+  if (isSameSearchQuery(nextQuery)) {
+    await loadProblems({ preferredProblemId })
+    return
+  }
+
+  await router.replace({
+    query: nextQuery
+  })
 }
 
 async function handleCreateProblem(){
@@ -1241,10 +1434,16 @@ async function handleCreateProblem(){
     }, authState.token)
 
     newProblemTitle.value = ''
-    searchInput.value = ''
-    searchKeyword.value = ''
+    searchMode.value = 'title'
+    titleSearchInput.value = ''
+    problemIdSearchInput.value = ''
     actionMessage.value = `문제 #${formatCount(response.problem_id)}를 생성했습니다.`
 
+    await router.replace({
+      query: {
+        problemId: String(response.problem_id ?? '')
+      }
+    })
     await loadProblems({
       preferredProblemId: Number(response.problem_id ?? 0)
     })
@@ -1717,6 +1916,25 @@ onMounted(() => {
   gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.admin-problem-search-mode-switch {
+  display: inline-flex;
+  gap: 0.5rem;
+  padding: 0.3rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.admin-problem-search-mode-button {
+  border-radius: 999px;
+}
+
+.admin-problem-search-mode-button.is-active {
+  color: var(--warning);
+  background: rgba(255, 247, 237, 0.98);
+  border-color: rgba(217, 119, 6, 0.24);
 }
 
 .admin-problem-search-input {

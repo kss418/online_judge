@@ -50,13 +50,45 @@
         <div class="admin-testcases-layout">
           <aside class="admin-testcases-problem-list-panel">
             <form class="admin-testcases-problem-search" @submit.prevent="submitSearch">
-              <label class="sr-only" for="admin-testcase-problem-search">문제 검색</label>
+              <div class="admin-testcases-search-mode-switch" role="tablist" aria-label="문제 검색 방식">
+                <button
+                  type="button"
+                  class="ghost-button admin-testcases-search-mode-button"
+                  :class="{ 'is-active': searchMode === 'title' }"
+                  :aria-pressed="searchMode === 'title'"
+                  @click="setSearchMode('title')"
+                >
+                  제목 검색
+                </button>
+                <button
+                  type="button"
+                  class="ghost-button admin-testcases-search-mode-button"
+                  :class="{ 'is-active': searchMode === 'problem-id' }"
+                  :aria-pressed="searchMode === 'problem-id'"
+                  @click="setSearchMode('problem-id')"
+                >
+                  번호 검색
+                </button>
+              </div>
               <input
+                v-if="searchMode === 'title'"
                 id="admin-testcase-problem-search"
-                v-model="searchInput"
+                v-model="titleSearchInput"
                 class="field-input admin-testcases-problem-search-input"
                 type="search"
+                aria-label="문제 제목 검색"
                 placeholder="문제 제목 검색"
+              />
+              <input
+                v-else
+                id="admin-testcase-problem-id-search"
+                v-model="problemIdSearchInput"
+                class="field-input admin-testcases-problem-search-input"
+                type="text"
+                inputmode="numeric"
+                aria-label="문제 번호 검색"
+                placeholder="예: 123"
+                @input="handleProblemIdSearchInput"
               />
               <button
                 type="submit"
@@ -66,7 +98,7 @@
                 검색
               </button>
               <button
-                v-if="searchKeyword"
+                v-if="hasAppliedSearch"
                 type="button"
                 class="ghost-button"
                 :disabled="isLoadingProblems || Boolean(busySection)"
@@ -77,9 +109,7 @@
             </form>
 
             <div class="admin-testcases-problem-list-header">
-              <p class="admin-testcases-problem-list-caption">
-                {{ searchKeyword ? `"${searchKeyword}" 검색 결과` : '전체 문제' }}
-              </p>
+              <p class="admin-testcases-problem-list-caption">{{ problemListCaption }}</p>
               <span class="admin-testcases-problem-list-count">{{ formatCount(problemCount) }}개</span>
             </div>
 
@@ -92,9 +122,7 @@
             </div>
 
             <div v-else-if="!problemCount" class="empty-state compact-state">
-              <p>
-                {{ searchKeyword ? '검색 조건에 맞는 문제가 없습니다.' : '등록된 문제가 아직 없습니다.' }}
-              </p>
+              <p>{{ emptyProblemListMessage }}</p>
             </div>
 
             <div v-else class="admin-testcases-problem-list">
@@ -428,6 +456,27 @@ const selectedProblemId = computed(() => {
   const parsedValue = Number.parseInt(route.params.problemId, 10)
   return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : 0
 })
+const routeSearchMode = computed(() => {
+  const rawValue = Array.isArray(route.query.searchMode)
+    ? route.query.searchMode[0]
+    : route.query.searchMode
+
+  return rawValue === 'problem-id' ? 'problem-id' : 'title'
+})
+const routeTitleSearch = computed(() => {
+  const rawValue = Array.isArray(route.query.searchTitle)
+    ? route.query.searchTitle[0]
+    : route.query.searchTitle
+
+  return String(rawValue ?? '').trim()
+})
+const routeProblemIdSearch = computed(() => {
+  const rawValue = Array.isArray(route.query.searchProblemId)
+    ? route.query.searchProblemId[0]
+    : route.query.searchProblemId
+
+  return parsePositiveInteger(rawValue)
+})
 
 const isLoadingProblems = ref(true)
 const isLoadingProblem = ref(false)
@@ -435,8 +484,9 @@ const isLoadingTestcases = ref(false)
 const listErrorMessage = ref('')
 const problemErrorMessage = ref('')
 const testcaseErrorMessage = ref('')
-const searchInput = ref('')
-const searchKeyword = ref('')
+const searchMode = ref('title')
+const titleSearchInput = ref('')
+const problemIdSearchInput = ref('')
 const problems = ref([])
 const problemDetail = ref(null)
 const testcaseItems = ref([])
@@ -476,6 +526,35 @@ const toolbarStatusTone = computed(() => {
   }
 
   return 'success'
+})
+const hasAppliedSearch = computed(() => {
+  if (routeSearchMode.value === 'problem-id') {
+    return routeProblemIdSearch.value != null
+  }
+
+  return Boolean(routeTitleSearch.value)
+})
+const problemListCaption = computed(() => {
+  if (routeSearchMode.value === 'problem-id' && routeProblemIdSearch.value != null) {
+    return `문제 #${formatCount(routeProblemIdSearch.value)} 검색 결과`
+  }
+
+  if (routeTitleSearch.value) {
+    return `"${routeTitleSearch.value}" 검색 결과`
+  }
+
+  return '전체 문제'
+})
+const emptyProblemListMessage = computed(() => {
+  if (routeSearchMode.value === 'problem-id' && routeProblemIdSearch.value != null) {
+    return `문제 #${formatCount(routeProblemIdSearch.value)}를 찾지 못했습니다.`
+  }
+
+  if (routeTitleSearch.value) {
+    return '검색 조건에 맞는 문제가 없습니다.'
+  }
+
+  return '등록된 문제가 아직 없습니다.'
 })
 const isCreatingTestcase = computed(() => busySection.value === 'create')
 const isUploadingTestcaseZip = computed(() => busySection.value === 'upload')
@@ -542,6 +621,23 @@ watch(selectedTestcase, (testcase) => {
 }, {
   immediate: true
 })
+
+watch(
+  () => [routeSearchMode.value, routeTitleSearch.value, routeProblemIdSearch.value],
+  () => {
+    if (!authState.initialized || !isAuthenticated.value || !canManageProblems.value) {
+      return
+    }
+
+    syncSearchControlsFromRoute()
+    void loadProblems({
+      preferredProblemId:
+        routeSearchMode.value === 'problem-id'
+          ? routeProblemIdSearch.value || selectedProblemId.value
+          : selectedProblemId.value
+    })
+  }
+)
 
 function formatCount(value){
   return countFormatter.format(Number(value) || 0)
@@ -631,6 +727,54 @@ function resetSelectedProblemState(){
   testcaseErrorMessage.value = ''
 }
 
+function syncSearchControlsFromRoute(){
+  searchMode.value = routeSearchMode.value
+  titleSearchInput.value = routeTitleSearch.value
+  problemIdSearchInput.value = routeProblemIdSearch.value != null
+    ? String(routeProblemIdSearch.value)
+    : ''
+}
+
+function setSearchMode(nextMode){
+  searchMode.value = nextMode
+}
+
+function handleProblemIdSearchInput(event){
+  const normalizedValue = String(event.target?.value ?? '').replace(/\D+/g, '')
+  problemIdSearchInput.value = normalizedValue
+}
+
+function buildSearchQuery(mode, options = {}){
+  const nextQuery = {}
+
+  if (mode === 'problem-id') {
+    const nextProblemId = parsePositiveInteger(options.problemId)
+    if (nextProblemId != null) {
+      nextQuery.searchMode = 'problem-id'
+      nextQuery.searchProblemId = String(nextProblemId)
+    }
+
+    return nextQuery
+  }
+
+  const nextTitle = String(options.title ?? '').trim()
+  if (nextTitle) {
+    nextQuery.searchMode = 'title'
+    nextQuery.searchTitle = nextTitle
+  }
+
+  return nextQuery
+}
+
+function isSameSearchQuery(nextQuery){
+  const currentQuery = buildSearchQuery(routeSearchMode.value, {
+    title: routeTitleSearch.value,
+    problemId: routeProblemIdSearch.value
+  })
+
+  return JSON.stringify(currentQuery) === JSON.stringify(nextQuery)
+}
+
 function syncSelectedTestcase(preferredOrder){
   if (!testcaseItems.value.length) {
     selectedTestcaseOrder.value = 0
@@ -697,19 +841,55 @@ async function selectProblem(problemId){
     name: 'admin-problem-testcases',
     params: {
       problemId: String(problemId)
-    }
+    },
+    query: buildSearchQuery(routeSearchMode.value, {
+      title: routeTitleSearch.value,
+      problemId: routeProblemIdSearch.value
+    })
   })
 }
 
 function submitSearch(){
-  searchKeyword.value = searchInput.value.trim()
-  void loadProblems()
+  if (searchMode.value === 'problem-id') {
+    const nextProblemId = parsePositiveInteger(problemIdSearchInput.value)
+    if (nextProblemId == null) {
+      showErrorNotice('문제 번호를 입력하세요.')
+      return
+    }
+
+    void applySearchQuery(buildSearchQuery('problem-id', {
+      problemId: nextProblemId
+    }), nextProblemId)
+    return
+  }
+
+  void applySearchQuery(buildSearchQuery('title', {
+    title: titleSearchInput.value
+  }), selectedProblemId.value)
 }
 
 function resetSearch(){
-  searchInput.value = ''
-  searchKeyword.value = ''
-  void loadProblems()
+  searchMode.value = 'title'
+  titleSearchInput.value = ''
+  problemIdSearchInput.value = ''
+  void applySearchQuery(buildSearchQuery('title'), selectedProblemId.value)
+}
+
+async function applySearchQuery(nextQuery, preferredProblemId){
+  if (isSameSearchQuery(nextQuery)) {
+    await loadProblems({ preferredProblemId })
+    return
+  }
+
+  await router.replace({
+    name: 'admin-problem-testcases',
+    params: selectedProblemId.value > 0
+      ? {
+        problemId: String(selectedProblemId.value)
+      }
+      : {},
+    query: nextQuery
+  })
 }
 
 function handleViewSelectedTestcase(){
@@ -747,14 +927,21 @@ function handleTestcaseZipFileChange(event){
   testcaseZipFile.value = nextFile
 }
 
-async function loadProblems(){
+async function loadProblems(options = {}){
   const requestId = ++latestProblemListRequestId
+  const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
   isLoadingProblems.value = true
   listErrorMessage.value = ''
 
   try {
+    const activeTitleSearch = routeSearchMode.value === 'title'
+      ? routeTitleSearch.value
+      : ''
+    const activeProblemIdSearch = routeSearchMode.value === 'problem-id'
+      ? routeProblemIdSearch.value
+      : null
     const response = await getProblemList({
-      title: searchKeyword.value,
+      title: activeTitleSearch,
       bearerToken: authState.token || ''
     })
 
@@ -762,11 +949,50 @@ async function loadProblems(){
       return
     }
 
-    problems.value = Array.isArray(response.problems)
-      ? response.problems.map(normalizeProblemItem)
-      : []
+    const responseProblems = Array.isArray(response.problems) ? response.problems : []
+    const filteredProblems = activeProblemIdSearch == null
+      ? responseProblems
+      : responseProblems.filter((problem) => Number(problem.problem_id ?? 0) === activeProblemIdSearch)
+
+    problems.value = filteredProblems.map(normalizeProblemItem)
+
+    if (!problems.value.length) {
+      if (selectedProblemId.value > 0) {
+        await router.replace({
+          name: 'admin-problem-testcases',
+          query: buildSearchQuery(routeSearchMode.value, {
+            title: routeTitleSearch.value,
+            problemId: routeProblemIdSearch.value
+          })
+        })
+      } else {
+        problemDetail.value = null
+        testcaseItems.value = []
+        problemErrorMessage.value = ''
+        testcaseErrorMessage.value = ''
+        isLoadingProblem.value = false
+        isLoadingTestcases.value = false
+      }
+      return
+    }
 
     void hydrateProblemLimits(problems.value.map((problem) => problem.problem_id))
+
+    const nextProblemId = problems.value.some((problem) => problem.problem_id === preferredProblemId)
+      ? preferredProblemId
+      : problems.value[0].problem_id
+    if (nextProblemId > 0 && nextProblemId !== selectedProblemId.value) {
+      await router.replace({
+        name: 'admin-problem-testcases',
+        params: {
+          problemId: String(nextProblemId)
+        },
+        query: buildSearchQuery(routeSearchMode.value, {
+          title: routeTitleSearch.value,
+          problemId: routeProblemIdSearch.value
+        })
+      })
+    }
   } catch (error) {
     if (requestId !== latestProblemListRequestId) {
       return
@@ -924,7 +1150,12 @@ async function refreshPage(){
     return
   }
 
-  await loadProblems()
+  await loadProblems({
+    preferredProblemId:
+      routeSearchMode.value === 'problem-id'
+        ? routeProblemIdSearch.value || selectedProblemId.value
+        : selectedProblemId.value
+  })
   await loadSelectedProblemData()
 }
 
@@ -1086,7 +1317,13 @@ onMounted(async () => {
     return
   }
 
-  await loadProblems()
+  syncSearchControlsFromRoute()
+  await loadProblems({
+    preferredProblemId:
+      routeSearchMode.value === 'problem-id'
+        ? routeProblemIdSearch.value || selectedProblemId.value
+        : selectedProblemId.value
+  })
   await loadSelectedProblemData()
 })
 </script>
@@ -1157,6 +1394,25 @@ onMounted(async () => {
   gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.admin-testcases-search-mode-switch {
+  display: inline-flex;
+  gap: 0.5rem;
+  padding: 0.3rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.admin-testcases-search-mode-button {
+  border-radius: 999px;
+}
+
+.admin-testcases-search-mode-button.is-active {
+  color: var(--warning);
+  background: rgba(255, 247, 237, 0.98);
+  border-color: rgba(217, 119, 6, 0.24);
 }
 
 .admin-testcases-problem-search-input {
