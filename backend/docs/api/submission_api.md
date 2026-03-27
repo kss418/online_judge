@@ -306,12 +306,17 @@ Error bodies are returned as JSON with an `error` object containing `code`, `mes
 
 ### `GET /api/submission/{submission_id}/history`
 
-Get the status transition history for a single submission. This endpoint is public and does not require authentication.
+Get the status transition history for a single submission. This endpoint requires an admin bearer token.
 
 #### request
 
 - request body: none
-- required header: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <token>`; admin or higher |
+
 - path parameter:
 
 | field | type | note |
@@ -374,6 +379,9 @@ Example:
 
 #### error response
 
+- missing `Authorization` header: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- non-admin token: `401 Unauthorized`
 - unknown `submission_id`: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 

@@ -52,6 +52,12 @@ export function getSubmissionSource(submissionId, token){
   })
 }
 
+export function getSubmissionHistory(submissionId, token){
+  return requestJson(`/submission/${submissionId}/history`, {
+    bearerToken: token
+  })
+}
+
 export function getSubmissionDetail(submissionId, options = {}){
   const { bearerToken = '' } = options
 

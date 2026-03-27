@@ -136,6 +136,7 @@
             <span>메모리</span>
             <span>언어</span>
             <span>제출 시각</span>
+            <span v-if="canManageSubmissionRejudge" class="submission-head-action">채점 내역</span>
             <span v-if="canManageSubmissionRejudge" class="submission-head-action">재채점</span>
           </div>
 
@@ -195,6 +196,15 @@
                 </span>
               </span>
             </span>
+            <div v-if="canManageSubmissionRejudge" class="submission-cell submission-action-cell">
+              <button
+                type="button"
+                class="ghost-button submission-history-button"
+                @click="openHistoryDialog(submission)"
+              >
+                채점 내역
+              </button>
+            </div>
             <div v-if="canManageSubmissionRejudge" class="submission-cell submission-action-cell">
               <button
                 v-if="canRejudgeSubmission(submission)"
@@ -284,6 +294,94 @@
 
   <Teleport to="body">
     <div
+      v-if="historyDialogOpen"
+      class="submission-history-backdrop"
+      @pointerdown="handleHistoryBackdropPointerDown"
+      @click.self="handleHistoryBackdropClick"
+    >
+      <section
+        class="submission-history-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="submission-history-title"
+      >
+        <div class="submission-history-header">
+          <div>
+            <p class="panel-kicker">submission history</p>
+            <h3 id="submission-history-title">
+              제출 #{{ activeHistorySubmissionId ? formatCount(activeHistorySubmissionId) : '' }} 채점 내역
+            </h3>
+          </div>
+          <button
+            type="button"
+            class="icon-button"
+            aria-label="닫기"
+            @click="closeHistoryDialog"
+          >
+            ×
+          </button>
+        </div>
+
+        <div v-if="isLoadingHistory" class="empty-state">
+          <p>채점 내역을 불러오는 중입니다.</p>
+        </div>
+
+        <div v-else-if="historyErrorMessage" class="empty-state error-state">
+          <p>{{ historyErrorMessage }}</p>
+        </div>
+
+        <template v-else>
+          <p
+            v-if="shouldPollSubmissionHistory"
+            class="submission-history-live"
+          >
+            자동 갱신 중
+          </p>
+
+          <div
+            v-if="submissionHistoryEntries.length"
+            class="submission-history-timeline"
+          >
+            <article
+              v-for="(historyEntry, historyIndex) in submissionHistoryEntries"
+              :key="historyEntry.history_key"
+              class="submission-history-entry"
+              :class="{ 'is-current': historyIndex === submissionHistoryEntries.length - 1 }"
+            >
+              <span class="submission-history-entry-marker" aria-hidden="true"></span>
+              <div class="submission-history-entry-card">
+                <div class="submission-history-entry-top">
+                  <StatusBadge
+                    :label="getStatusLabel(historyEntry.to_status)"
+                    :tone="getStatusTone(historyEntry.to_status)"
+                  />
+                  <span class="submission-history-entry-time">
+                    {{ historyEntry.created_at_label }}
+                  </span>
+                </div>
+                <p class="submission-history-entry-transition">
+                  {{ formatHistoryTransition(historyEntry) }}
+                </p>
+                <p
+                  v-if="historyEntry.reason"
+                  class="submission-history-entry-reason"
+                >
+                  사유: {{ historyEntry.reason }}
+                </p>
+              </div>
+            </article>
+          </div>
+
+          <div v-else class="empty-state submission-history-empty-state">
+            <p>히스토리가 아직 없습니다.</p>
+          </div>
+        </template>
+      </section>
+    </div>
+  </Teleport>
+
+  <Teleport to="body">
+    <div
       v-if="sourceDialogOpen"
       class="submission-source-backdrop"
       @pointerdown="handleSourceBackdropPointerDown"
@@ -366,6 +464,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getSupportedLanguages } from '@/api/http'
 import {
   getSubmissionDetail,
+  getSubmissionHistory,
   getSubmissionList,
   getSubmissionSource,
   rejudgeSubmission
@@ -389,6 +488,7 @@ const submissionStatusOptions = [
   { value: 'time_limit_exceeded', label: '시간 초과' },
   { value: 'memory_limit_exceeded', label: '메모리 초과' },
   { value: 'runtime_error', label: '런타임 에러' },
+  { value: 'output_exceeded', label: '출력 초과' },
   { value: 'compile_error', label: '컴파일 에러' }
 ]
 const isLoading = ref(true)
@@ -401,6 +501,12 @@ const hasLoadedOnce = ref(false)
 const currentPage = ref(1)
 const pageJumpInput = ref('')
 const totalSubmissionCount = ref(0)
+const historyDialogOpen = ref(false)
+const isLoadingHistory = ref(false)
+const historyErrorMessage = ref('')
+const submissionHistoryEntries = ref([])
+const activeHistorySubmissionId = ref(null)
+const isHistoryBackdropInteraction = ref(false)
 const sourceDialogOpen = ref(false)
 const isLoadingSource = ref(false)
 const sourceErrorMessage = ref('')
@@ -622,6 +728,23 @@ const numericProblemId = computed(() => {
     ? Number.parseInt(appliedProblemIdFilter.value, 10)
     : null
 })
+const latestHistoryStatus = computed(() => {
+  const latestHistoryEntry = submissionHistoryEntries.value[
+    submissionHistoryEntries.value.length - 1
+  ]
+
+  return latestHistoryEntry?.to_status || ''
+})
+const shouldPollSubmissionHistory = computed(() =>
+  historyDialogOpen.value &&
+  !isLoadingHistory.value &&
+  !historyErrorMessage.value &&
+  Number.isInteger(activeHistorySubmissionId.value) &&
+  isDocumentVisible.value &&
+  Boolean(authState.token) &&
+  canManageSubmissionRejudge.value &&
+  pollingSubmissionStatuses.has(latestHistoryStatus.value)
+)
 const isMineScope = computed(() => {
   if (route.name === 'problem-my-submissions') {
     return true
@@ -686,6 +809,7 @@ const statusLabelMap = {
   time_limit_exceeded: '시간 초과',
   memory_limit_exceeded: '메모리 초과',
   runtime_error: '런타임 에러',
+  output_exceeded: '출력 초과',
   compile_error: '컴파일 에러'
 }
 
@@ -697,6 +821,7 @@ const statusToneMap = {
   time_limit_exceeded: 'danger',
   memory_limit_exceeded: 'danger',
   runtime_error: 'danger',
+  output_exceeded: 'danger',
   compile_error: 'danger'
 }
 
@@ -706,14 +831,18 @@ const finishedSubmissionStatuses = new Set([
   'time_limit_exceeded',
   'memory_limit_exceeded',
   'runtime_error',
+  'output_exceeded',
   'compile_error'
 ])
 
 let copyStateResetTimer = null
 let latestLoadRequestId = 0
+let latestHistoryLoadRequestId = 0
 let relativeTimeRefreshTimer = null
 let submissionPollingTimer = null
 let isPollingSubmissionDetails = false
+let historyPollingTimer = null
+let isPollingSubmissionHistory = false
 
 function formatCount(value){
   return countFormatter.format(value)
@@ -906,6 +1035,42 @@ function formatMemory(value){
   return `${countFormatter.format(value)} KB`
 }
 
+function normalizeSubmissionHistoryEntry(historyEntry, index){
+  const normalizedCreatedAt = normalizeSubmittedAt(historyEntry?.created_at)
+  const numericHistoryId = Number(historyEntry?.history_id)
+  const fromStatus = typeof historyEntry?.from_status === 'string' && historyEntry.from_status
+    ? historyEntry.from_status
+    : null
+  const toStatus = typeof historyEntry?.to_status === 'string' && historyEntry.to_status
+    ? historyEntry.to_status
+    : 'queued'
+  const createdAtLabel = normalizedCreatedAt.label ||
+    (typeof historyEntry?.created_at === 'string' && historyEntry.created_at.trim()
+      ? historyEntry.created_at.trim()
+      : '-')
+
+  return {
+    history_id: Number.isInteger(numericHistoryId) && numericHistoryId > 0
+      ? numericHistoryId
+      : null,
+    history_key: Number.isInteger(numericHistoryId) && numericHistoryId > 0
+      ? `history-${numericHistoryId}`
+      : `history-fallback-${index}-${createdAtLabel}`,
+    from_status: fromStatus,
+    to_status: toStatus,
+    reason: typeof historyEntry?.reason === 'string' ? historyEntry.reason.trim() : '',
+    created_at_label: createdAtLabel
+  }
+}
+
+function formatHistoryTransition(historyEntry){
+  if (!historyEntry?.from_status) {
+    return 'queued'
+  }
+
+  return `${historyEntry.from_status} -> ${historyEntry.to_status}`
+}
+
 function getStatusLabel(status){
   return statusLabelMap[status] || status
 }
@@ -920,6 +1085,38 @@ function canRejudgeSubmission(submission){
   }
 
   return finishedSubmissionStatuses.has(submission.status)
+}
+
+function stopHistoryPolling(){
+  if (historyPollingTimer) {
+    clearTimeout(historyPollingTimer)
+    historyPollingTimer = null
+  }
+}
+
+function startHistoryPolling(){
+  if (
+    typeof window === 'undefined' ||
+    historyPollingTimer ||
+    isPollingSubmissionHistory ||
+    !shouldPollSubmissionHistory.value
+  ) {
+    return
+  }
+
+  historyPollingTimer = window.setTimeout(() => {
+    historyPollingTimer = null
+    pollSubmissionHistory()
+  }, submissionPollingIntervalMs)
+}
+
+function syncHistoryPolling(){
+  if (!shouldPollSubmissionHistory.value) {
+    stopHistoryPolling()
+    return
+  }
+
+  startHistoryPolling()
 }
 
 function isRejudgingSubmission(submissionId){
@@ -1125,6 +1322,127 @@ async function handleRejudgeSubmission(submission){
       : '제출 재채점을 요청하지 못했습니다.'
   } finally {
     removeRejudgingSubmission(submissionId)
+  }
+}
+
+function closeHistoryDialog(){
+  stopHistoryPolling()
+  latestHistoryLoadRequestId += 1
+  isHistoryBackdropInteraction.value = false
+  historyDialogOpen.value = false
+  isLoadingHistory.value = false
+  historyErrorMessage.value = ''
+  submissionHistoryEntries.value = []
+  activeHistorySubmissionId.value = null
+}
+
+function handleHistoryBackdropPointerDown(event){
+  isHistoryBackdropInteraction.value = event.target === event.currentTarget
+}
+
+function handleHistoryBackdropClick(){
+  if (!isHistoryBackdropInteraction.value) {
+    return
+  }
+
+  closeHistoryDialog()
+}
+
+async function fetchSubmissionHistory(submissionId, options = {}){
+  if (!authState.token || !canManageSubmissionRejudge.value) {
+    return
+  }
+
+  const { background = false } = options
+  const requestId = ++latestHistoryLoadRequestId
+
+  if (!background) {
+    isLoadingHistory.value = true
+    historyErrorMessage.value = ''
+    submissionHistoryEntries.value = []
+  }
+
+  try {
+    const response = await getSubmissionHistory(submissionId, authState.token)
+
+    if (
+      requestId !== latestHistoryLoadRequestId ||
+      activeHistorySubmissionId.value !== submissionId
+    ) {
+      return
+    }
+
+    const normalizedHistories = Array.isArray(response.histories)
+      ? response.histories.map((historyEntry, index) =>
+        normalizeSubmissionHistoryEntry(historyEntry, index)
+      )
+      : []
+
+    submissionHistoryEntries.value = normalizedHistories
+
+    const latestHistoryEntry = normalizedHistories[normalizedHistories.length - 1]
+    if (latestHistoryEntry) {
+      patchSubmission(submissionId, {
+        status: latestHistoryEntry.to_status
+      })
+    }
+  } catch (error) {
+    if (
+      requestId !== latestHistoryLoadRequestId ||
+      activeHistorySubmissionId.value !== submissionId
+    ) {
+      return
+    }
+
+    if (!background) {
+      historyErrorMessage.value = error instanceof Error
+        ? error.message
+        : '채점 내역을 불러오지 못했습니다.'
+      submissionHistoryEntries.value = []
+    }
+  } finally {
+    if (
+      !background &&
+      requestId === latestHistoryLoadRequestId &&
+      activeHistorySubmissionId.value === submissionId
+    ) {
+      isLoadingHistory.value = false
+    }
+  }
+}
+
+async function openHistoryDialog(submission){
+  if (!authState.token || !canManageSubmissionRejudge.value) {
+    return
+  }
+
+  historyDialogOpen.value = true
+  isLoadingHistory.value = true
+  historyErrorMessage.value = ''
+  submissionHistoryEntries.value = []
+  activeHistorySubmissionId.value = submission.submission_id
+
+  await fetchSubmissionHistory(submission.submission_id)
+}
+
+async function pollSubmissionHistory(){
+  if (
+    isPollingSubmissionHistory ||
+    !shouldPollSubmissionHistory.value ||
+    !Number.isInteger(activeHistorySubmissionId.value)
+  ) {
+    return
+  }
+
+  isPollingSubmissionHistory = true
+
+  try {
+    await fetchSubmissionHistory(activeHistorySubmissionId.value, {
+      background: true
+    })
+  } finally {
+    isPollingSubmissionHistory = false
+    syncHistoryPolling()
   }
 }
 
@@ -1423,7 +1741,20 @@ watch(
   { immediate: true }
 )
 
+watch(
+  [
+    shouldPollSubmissionHistory,
+    latestHistoryStatus,
+    activeHistorySubmissionId
+  ],
+  () => {
+    syncHistoryPolling()
+  },
+  { immediate: true }
+)
+
 onUnmounted(() => {
+  stopHistoryPolling()
   stopSubmissionPolling()
   stopRelativeTimeRefresh()
   resetCopyState()
@@ -1584,7 +1915,7 @@ onUnmounted(() => {
 }
 
 .submission-table.has-actions {
-  min-width: 1140px;
+  min-width: 1280px;
 }
 
 .submission-table-head,
@@ -1615,6 +1946,7 @@ onUnmounted(() => {
     minmax(112px, 1fr)
     minmax(96px, 0.9fr)
     minmax(124px, 1.1fr)
+    minmax(112px, 0.95fr)
     minmax(112px, 0.95fr);
 }
 
@@ -1807,6 +2139,10 @@ onUnmounted(() => {
   min-width: 6rem;
 }
 
+.submission-history-button {
+  min-width: 6rem;
+}
+
 .submission-cell.is-language {
   text-decoration: underline dotted transparent;
   text-underline-offset: 0.18em;
@@ -1919,6 +2255,137 @@ onUnmounted(() => {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.submission-history-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 41;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(10px);
+}
+
+.submission-history-dialog {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 3rem);
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: var(--shadow);
+  padding: 1.4rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.submission-history-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.submission-history-live {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.submission-history-timeline {
+  position: relative;
+  display: grid;
+  gap: 0.95rem;
+  padding-left: 0.25rem;
+}
+
+.submission-history-timeline::before {
+  content: '';
+  position: absolute;
+  left: 0.7rem;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 1px;
+  background: rgba(20, 33, 61, 0.12);
+}
+
+.submission-history-entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.submission-history-entry-marker {
+  position: relative;
+  z-index: 1;
+  width: 1.4rem;
+  height: 1.4rem;
+  margin-top: 0.7rem;
+  border-radius: 999px;
+  border: 4px solid rgba(217, 119, 6, 0.18);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.95);
+}
+
+.submission-history-entry.is-current .submission-history-entry-marker {
+  border-color: rgba(217, 119, 6, 0.32);
+}
+
+.submission-history-entry-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(20, 33, 61, 0.08);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.submission-history-entry.is-current .submission-history-entry-card {
+  border-color: rgba(217, 119, 6, 0.22);
+  background: rgba(255, 247, 237, 0.9);
+}
+
+.submission-history-entry-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.submission-history-entry-time {
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.submission-history-entry-transition {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.submission-history-entry-reason {
+  margin: 0;
+  padding: 0.8rem 0.9rem;
+  border-radius: 16px;
+  background: rgba(20, 33, 61, 0.05);
+  color: var(--ink-strong);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.submission-history-empty-state {
+  margin-top: 0.25rem;
 }
 
 .submission-source-backdrop {
@@ -2036,7 +2503,16 @@ onUnmounted(() => {
   }
 
   .submission-table.has-actions {
-    min-width: 1100px;
+    min-width: 1240px;
+  }
+
+  .submission-history-dialog,
+  .submission-source-dialog {
+    width: 100%;
+  }
+
+  .submission-history-entry-top {
+    align-items: flex-start;
   }
 }
 </style>

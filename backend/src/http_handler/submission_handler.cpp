@@ -10,25 +10,33 @@ submission_handler::response_type submission_handler::get_submission_history(
     db_connection& db_connection_value,
     std::int64_t submission_id
 ){
-    const auto submission_history_exp = submission_service::get_submission_history(
-        db_connection_value,
-        submission_id
-    );
-    if(!submission_history_exp){
-        return http_response_util::create_404_or_500(
-            request,
-            "get submission history",
-            submission_history_exp.error()
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto submission_history_exp = submission_service::get_submission_history(
+            db_connection_value,
+            submission_id
         );
-    }
+        if(!submission_history_exp){
+            return http_response_util::create_404_or_500(
+                request,
+                "get submission history",
+                submission_history_exp.error()
+            );
+        }
 
-    return http_response_util::create_json(
+        return http_response_util::create_json(
+            request,
+            boost::beast::http::status::ok,
+            json_util::make_submission_history_list_object(
+                submission_id,
+                *submission_history_exp
+            )
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
         request,
-        boost::beast::http::status::ok,
-        json_util::make_submission_history_list_object(
-            submission_id,
-            *submission_history_exp
-        )
+        db_connection_value,
+        handle_authenticated
     );
 }
 
