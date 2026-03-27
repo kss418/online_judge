@@ -48,6 +48,13 @@ export function getSubmissionSource(submissionId, token){
   })
 }
 
+export function rejudgeSubmission(submissionId, token){
+  return requestJson(`/submission/${submissionId}/rejudge`, {
+    method: 'POST',
+    bearerToken: token
+  })
+}
+
 export function createSubmission(problemId, payload, token){
   return requestJson(`/submission/${problemId}`, {
     method: 'POST',

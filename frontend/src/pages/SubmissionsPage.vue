@@ -20,6 +20,14 @@
         </div>
       </div>
 
+      <div v-if="actionMessage" class="submissions-feedback is-success">
+        <p>{{ actionMessage }}</p>
+      </div>
+
+      <div v-if="actionErrorMessage" class="submissions-feedback is-error">
+        <p>{{ actionErrorMessage }}</p>
+      </div>
+
       <div class="submission-summary-bar">
         <div class="submission-summary-group">
           <StatusBadge
@@ -48,8 +56,14 @@
       </div>
 
       <div v-else class="submission-table-wrapper">
-        <div class="submission-table">
-          <div class="submission-table-head">
+        <div
+          class="submission-table"
+          :class="{ 'has-actions': canManageSubmissionRejudge }"
+        >
+          <div
+            class="submission-table-head"
+            :class="{ 'has-actions': canManageSubmissionRejudge }"
+          >
             <span>제출번호</span>
             <span class="submission-table-head-user">닉네임</span>
             <span>문제번호</span>
@@ -58,12 +72,14 @@
             <span>메모리</span>
             <span>언어</span>
             <span>제출 시각</span>
+            <span v-if="canManageSubmissionRejudge" class="submission-head-action">재채점</span>
           </div>
 
           <div
             v-for="submission in submissions"
             :key="submission.submission_id"
             class="submission-row"
+            :class="{ 'has-actions': canManageSubmissionRejudge }"
           >
             <span class="submission-cell is-number">
               {{ formatCount(submission.submission_id) }}
@@ -115,6 +131,17 @@
                 </span>
               </span>
             </span>
+            <div v-if="canManageSubmissionRejudge" class="submission-cell submission-action-cell">
+              <button
+                v-if="canRejudgeSubmission(submission)"
+                type="button"
+                class="ghost-button submission-rejudge-button"
+                :disabled="isRejudgingSubmission(submission.submission_id)"
+                @click="handleRejudgeSubmission(submission)"
+              >
+                {{ isRejudgingSubmission(submission.submission_id) ? '요청 중...' : '재채점' }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -253,7 +280,11 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
-import { getSubmissionList, getSubmissionSource } from '@/api/submission'
+import {
+  getSubmissionList,
+  getSubmissionSource,
+  rejudgeSubmission
+} from '@/api/submission'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
 import { getProblemStateTextClass } from '@/utils/problemState'
@@ -263,6 +294,8 @@ const { authState, isAuthenticated, initializeAuth } = useAuth()
 const listLimit = 50
 const isLoading = ref(true)
 const errorMessage = ref('')
+const actionMessage = ref('')
+const actionErrorMessage = ref('')
 const submissions = ref([])
 const hasLoadedOnce = ref(false)
 const currentPage = ref(1)
@@ -276,9 +309,13 @@ const activeSourceSubmissionId = ref(null)
 const copyState = ref('idle')
 const isSourceBackdropInteraction = ref(false)
 const nowTimestamp = ref(Date.now())
+const rejudgingSubmissionIds = ref([])
 const countFormatter = new Intl.NumberFormat()
 const authenticatedBearerToken = computed(() =>
   authState.initialized && isAuthenticated.value ? authState.token : ''
+)
+const canManageSubmissionRejudge = computed(() =>
+  Number(authState.currentUser?.permission_level ?? 0) >= 1
 )
 const submissionCount = computed(() => submissions.value.length)
 const totalPages = computed(() =>
@@ -427,6 +464,15 @@ const statusToneMap = {
   compile_error: 'danger'
 }
 
+const finishedSubmissionStatuses = new Set([
+  'accepted',
+  'wrong_answer',
+  'time_limit_exceeded',
+  'memory_limit_exceeded',
+  'runtime_error',
+  'compile_error'
+])
+
 let copyStateResetTimer = null
 let latestLoadRequestId = 0
 let relativeTimeRefreshTimer = null
@@ -536,6 +582,43 @@ function getStatusTone(status){
   return statusToneMap[status] || 'neutral'
 }
 
+function canRejudgeSubmission(submission){
+  if (!canManageSubmissionRejudge.value || !authState.token) {
+    return false
+  }
+
+  return finishedSubmissionStatuses.has(submission.status)
+}
+
+function isRejudgingSubmission(submissionId){
+  return rejudgingSubmissionIds.value.includes(submissionId)
+}
+
+function addRejudgingSubmission(submissionId){
+  if (isRejudgingSubmission(submissionId)) {
+    return
+  }
+
+  rejudgingSubmissionIds.value = [...rejudgingSubmissionIds.value, submissionId]
+}
+
+function removeRejudgingSubmission(submissionId){
+  rejudgingSubmissionIds.value = rejudgingSubmissionIds.value.filter(
+    (queuedSubmissionId) => queuedSubmissionId !== submissionId
+  )
+}
+
+function patchSubmission(submissionId, patch){
+  submissions.value = submissions.value.map((submission) =>
+    submission.submission_id === submissionId
+      ? {
+        ...submission,
+        ...patch
+      }
+      : submission
+  )
+}
+
 function canViewSource(submission){
   if (!isAuthenticated.value || !authState.currentUser) {
     return false
@@ -589,6 +672,33 @@ function fallbackCopyText(text){
 
   if (!copySucceeded) {
     throw new Error('clipboard unavailable')
+  }
+}
+
+async function handleRejudgeSubmission(submission){
+  if (!authState.token || !canRejudgeSubmission(submission) || isRejudgingSubmission(submission.submission_id)) {
+    return
+  }
+
+  const submissionId = submission.submission_id
+  addRejudgingSubmission(submissionId)
+  actionMessage.value = ''
+  actionErrorMessage.value = ''
+
+  try {
+    const response = await rejudgeSubmission(submissionId, authState.token)
+    patchSubmission(submissionId, {
+      status: response.status || 'queued',
+      elapsed_ms: null,
+      max_rss_kb: null
+    })
+    actionMessage.value = `제출 #${formatCount(submissionId)} 재채점을 요청했습니다.`
+  } catch (error) {
+    actionErrorMessage.value = error instanceof Error
+      ? error.message
+      : '제출 재채점을 요청하지 못했습니다.'
+  } finally {
+    removeRejudgingSubmission(submissionId)
   }
 }
 
@@ -683,6 +793,7 @@ async function loadSubmissions(options = {}){
   const requestId = ++latestLoadRequestId
   isLoading.value = true
   errorMessage.value = ''
+  rejudgingSubmissionIds.value = []
 
   if (isMineScope.value && !isAuthenticated.value) {
     submissions.value = []
@@ -848,6 +959,29 @@ onUnmounted(() => {
   gap: 1.25rem;
 }
 
+.submissions-feedback {
+  padding: 1rem;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  background: var(--surface-strong);
+}
+
+.submissions-feedback p {
+  margin: 0;
+}
+
+.submissions-feedback.is-success {
+  color: var(--success);
+  background: var(--success-soft);
+  border-color: rgba(15, 118, 110, 0.16);
+}
+
+.submissions-feedback.is-error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: rgba(185, 28, 28, 0.18);
+}
+
 .submissions-header {
   display: flex;
   justify-content: flex-start;
@@ -906,6 +1040,10 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.76);
 }
 
+.submission-table.has-actions {
+  min-width: 1140px;
+}
+
 .submission-table-head,
 .submission-row {
   display: grid;
@@ -921,6 +1059,20 @@ onUnmounted(() => {
   column-gap: 1rem;
   align-items: center;
   padding: 0.95rem 1.25rem;
+}
+
+.submission-table-head.has-actions,
+.submission-row.has-actions {
+  grid-template-columns:
+    minmax(88px, 0.9fr)
+    minmax(140px, 1.2fr)
+    minmax(96px, 0.95fr)
+    minmax(120px, 1.1fr)
+    minmax(104px, 0.95fr)
+    minmax(112px, 1fr)
+    minmax(96px, 0.9fr)
+    minmax(124px, 1.1fr)
+    minmax(112px, 0.95fr);
 }
 
 .submission-table-head {
@@ -1026,6 +1178,15 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
+.submission-action-cell {
+  display: flex;
+  justify-content: center;
+}
+
+.submission-head-action {
+  justify-self: center;
+}
+
 .submission-cell.is-user {
   margin-left: -1.5rem;
 }
@@ -1097,6 +1258,10 @@ onUnmounted(() => {
 .submission-language-button:focus-visible {
   text-decoration-color: currentColor;
   transform: translateY(-1px);
+}
+
+.submission-rejudge-button {
+  min-width: 6rem;
 }
 
 .submission-cell.is-language {
@@ -1288,6 +1453,10 @@ onUnmounted(() => {
 
   .submission-table {
     min-width: 980px;
+  }
+
+  .submission-table.has-actions {
+    min-width: 1100px;
   }
 }
 </style>
