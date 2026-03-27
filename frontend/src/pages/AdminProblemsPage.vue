@@ -169,6 +169,12 @@
                   </button>
                   <RouterLink
                     class="ghost-button"
+                    :to="{ name: 'admin-problem-testcases', params: { problemId: selectedProblemDetail.problem_id } }"
+                  >
+                    테스트케이스 관리
+                  </RouterLink>
+                  <RouterLink
+                    class="ghost-button"
                     :to="{ name: 'problem-detail', params: { problemId: selectedProblemDetail.problem_id } }"
                   >
                     문제 보기
@@ -638,6 +644,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import {
   createProblem,
@@ -660,6 +667,7 @@ import { useNotice } from '@/composables/useNotice'
 const { authState, isAuthenticated, initializeAuth } = useAuth()
 const { showErrorNotice, showSuccessNotice } = useNotice()
 const countFormatter = new Intl.NumberFormat()
+const route = useRoute()
 
 const isLoadingProblems = ref(true)
 const isLoadingDetail = ref(false)
@@ -798,6 +806,17 @@ const canRejudgeSelectedProblem = computed(() => {
   )
 })
 
+const preferredProblemIdFromRoute = computed(() => {
+  const routeProblemId = Array.isArray(route.query.problemId)
+    ? route.query.problemId[0]
+    : route.query.problemId
+  const parsedValue = Number.parseInt(String(routeProblemId ?? ''), 10)
+
+  return Number.isInteger(parsedValue) && parsedValue > 0
+    ? parsedValue
+    : 0
+})
+
 watch(
   actionMessage,
   (message) => {
@@ -830,9 +849,22 @@ watch(
       return
     }
 
-    void loadProblems({ preferredProblemId: selectedProblemId.value })
+    void loadProblems({
+      preferredProblemId: preferredProblemIdFromRoute.value || selectedProblemId.value
+    })
   },
   { immediate: true }
+)
+
+watch(
+  preferredProblemIdFromRoute,
+  (problemId) => {
+    if (!authState.initialized || !isAuthenticated.value || !canManageProblems.value || !problemId) {
+      return
+    }
+
+    void loadProblems({ preferredProblemId: problemId })
+  }
 )
 
 function resetPageState(){
@@ -1737,7 +1769,7 @@ onMounted(() => {
   gap: 0.75rem;
   max-height: 65vh;
   overflow-y: auto;
-  padding-right: 0.2rem;
+  padding: 0.15rem 0.2rem 0.15rem 0.05rem;
 }
 
 .admin-problem-item {
@@ -1759,9 +1791,12 @@ onMounted(() => {
     box-shadow 160ms ease;
 }
 
+.admin-problem-item:hover {
+  transform: translateY(-1px);
+}
+
 .admin-problem-item:hover,
 .admin-problem-item.is-active {
-  transform: translateY(-1px);
   border-color: rgba(217, 119, 6, 0.32);
   background: rgba(255, 251, 235, 0.98);
   box-shadow: 0 12px 28px rgba(217, 119, 6, 0.12);

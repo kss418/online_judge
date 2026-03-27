@@ -108,6 +108,37 @@ export function uploadProblemTestcaseZip(problemId, file, token){
   })
 }
 
+export function getProblemTestcases(problemId, options = {}){
+  const { bearerToken = '' } = options
+
+  return requestJson(`/problem/${problemId}/testcase`, {
+    bearerToken
+  })
+}
+
+export function createProblemTestcase(problemId, payload, token){
+  return requestJson(`/problem/${problemId}/testcase`, {
+    method: 'POST',
+    body: payload,
+    bearerToken: token
+  })
+}
+
+export function deleteProblemTestcase(problemId, token){
+  return requestJson(`/problem/${problemId}/testcase`, {
+    method: 'DELETE',
+    bearerToken: token
+  })
+}
+
+export function updateProblemTestcase(problemId, testcaseOrder, payload, token){
+  return requestJson(`/problem/${problemId}/testcase/${testcaseOrder}`, {
+    method: 'PUT',
+    body: payload,
+    bearerToken: token
+  })
+}
+
 export function deleteProblem(problemId, token){
   return requestJson(`/problem/${problemId}`, {
     method: 'DELETE',

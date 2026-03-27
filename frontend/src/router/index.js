@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import { useAuth } from '@/composables/useAuth'
+import AdminProblemTestcasesPage from '@/pages/AdminProblemTestcasesPage.vue'
 import AdminProblemsPage from '@/pages/AdminProblemsPage.vue'
 import AdminUsersPage from '@/pages/AdminUsersPage.vue'
 import HomePage from '@/pages/HomePage.vue'
@@ -49,6 +50,23 @@ const routes = [
     path: '/admin/problems',
     name: 'admin-problems',
     component: AdminProblemsPage
+  },
+  {
+    path: '/admin/testcases/:problemId?',
+    name: 'admin-problem-testcases',
+    component: AdminProblemTestcasesPage,
+    meta: {
+      requiredPermissionLevel: 1
+    }
+  },
+  {
+    path: '/admin/problems/:problemId/testcases',
+    redirect: (to) => ({
+      name: 'admin-problem-testcases',
+      params: {
+        problemId: String(to.params.problemId)
+      }
+    })
   },
   {
     path: '/admin/users',
