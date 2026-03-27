@@ -70,7 +70,7 @@ private:
         std::int64_t problem_id,
         const testcase_runner::run_batch& run_batch_value
     );
-    static constexpr std::chrono::seconds LEASE_DURATION{900};
+    static constexpr std::chrono::seconds LEASE_DURATION{300};
     static constexpr std::chrono::milliseconds NOTIFICATION_WAIT_TIMEOUT{30000};
 
     submission_event_listener submission_event_listener_;
