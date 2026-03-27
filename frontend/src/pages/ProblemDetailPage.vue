@@ -1,12 +1,6 @@
 <template>
   <section class="page-grid single-column">
     <article class="panel detail-panel">
-      <div class="detail-header">
-        <RouterLink class="detail-back-link" :to="{ name: 'problems' }">
-          문제 목록으로
-        </RouterLink>
-      </div>
-
       <div v-if="isLoading" class="empty-state">
         <p>문제 정보를 불러오는 중입니다.</p>
       </div>
@@ -24,6 +18,7 @@
                 <h3>#{{ problemDetail.problem_id }} {{ problemDetail.title }}</h3>
                 <StatusBadge
                   v-if="problemDetail.user_problem_state"
+                  class="detail-title-status-badge"
                   :label="getProblemStateLabel(problemDetail.user_problem_state)"
                   :tone="getProblemStateTone(problemDetail.user_problem_state)"
                 />
@@ -51,6 +46,10 @@
               </div>
             </div>
           </div>
+
+          <RouterLink class="detail-back-link" :to="{ name: 'problems' }">
+            문제 목록으로
+          </RouterLink>
         </div>
 
         <div class="detail-metrics">
@@ -287,11 +286,26 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
 .detail-panel {
   display: grid;
   gap: 1.25rem;
-}
-
-.detail-header {
-  display: flex;
-  justify-content: flex-start;
+  --detail-section-surface: linear-gradient(
+    180deg,
+    rgba(251, 252, 254, 0.98),
+    rgba(244, 247, 251, 0.94)
+  );
+  --detail-section-border: rgba(148, 163, 184, 0.16);
+  --detail-section-shadow:
+    0 12px 28px rgba(20, 33, 61, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  --detail-nested-surface: rgba(255, 255, 255, 0.98);
+  --detail-nested-border: rgba(148, 163, 184, 0.14);
+  --detail-nested-shadow:
+    0 10px 24px rgba(20, 33, 61, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  --detail-sample-surface: linear-gradient(
+    180deg,
+    rgba(240, 245, 251, 0.98),
+    rgba(233, 240, 248, 0.94)
+  );
+  --detail-code-surface: rgba(255, 255, 255, 0.98);
 }
 
 .detail-back-link {
@@ -315,14 +329,15 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
 }
 
 .detail-title-block {
+  justify-content: space-between;
   align-items: start;
 }
 
 .detail-title-row {
-  display: flex;
-  gap: 0.9rem;
-  align-items: center;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.9rem 1rem;
+  align-items: start;
 }
 
 .detail-title-copy {
@@ -330,13 +345,28 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
   gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
+  min-width: 0;
+}
+
+.detail-title-copy h3 {
+  margin: 0;
+  font-size: clamp(1.7rem, 2vw, 2.2rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+.detail-title-status-badge {
+  min-height: 2.35rem;
+  padding: 0.45rem 0.95rem;
+  font-size: 0.95rem;
 }
 
 .detail-title-actions {
   display: inline-flex;
   gap: 0.75rem;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
 }
 
 .detail-rate-label,
@@ -357,9 +387,10 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
 .detail-metric-card,
 .detail-section,
 .sample-card {
-  border: 1px solid var(--line);
+  border: 1px solid var(--detail-section-border);
   border-radius: 20px;
-  background: var(--surface-strong);
+  background: var(--detail-section-surface);
+  box-shadow: var(--detail-section-shadow);
 }
 
 .detail-metric-card {
@@ -377,12 +408,20 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 2.45rem;
+  padding: 0.58rem 0.95rem;
+  font-size: 0.95rem;
+  white-space: nowrap;
 }
 
 .detail-list-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 2.45rem;
+  padding: 0.58rem 0.95rem;
+  font-size: 0.95rem;
+  white-space: nowrap;
 }
 
 .detail-section {
@@ -403,6 +442,9 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
 
 .sample-card {
   padding: 1rem 1.1rem;
+  border-color: var(--detail-nested-border);
+  background: var(--detail-sample-surface);
+  box-shadow: var(--detail-nested-shadow);
 }
 
 .sample-title {
@@ -426,7 +468,11 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
   min-height: 5rem;
   padding: 0.9rem 1rem;
   border-radius: 16px;
-  background: rgba(20, 33, 61, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: var(--detail-code-surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 8px 18px rgba(20, 33, 61, 0.04);
   overflow: auto;
   font: inherit;
   font-family: "SFMono-Regular", "Consolas", monospace;
@@ -443,7 +489,16 @@ watch(authenticatedBearerToken, (nextToken, previousToken) => {
   }
 
   .detail-title-row {
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
+  }
+
+  .detail-title-actions {
+    flex-wrap: wrap;
+  }
+
+  .detail-title-copy h3 {
+    font-size: clamp(1.5rem, 5vw, 1.9rem);
   }
 
   .detail-rate-block {

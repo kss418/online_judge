@@ -114,6 +114,9 @@
                   maxlength="120"
                   placeholder="새 문제 제목"
                 />
+              </div>
+
+              <div class="admin-problem-create-actions">
                 <button
                   type="submit"
                   class="primary-button"
@@ -1981,6 +1984,11 @@ onMounted(() => {
 
 .admin-problem-create-row .field-input {
   flex: 1 1 220px;
+}
+
+.admin-problem-create-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .admin-problem-list-header {

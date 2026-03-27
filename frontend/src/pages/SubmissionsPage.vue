@@ -1,18 +1,6 @@
 <template>
   <section class="page-grid single-column">
     <article class="panel submissions-panel">
-      <div
-        v-if="numericProblemId"
-        class="submissions-header"
-      >
-        <RouterLink
-          class="submissions-back-link"
-          :to="{ name: 'problem-detail', params: { problemId: numericProblemId } }"
-        >
-          문제로 돌아가기
-        </RouterLink>
-      </div>
-
       <div class="submissions-toolbar">
         <div>
           <p class="panel-kicker">submissions</p>
@@ -20,16 +8,26 @@
         </div>
 
         <div class="submissions-toolbar-actions">
-          <StatusBadge
-            :label="isLoading ? 'Loading' : `${formatCount(totalSubmissionCount)} submissions`"
-            :tone="errorMessage ? 'danger' : 'success'"
-          />
-          <span
-            v-if="!isLoading && totalSubmissionCount"
-            class="submission-summary-text"
+          <div class="submission-summary-group">
+            <StatusBadge
+              :label="isLoading ? 'Loading' : `${formatCount(totalSubmissionCount)} submissions`"
+              :tone="errorMessage ? 'danger' : 'success'"
+            />
+            <span
+              v-if="!isLoading && totalSubmissionCount"
+              class="submission-summary-text"
+            >
+              {{ visibleRangeText }}
+            </span>
+          </div>
+
+          <RouterLink
+            v-if="numericProblemId"
+            class="submissions-back-link"
+            :to="{ name: 'problem-detail', params: { problemId: numericProblemId } }"
           >
-            {{ visibleRangeText }}
-          </span>
+            문제로 돌아가기
+          </RouterLink>
         </div>
       </div>
 
@@ -1463,11 +1461,6 @@ onUnmounted(() => {
   color: var(--danger);
   background: var(--danger-soft);
   border-color: rgba(185, 28, 28, 0.18);
-}
-
-.submissions-header {
-  display: flex;
-  justify-content: flex-start;
 }
 
 .submissions-back-link {
