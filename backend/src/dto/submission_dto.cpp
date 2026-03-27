@@ -3,6 +3,7 @@
 #include "common/language_util.hpp"
 #include "common/string_util.hpp"
 #include "http_core/http_util.hpp"
+#include "http_core/query_param_util.hpp"
 
 #include <pqxx/pqxx>
 
@@ -53,145 +54,95 @@ submission_dto::make_list_filter_from_query_params(
     list_filter filter_value;
     for(const auto& query_param : query_params){
         if(query_param.key == "page"){
-            if(filter_value.page_opt){
-                return std::unexpected(dto_validation_error{
-                    .code = "duplicate_query_parameter",
-                    .message = "duplicate query parameter: page",
-                    .field_opt = "page"
-                });
+            const auto parse_page_exp = query_param_util::parse_unique_query_param(
+                filter_value.page_opt,
+                query_param.key,
+                query_param.value,
+                string_util::parse_positive_int32
+            );
+            if(!parse_page_exp){
+                return std::unexpected(parse_page_exp.error());
             }
-
-            const auto page_opt = string_util::parse_positive_int32(query_param.value);
-            if(!page_opt){
-                return std::unexpected(dto_validation_error{
-                    .code = "invalid_query_parameter",
-                    .message = "invalid query parameter: page",
-                    .field_opt = "page"
-                });
-            }
-
-            filter_value.page_opt = *page_opt;
             continue;
         }
         if(query_param.key == "user_id"){
-            if(filter_value.user_id_opt){
-                return std::unexpected(dto_validation_error{
-                    .code = "duplicate_query_parameter",
-                    .message = "duplicate query parameter: user_id",
-                    .field_opt = "user_id"
-                });
+            const auto parse_user_id_exp = query_param_util::parse_unique_query_param(
+                filter_value.user_id_opt,
+                query_param.key,
+                query_param.value,
+                string_util::parse_positive_int64
+            );
+            if(!parse_user_id_exp){
+                return std::unexpected(parse_user_id_exp.error());
             }
-
-            const auto user_id_opt = string_util::parse_positive_int64(query_param.value);
-            if(!user_id_opt){
-                return std::unexpected(dto_validation_error{
-                    .code = "invalid_query_parameter",
-                    .message = "invalid query parameter: user_id",
-                    .field_opt = "user_id"
-                });
-            }
-
-            filter_value.user_id_opt = *user_id_opt;
             continue;
         }
         if(query_param.key == "problem_id"){
-            if(filter_value.problem_id_opt){
-                return std::unexpected(dto_validation_error{
-                    .code = "duplicate_query_parameter",
-                    .message = "duplicate query parameter: problem_id",
-                    .field_opt = "problem_id"
-                });
+            const auto parse_problem_id_exp = query_param_util::parse_unique_query_param(
+                filter_value.problem_id_opt,
+                query_param.key,
+                query_param.value,
+                string_util::parse_positive_int64
+            );
+            if(!parse_problem_id_exp){
+                return std::unexpected(parse_problem_id_exp.error());
             }
-
-            const auto problem_id_opt = string_util::parse_positive_int64(query_param.value);
-            if(!problem_id_opt){
-                return std::unexpected(dto_validation_error{
-                    .code = "invalid_query_parameter",
-                    .message = "invalid query parameter: problem_id",
-                    .field_opt = "problem_id"
-                });
-            }
-
-            filter_value.problem_id_opt = *problem_id_opt;
             continue;
         }
         if(query_param.key == "language"){
-            if(filter_value.language_opt){
-                return std::unexpected(dto_validation_error{
-                    .code = "duplicate_query_parameter",
-                    .message = "duplicate query parameter: language",
-                    .field_opt = "language"
-                });
-            }
+            const auto parse_language_exp = query_param_util::parse_unique_query_param(
+                filter_value.language_opt,
+                query_param.key,
+                query_param.value,
+                [](std::string_view raw_value) -> std::optional<std::string> {
+                    const auto language_opt = language_util::find_supported_language(raw_value);
+                    if(!language_opt){
+                        return std::nullopt;
+                    }
 
-            if(query_param.value.empty()){
-                return std::unexpected(dto_validation_error{
-                    .code = "invalid_query_parameter",
-                    .message = "invalid query parameter: language",
-                    .field_opt = "language"
-                });
+                    return std::string{language_opt->language};
+                }
+            );
+            if(!parse_language_exp){
+                return std::unexpected(parse_language_exp.error());
             }
-
-            const auto language_opt = language_util::find_supported_language(query_param.value);
-            if(!language_opt){
-                return std::unexpected(dto_validation_error{
-                    .code = "invalid_query_parameter",
-                    .message = "invalid query parameter: language",
-                    .field_opt = "language"
-                });
-            }
-
-            filter_value.language_opt = std::string{language_opt->language};
             continue;
         }
         if(query_param.key == "status"){
-            if(filter_value.status_opt){
-                return std::unexpected(dto_validation_error{
-                    .code = "duplicate_query_parameter",
-                    .message = "duplicate query parameter: status",
-                    .field_opt = "status"
-                });
-            }
+            const auto parse_status_exp = query_param_util::parse_unique_query_param(
+                filter_value.status_opt,
+                query_param.key,
+                query_param.value,
+                [](std::string_view raw_value) -> std::optional<std::string> {
+                    const auto status_opt = parse_submission_status(raw_value);
+                    if(!status_opt){
+                        return std::nullopt;
+                    }
 
-            const auto status_opt = parse_submission_status(query_param.value);
-            if(!status_opt){
-                return std::unexpected(dto_validation_error{
-                    .code = "invalid_query_parameter",
-                    .message = "invalid query parameter: status",
-                    .field_opt = "status"
-                });
+                    return to_string(*status_opt);
+                }
+            );
+            if(!parse_status_exp){
+                return std::unexpected(parse_status_exp.error());
             }
-
-            filter_value.status_opt = to_string(*status_opt);
             continue;
         }
         if(query_param.key == "limit"){
-            if(filter_value.limit_opt){
-                return std::unexpected(dto_validation_error{
-                    .code = "duplicate_query_parameter",
-                    .message = "duplicate query parameter: limit",
-                    .field_opt = "limit"
-                });
+            const auto parse_limit_exp = query_param_util::parse_unique_query_param(
+                filter_value.limit_opt,
+                query_param.key,
+                query_param.value,
+                string_util::parse_positive_int32
+            );
+            if(!parse_limit_exp){
+                return std::unexpected(parse_limit_exp.error());
             }
-
-            const auto limit_opt = string_util::parse_positive_int32(query_param.value);
-            if(!limit_opt){
-                return std::unexpected(dto_validation_error{
-                    .code = "invalid_query_parameter",
-                    .message = "invalid query parameter: limit",
-                    .field_opt = "limit"
-                });
-            }
-
-            filter_value.limit_opt = *limit_opt;
             continue;
         }
 
-        return std::unexpected(dto_validation_error{
-            .code = "unsupported_query_parameter",
-            .message = "unsupported query parameter: " + std::string{query_param.key},
-            .field_opt = std::string{query_param.key}
-        });
+        return std::unexpected(
+            query_param_util::make_unsupported_query_parameter_error(query_param.key)
+        );
     }
 
     return filter_value;

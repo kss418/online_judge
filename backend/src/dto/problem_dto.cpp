@@ -1,6 +1,7 @@
 #include "dto/problem_dto.hpp"
 
 #include "http_core/http_util.hpp"
+#include "http_core/query_param_util.hpp"
 
 std::expected<problem_dto::create_request, dto_validation_error>
 problem_dto::make_create_request_from_json(const boost::json::object& json){
@@ -41,31 +42,27 @@ problem_dto::make_list_filter_from_query_params(
     list_filter filter_value;
     for(const auto& query_param : query_params){
         if(query_param.key == "title"){
-            if(filter_value.title_opt){
-                return std::unexpected(dto_validation_error{
-                    .code = "duplicate_query_parameter",
-                    .message = "duplicate query parameter: title",
-                    .field_opt = "title"
-                });
-            }
+            const auto parse_title_exp = query_param_util::parse_unique_query_param(
+                filter_value.title_opt,
+                query_param.key,
+                query_param.value,
+                [](std::string_view raw_value) -> std::optional<std::string> {
+                    if(raw_value.empty()){
+                        return std::nullopt;
+                    }
 
-            if(query_param.value.empty()){
-                return std::unexpected(dto_validation_error{
-                    .code = "invalid_query_parameter",
-                    .message = "invalid query parameter: title",
-                    .field_opt = "title"
-                });
+                    return std::string{raw_value};
+                }
+            );
+            if(!parse_title_exp){
+                return std::unexpected(parse_title_exp.error());
             }
-
-            filter_value.title_opt = std::string{query_param.value};
             continue;
         }
 
-        return std::unexpected(dto_validation_error{
-            .code = "unsupported_query_parameter",
-            .message = "unsupported query parameter: " + std::string{query_param.key},
-            .field_opt = std::string{query_param.key}
-        });
+        return std::unexpected(
+            query_param_util::make_unsupported_query_parameter_error(query_param.key)
+        );
     }
 
     return filter_value;
