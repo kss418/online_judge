@@ -23,8 +23,16 @@ export async function requestJson(path, options = {}){
     headers.set('Authorization', `Bearer ${bearerToken}`)
   }
 
+  const isBlobBody =
+    typeof Blob !== 'undefined' &&
+    fetchOptions.body instanceof Blob
+  const isArrayBufferBody =
+    typeof ArrayBuffer !== 'undefined' &&
+    (fetchOptions.body instanceof ArrayBuffer || ArrayBuffer.isView(fetchOptions.body))
   const hasJsonBody =
     fetchOptions.body &&
+    !isBlobBody &&
+    !isArrayBufferBody &&
     !(fetchOptions.body instanceof FormData) &&
     !(fetchOptions.body instanceof URLSearchParams) &&
     typeof fetchOptions.body !== 'string'

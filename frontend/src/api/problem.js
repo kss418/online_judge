@@ -97,6 +97,17 @@ export function deleteProblemSample(problemId, token){
   })
 }
 
+export function uploadProblemTestcaseZip(problemId, file, token){
+  return requestJson(`/problem/${problemId}/testcase/zip`, {
+    method: 'POST',
+    body: file,
+    bearerToken: token,
+    headers: {
+      'Content-Type': 'application/zip'
+    }
+  })
+}
+
 export function deleteProblem(problemId, token){
   return requestJson(`/problem/${problemId}`, {
     method: 'DELETE',

@@ -402,6 +402,48 @@
                 </div>
               </article>
 
+              <article class="admin-problem-editor-section">
+                <div class="panel-header admin-sample-section-header">
+                  <div>
+                    <p class="panel-kicker">testcases</p>
+                    <h3>비공개 테스트케이스</h3>
+                    <p class="admin-problem-section-copy">
+                      ZIP 업로드 시 기존 비공개 테스트케이스는 모두 교체됩니다. `001.in` / `001.out`부터
+                      연속 순번만 허용하며, 빈 파일은 허용됩니다.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="admin-testcase-upload-panel">
+                  <label class="field-block">
+                    <span class="field-label">ZIP 파일</span>
+                    <input
+                      :key="testcaseZipInputKey"
+                      class="admin-testcase-file-input"
+                      type="file"
+                      accept=".zip,application/zip"
+                      :disabled="Boolean(busySection)"
+                      @change="handleTestcaseZipFileChange"
+                    />
+                  </label>
+
+                  <p v-if="selectedTestcaseZipName" class="admin-testcase-selected-file">
+                    선택한 파일: {{ selectedTestcaseZipName }}
+                  </p>
+                </div>
+
+                <div class="admin-problem-section-actions">
+                  <button
+                    type="button"
+                    class="primary-button"
+                    :disabled="!canUploadTestcaseZip"
+                    @click="handleUploadTestcaseZip"
+                  >
+                    {{ isUploadingTestcaseZip ? '업로드 중...' : 'ZIP 업로드' }}
+                  </button>
+                </div>
+              </article>
+
               <article class="admin-problem-editor-section is-danger">
                 <div class="panel-header">
                   <div>
@@ -613,6 +655,7 @@ import {
   getProblemDetail,
   getProblemList,
   rejudgeProblem,
+  uploadProblemTestcaseZip,
   updateProblemLimits,
   updateProblemSample,
   updateProblemStatement,
@@ -644,6 +687,8 @@ const inputFormatDraft = ref('')
 const outputFormatDraft = ref('')
 const noteDraft = ref('')
 const sampleDrafts = ref([])
+const testcaseZipFile = ref(null)
+const testcaseZipInputKey = ref(0)
 const busySection = ref('')
 const rejudgeDialogOpen = ref(false)
 const rejudgeConfirmProblemId = ref('')
@@ -671,11 +716,19 @@ const isSavingLimits = computed(() => busySection.value === 'limits')
 const isSavingStatement = computed(() => busySection.value === 'statement')
 const isCreatingSample = computed(() => busySection.value === 'sample:create')
 const isDeletingLastSample = computed(() => busySection.value === 'sample:delete-last')
+const isUploadingTestcaseZip = computed(() => busySection.value === 'testcase:upload')
 const isRejudgingProblem = computed(() => busySection.value === 'rejudge')
 const isDeletingProblem = computed(() => busySection.value === 'delete')
+const selectedTestcaseZipName = computed(() => testcaseZipFile.value?.name || '')
 const canCreateSample = computed(() =>
   Boolean(selectedProblemDetail.value) &&
   Boolean(authState.token) &&
+  !busySection.value
+)
+const canUploadTestcaseZip = computed(() =>
+  Boolean(selectedProblemDetail.value) &&
+  Boolean(authState.token) &&
+  Boolean(testcaseZipFile.value) &&
   !busySection.value
 )
 const canDeleteLastSample = computed(() =>
@@ -796,6 +849,8 @@ function resetEditorDrafts(){
   outputFormatDraft.value = ''
   noteDraft.value = ''
   sampleDrafts.value = []
+  testcaseZipFile.value = null
+  testcaseZipInputKey.value += 1
 }
 
 function formatCount(value){
@@ -1377,6 +1432,51 @@ async function handleDeleteLastSample(){
   }
 }
 
+function handleTestcaseZipFileChange(event){
+  const nextFile = event.target?.files?.[0] || null
+  if (!nextFile) {
+    testcaseZipFile.value = null
+    return
+  }
+
+  if (!nextFile.name.toLowerCase().endsWith('.zip')) {
+    testcaseZipFile.value = null
+    testcaseZipInputKey.value += 1
+    actionMessage.value = ''
+    actionErrorMessage.value = 'ZIP 파일만 업로드할 수 있습니다.'
+    return
+  }
+
+  testcaseZipFile.value = nextFile
+  actionErrorMessage.value = ''
+}
+
+async function handleUploadTestcaseZip(){
+  if (!authState.token || !selectedProblemDetail.value || !canUploadTestcaseZip.value || !testcaseZipFile.value) {
+    return
+  }
+
+  const problemId = selectedProblemDetail.value.problem_id
+  const uploadFile = testcaseZipFile.value
+  busySection.value = 'testcase:upload'
+  actionErrorMessage.value = ''
+  actionMessage.value = ''
+
+  try {
+    const response = await uploadProblemTestcaseZip(problemId, uploadFile, authState.token)
+    await loadSelectedProblem(problemId)
+
+    const testcaseCount = Number(response.testcase_count ?? 0)
+    actionMessage.value = `비공개 테스트케이스 ${formatCount(testcaseCount)}개를 업로드했습니다.`
+  } catch (error) {
+    actionErrorMessage.value = error instanceof Error
+      ? error.message
+      : '비공개 테스트케이스 ZIP을 업로드하지 못했습니다.'
+  } finally {
+    busySection.value = ''
+  }
+}
+
 function openDeleteDialog(){
   if (!selectedProblemDetail.value || busySection.value) {
     return
@@ -1777,6 +1877,28 @@ onMounted(() => {
   color: var(--danger);
   background: rgba(254, 242, 242, 0.96);
   border-color: rgba(185, 28, 28, 0.18);
+}
+
+.admin-testcase-upload-panel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-testcase-file-input {
+  display: block;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 18px;
+  border: 1px dashed rgba(20, 33, 61, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink-strong);
+  font: inherit;
+}
+
+.admin-testcase-selected-file {
+  margin: 0;
+  color: var(--ink-soft);
+  word-break: break-all;
 }
 
 .admin-problem-textarea:focus {

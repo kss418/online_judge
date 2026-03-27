@@ -42,7 +42,7 @@ bool file_util::should_retry_file_error(const error_code& error_code_value){
         error_code_value == errno_error::text_file_busy;
 }
 
-static std::expected<std::string, error_code> read_file_content(
+std::expected<std::string, error_code> file_util::read_file_content(
     const std::filesystem::path& file_path
 ){
     unique_fd file_descriptor(::open(file_path.c_str(), O_RDONLY));

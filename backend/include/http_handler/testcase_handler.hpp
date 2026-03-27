@@ -29,6 +29,11 @@ namespace testcase_handler{
         std::int64_t problem_id,
         std::int32_t testcase_order
     );
+    response_type post_testcase_zip(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t problem_id
+    );
     response_type delete_testcase(
         const request_type& request,
         db_connection& db_connection_value,

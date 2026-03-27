@@ -11,6 +11,8 @@ target_sources(lib
         token_util.cpp
         unique_fd.cpp
         temp_file.cpp
+        temp_dir.cpp
+        zip_util.cpp
         blocking_io.cpp
         language_util.cpp
 )

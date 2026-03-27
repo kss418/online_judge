@@ -46,11 +46,23 @@ delete_all_testcases_response_file="$(mktemp)"
 remaining_testcases_response_file="$(mktemp)"
 cleared_testcases_response_file="$(mktemp)"
 delete_all_empty_testcases_response_file="$(mktemp)"
+upload_testcase_zip_response_file="$(mktemp)"
+uploaded_testcases_response_file="$(mktemp)"
+uploaded_problem_response_file="$(mktemp)"
+replace_testcase_zip_response_file="$(mktemp)"
+replaced_testcases_response_file="$(mktemp)"
+replaced_problem_response_file="$(mktemp)"
+invalid_unpaired_zip_response_file="$(mktemp)"
+invalid_duplicate_zip_response_file="$(mktemp)"
 get_problem_response_file="$(mktemp)"
 updated_problem_response_file="$(mktemp)"
 deleted_problem_response_file="$(mktemp)"
 cleared_problem_response_file="$(mktemp)"
 final_problem_response_file="$(mktemp)"
+valid_testcase_zip_path="$(mktemp)"
+replace_testcase_zip_path="$(mktemp)"
+invalid_unpaired_zip_path="$(mktemp)"
+invalid_duplicate_zip_path="$(mktemp)"
 
 cleanup(){
     cleanup_http_server
@@ -71,11 +83,23 @@ cleanup(){
         "${remaining_testcases_response_file}" \
         "${cleared_testcases_response_file}" \
         "${delete_all_empty_testcases_response_file}" \
+        "${upload_testcase_zip_response_file}" \
+        "${uploaded_testcases_response_file}" \
+        "${uploaded_problem_response_file}" \
+        "${replace_testcase_zip_response_file}" \
+        "${replaced_testcases_response_file}" \
+        "${replaced_problem_response_file}" \
+        "${invalid_unpaired_zip_response_file}" \
+        "${invalid_duplicate_zip_response_file}" \
         "${get_problem_response_file}" \
         "${updated_problem_response_file}" \
         "${deleted_problem_response_file}" \
         "${cleared_problem_response_file}" \
-        "${final_problem_response_file}"
+        "${final_problem_response_file}" \
+        "${valid_testcase_zip_path}" \
+        "${replace_testcase_zip_path}" \
+        "${invalid_unpaired_zip_path}" \
+        "${invalid_duplicate_zip_path}"
 
 }
 
@@ -89,6 +113,35 @@ print_success_log(){
 
     printf '%s\n' "${log_message}"
     append_log_line "${test_log_temp_file}" "${log_message}"
+}
+
+send_zip_request_and_assert_status(){
+    local request_url="$1"
+    local zip_file_path="$2"
+    local response_file_path="$3"
+    local expected_status_code="$4"
+    local failure_context="$5"
+    local auth_token="$6"
+    local actual_status_code=""
+
+    actual_status_code="$(
+        curl \
+            --silent \
+            --show-error \
+            --output "${response_file_path}" \
+            --write-out "%{http_code}" \
+            --request POST \
+            -H "Authorization: Bearer ${auth_token}" \
+            -H "Content-Type: application/zip" \
+            --data-binary "@${zip_file_path}" \
+            "${request_url}"
+    )"
+
+    assert_status_code \
+        "${actual_status_code}" \
+        "${expected_status_code}" \
+        "${response_file_path}" \
+        "${failure_context}"
 }
 
 trap cleanup EXIT
@@ -531,6 +584,242 @@ if response.get("problem_id") != problem_id:
     raise SystemExit("problem_id mismatch after empty delete all testcases")
 if response.get("version") != 6:
     raise SystemExit("version mismatch after empty delete all testcases")
+PY
+
+python3 - "${valid_testcase_zip_path}" <<'PY'
+import sys
+import zipfile
+
+with zipfile.ZipFile(sys.argv[1], "w") as testcase_zip:
+    testcase_zip.writestr("001.in", "4 5\n")
+    testcase_zip.writestr("001.out", "9\n")
+    testcase_zip.writestr("002.in", "")
+    testcase_zip.writestr("002.out", "")
+PY
+
+send_zip_request_and_assert_status \
+    "${base_url}/api/problem/${problem_id}/testcase/zip" \
+    "${valid_testcase_zip_path}" \
+    "${upload_testcase_zip_response_file}" \
+    "200" \
+    "upload testcase zip" \
+    "${sign_up_token}"
+assert_json_message \
+    "${upload_testcase_zip_response_file}" \
+    "problem testcases uploaded" \
+    "upload testcase zip"
+assert_json_field_equals \
+    "${upload_testcase_zip_response_file}" \
+    "testcase_count" \
+    "2" \
+    "upload testcase zip count" \
+    "int"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}/testcase" \
+    "${uploaded_testcases_response_file}" \
+    "200" \
+    "list uploaded testcases" \
+    "${sign_up_token}"
+
+python3 - "${uploaded_testcases_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("testcase_count") != 2:
+    raise SystemExit("unexpected testcase_count after testcase zip upload")
+
+testcases = response.get("testcases")
+if not isinstance(testcases, list) or len(testcases) != 2:
+    raise SystemExit("unexpected testcase list size after testcase zip upload")
+
+first_testcase = testcases[0]
+second_testcase = testcases[1]
+
+if first_testcase.get("testcase_order") != 1:
+    raise SystemExit("unexpected first testcase_order after testcase zip upload")
+if first_testcase.get("testcase_input") != "4 5\n":
+    raise SystemExit("unexpected first testcase_input after testcase zip upload")
+if first_testcase.get("testcase_output") != "9\n":
+    raise SystemExit("unexpected first testcase_output after testcase zip upload")
+
+if second_testcase.get("testcase_order") != 2:
+    raise SystemExit("unexpected second testcase_order after testcase zip upload")
+if second_testcase.get("testcase_input") != "":
+    raise SystemExit("unexpected second testcase_input after testcase zip upload")
+if second_testcase.get("testcase_output") != "":
+    raise SystemExit("unexpected second testcase_output after testcase zip upload")
+PY
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${uploaded_problem_response_file}" \
+    "200" \
+    "get problem after testcase zip upload"
+
+python3 - "${uploaded_problem_response_file}" "${problem_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+problem_id = int(sys.argv[2])
+if response.get("problem_id") != problem_id:
+    raise SystemExit("problem_id mismatch after testcase zip upload")
+if response.get("version") != 7:
+    raise SystemExit("version mismatch after testcase zip upload")
+PY
+
+python3 - "${replace_testcase_zip_path}" <<'PY'
+import sys
+import zipfile
+
+with zipfile.ZipFile(sys.argv[1], "w") as testcase_zip:
+    testcase_zip.writestr("001.in", "7 8\n")
+    testcase_zip.writestr("001.out", "15\n")
+PY
+
+send_zip_request_and_assert_status \
+    "${base_url}/api/problem/${problem_id}/testcase/zip" \
+    "${replace_testcase_zip_path}" \
+    "${replace_testcase_zip_response_file}" \
+    "200" \
+    "replace testcase zip" \
+    "${sign_up_token}"
+assert_json_message \
+    "${replace_testcase_zip_response_file}" \
+    "problem testcases uploaded" \
+    "replace testcase zip"
+assert_json_field_equals \
+    "${replace_testcase_zip_response_file}" \
+    "testcase_count" \
+    "1" \
+    "replace testcase zip count" \
+    "int"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}/testcase" \
+    "${replaced_testcases_response_file}" \
+    "200" \
+    "list replaced testcases" \
+    "${sign_up_token}"
+
+python3 - "${replaced_testcases_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("testcase_count") != 1:
+    raise SystemExit("unexpected testcase_count after testcase zip replace")
+
+testcases = response.get("testcases")
+if not isinstance(testcases, list) or len(testcases) != 1:
+    raise SystemExit("unexpected testcase list size after testcase zip replace")
+
+first_testcase = testcases[0]
+if first_testcase.get("testcase_order") != 1:
+    raise SystemExit("unexpected testcase_order after testcase zip replace")
+if first_testcase.get("testcase_input") != "7 8\n":
+    raise SystemExit("unexpected testcase_input after testcase zip replace")
+if first_testcase.get("testcase_output") != "15\n":
+    raise SystemExit("unexpected testcase_output after testcase zip replace")
+PY
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${replaced_problem_response_file}" \
+    "200" \
+    "get problem after testcase zip replace"
+
+python3 - "${replaced_problem_response_file}" "${problem_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+problem_id = int(sys.argv[2])
+if response.get("problem_id") != problem_id:
+    raise SystemExit("problem_id mismatch after testcase zip replace")
+if response.get("version") != 8:
+    raise SystemExit("version mismatch after testcase zip replace")
+PY
+
+python3 - "${invalid_unpaired_zip_path}" <<'PY'
+import sys
+import zipfile
+
+with zipfile.ZipFile(sys.argv[1], "w") as testcase_zip:
+    testcase_zip.writestr("001.in", "1\n")
+PY
+
+send_zip_request_and_assert_status \
+    "${base_url}/api/problem/${problem_id}/testcase/zip" \
+    "${invalid_unpaired_zip_path}" \
+    "${invalid_unpaired_zip_response_file}" \
+    "400" \
+    "reject unpaired testcase zip" \
+    "${sign_up_token}"
+assert_json_field_equals \
+    "${invalid_unpaired_zip_response_file}" \
+    "error.code" \
+    "invalid_testcase_zip" \
+    "reject unpaired testcase zip code"
+
+python3 - "${invalid_duplicate_zip_path}" <<'PY'
+import sys
+import warnings
+import zipfile
+
+warnings.simplefilter("ignore", UserWarning)
+with zipfile.ZipFile(sys.argv[1], "w") as testcase_zip:
+    testcase_zip.writestr("001.in", "1\n")
+    testcase_zip.writestr("001.in", "2\n")
+    testcase_zip.writestr("001.out", "3\n")
+PY
+
+send_zip_request_and_assert_status \
+    "${base_url}/api/problem/${problem_id}/testcase/zip" \
+    "${invalid_duplicate_zip_path}" \
+    "${invalid_duplicate_zip_response_file}" \
+    "400" \
+    "reject duplicate testcase zip" \
+    "${sign_up_token}"
+assert_json_field_equals \
+    "${invalid_duplicate_zip_response_file}" \
+    "error.code" \
+    "invalid_testcase_zip" \
+    "reject duplicate testcase zip code"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${final_problem_response_file}" \
+    "200" \
+    "get problem after invalid testcase zip"
+
+python3 - "${final_problem_response_file}" "${problem_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+problem_id = int(sys.argv[2])
+if response.get("problem_id") != problem_id:
+    raise SystemExit("problem_id mismatch after invalid testcase zip")
+if response.get("version") != 8:
+    raise SystemExit("version mismatch after invalid testcase zip")
 PY
 
 append_log_line "${test_log_temp_file}" "problem testcase flow test passed"

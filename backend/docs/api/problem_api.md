@@ -873,6 +873,62 @@ Example:
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
+### `POST /api/problem/{problem_id}/testcase/zip`
+
+Replace all hidden testcases of an existing problem from a ZIP archive. This endpoint is admin-only. The uploaded archive replaces the full hidden testcase set in one operation, and the problem version is incremented once when the testcase set changes.
+
+#### request
+
+- content-type: `application/zip`
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+
+- body:
+  - raw ZIP binary payload
+  - allowed testcase file names: `001.in`, `001.out` through `999.in`, `999.out`
+  - testcase numbers must start at `001` and be continuous without gaps
+  - each testcase number must contain both `.in` and `.out`
+  - empty files are allowed
+  - any extra files, duplicate testcase files, or unmatched pairs are rejected
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `message` | `string` | always `problem testcases uploaded` |
+| `testcase_count` | `int32` | number of uploaded hidden testcases |
+
+Example:
+
+```json
+{
+  "message": "problem testcases uploaded",
+  "testcase_count": 3
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- unknown `problem_id`: `404 Not Found`
+- invalid zip payload or invalid testcase file layout: `400 Bad Request`
+- unexpected internal failure: `500 Internal Server Error`
+
 ### `PUT /api/problem/{problem_id}/testcase/{testcase_order}`
 
 Replace one hidden testcase of an existing problem. This endpoint is admin-only.

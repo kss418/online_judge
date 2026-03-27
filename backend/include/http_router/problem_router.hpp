@@ -55,6 +55,10 @@ private:
         std::int64_t problem_id,
         std::int32_t testcase_order
     );
+    response_type handle_testcase_zip(
+        const request_type& request,
+        std::int64_t problem_id
+    );
     response_type handle_testcase_all(
         const request_type& request,
         std::int64_t problem_id

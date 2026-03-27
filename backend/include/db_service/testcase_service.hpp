@@ -41,4 +41,10 @@ namespace testcase_service{
         db_connection& connection,
         const problem_dto::reference& problem_reference_value
     );
+
+    std::expected<problem_dto::testcase_count, error_code> replace_testcases(
+        db_connection& connection,
+        const problem_dto::reference& problem_reference_value,
+        const std::vector<problem_dto::testcase>& testcase_values
+    );
 }
