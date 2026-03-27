@@ -406,10 +406,10 @@
                 <div class="panel-header admin-sample-section-header">
                   <div>
                     <p class="panel-kicker">testcases</p>
-                    <h3>비공개 테스트케이스</h3>
+                    <h3>테스트케이스</h3>
                     <p class="admin-problem-section-copy">
-                      ZIP 업로드 시 기존 비공개 테스트케이스는 모두 교체됩니다. `001.in` / `001.out`부터
-                      연속 순번만 허용하며, 빈 파일은 허용됩니다.
+                      ZIP 업로드 시 기존 테스트케이스는 모두 교체됩니다. `001.in` / `001.out`부터
+                      `999.in` / `999.out`까지 연속 순번만 허용하며, 빈 파일은 허용됩니다.
                     </p>
                   </div>
                 </div>

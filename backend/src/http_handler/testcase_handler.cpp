@@ -6,7 +6,7 @@
 #include "common/zip_util.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_core/json_util.hpp"
-#include "http_core/testcase_util.hpp"
+#include "http_core/testcase_uploader.hpp"
 #include "http_core/http_util.hpp"
 
 #include "db_service/problem_core_service.hpp"
@@ -268,7 +268,7 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
             );
         }
 
-        const auto archive_entries_exp = http_server::testcase_util::parse_testcase_archive_entries(
+        const auto archive_entries_exp = testcase_uploader::parse_testcase_archive_entries(
             *list_zip_entries_exp
         );
         if(!archive_entries_exp){
@@ -323,7 +323,7 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
             );
         }
 
-        const auto testcase_values_exp = http_server::testcase_util::load_testcases_from_directory(
+        const auto testcase_values_exp = testcase_uploader::load_testcases_from_directory(
             extraction_directory.get_path(),
             *archive_entries_exp
         );
