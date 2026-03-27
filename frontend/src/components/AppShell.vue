@@ -74,6 +74,8 @@
         </div>
       </div>
 
+      <GlobalNotice />
+
       <main class="shell-content">
         <RouterView />
       </main>
@@ -92,6 +94,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import AuthDialog from '@/components/AuthDialog.vue'
+import GlobalNotice from '@/components/GlobalNotice.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
 

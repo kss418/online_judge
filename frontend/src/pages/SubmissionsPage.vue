@@ -20,14 +20,6 @@
         </div>
       </div>
 
-      <div v-if="actionMessage" class="submissions-feedback is-success">
-        <p>{{ actionMessage }}</p>
-      </div>
-
-      <div v-if="actionErrorMessage" class="submissions-feedback is-error">
-        <p>{{ actionErrorMessage }}</p>
-      </div>
-
       <div class="submission-summary-bar">
         <div class="submission-summary-group">
           <StatusBadge
@@ -287,10 +279,12 @@ import {
 } from '@/api/submission'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
+import { useNotice } from '@/composables/useNotice'
 import { getProblemStateTextClass } from '@/utils/problemState'
 
 const route = useRoute()
 const { authState, isAuthenticated, initializeAuth } = useAuth()
+const { showErrorNotice, showSuccessNotice } = useNotice()
 const listLimit = 50
 const isLoading = ref(true)
 const errorMessage = ref('')
@@ -330,6 +324,25 @@ const visibleRangeText = computed(() => {
   const end = Math.min(currentPage.value * listLimit, totalSubmissionCount.value)
   return `${formatCount(start)}-${formatCount(end)} / ${formatCount(totalSubmissionCount.value)}`
 })
+
+watch(
+  actionMessage,
+  (message) => {
+    if (message) {
+      showSuccessNotice(message)
+    }
+  }
+)
+
+watch(
+  actionErrorMessage,
+  (message) => {
+    if (message) {
+      showErrorNotice(message, { duration: 5000 })
+    }
+  }
+)
+
 const paginationItems = computed(() => {
   const pages = new Set([
     1,

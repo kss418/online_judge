@@ -40,14 +40,6 @@
       </div>
 
       <template v-else>
-        <div v-if="actionMessage" class="admin-problems-feedback is-success">
-          <p>{{ actionMessage }}</p>
-        </div>
-
-        <div v-if="actionErrorMessage" class="admin-problems-feedback is-error">
-          <p>{{ actionErrorMessage }}</p>
-        </div>
-
         <div class="admin-problems-layout">
           <aside class="admin-problem-list-panel">
             <form class="admin-problem-search" @submit.prevent="submitSearch">
@@ -663,8 +655,10 @@ import {
 } from '@/api/problem'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
+import { useNotice } from '@/composables/useNotice'
 
 const { authState, isAuthenticated, initializeAuth } = useAuth()
+const { showErrorNotice, showSuccessNotice } = useNotice()
 const countFormatter = new Intl.NumberFormat()
 
 const isLoadingProblems = ref(true)
@@ -803,6 +797,24 @@ const canRejudgeSelectedProblem = computed(() => {
     rejudgeConfirmTitle.value === selectedProblemDetail.value.title
   )
 })
+
+watch(
+  actionMessage,
+  (message) => {
+    if (message) {
+      showSuccessNotice(message)
+    }
+  }
+)
+
+watch(
+  actionErrorMessage,
+  (message) => {
+    if (message) {
+      showErrorNotice(message, { duration: 5000 })
+    }
+  }
+)
 
 watch(
   () => [authState.initialized, authState.token, authState.currentUser?.permission_level],

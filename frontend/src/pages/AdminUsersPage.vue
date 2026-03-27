@@ -40,10 +40,6 @@
       </div>
 
       <template v-else>
-        <div v-if="actionMessage" class="admin-users-feedback is-success">
-          <p>{{ actionMessage }}</p>
-        </div>
-
         <div v-if="isLoading" class="empty-state">
           <p>유저 목록을 불러오는 중입니다.</p>
         </div>
@@ -160,11 +156,14 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { demoteUserToUser, getUserList, promoteUserToAdmin } from '@/api/user'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
+import { useNotice } from '@/composables/useNotice'
 
 const { authState, isAuthenticated, initializeAuth, refreshCurrentUser } = useAuth()
+const { showErrorNotice, showSuccessNotice } = useNotice()
 const isLoading = ref(true)
 const errorMessage = ref('')
 const actionMessage = ref('')
+const actionErrorMessage = ref('')
 const savingUserId = ref(0)
 const users = ref([])
 const nowTimestamp = ref(Date.now())
@@ -185,6 +184,24 @@ const regularUserCount = computed(() =>
 )
 
 watch(
+  actionMessage,
+  (message) => {
+    if (message) {
+      showSuccessNotice(message)
+    }
+  }
+)
+
+watch(
+  actionErrorMessage,
+  (message) => {
+    if (message) {
+      showErrorNotice(message, { duration: 5000 })
+    }
+  }
+)
+
+watch(
   () => [authState.initialized, authState.token, authState.currentUser?.permission_level],
   () => {
     if (!authState.initialized) {
@@ -196,6 +213,7 @@ watch(
       users.value = []
       errorMessage.value = ''
       actionMessage.value = ''
+      actionErrorMessage.value = ''
       isLoading.value = false
       return
     }
@@ -262,7 +280,7 @@ async function handleDemoteToUser(user){
 async function handleRoleAction(user, nextPermissionLevel){
   if (!authState.token || !canEditPermissions.value) {
     if (!canEditPermissions.value) {
-      errorMessage.value = '권한 변경은 슈퍼어드민만 할 수 있습니다.'
+      actionErrorMessage.value = '권한 변경은 슈퍼어드민만 할 수 있습니다.'
     }
     return
   }
@@ -270,6 +288,7 @@ async function handleRoleAction(user, nextPermissionLevel){
   savingUserId.value = user.user_id
   errorMessage.value = ''
   actionMessage.value = ''
+  actionErrorMessage.value = ''
 
   try {
     if (nextPermissionLevel === permissionLevelToRole.admin) {
@@ -296,7 +315,7 @@ async function handleRoleAction(user, nextPermissionLevel){
       ? `${user.user_name} 님을 어드민으로 승격했습니다.`
       : `${user.user_name} 님을 유저로 강등했습니다.`
   } catch (error) {
-    errorMessage.value = error instanceof Error
+    actionErrorMessage.value = error instanceof Error
       ? error.message
       : '권한 변경을 적용하지 못했습니다.'
   } finally {
