@@ -193,7 +193,7 @@
                 </div>
               </div>
 
-              <article class="admin-testcases-section">
+              <article class="admin-testcases-section admin-testcases-section--upload">
                 <div class="panel-header">
                   <div>
                     <p class="panel-kicker">upload</p>
@@ -235,7 +235,7 @@
                 </div>
               </article>
 
-              <article class="admin-testcases-section">
+              <article class="admin-testcases-section admin-testcases-section--append">
                 <div class="panel-header">
                   <div>
                     <p class="panel-kicker">append</p>
@@ -279,7 +279,7 @@
                 </div>
               </article>
 
-              <article class="admin-testcases-section">
+              <article class="admin-testcases-section admin-testcases-section--list">
                 <div class="panel-header">
                   <div>
                     <p class="panel-kicker">list</p>
@@ -1332,6 +1332,26 @@ onMounted(async () => {
 .admin-testcases-shell {
   display: grid;
   gap: 1.25rem;
+  --admin-testcases-shell-surface: linear-gradient(
+    180deg,
+    rgba(246, 248, 251, 0.98),
+    rgba(239, 243, 248, 0.94)
+  );
+  --admin-testcases-shell-border: rgba(148, 163, 184, 0.18);
+  --admin-testcases-section-surface: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(248, 250, 252, 0.95)
+  );
+  --admin-testcases-section-border: rgba(148, 163, 184, 0.12);
+  --admin-testcases-nested-surface: rgba(255, 255, 255, 0.98);
+  --admin-testcases-nested-border: rgba(148, 163, 184, 0.14);
+  --admin-testcases-shell-shadow:
+    0 18px 36px rgba(20, 33, 61, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --admin-testcases-section-shadow:
+    0 12px 28px rgba(20, 33, 61, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
 }
 
 .admin-testcases-toolbar {
@@ -1352,7 +1372,6 @@ onMounted(async () => {
 
 .admin-testcases-copy {
   margin-top: 0.55rem;
-  max-width: 68ch;
 }
 
 .admin-testcases-section-copy {
@@ -1380,9 +1399,10 @@ onMounted(async () => {
   display: grid;
   gap: 1rem;
   padding: 1rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--admin-testcases-shell-border);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--admin-testcases-shell-surface);
+  box-shadow: var(--admin-testcases-shell-shadow);
 }
 
 .admin-testcases-editor-panel {
@@ -1436,7 +1456,14 @@ onMounted(async () => {
   gap: 0.75rem;
   max-height: 65vh;
   overflow-y: auto;
-  padding: 0.15rem 0.2rem 0.15rem 0.05rem;
+  padding: 0.7rem;
+  border: 1px solid var(--admin-testcases-section-border);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.76),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  scrollbar-gutter: stable;
 }
 
 .admin-testcases-problem-item {
@@ -1446,8 +1473,8 @@ onMounted(async () => {
   gap: 0.55rem;
   padding: 0.9rem 1rem;
   border-radius: 18px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--admin-testcases-nested-border);
+  background: var(--admin-testcases-nested-surface);
   text-align: left;
   font: inherit;
   color: var(--ink-strong);
@@ -1531,17 +1558,20 @@ onMounted(async () => {
 
 .admin-testcases-section,
 .admin-testcase-card {
-  border: 1px solid var(--line);
+  border: 1px solid var(--admin-testcases-section-border);
   border-radius: 20px;
-  background: var(--surface-strong);
+  box-shadow: var(--admin-testcases-section-shadow);
 }
 
 .admin-testcases-section {
   padding: 1.2rem;
+  background: var(--admin-testcases-section-surface);
 }
 
 .admin-testcase-card {
   padding: 1rem;
+  border-color: var(--admin-testcases-nested-border);
+  background: var(--admin-testcases-nested-surface);
 }
 
 .admin-testcases-grid {
@@ -1556,7 +1586,7 @@ onMounted(async () => {
   padding: 0.9rem 1rem;
   border-radius: 18px;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--admin-testcases-nested-surface);
   color: var(--ink-strong);
   font: inherit;
   resize: vertical;
@@ -1577,6 +1607,10 @@ onMounted(async () => {
 .admin-testcase-upload-panel {
   display: grid;
   gap: 0.75rem;
+  padding: 0.95rem 1rem;
+  border: 1px dashed rgba(148, 163, 184, 0.24);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .admin-testcase-file-input {
@@ -1585,7 +1619,7 @@ onMounted(async () => {
   padding: 0.85rem 1rem;
   border-radius: 18px;
   border: 1px dashed rgba(20, 33, 61, 0.18);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--admin-testcases-nested-surface);
   color: var(--ink-strong);
   font: inherit;
 }
@@ -1625,9 +1659,10 @@ onMounted(async () => {
 
 .admin-testcases-summary-panel {
   padding: 0.85rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--admin-testcases-section-border);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--admin-testcases-section-surface);
+  box-shadow: var(--admin-testcases-section-shadow);
 }
 
 .admin-testcases-summary-list {
@@ -1644,9 +1679,9 @@ onMounted(async () => {
   gap: 0.25rem;
   width: 100%;
   padding: 0.9rem 1rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--admin-testcases-nested-border);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--admin-testcases-nested-surface);
   color: var(--ink-strong);
   text-align: left;
   font: inherit;

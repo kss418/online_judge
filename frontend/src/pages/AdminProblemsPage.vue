@@ -210,7 +210,7 @@
                 </div>
               </div>
 
-              <article class="admin-problem-editor-section">
+              <article class="admin-problem-editor-section admin-problem-editor-section--title">
                 <div class="panel-header">
                   <div>
                     <p class="panel-kicker">title</p>
@@ -240,7 +240,7 @@
                 </div>
               </article>
 
-              <article class="admin-problem-editor-section">
+              <article class="admin-problem-editor-section admin-problem-editor-section--limits">
                 <div class="panel-header">
                   <div>
                     <p class="panel-kicker">limits</p>
@@ -286,7 +286,7 @@
                 </div>
               </article>
 
-              <article class="admin-problem-editor-section">
+              <article class="admin-problem-editor-section admin-problem-editor-section--statement">
                 <div class="panel-header">
                   <div>
                     <p class="panel-kicker">statement</p>
@@ -345,7 +345,7 @@
                 </div>
               </article>
 
-              <article class="admin-problem-editor-section">
+              <article class="admin-problem-editor-section admin-problem-editor-section--samples">
                 <div class="panel-header admin-sample-section-header">
                   <div>
                     <p class="panel-kicker">samples</p>
@@ -428,7 +428,7 @@
                 </div>
               </article>
 
-              <article class="admin-problem-editor-section">
+              <article class="admin-problem-editor-section admin-problem-editor-section--testcases">
                 <div class="panel-header admin-sample-section-header">
                   <div>
                     <p class="panel-kicker">testcases</p>
@@ -1849,6 +1849,26 @@ onMounted(() => {
 .admin-problems-panel {
   display: grid;
   gap: 1rem;
+  --admin-problems-shell-surface: linear-gradient(
+    180deg,
+    rgba(246, 248, 251, 0.98),
+    rgba(239, 243, 248, 0.94)
+  );
+  --admin-problems-shell-border: rgba(148, 163, 184, 0.18);
+  --admin-problems-section-surface: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(248, 250, 252, 0.95)
+  );
+  --admin-problems-section-border: rgba(148, 163, 184, 0.12);
+  --admin-problems-nested-surface: rgba(255, 255, 255, 0.98);
+  --admin-problems-nested-border: rgba(148, 163, 184, 0.14);
+  --admin-problems-shell-shadow:
+    0 18px 36px rgba(20, 33, 61, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --admin-problems-section-shadow:
+    0 12px 28px rgba(20, 33, 61, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
 }
 
 .admin-problems-toolbar {
@@ -1906,9 +1926,10 @@ onMounted(() => {
   display: grid;
   gap: 1rem;
   padding: 1rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--admin-problems-shell-border);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--admin-problems-shell-surface);
+  box-shadow: var(--admin-problems-shell-shadow);
 }
 
 .admin-problem-search {
@@ -1946,8 +1967,9 @@ onMounted(() => {
   gap: 0.9rem;
   padding: 1rem;
   border-radius: 20px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid var(--admin-problems-section-border);
+  background: var(--admin-problems-section-surface);
+  box-shadow: var(--admin-problems-section-shadow);
 }
 
 .admin-problem-create-row {
@@ -1987,7 +2009,14 @@ onMounted(() => {
   gap: 0.75rem;
   max-height: 65vh;
   overflow-y: auto;
-  padding: 0.15rem 0.2rem 0.15rem 0.05rem;
+  padding: 0.7rem;
+  border: 1px solid var(--admin-problems-section-border);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.76),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  scrollbar-gutter: stable;
 }
 
 .admin-problem-item {
@@ -1997,8 +2026,8 @@ onMounted(() => {
   gap: 0.55rem;
   padding: 0.9rem 1rem;
   border-radius: 18px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--admin-problems-nested-border);
+  background: var(--admin-problems-nested-surface);
   color: inherit;
   text-align: left;
   cursor: pointer;
@@ -2069,13 +2098,18 @@ onMounted(() => {
   gap: 1rem;
   padding: 1rem;
   border-radius: 22px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid var(--admin-problems-section-border);
+  background: var(--admin-problems-section-surface);
+  box-shadow: var(--admin-problems-section-shadow);
 }
 
 .admin-problem-editor-section.is-danger {
   border-color: rgba(185, 28, 28, 0.16);
-  background: rgba(255, 250, 250, 0.88);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 250, 250, 0.98),
+    rgba(254, 242, 242, 0.94)
+  );
 }
 
 .admin-sample-section-header {
@@ -2102,7 +2136,7 @@ onMounted(() => {
   resize: vertical;
   border-radius: 18px;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--admin-problems-nested-surface);
   color: var(--ink-strong);
   font: inherit;
   line-height: 1.6;
@@ -2122,8 +2156,9 @@ onMounted(() => {
   gap: 1rem;
   padding: 1rem;
   border-radius: 20px;
-  border: 1px solid rgba(20, 33, 61, 0.08);
-  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--admin-problems-nested-border);
+  background: var(--admin-problems-nested-surface);
+  box-shadow: var(--admin-problems-section-shadow);
 }
 
 .admin-sample-card-header {
@@ -2147,6 +2182,10 @@ onMounted(() => {
 .admin-testcase-upload-panel {
   display: grid;
   gap: 0.75rem;
+  padding: 0.95rem 1rem;
+  border: 1px dashed rgba(148, 163, 184, 0.24);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .admin-testcase-file-input {
@@ -2155,7 +2194,7 @@ onMounted(() => {
   padding: 0.85rem 1rem;
   border-radius: 18px;
   border: 1px dashed rgba(20, 33, 61, 0.18);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--admin-problems-nested-surface);
   color: var(--ink-strong);
   font: inherit;
 }
