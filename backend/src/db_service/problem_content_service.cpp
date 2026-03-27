@@ -119,14 +119,6 @@ std::expected<problem_content_dto::sample, error_code> problem_content_service::
                 return std::unexpected(created_sample_exp.error());
             }
 
-            const auto version_exp = problem_core_util::increase_version(
-                transaction,
-                problem_reference_value
-            );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
             return *created_sample_exp;
         }
     );

@@ -150,19 +150,12 @@ problem_content_handler::response_type problem_content_handler::post_sample(
 ){
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto sample_exp =
-            http_util::parse_json_dto_or_400<problem_content_dto::sample>(
-                request,
-                problem_content_dto::make_sample_from_json
-            );
-        if(!sample_exp){
-            return std::move(sample_exp.error());
-        }
+        const problem_content_dto::sample sample_value{};
 
         const auto create_sample_exp = problem_content_service::create_sample(
             db_connection_value,
             problem_reference_value,
-            *sample_exp
+            sample_value
         );
         if(!create_sample_exp){
             return http_response_util::create_4xx_or_500(

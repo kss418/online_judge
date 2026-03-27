@@ -1284,10 +1284,7 @@ async function handleCreateSample(){
   actionMessage.value = ''
 
   try {
-    const response = await createProblemSample(problemId, {
-      sample_input: '',
-      sample_output: ''
-    }, authState.token)
+    const response = await createProblemSample(problemId, authState.token)
 
     const nextSampleOrder = Number(response.sample_order ?? selectedProblemDetail.value.samples.length + 1)
     setSelectedProblemSamples([
@@ -1298,7 +1295,6 @@ async function handleCreateSample(){
         sample_output: ''
       }
     ])
-    incrementSelectedProblemVersion(problemId)
     actionMessage.value = `예제 ${formatCount(nextSampleOrder)}를 추가했습니다.`
   } catch (error) {
     actionErrorMessage.value = error instanceof Error

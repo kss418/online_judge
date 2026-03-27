@@ -75,10 +75,9 @@ export function getProblemSamples(problemId, options = {}){
   })
 }
 
-export function createProblemSample(problemId, payload, token){
+export function createProblemSample(problemId, token){
   return requestJson(`/problem/${problemId}/sample`, {
     method: 'POST',
-    body: payload,
     bearerToken: token
   })
 }

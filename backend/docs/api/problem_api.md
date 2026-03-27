@@ -199,7 +199,7 @@ Create a new problem and return the generated problem number. The problem number
 
 #### request
 
-- content-type: `application/json`
+- request body: none
 - required header:
 
 | header | required | note |
@@ -270,7 +270,7 @@ Update an existing problem title. This endpoint requires an admin bearer token. 
 
 #### request
 
-- content-type: `application/json`
+- request body: none
 - required header:
 
 | header | required | note |
@@ -606,7 +606,7 @@ Each sample object contains:
 
 ### `POST /api/problem/{problem_id}/sample`
 
-Append one public sample to an existing problem. Samples are part of the statement content and are also returned by the public problem detail endpoint. Creating a sample increments the problem version.
+Append one public sample to an existing problem. Samples are part of the statement content and are also returned by the public problem detail endpoint.
 
 #### request
 
@@ -622,22 +622,6 @@ Append one public sample to an existing problem. Samples are part of the stateme
 | field | type | note |
 |---|---|---|
 | `problem_id` | `int64` | must be positive |
-
-- body fields:
-
-| field | type | required | note |
-|---|---|---|---|
-| `sample_input` | `string` | yes | may be empty for no-input examples |
-| `sample_output` | `string` | yes | may be empty for empty-output examples |
-
-Example:
-
-```json
-{
-  "sample_input": "1 2\n",
-  "sample_output": "3\n"
-}
-```
 
 #### success response
 
@@ -664,8 +648,6 @@ Example:
 - missing or malformed bearer token: `401 Unauthorized`
 - invalid, expired, or revoked token: `401 Unauthorized`
 - authenticated but not admin: `401 Unauthorized`
-- invalid json: `400 Bad Request`
-- missing required fields: `400 Bad Request`
 - unknown `problem_id`: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 

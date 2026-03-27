@@ -111,29 +111,13 @@ problem_id="$(
         "Problem Sample Flow"
 )"
 
-sample_request_body="$(
-    python3 <<'PY'
-import json
-
-print(
-    json.dumps(
-        {
-            "sample_input": "1 2\n",
-            "sample_output": "3\n",
-        }
-    )
-)
-PY
-)"
-
 send_http_request_and_assert_status \
     "POST" \
     "${base_url}/api/problem/${problem_id}/sample" \
     "${create_sample_response_file}" \
     "201" \
     "first sample create" \
-    "${sign_up_token}" \
-    "${sample_request_body}"
+    "${sign_up_token}"
 
 python3 - "${create_sample_response_file}" <<'PY'
 import json
@@ -152,29 +136,13 @@ PY
 
 print_success_log "problem sample first create success"
 
-empty_sample_request_body="$(
-    python3 <<'PY'
-import json
-
-print(
-    json.dumps(
-        {
-            "sample_input": "",
-            "sample_output": "",
-        }
-    )
-)
-PY
-)"
-
 send_http_request_and_assert_status \
     "POST" \
     "${base_url}/api/problem/${problem_id}/sample" \
     "${create_empty_sample_response_file}" \
     "201" \
     "empty sample create" \
-    "${sign_up_token}" \
-    "${empty_sample_request_body}"
+    "${sign_up_token}"
 
 python3 - "${create_empty_sample_response_file}" <<'PY'
 import json
@@ -221,9 +189,9 @@ if not isinstance(first_sample.get("sample_id"), int) or first_sample["sample_id
     raise SystemExit("invalid first sample_id after list")
 if first_sample.get("sample_order") != 1:
     raise SystemExit("unexpected first sample_order after list")
-if first_sample.get("sample_input") != "1 2\n":
+if first_sample.get("sample_input") != "":
     raise SystemExit("unexpected first sample_input after list")
-if first_sample.get("sample_output") != "3\n":
+if first_sample.get("sample_output") != "":
     raise SystemExit("unexpected first sample_output after list")
 
 if not isinstance(second_sample.get("sample_id"), int) or second_sample["sample_id"] <= 0:
@@ -259,7 +227,7 @@ if response.get("problem_id") != expected_problem_id:
     raise SystemExit("problem_id mismatch after sample create")
 if response.get("title") != "Problem Sample Flow":
     raise SystemExit("title mismatch after sample create")
-if response.get("version") != 3:
+if response.get("version") != 1:
     raise SystemExit("version mismatch after sample create")
 if response.get("limits") != {"memory_limit_mb": 256, "time_limit_ms": 1000}:
     raise SystemExit("limits changed unexpectedly after sample create")
@@ -271,8 +239,8 @@ if response.get("sample_count") != 2:
 expected_samples = [
     {
         "sample_order": 1,
-        "sample_input": "1 2\n",
-        "sample_output": "3\n",
+        "sample_input": "",
+        "sample_output": "",
     },
     {
         "sample_order": 2,
@@ -396,7 +364,7 @@ with open(response_file_path, encoding="utf-8") as response_file:
 
 if response.get("problem_id") != expected_problem_id:
     raise SystemExit("problem_id mismatch after sample update")
-if response.get("version") != 4:
+if response.get("version") != 2:
     raise SystemExit("version mismatch after sample update")
 if response.get("sample_count") != 2:
     raise SystemExit("sample_count mismatch after sample update")
@@ -480,7 +448,7 @@ with open(response_file_path, encoding="utf-8") as response_file:
 
 if response.get("problem_id") != expected_problem_id:
     raise SystemExit("problem_id mismatch after sample delete")
-if response.get("version") != 5:
+if response.get("version") != 3:
     raise SystemExit("version mismatch after sample delete")
 if response.get("sample_count") != 1:
     raise SystemExit("sample_count mismatch after sample delete")
