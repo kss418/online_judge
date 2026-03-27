@@ -1,9 +1,9 @@
-#include "judge_server/checker.hpp"
+#include "judge_core/checker.hpp"
 
 #include "common/unique_fd.hpp"
 #include "common/blocking_io.hpp"
-#include "judge_server/judge_util.hpp"
-#include "judge_server/testcase_util.hpp"
+#include "judge_core/judge_util.hpp"
+#include "judge_core/testcase_util.hpp"
 
 #include <cerrno>
 #include <fcntl.h>

@@ -5,10 +5,10 @@
 #include "common/db_connection.hpp"
 #include "db_event/submission_event_listener.hpp"
 #include "dto/submission_dto.hpp"
-#include "judge_server/testcase_downloader.hpp"
-#include "judge_server/testcase_runner.hpp"
-#include "judge_server/judge_util.hpp"
-#include "judge_server/sandbox_runner.hpp"
+#include "judge_core/testcase_downloader.hpp"
+#include "judge_core/testcase_runner.hpp"
+#include "judge_core/judge_util.hpp"
+#include "judge_core/sandbox_runner.hpp"
 
 #include <chrono>
 #include <cstdint>

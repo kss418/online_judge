@@ -1,8 +1,8 @@
 #include "http_handler/problem_handler.hpp"
 #include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
-#include "http_server/json_util.hpp"
-#include "http_server/http_util.hpp"
+#include "http_core/json_util.hpp"
+#include "http_core/http_util.hpp"
 
 #include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"

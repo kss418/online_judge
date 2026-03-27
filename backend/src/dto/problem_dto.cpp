@@ -1,6 +1,6 @@
 #include "dto/problem_dto.hpp"
 
-#include "http_server/http_util.hpp"
+#include "http_core/http_util.hpp"
 
 std::expected<problem_dto::create_request, dto_validation_error>
 problem_dto::make_create_request_from_json(const boost::json::object& json){

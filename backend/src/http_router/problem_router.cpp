@@ -3,7 +3,7 @@
 #include "common/string_util.hpp"
 #include "http_handler/problem_content_handler.hpp"
 #include "http_handler/testcase_handler.hpp"
-#include "http_server/http_util.hpp"
+#include "http_core/http_util.hpp"
 
 problem_router::problem_router(db_connection& db_connection) :
     db_connection_(db_connection){}

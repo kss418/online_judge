@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/error_code.hpp"
-#include "http_server/http_dispatcher.hpp"
+#include "http_core/http_dispatcher.hpp"
 
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/string_body.hpp>

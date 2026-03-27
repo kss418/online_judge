@@ -1,4 +1,4 @@
-#include "judge_server/testcase_util.hpp"
+#include "judge_core/testcase_util.hpp"
 
 #include <algorithm>
 #include <charconv>

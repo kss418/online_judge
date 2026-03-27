@@ -1,7 +1,7 @@
-#include "http_server/http_server.hpp"
+#include "http_core/http_server.hpp"
 
 #include "common/db_connection.hpp"
-#include "http_server/http_dispatcher.hpp"
+#include "http_core/http_dispatcher.hpp"
 
 #include <utility>
 

@@ -1,5 +1,5 @@
-#include "http_server/http_dispatcher.hpp"
-#include "http_server/http_util.hpp"
+#include "http_core/http_dispatcher.hpp"
+#include "http_core/http_util.hpp"
 
 #include <string_view>
 #include <utility>

@@ -1,4 +1,4 @@
-#include "judge_server/judge_util.hpp"
+#include "judge_core/judge_util.hpp"
 
 #include "common/language_util.hpp"
 

@@ -1,6 +1,6 @@
-#include "http_server/acceptor.hpp"
-#include "http_server/http_server.hpp"
-#include "http_server/http_session.hpp"
+#include "http_core/acceptor.hpp"
+#include "http_core/http_server.hpp"
+#include "http_core/http_session.hpp"
 
 #include <boost/asio/strand.hpp>
 #include <iostream>

@@ -2,7 +2,7 @@
 #include "common/error_code.hpp"
 #include "common/db_connection.hpp"
 #include "db_event/submission_event_listener.hpp"
-#include "judge_server/judge_worker.hpp"
+#include "judge_core/judge_worker.hpp"
 
 #include <chrono>
 #include <expected>

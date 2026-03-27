@@ -2,7 +2,7 @@
 
 #include "common/error_code.hpp"
 #include "dto/problem_content_dto.hpp"
-#include "judge_server/sandbox_runner.hpp"
+#include "judge_core/sandbox_runner.hpp"
 #include "pl_runner/pl_runner_util.hpp"
 
 #include <cstdint>

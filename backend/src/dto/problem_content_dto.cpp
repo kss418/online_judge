@@ -1,6 +1,6 @@
 #include "dto/problem_content_dto.hpp"
 
-#include "http_server/http_util.hpp"
+#include "http_core/http_util.hpp"
 
 std::expected<problem_content_dto::limits, dto_validation_error>
 problem_content_dto::make_limits_from_json(const boost::json::object& json){

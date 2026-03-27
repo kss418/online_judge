@@ -2,7 +2,7 @@
 
 #include "common/error_code.hpp"
 #include "common/temp_file.hpp"
-#include "judge_server/sandbox_runner.hpp"
+#include "judge_core/sandbox_runner.hpp"
 
 #include <mutex>
 #include <expected>

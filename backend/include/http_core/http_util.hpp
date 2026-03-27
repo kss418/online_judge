@@ -1,6 +1,6 @@
 #pragma once
 
-#include "http_server/http_response_util.hpp"
+#include "http_core/http_response_util.hpp"
 
 #include "db_service/auth_service.hpp"
 #include "common/db_connection.hpp"

@@ -2,8 +2,8 @@
 #include "db_service/auth_service.hpp"
 #include "db_service/login_service.hpp"
 #include "dto/auth_dto.hpp"
-#include "http_server/json_util.hpp"
-#include "http_server/http_util.hpp"
+#include "http_core/json_util.hpp"
+#include "http_core/http_util.hpp"
 
 #include <string>
 

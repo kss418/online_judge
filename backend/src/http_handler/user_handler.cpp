@@ -2,8 +2,8 @@
 
 #include "db_service/auth_service.hpp"
 #include "common/permission_util.hpp"
-#include "http_server/http_util.hpp"
-#include "http_server/json_util.hpp"
+#include "http_core/http_util.hpp"
+#include "http_core/json_util.hpp"
 
 user_handler::response_type user_handler::get_me(
     const request_type& request,

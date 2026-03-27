@@ -7,8 +7,8 @@ add_subdirectory(db_service)
 add_subdirectory(db_repository)
 add_subdirectory(http_handler)
 add_subdirectory(http_router)
-add_subdirectory(http_server)
-add_subdirectory(judge_server)
+add_subdirectory(http_core)
+add_subdirectory(judge_core)
 add_subdirectory(pl_runner)
 
 target_include_directories(lib

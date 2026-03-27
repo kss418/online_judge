@@ -1,10 +1,10 @@
-#include "judge_server/testcase_downloader.hpp"
+#include "judge_core/testcase_downloader.hpp"
 
 #include "common/file_util.hpp"
 #include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"
 #include "db_service/testcase_service.hpp"
-#include "judge_server/testcase_util.hpp"
+#include "judge_core/testcase_util.hpp"
 
 #include <charconv>
 #include <filesystem>

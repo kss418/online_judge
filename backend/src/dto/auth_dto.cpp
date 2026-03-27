@@ -1,7 +1,7 @@
 #include "dto/auth_dto.hpp"
 
 #include "common/password_util.hpp"
-#include "http_server/http_util.hpp"
+#include "http_core/http_util.hpp"
 
 std::expected<auth_dto::sign_up_request, dto_validation_error>
 auth_dto::make_sign_up_request_from_json(const boost::json::object& json){

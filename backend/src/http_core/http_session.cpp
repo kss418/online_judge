@@ -1,5 +1,5 @@
-#include "http_server/http_session.hpp"
-#include "http_server/http_server.hpp"
+#include "http_core/http_session.hpp"
+#include "http_core/http_server.hpp"
 
 #include <boost/asio/error.hpp>
 #include <boost/beast/http/read.hpp>

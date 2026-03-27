@@ -1,4 +1,4 @@
-#include "http_server/testcase_util.hpp"
+#include "http_core/testcase_util.hpp"
 
 #include "common/file_util.hpp"
 

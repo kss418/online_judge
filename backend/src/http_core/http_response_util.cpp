@@ -1,7 +1,7 @@
-#include "http_server/http_response_util.hpp"
+#include "http_core/http_response_util.hpp"
 
 #include "common/string_util.hpp"
-#include "http_server/json_util.hpp"
+#include "http_core/json_util.hpp"
 
 #include <utility>
 

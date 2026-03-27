@@ -1,7 +1,7 @@
 #include "http_router/submission_router.hpp"
 
 #include "common/string_util.hpp"
-#include "http_server/http_util.hpp"
+#include "http_core/http_util.hpp"
 
 submission_router::submission_router(db_connection& db_connection) :
     db_connection_(db_connection){}

@@ -1,8 +1,8 @@
-#include "judge_server/sandbox_runner.hpp"
+#include "judge_core/sandbox_runner.hpp"
 #include "common/file_util.hpp"
 #include "common/temp_file.hpp"
 #include "common/blocking_io.hpp"
-#include "judge_server/judge_util.hpp"
+#include "judge_core/judge_util.hpp"
 
 #include <algorithm>
 #include <cerrno>

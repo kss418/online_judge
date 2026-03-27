@@ -1,10 +1,10 @@
-#include "judge_server/judge_worker.hpp"
+#include "judge_core/judge_worker.hpp"
 
 #include "common/file_util.hpp"
 #include "db_service/submission_service.hpp"
-#include "judge_server/checker.hpp"
-#include "judge_server/judge_util.hpp"
-#include "judge_server/testcase_runner.hpp"
+#include "judge_core/checker.hpp"
+#include "judge_core/judge_util.hpp"
+#include "judge_core/testcase_runner.hpp"
 
 #include <algorithm>
 #include <optional>

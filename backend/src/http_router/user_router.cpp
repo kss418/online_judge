@@ -1,7 +1,7 @@
 #include "http_router/user_router.hpp"
 
 #include "common/string_util.hpp"
-#include "http_server/http_util.hpp"
+#include "http_core/http_util.hpp"
 
 user_router::user_router(db_connection& db_connection) :
     db_connection_(db_connection){}

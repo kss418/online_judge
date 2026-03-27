@@ -2,8 +2,8 @@
 #include "common/submission_status.hpp"
 #include "db_service/submission_service.hpp"
 #include "dto/submission_dto.hpp"
-#include "http_server/http_util.hpp"
-#include "http_server/json_util.hpp"
+#include "http_core/http_util.hpp"
+#include "http_core/json_util.hpp"
 
 submission_handler::response_type submission_handler::get_submission_history(
     const request_type& request,
