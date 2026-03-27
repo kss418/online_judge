@@ -32,20 +32,16 @@
       </div>
 
       <div v-else-if="!isAuthenticated" class="empty-state">
-        <p>권한 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.</p>
+        <p>권한 관리 페이지는 로그인한 슈퍼어드민만 사용할 수 있습니다.</p>
       </div>
 
       <div v-else-if="!canManageUsers" class="empty-state error-state">
-        <p>이 페이지는 관리자만 접근할 수 있습니다.</p>
+        <p>이 페이지는 슈퍼어드민만 접근할 수 있습니다.</p>
       </div>
 
       <template v-else>
         <div v-if="actionMessage" class="admin-users-feedback is-success">
           <p>{{ actionMessage }}</p>
-        </div>
-
-        <div v-if="!canEditPermissions" class="admin-users-feedback is-warning">
-          <p>권한 변경은 슈퍼어드민만 할 수 있습니다.</p>
         </div>
 
         <div v-if="isLoading" class="empty-state">
@@ -175,7 +171,7 @@ const nowTimestamp = ref(Date.now())
 let latestLoadRequestId = 0
 let relativeTimeRefreshTimer = null
 
-const canManageUsers = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 1)
+const canManageUsers = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 2)
 const canEditPermissions = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 2)
 const currentUserId = computed(() => Number(authState.currentUser?.id ?? 0))
 const superAdminCount = computed(() =>

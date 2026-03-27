@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+import { useAuth } from '@/composables/useAuth'
 import AdminProblemsPage from '@/pages/AdminProblemsPage.vue'
 import AdminUsersPage from '@/pages/AdminUsersPage.vue'
 import HomePage from '@/pages/HomePage.vue'
@@ -52,7 +53,10 @@ const routes = [
   {
     path: '/admin/users',
     name: 'admin-users',
-    component: AdminUsersPage
+    component: AdminUsersPage,
+    meta: {
+      requiredPermissionLevel: 2
+    }
   }
 ]
 
@@ -62,6 +66,30 @@ const router = createRouter({
   scrollBehavior(){
     return { top: 0 }
   }
+})
+
+const { authState, initializeAuth } = useAuth()
+
+router.beforeEach(async (to) => {
+  const requiredPermissionLevel = Number(to.meta?.requiredPermissionLevel ?? 0)
+  if (requiredPermissionLevel <= 0) {
+    return true
+  }
+
+  if (!authState.initialized) {
+    await initializeAuth()
+  }
+
+  const currentPermissionLevel = Number(authState.currentUser?.permission_level ?? 0)
+  if (currentPermissionLevel >= requiredPermissionLevel) {
+    return true
+  }
+
+  if (currentPermissionLevel >= 1) {
+    return { name: 'admin-problems' }
+  }
+
+  return { name: 'home' }
 })
 
 export default router
