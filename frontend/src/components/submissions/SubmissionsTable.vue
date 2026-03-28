@@ -29,9 +29,12 @@
         <span class="submission-cell is-number">
           {{ formatCount(submission.submission_id) }}
         </span>
-        <span class="submission-cell is-user">
+        <RouterLink
+          class="submission-user-link"
+          :to="{ name: 'user-info', params: { userId: submission.user_id } }"
+        >
           {{ submission.user_name }}
-        </span>
+        </RouterLink>
         <RouterLink
           class="submission-problem-link"
           :class="getProblemStateTextClass(submission.user_problem_state)"
@@ -307,6 +310,29 @@ defineEmits(['open-source', 'open-history', 'rejudge'])
 
 .submission-cell.is-user {
   margin-left: -1.5rem;
+}
+
+.submission-user-link {
+  min-width: 0;
+  margin-left: -1.5rem;
+  font-weight: 600;
+  color: var(--ink-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-decoration: underline dotted transparent;
+  text-underline-offset: 0.18em;
+  transition:
+    color 160ms ease,
+    text-decoration-color 160ms ease,
+    transform 160ms ease;
+}
+
+.submission-user-link:hover,
+.submission-user-link:focus-visible {
+  color: #4E6FB2;
+  text-decoration-color: currentColor;
+  transform: translateY(-1px);
 }
 
 .submission-problem-link {

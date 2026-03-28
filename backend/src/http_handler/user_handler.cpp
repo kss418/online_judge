@@ -8,6 +8,36 @@
 #include "http_core/http_util.hpp"
 #include "serializer/user_json_serializer.hpp"
 
+namespace{
+    std::expected<user_dto::summary, user_handler::response_type> require_user_summary(
+        const user_handler::request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t user_id
+    ){
+        const auto get_user_summary_exp = user_service::get_summary(
+            db_connection_value,
+            user_id
+        );
+        if(!get_user_summary_exp){
+            return std::unexpected(http_response_util::create_4xx_or_500(
+                request,
+                "get user summary",
+                get_user_summary_exp.error()
+            ));
+        }
+        if(!get_user_summary_exp->has_value()){
+            return std::unexpected(http_response_util::create_error(
+                request,
+                boost::beast::http::status::not_found,
+                "user_not_found",
+                "user not found"
+            ));
+        }
+
+        return get_user_summary_exp->value();
+    }
+}
+
 user_handler::response_type user_handler::get_me(
     const request_type& request,
     db_connection& db_connection_value
@@ -72,6 +102,7 @@ user_handler::response_type user_handler::get_me_solved_problems(
             const auto list_user_solved_problems_exp =
                 problem_core_service::list_user_solved_problems(
                     db_connection_value,
+                    auth_identity_value.user_id,
                     auth_identity_value.user_id
                 );
             if(!list_user_solved_problems_exp){
@@ -107,6 +138,7 @@ user_handler::response_type user_handler::get_me_wrong_problems(
             const auto list_user_wrong_problems_exp =
                 problem_core_service::list_user_wrong_problems(
                     db_connection_value,
+                    auth_identity_value.user_id,
                     auth_identity_value.user_id
                 );
             if(!list_user_wrong_problems_exp){
@@ -138,30 +170,149 @@ user_handler::response_type user_handler::get_user_summary(
     db_connection& db_connection_value,
     std::int64_t user_id
 ){
-    const auto get_user_summary_exp = user_service::get_summary(
+    const auto user_summary_exp = require_user_summary(
+        request,
         db_connection_value,
         user_id
     );
-    if(!get_user_summary_exp){
+    if(!user_summary_exp){
+        return std::move(user_summary_exp.error());
+    }
+
+    return http_response_util::create_json(
+        request,
+        boost::beast::http::status::ok,
+        user_json_serializer::make_summary_object(*user_summary_exp)
+    );
+}
+
+user_handler::response_type user_handler::get_user_submission_statistics(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t user_id
+){
+    const auto user_summary_exp = require_user_summary(
+        request,
+        db_connection_value,
+        user_id
+    );
+    if(!user_summary_exp){
+        return std::move(user_summary_exp.error());
+    }
+
+    const auto get_submission_statistics_exp =
+        user_statistics_service::get_submission_statistics(
+            db_connection_value,
+            user_id
+        );
+    if(!get_submission_statistics_exp){
         return http_response_util::create_4xx_or_500(
             request,
-            "get user summary",
-            get_user_summary_exp.error()
-        );
-    }
-    if(!get_user_summary_exp->has_value()){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::not_found,
-            "user_not_found",
-            "user not found"
+            "get user submission statistics",
+            get_submission_statistics_exp.error()
         );
     }
 
     return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
-        user_json_serializer::make_summary_object(get_user_summary_exp->value())
+        user_json_serializer::make_submission_statistics_object(
+            *get_submission_statistics_exp
+        )
+    );
+}
+
+user_handler::response_type user_handler::get_user_solved_problems(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t user_id
+){
+    const auto auth_identity_opt_exp = http_util::try_optional_auth_bearer(
+        request,
+        db_connection_value
+    );
+    if(!auth_identity_opt_exp){
+        return std::move(auth_identity_opt_exp.error());
+    }
+
+    const auto user_summary_exp = require_user_summary(
+        request,
+        db_connection_value,
+        user_id
+    );
+    if(!user_summary_exp){
+        return std::move(user_summary_exp.error());
+    }
+
+    const auto list_user_solved_problems_exp =
+        problem_core_service::list_user_solved_problems(
+            db_connection_value,
+            user_id,
+            auth_identity_opt_exp->has_value()
+                ? std::optional<std::int64_t>{auth_identity_opt_exp->value().user_id}
+                : std::nullopt
+        );
+    if(!list_user_solved_problems_exp){
+        return http_response_util::create_4xx_or_500(
+            request,
+            "get user solved problems",
+            list_user_solved_problems_exp.error()
+        );
+    }
+
+    return http_response_util::create_json(
+        request,
+        boost::beast::http::status::ok,
+        user_json_serializer::make_solved_problem_list_object(
+            *list_user_solved_problems_exp
+        )
+    );
+}
+
+user_handler::response_type user_handler::get_user_wrong_problems(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t user_id
+){
+    const auto auth_identity_opt_exp = http_util::try_optional_auth_bearer(
+        request,
+        db_connection_value
+    );
+    if(!auth_identity_opt_exp){
+        return std::move(auth_identity_opt_exp.error());
+    }
+
+    const auto user_summary_exp = require_user_summary(
+        request,
+        db_connection_value,
+        user_id
+    );
+    if(!user_summary_exp){
+        return std::move(user_summary_exp.error());
+    }
+
+    const auto list_user_wrong_problems_exp =
+        problem_core_service::list_user_wrong_problems(
+            db_connection_value,
+            user_id,
+            auth_identity_opt_exp->has_value()
+                ? std::optional<std::int64_t>{auth_identity_opt_exp->value().user_id}
+                : std::nullopt
+        );
+    if(!list_user_wrong_problems_exp){
+        return http_response_util::create_4xx_or_500(
+            request,
+            "get user wrong problems",
+            list_user_wrong_problems_exp.error()
+        );
+    }
+
+    return http_response_util::create_json(
+        request,
+        boost::beast::http::status::ok,
+        user_json_serializer::make_wrong_problem_list_object(
+            *list_user_wrong_problems_exp
+        )
     );
 }
 

@@ -42,6 +42,33 @@ user_router::response_type user_router::route(
         return handle_user_me(request);
     }
 
+    if(path_segments.size() == 2 && path_segments[1] == "statistics"){
+        const auto user_id_opt = string_util::parse_positive_int64(path_segments[0]);
+        if(!user_id_opt){
+            return http_response_util::create_not_found(request);
+        }
+
+        return handle_user_statistics(request, *user_id_opt);
+    }
+
+    if(path_segments.size() == 2 && path_segments[1] == "solved-problems"){
+        const auto user_id_opt = string_util::parse_positive_int64(path_segments[0]);
+        if(!user_id_opt){
+            return http_response_util::create_not_found(request);
+        }
+
+        return handle_user_solved_problems(request, *user_id_opt);
+    }
+
+    if(path_segments.size() == 2 && path_segments[1] == "wrong-problems"){
+        const auto user_id_opt = string_util::parse_positive_int64(path_segments[0]);
+        if(!user_id_opt){
+            return http_response_util::create_not_found(request);
+        }
+
+        return handle_user_wrong_problems(request, *user_id_opt);
+    }
+
     if(path_segments.size() == 1){
         const auto user_id_opt = string_util::parse_positive_int64(path_segments[0]);
         if(!user_id_opt){
@@ -137,6 +164,51 @@ user_router::response_type user_router::handle_user_summary(
 ){
     if(request.method() == boost::beast::http::verb::get){
         return user_handler::get_user_summary(
+            request,
+            db_connection_,
+            user_id
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
+user_router::response_type user_router::handle_user_statistics(
+    const request_type& request,
+    std::int64_t user_id
+){
+    if(request.method() == boost::beast::http::verb::get){
+        return user_handler::get_user_submission_statistics(
+            request,
+            db_connection_,
+            user_id
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
+user_router::response_type user_router::handle_user_solved_problems(
+    const request_type& request,
+    std::int64_t user_id
+){
+    if(request.method() == boost::beast::http::verb::get){
+        return user_handler::get_user_solved_problems(
+            request,
+            db_connection_,
+            user_id
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
+user_router::response_type user_router::handle_user_wrong_problems(
+    const request_type& request,
+    std::int64_t user_id
+){
+    if(request.method() == boost::beast::http::verb::get){
+        return user_handler::get_user_wrong_problems(
             request,
             db_connection_,
             user_id

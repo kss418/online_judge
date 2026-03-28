@@ -42,6 +42,121 @@ Example:
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
+### `GET /api/user/{user_id}/statistics`
+
+Get submission statistics for a single user by id.
+
+#### request
+
+- request body: none
+- required header: none
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `user_id` | `int64` | requested user id |
+| `submission_count` | `int64` | total submissions |
+| `queued_submission_count` | `int64` | queued submissions |
+| `judging_submission_count` | `int64` | judging submissions |
+| `accepted_submission_count` | `int64` | accepted submissions |
+| `wrong_answer_submission_count` | `int64` | wrong answer submissions |
+| `time_limit_exceeded_submission_count` | `int64` | time limit exceeded submissions |
+| `memory_limit_exceeded_submission_count` | `int64` | memory limit exceeded submissions |
+| `runtime_error_submission_count` | `int64` | runtime error submissions |
+| `compile_error_submission_count` | `int64` | compile error submissions |
+| `output_exceeded_submission_count` | `int64` | output exceeded submissions |
+| `last_submission_at` | `string \| null` | timestamp of the most recent submission |
+| `last_accepted_at` | `string \| null` | timestamp of the most recent accepted submission |
+| `updated_at` | `string` | statistics row updated timestamp |
+
+#### error response
+
+- unknown user id: `404 Not Found`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
+### `GET /api/user/{user_id}/solved-problems`
+
+Get the solved problem list for a single user by id.
+
+#### request
+
+- request body: none
+- required header: none
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `solved_problem_count` | `int64` | total solved problems in the response |
+| `solved_problems` | `array` | solved problem summaries ordered by `problem_id` descending |
+
+Each item in `solved_problems` contains:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | solved problem id |
+| `title` | `string` | problem title |
+| `version` | `int32` | current problem version |
+| `submission_count` | `int64` | total submissions on the problem |
+| `accepted_count` | `int64` | total accepted submissions on the problem |
+| `user_problem_state` | `string` | always `solved` |
+
+#### error response
+
+- unknown user id: `404 Not Found`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
+### `GET /api/user/{user_id}/wrong-problems`
+
+Get the unresolved wrong-problem list for a single user by id.
+
+#### request
+
+- request body: none
+- required header: none
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `wrong_problem_count` | `int64` | total wrong problems in the response |
+| `wrong_problems` | `array` | wrong problem summaries ordered by `problem_id` descending |
+
+Each item in `wrong_problems` contains:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | wrong problem id |
+| `title` | `string` | problem title |
+| `version` | `int32` | current problem version |
+| `submission_count` | `int64` | total submissions on the problem |
+| `accepted_count` | `int64` | total accepted submissions on the problem |
+| `user_problem_state` | `string` | always `wrong` |
+
+#### error response
+
+- unknown user id: `404 Not Found`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
 ### `GET /api/user`
 
 Get the full user list for management. This endpoint is admin-only.

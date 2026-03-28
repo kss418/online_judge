@@ -4,26 +4,24 @@ export function getUserSummary(userId){
   return requestJson(`/user/${userId}`)
 }
 
+export function getUserSubmissionStatistics(userId){
+  return requestJson(`/user/${userId}/statistics`)
+}
+
+export function getUserSolvedProblems(userId, bearerToken){
+  return requestJson(`/user/${userId}/solved-problems`, {
+    bearerToken
+  })
+}
+
+export function getUserWrongProblems(userId, bearerToken){
+  return requestJson(`/user/${userId}/wrong-problems`, {
+    bearerToken
+  })
+}
+
 export function getUserList(token){
   return requestJson('/user', {
-    bearerToken: token
-  })
-}
-
-export function getMySubmissionStatistics(token){
-  return requestJson('/user/me/statistics', {
-    bearerToken: token
-  })
-}
-
-export function getMySolvedProblems(token){
-  return requestJson('/user/me/solved-problems', {
-    bearerToken: token
-  })
-}
-
-export function getMyWrongProblems(token){
-  return requestJson('/user/me/wrong-problems', {
     bearerToken: token
   })
 }

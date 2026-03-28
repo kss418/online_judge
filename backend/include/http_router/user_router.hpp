@@ -30,6 +30,18 @@ private:
         const request_type& request,
         std::int64_t user_id
     );
+    response_type handle_user_statistics(
+        const request_type& request,
+        std::int64_t user_id
+    );
+    response_type handle_user_solved_problems(
+        const request_type& request,
+        std::int64_t user_id
+    );
+    response_type handle_user_wrong_problems(
+        const request_type& request,
+        std::int64_t user_id
+    );
 
     response_type handle_user_admin(
         const request_type& request,

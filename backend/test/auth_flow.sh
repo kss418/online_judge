@@ -52,6 +52,9 @@ register_temp_file second_login_response_file
 register_temp_file third_login_response_file
 register_temp_file user_me_response_file
 register_temp_file user_summary_response_file
+register_temp_file user_statistics_response_file
+register_temp_file user_solved_problems_response_file
+register_temp_file user_wrong_problems_response_file
 register_temp_file user_me_statistics_response_file
 register_temp_file user_me_solved_problems_response_file
 register_temp_file user_me_wrong_problems_response_file
@@ -212,6 +215,109 @@ then
     exit 1
 fi
 print_success_log "public user summary get success"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/user/${login_user_id}/statistics" \
+    "${user_statistics_response_file}" \
+    "200" \
+    "get public user statistics before submissions"
+if ! python3 - "${user_statistics_response_file}" "${login_user_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    statistics = json.load(response_file)
+
+expected_user_id = int(sys.argv[2])
+
+if statistics.get("user_id") != expected_user_id:
+    raise SystemExit("public user statistics id mismatch")
+
+expected_zero_fields = [
+    "submission_count",
+    "queued_submission_count",
+    "judging_submission_count",
+    "accepted_submission_count",
+    "wrong_answer_submission_count",
+    "time_limit_exceeded_submission_count",
+    "memory_limit_exceeded_submission_count",
+    "runtime_error_submission_count",
+    "compile_error_submission_count",
+    "output_exceeded_submission_count",
+]
+for field in expected_zero_fields:
+    if statistics.get(field) != 0:
+        raise SystemExit(f"expected {field} to be 0")
+
+if statistics.get("last_submission_at") is not None:
+    raise SystemExit("expected last_submission_at to be null")
+
+if statistics.get("last_accepted_at") is not None:
+    raise SystemExit("expected last_accepted_at to be null")
+
+updated_at = statistics.get("updated_at")
+if not isinstance(updated_at, str) or not updated_at:
+    raise SystemExit("expected updated_at to be present")
+PY
+then
+    append_log_line "${test_log_temp_file}" "public user statistics validation failed"
+    publish_failure_logs
+    exit 1
+fi
+print_success_log "public user statistics get success before submissions"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/user/${login_user_id}/solved-problems" \
+    "${user_solved_problems_response_file}" \
+    "200" \
+    "get public user solved problems before submissions"
+if ! python3 - "${user_solved_problems_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    solved = json.load(response_file)
+
+if solved.get("solved_problem_count") != 0:
+    raise SystemExit("expected solved_problem_count to be 0")
+
+if solved.get("solved_problems") != []:
+    raise SystemExit("expected solved_problems to be empty")
+PY
+then
+    append_log_line "${test_log_temp_file}" "public user solved problems validation failed"
+    publish_failure_logs
+    exit 1
+fi
+print_success_log "public user solved problems get success before submissions"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/user/${login_user_id}/wrong-problems" \
+    "${user_wrong_problems_response_file}" \
+    "200" \
+    "get public user wrong problems before submissions"
+if ! python3 - "${user_wrong_problems_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    wrong = json.load(response_file)
+
+if wrong.get("wrong_problem_count") != 0:
+    raise SystemExit("expected wrong_problem_count to be 0")
+
+if wrong.get("wrong_problems") != []:
+    raise SystemExit("expected wrong_problems to be empty")
+PY
+then
+    append_log_line "${test_log_temp_file}" "public user wrong problems validation failed"
+    publish_failure_logs
+    exit 1
+fi
+print_success_log "public user wrong problems get success before submissions"
 
 send_http_request_and_assert_status \
     "GET" \

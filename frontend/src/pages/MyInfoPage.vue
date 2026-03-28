@@ -18,12 +18,8 @@
             />
           </div>
 
-          <div v-if="authState.isInitializing || isStatisticsLoading" class="empty-state">
+          <div v-if="shouldShowLoadingState || isStatisticsLoading" class="empty-state">
             <p>제출 통계를 불러오는 중입니다.</p>
-          </div>
-
-          <div v-else-if="!isAuthenticated" class="empty-state">
-            <p>로그인하면 제출 통계를 여기서 확인할 수 있습니다.</p>
           </div>
 
           <div v-else-if="statisticsErrorMessage" class="empty-state error-state">
@@ -56,12 +52,8 @@
             </div>
           </div>
 
-          <div v-if="authState.isInitializing || isRecentSubmissionsLoading" class="empty-state">
+          <div v-if="shouldShowLoadingState || isRecentSubmissionsLoading" class="empty-state">
             <p>최근 제출 목록을 불러오는 중입니다.</p>
-          </div>
-
-          <div v-else-if="!isAuthenticated" class="empty-state">
-            <p>로그인하면 최근 제출 목록을 여기서 확인할 수 있습니다.</p>
           </div>
 
           <div v-else-if="recentSubmissionsErrorMessage" class="empty-state error-state">
@@ -137,7 +129,7 @@
             <p>{{ profileErrorMessage }}</p>
           </div>
 
-          <div v-else-if="showExtendedProfilePanels && !isAuthenticated" class="empty-state">
+          <div v-else-if="!showExtendedProfilePanels" class="empty-state">
             <p>로그인하면 계정 기본 정보를 여기서 확인할 수 있습니다.</p>
           </div>
 
@@ -173,12 +165,8 @@
             />
           </div>
 
-          <div v-if="authState.isInitializing || isSolvedProblemsLoading" class="empty-state">
+          <div v-if="shouldShowLoadingState || isSolvedProblemsLoading" class="empty-state">
             <p>푼 문제 목록을 불러오는 중입니다.</p>
-          </div>
-
-          <div v-else-if="!isAuthenticated" class="empty-state">
-            <p>로그인하면 푼 문제 목록을 여기서 확인할 수 있습니다.</p>
           </div>
 
           <div v-else-if="solvedProblemsErrorMessage" class="empty-state error-state">
@@ -196,7 +184,10 @@
               class="solved-problem-chip"
               :to="{ name: 'problem-detail', params: { problemId: problem.problem_id } }"
             >
-              <strong class="solved-problem-chip__id">
+              <strong
+                class="solved-problem-chip__id"
+                :class="getProblemStateTextClass(problem.user_problem_state)"
+              >
                 #{{ problem.problem_id }}
               </strong>
               <div class="solved-problem-chip__meta">
@@ -223,12 +214,8 @@
             />
           </div>
 
-          <div v-if="authState.isInitializing || isWrongProblemsLoading" class="empty-state">
+          <div v-if="shouldShowLoadingState || isWrongProblemsLoading" class="empty-state">
             <p>틀린 문제 목록을 불러오는 중입니다.</p>
-          </div>
-
-          <div v-else-if="!isAuthenticated" class="empty-state">
-            <p>로그인하면 틀린 문제 목록을 여기서 확인할 수 있습니다.</p>
           </div>
 
           <div v-else-if="wrongProblemsErrorMessage" class="empty-state error-state">
@@ -246,7 +233,10 @@
               class="wrong-problem-chip"
               :to="{ name: 'problem-detail', params: { problemId: problem.problem_id } }"
             >
-              <strong class="wrong-problem-chip__id">
+              <strong
+                class="wrong-problem-chip__id"
+                :class="getProblemStateTextClass(problem.user_problem_state)"
+              >
                 #{{ problem.problem_id }}
               </strong>
               <div class="wrong-problem-chip__meta">
@@ -269,13 +259,14 @@ import { useRoute } from 'vue-router'
 import { getSubmissionList } from '@/api/submission'
 import {
   getUserSummary,
-  getMySolvedProblems,
-  getMySubmissionStatistics,
-  getMyWrongProblems
+  getUserSolvedProblems,
+  getUserSubmissionStatistics,
+  getUserWrongProblems
 } from '@/api/user'
 import StatusBadge from '@/components/StatusBadge.vue'
 import SubmissionStatusBadge from '@/components/submissions/SubmissionStatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
+import { getProblemStateTextClass, normalizeProblemState } from '@/utils/problemState'
 
 const route = useRoute()
 const { authState, isAuthenticated, initializeAuth } = useAuth()
@@ -321,96 +312,116 @@ const routeUserId = computed(() => {
 
 const isUserProfileRoute = computed(() => route.name === 'user-info')
 
-const showExtendedProfilePanels = computed(() => {
-  if (!isUserProfileRoute.value) {
-    return true
+const activeProfileUserId = computed(() => {
+  if (isUserProfileRoute.value) {
+    return routeUserId.value
   }
 
   if (!authState.initialized || !isAuthenticated.value) {
-    return false
+    return 0
   }
 
-  return routeUserId.value === Number(currentUser.value.id ?? 0)
+  return Number(currentUser.value.id ?? 0)
 })
 
-const activeProfileUserId = computed(() => {
-  if (showExtendedProfilePanels.value) {
-    return Number(currentUser.value.id ?? 0)
-  }
+const isOwnProfile = computed(() => (
+  authState.initialized &&
+  isAuthenticated.value &&
+  activeProfileUserId.value > 0 &&
+  activeProfileUserId.value === Number(currentUser.value.id ?? 0)
+))
 
-  return routeUserId.value
-})
+const showExtendedProfilePanels = computed(() => activeProfileUserId.value > 0)
+
+const shouldShowLoadingState = computed(() => (
+  !isUserProfileRoute.value &&
+  authState.isInitializing &&
+  activeProfileUserId.value <= 0
+))
+
+const hasPublicProfile = computed(() => (
+  Number(publicUserSummary.value?.user_id ?? 0) === activeProfileUserId.value &&
+  activeProfileUserId.value > 0
+))
 
 const displayedUser = computed(() => {
-  if (showExtendedProfilePanels.value) {
+  if (hasPublicProfile.value) {
+    return publicUserSummary.value
+  }
+
+  if (isOwnProfile.value) {
     return {
       user_id: Number(currentUser.value.id ?? 0),
       user_name: currentUser.value.user_name ?? '',
-      created_at: publicUserSummary.value?.created_at ?? null
+      created_at: null
     }
   }
 
-  return publicUserSummary.value ?? {
-    user_id: routeUserId.value,
+  return {
+    user_id: activeProfileUserId.value,
     user_name: '',
     created_at: null
   }
 })
 
 const isProfileLoading = computed(() => {
-  if (showExtendedProfilePanels.value) {
-    return authState.isInitializing
+  if (shouldShowLoadingState.value) {
+    return true
+  }
+
+  if (!showExtendedProfilePanels.value) {
+    return false
   }
 
   return isPublicUserSummaryLoading.value
 })
 
 const profileErrorMessage = computed(() => {
-  if (showExtendedProfilePanels.value) {
-    return ''
+  if (!showExtendedProfilePanels.value) {
+    return isUserProfileRoute.value ? '유효하지 않은 사용자입니다.' : ''
   }
 
   return publicUserSummaryErrorMessage.value
 })
 
 const profileStatusLabel = computed(() => {
-  if (showExtendedProfilePanels.value) {
-    if (authState.isInitializing) {
-      return 'Loading'
-    }
-
-    return isAuthenticated.value ? 'Signed In' : 'Guest'
-  }
-
-  if (isPublicUserSummaryLoading.value) {
+  if (shouldShowLoadingState.value || isPublicUserSummaryLoading.value) {
     return 'Loading'
   }
 
-  return publicUserSummaryErrorMessage.value ? 'Error' : 'Public'
+  if (!showExtendedProfilePanels.value) {
+    return 'Guest'
+  }
+
+  if (publicUserSummaryErrorMessage.value) {
+    return 'Error'
+  }
+
+  return isOwnProfile.value ? 'Signed In' : 'Public'
 })
 
 const profileStatusTone = computed(() => {
-  if (showExtendedProfilePanels.value) {
-    if (authState.isInitializing) {
-      return 'neutral'
-    }
-
-    return isAuthenticated.value ? 'success' : 'neutral'
-  }
-
-  if (isPublicUserSummaryLoading.value) {
+  if (shouldShowLoadingState.value || isPublicUserSummaryLoading.value) {
     return 'neutral'
   }
 
-  return publicUserSummaryErrorMessage.value ? 'danger' : 'neutral'
+  if (!showExtendedProfilePanels.value) {
+    return 'neutral'
+  }
+
+  if (publicUserSummaryErrorMessage.value) {
+    return 'danger'
+  }
+
+  return isOwnProfile.value ? 'success' : 'neutral'
 })
 
 const statisticsStatusLabel = computed(() => {
-  if (authState.isInitializing || isStatisticsLoading.value) {
+  if (shouldShowLoadingState.value || isStatisticsLoading.value) {
     return 'Loading'
   }
 
-  if (!isAuthenticated.value) {
+  if (!showExtendedProfilePanels.value) {
     return 'Guest'
   }
 
@@ -418,7 +429,11 @@ const statisticsStatusLabel = computed(() => {
 })
 
 const statisticsStatusTone = computed(() => {
-  if (authState.isInitializing || isStatisticsLoading.value) {
+  if (shouldShowLoadingState.value || isStatisticsLoading.value) {
+    return 'neutral'
+  }
+
+  if (!showExtendedProfilePanels.value) {
     return 'neutral'
   }
 
@@ -426,15 +441,15 @@ const statisticsStatusTone = computed(() => {
     return 'danger'
   }
 
-  return isAuthenticated.value ? 'success' : 'neutral'
+  return 'success'
 })
 
 const solvedProblemsStatusLabel = computed(() => {
-  if (authState.isInitializing || isSolvedProblemsLoading.value) {
+  if (shouldShowLoadingState.value || isSolvedProblemsLoading.value) {
     return 'Loading'
   }
 
-  if (!isAuthenticated.value) {
+  if (!showExtendedProfilePanels.value) {
     return 'Guest'
   }
 
@@ -446,7 +461,11 @@ const solvedProblemsStatusLabel = computed(() => {
 })
 
 const solvedProblemsStatusTone = computed(() => {
-  if (authState.isInitializing || isSolvedProblemsLoading.value) {
+  if (shouldShowLoadingState.value || isSolvedProblemsLoading.value) {
+    return 'neutral'
+  }
+
+  if (!showExtendedProfilePanels.value) {
     return 'neutral'
   }
 
@@ -454,15 +473,15 @@ const solvedProblemsStatusTone = computed(() => {
     return 'danger'
   }
 
-  return isAuthenticated.value ? 'success' : 'neutral'
+  return 'success'
 })
 
 const recentSubmissionsStatusLabel = computed(() => {
-  if (authState.isInitializing || isRecentSubmissionsLoading.value) {
+  if (shouldShowLoadingState.value || isRecentSubmissionsLoading.value) {
     return 'Loading'
   }
 
-  if (!isAuthenticated.value) {
+  if (!showExtendedProfilePanels.value) {
     return 'Guest'
   }
 
@@ -474,7 +493,11 @@ const recentSubmissionsStatusLabel = computed(() => {
 })
 
 const recentSubmissionsStatusTone = computed(() => {
-  if (authState.isInitializing || isRecentSubmissionsLoading.value) {
+  if (shouldShowLoadingState.value || isRecentSubmissionsLoading.value) {
+    return 'neutral'
+  }
+
+  if (!showExtendedProfilePanels.value) {
     return 'neutral'
   }
 
@@ -482,15 +505,15 @@ const recentSubmissionsStatusTone = computed(() => {
     return 'danger'
   }
 
-  return isAuthenticated.value ? 'success' : 'neutral'
+  return 'success'
 })
 
 const wrongProblemsStatusLabel = computed(() => {
-  if (authState.isInitializing || isWrongProblemsLoading.value) {
+  if (shouldShowLoadingState.value || isWrongProblemsLoading.value) {
     return 'Loading'
   }
 
-  if (!isAuthenticated.value) {
+  if (!showExtendedProfilePanels.value) {
     return 'Guest'
   }
 
@@ -502,7 +525,11 @@ const wrongProblemsStatusLabel = computed(() => {
 })
 
 const wrongProblemsStatusTone = computed(() => {
-  if (authState.isInitializing || isWrongProblemsLoading.value) {
+  if (shouldShowLoadingState.value || isWrongProblemsLoading.value) {
+    return 'neutral'
+  }
+
+  if (!showExtendedProfilePanels.value) {
     return 'neutral'
   }
 
@@ -510,7 +537,7 @@ const wrongProblemsStatusTone = computed(() => {
     return 'danger'
   }
 
-  return isAuthenticated.value ? 'danger' : 'neutral'
+  return 'danger'
 })
 
 const statisticsItems = computed(() => {
@@ -619,7 +646,8 @@ function normalizeSolvedProblems(payload){
   return solvedProblemValues
     .map((problem) => ({
       problem_id: Number(problem?.problem_id ?? 0),
-      accepted_count: normalizeCount(problem?.accepted_count)
+      accepted_count: normalizeCount(problem?.accepted_count),
+      user_problem_state: normalizeProblemState(problem?.user_problem_state)
     }))
     .filter((problem) => problem.problem_id > 0)
     .sort((leftProblem, rightProblem) => leftProblem.problem_id - rightProblem.problem_id)
@@ -660,7 +688,8 @@ function normalizeWrongProblems(payload){
   return wrongProblemValues
     .map((problem) => ({
       problem_id: Number(problem?.problem_id ?? 0),
-      accepted_count: normalizeCount(problem?.accepted_count)
+      accepted_count: normalizeCount(problem?.accepted_count),
+      user_problem_state: normalizeProblemState(problem?.user_problem_state)
     }))
     .filter((problem) => problem.problem_id > 0)
     .sort((leftProblem, rightProblem) => leftProblem.problem_id - rightProblem.problem_id)
@@ -781,10 +810,9 @@ function stopRelativeTimeRefresh(){
 }
 
 async function loadSubmissionStatistics(){
-  const token = authState.token
-  const currentUserId = Number(currentUser.value.id ?? 0)
+  const profileUserId = activeProfileUserId.value
 
-  if (!token || currentUserId <= 0) {
+  if (profileUserId <= 0) {
     submissionStatistics.value = null
     statisticsErrorMessage.value = ''
     isStatisticsLoading.value = false
@@ -796,7 +824,7 @@ async function loadSubmissionStatistics(){
   statisticsErrorMessage.value = ''
 
   try {
-    const payload = await getMySubmissionStatistics(token)
+    const payload = await getUserSubmissionStatistics(profileUserId)
     if (requestId !== latestStatisticsRequestId) {
       return
     }
@@ -819,10 +847,9 @@ async function loadSubmissionStatistics(){
 }
 
 async function loadRecentSubmissions(){
-  const token = authState.token
-  const currentUserId = Number(currentUser.value.id ?? 0)
+  const profileUserId = activeProfileUserId.value
 
-  if (!token || currentUserId <= 0) {
+  if (profileUserId <= 0) {
     recentSubmissions.value = []
     recentSubmissionsErrorMessage.value = ''
     isRecentSubmissionsLoading.value = false
@@ -835,9 +862,9 @@ async function loadRecentSubmissions(){
 
   try {
     const payload = await getSubmissionList({
-      userId: currentUserId,
+      userId: profileUserId,
       limit: 10,
-      bearerToken: token
+      bearerToken: authState.token || undefined
     })
     if (requestId !== latestRecentSubmissionsRequestId) {
       return
@@ -861,10 +888,9 @@ async function loadRecentSubmissions(){
 }
 
 async function loadSolvedProblems(){
-  const token = authState.token
-  const currentUserId = Number(currentUser.value.id ?? 0)
+  const profileUserId = activeProfileUserId.value
 
-  if (!token || currentUserId <= 0) {
+  if (profileUserId <= 0) {
     solvedProblems.value = []
     solvedProblemsErrorMessage.value = ''
     isSolvedProblemsLoading.value = false
@@ -876,7 +902,10 @@ async function loadSolvedProblems(){
   solvedProblemsErrorMessage.value = ''
 
   try {
-    const payload = await getMySolvedProblems(token)
+    const payload = await getUserSolvedProblems(
+      profileUserId,
+      authState.token || undefined
+    )
     if (requestId !== latestSolvedProblemsRequestId) {
       return
     }
@@ -899,10 +928,9 @@ async function loadSolvedProblems(){
 }
 
 async function loadWrongProblems(){
-  const token = authState.token
-  const currentUserId = Number(currentUser.value.id ?? 0)
+  const profileUserId = activeProfileUserId.value
 
-  if (!token || currentUserId <= 0) {
+  if (profileUserId <= 0) {
     wrongProblems.value = []
     wrongProblemsErrorMessage.value = ''
     isWrongProblemsLoading.value = false
@@ -914,7 +942,10 @@ async function loadWrongProblems(){
   wrongProblemsErrorMessage.value = ''
 
   try {
-    const payload = await getMyWrongProblems(token)
+    const payload = await getUserWrongProblems(
+      profileUserId,
+      authState.token || undefined
+    )
     if (requestId !== latestWrongProblemsRequestId) {
       return
     }
@@ -981,9 +1012,14 @@ async function loadPublicUserSummary(userId){
 }
 
 watch(
-  () => [authState.initialized, authState.token, currentUser.value.id, showExtendedProfilePanels.value],
-  ([initialized]) => {
-    if (!initialized) {
+  () => [
+    activeProfileUserId.value,
+    authState.initialized,
+    authState.token,
+    currentUser.value.id
+  ],
+  ([profileUserId, initialized]) => {
+    if (!isUserProfileRoute.value && !initialized) {
       isStatisticsLoading.value = true
       isRecentSubmissionsLoading.value = true
       isSolvedProblemsLoading.value = true
@@ -991,7 +1027,7 @@ watch(
       return
     }
 
-    if (!showExtendedProfilePanels.value || !isAuthenticated.value) {
+    if (profileUserId <= 0) {
       latestStatisticsRequestId += 1
       latestRecentSubmissionsRequestId += 1
       latestSolvedProblemsRequestId += 1
@@ -1023,15 +1059,18 @@ watch(
 
 watch(
   () => [
+    activeProfileUserId.value,
     isUserProfileRoute.value,
-    routeUserId.value,
-    showExtendedProfilePanels.value,
     authState.initialized,
-    authState.token,
     currentUser.value.id
   ],
-  () => {
-    if (activeProfileUserId.value <= 0) {
+  ([profileUserId, , initialized]) => {
+    if (!isUserProfileRoute.value && !initialized) {
+      isPublicUserSummaryLoading.value = true
+      return
+    }
+
+    if (profileUserId <= 0) {
       latestPublicUserSummaryRequestId += 1
       publicUserSummary.value = null
       publicUserSummaryErrorMessage.value = ''
@@ -1039,7 +1078,7 @@ watch(
       return
     }
 
-    loadPublicUserSummary(activeProfileUserId.value)
+    loadPublicUserSummary(profileUserId)
   },
   {
     immediate: true
@@ -1276,9 +1315,17 @@ onBeforeUnmount(() => {
 }
 
 .solved-problem-chip__id {
-  color: #15803d;
+  color: var(--ink-strong);
   font-size: 1rem;
   font-weight: 800;
+}
+
+.solved-problem-chip__id.problem-state-text--solved {
+  color: #15803d;
+}
+
+.solved-problem-chip__id.problem-state-text--wrong {
+  color: #b91c1c;
 }
 
 .solved-problem-chip__meta {
@@ -1328,9 +1375,17 @@ onBeforeUnmount(() => {
 }
 
 .wrong-problem-chip__id {
-  color: #b91c1c;
+  color: var(--ink-strong);
   font-size: 1rem;
   font-weight: 800;
+}
+
+.wrong-problem-chip__id.problem-state-text--solved {
+  color: #15803d;
+}
+
+.wrong-problem-chip__id.problem-state-text--wrong {
+  color: #b91c1c;
 }
 
 .wrong-problem-chip__meta {
