@@ -49,7 +49,7 @@
             type="text"
             inputmode="numeric"
             :disabled="isBusy"
-            placeholder="예: 1000"
+            :placeholder="problemIdPlaceholder"
             @input="$emit('update:problemIdInput', $event.target.value)"
           />
         </div>
@@ -62,7 +62,7 @@
             class="field-input"
             type="text"
             :disabled="isBusy"
-            placeholder="문제 제목"
+            :placeholder="titlePlaceholder"
             @input="$emit('update:titleInput', $event.target.value)"
           />
         </div>
@@ -125,9 +125,17 @@ defineProps({
     type: String,
     default: ''
   },
+  problemIdPlaceholder: {
+    type: String,
+    default: '예: 1000'
+  },
   titleInput: {
     type: String,
     default: ''
+  },
+  titlePlaceholder: {
+    type: String,
+    default: '문제 제목'
   },
   isBusy: {
     type: Boolean,
