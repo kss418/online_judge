@@ -83,29 +83,16 @@
           class="auth-form"
           @submit.prevent="submitSignUp"
         >
-          <div class="field-grid">
-            <label class="field-block">
-              <span class="field-label">ID</span>
-              <input
-                v-model.trim="signUpForm.user_login_id"
-                class="field-input"
-                type="text"
-                autocomplete="username"
-                required
-              />
-            </label>
-
-            <label class="field-block">
-              <span class="field-label">닉네임</span>
-              <input
-                v-model.trim="signUpForm.user_name"
-                class="field-input"
-                type="text"
-                autocomplete="nickname"
-                required
-              />
-            </label>
-          </div>
+          <label class="field-block">
+            <span class="field-label">ID</span>
+            <input
+              v-model.trim="signUpForm.user_login_id"
+              class="field-input"
+              type="text"
+              autocomplete="username"
+              required
+            />
+          </label>
 
           <label class="field-block">
             <span class="field-label">비밀번호</span>
@@ -180,7 +167,6 @@ const loginForm = reactive({
 
 const signUpForm = reactive({
   user_login_id: '',
-  user_name: '',
   raw_password: ''
 })
 
@@ -240,7 +226,6 @@ function clearForms(){
   loginForm.user_login_id = ''
   loginForm.raw_password = ''
   signUpForm.user_login_id = ''
-  signUpForm.user_name = ''
   signUpForm.raw_password = ''
 }
 
@@ -268,7 +253,6 @@ async function submitSignUp(){
   try {
     await signUp({
       user_login_id: signUpForm.user_login_id,
-      user_name: signUpForm.user_name,
       raw_password: signUpForm.raw_password
     })
 

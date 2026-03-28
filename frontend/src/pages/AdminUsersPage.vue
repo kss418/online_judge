@@ -74,9 +74,8 @@
 
           <div v-else class="admin-user-table">
             <div class="admin-user-table-head">
+              <span>계정 번호</span>
               <span>ID</span>
-              <span>닉네임</span>
-              <span>로그인 ID</span>
               <span>권한</span>
               <span>가입 시각</span>
               <span>관리</span>
@@ -89,7 +88,7 @@
             >
               <strong>#{{ user.user_id }}</strong>
               <div class="admin-user-name">
-                <strong>{{ user.user_name }}</strong>
+                <strong>{{ user.user_login_id || '-' }}</strong>
                 <span
                   v-if="user.user_id === currentUserId"
                   class="admin-user-self"
@@ -97,7 +96,6 @@
                   현재 계정
                 </span>
               </div>
-              <span class="admin-user-login-id">{{ user.user_login_id || '-' }}</span>
               <div class="admin-user-role">
                 <StatusBadge
                   :label="formatPermissionLabel(user.permission_level)"
@@ -243,12 +241,10 @@ async function loadUsers(){
 
     users.value = responseUsers.map((user) => {
       const permissionLevel = normalizePermissionLevel(user.permission_level)
-      const normalizedUserLoginId = typeof user.user_login_id === 'string'
-        ? user.user_login_id
-        : (user.user_name ?? '')
+      const normalizedUserLoginId =
+        typeof user.user_login_id === 'string' ? user.user_login_id : ''
       return {
         user_id: Number(user.user_id ?? 0),
-        user_name: normalizedUserLoginId,
         user_login_id: normalizedUserLoginId,
         permission_level: permissionLevel,
         role_name: user.role_name || getRoleName(permissionLevel),
@@ -315,8 +311,8 @@ async function handleRoleAction(user, nextPermissionLevel){
     }
 
     actionMessage.value = nextPermissionLevel === permissionLevelToRole.admin
-      ? `${user.user_name} 님을 어드민으로 승격했습니다.`
-      : `${user.user_name} 님을 유저로 강등했습니다.`
+      ? `${user.user_login_id} 님을 어드민으로 승격했습니다.`
+      : `${user.user_login_id} 님을 유저로 강등했습니다.`
   } catch (error) {
     actionErrorMessage.value = error instanceof Error
       ? error.message
@@ -549,7 +545,7 @@ onUnmounted(() => {
 .admin-user-table-head,
 .admin-user-row {
   display: grid;
-  grid-template-columns: 0.8fr 1.3fr 1.4fr 0.9fr 1.3fr 1fr;
+  grid-template-columns: 0.8fr 1.8fr 0.9fr 1.3fr 1fr;
   gap: 1rem;
   align-items: center;
   padding: 1rem 1.15rem;
@@ -695,7 +691,7 @@ onUnmounted(() => {
 
   .admin-user-table-head,
   .admin-user-row {
-    min-width: 860px;
+    min-width: 760px;
   }
 }
 </style>

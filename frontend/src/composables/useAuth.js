@@ -47,14 +47,11 @@ function normalizeCurrentUser(user){
 
   const permissionLevel = normalizePermissionLevel(user.permission_level)
   const normalizedUserLoginId =
-    typeof user.user_login_id === 'string' && user.user_login_id
-      ? user.user_login_id
-      : (user.user_name ?? '')
+    typeof user.user_login_id === 'string' ? user.user_login_id : ''
 
   return {
     id: Number(user.id ?? user.user_id ?? 0),
     user_login_id: normalizedUserLoginId,
-    user_name: normalizedUserLoginId,
     permission_level: permissionLevel,
     role_name: user.role_name || getRoleName(permissionLevel)
   }

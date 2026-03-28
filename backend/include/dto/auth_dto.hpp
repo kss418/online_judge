@@ -21,7 +21,6 @@ namespace auth_dto{
     };
 
     struct sign_up_request{
-        std::string user_name;
         std::string user_login_id;
         std::string raw_password;
     };
@@ -32,7 +31,6 @@ namespace auth_dto{
     };
 
     struct hashed_sign_up_request{
-        std::string user_name;
         std::string user_login_id;
         std::string password_hash;
     };

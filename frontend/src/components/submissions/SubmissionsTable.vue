@@ -9,7 +9,7 @@
         :class="{ 'has-actions': canManageSubmissionRejudge }"
       >
         <span>제출번호</span>
-        <span class="submission-table-head-user">닉네임</span>
+        <span class="submission-table-head-user">ID</span>
         <span>문제번호</span>
         <span>결과</span>
         <span>실행시간</span>
@@ -33,7 +33,7 @@
           class="submission-user-link"
           :to="{ name: 'user-info', params: { userId: submission.user_id } }"
         >
-          {{ submission.user_name }}
+          {{ submission.user_login_id }}
         </RouterLink>
         <RouterLink
           class="submission-problem-link"

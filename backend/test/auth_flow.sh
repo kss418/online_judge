@@ -26,10 +26,8 @@ http_port="${AUTH_FLOW_TEST_HTTP_PORT:-18080}"
 base_url="${AUTH_FLOW_TEST_BASE_URL:-http://127.0.0.1:${http_port}}"
 http_server_bin="${AUTH_FLOW_TEST_HTTP_SERVER_BIN:-${project_root}/http_server}"
 user_login_id="${AUTH_FLOW_TEST_LOGIN_ID:-auth_flow_test_$(date +%s)_$$}"
-user_name="${AUTH_FLOW_TEST_USER_NAME:-${user_login_id}}"
 second_user_login_id="${AUTH_FLOW_TEST_SECOND_LOGIN_ID:-${user_login_id}_second}"
-second_user_name="${AUTH_FLOW_TEST_SECOND_USER_NAME:-${second_user_login_id}}"
-duplicate_user_name_login_id="${AUTH_FLOW_TEST_DUPLICATE_USER_NAME_LOGIN_ID:-${user_login_id}_duplicate_name}"
+duplicate_user_login_id="${AUTH_FLOW_TEST_DUPLICATE_LOGIN_ID:-${user_login_id}}"
 raw_password="${AUTH_FLOW_TEST_PASSWORD:-password123}"
 test_db_name="auth_flow_test_$$_$(date +%s)"
 test_database_created="0"
@@ -62,7 +60,7 @@ register_temp_file promote_admin_response_file
 register_temp_file demote_user_response_file
 register_temp_file unauthorized_promote_response_file
 register_temp_file unauthorized_demote_response_file
-register_temp_file duplicate_user_name_response_file
+register_temp_file duplicate_user_login_id_response_file
 
 trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
 
@@ -78,7 +76,6 @@ export DB_NAME="${test_db_name}"
 
 append_log_line "${test_log_temp_file}" "base_url=${base_url}"
 append_log_line "${test_log_temp_file}" "user_login_id=${user_login_id}"
-append_log_line "${test_log_temp_file}" "user_name=${user_name}"
 append_log_line "${test_log_temp_file}" "test_db_name=${test_db_name}"
 
 apply_test_database_migrations
@@ -88,8 +85,7 @@ sign_up_user \
     "${user_login_id}" \
     "${raw_password}" \
     "${sign_up_response_file}" \
-    "auth flow" \
-    "${user_name}" >/dev/null
+    "auth flow" >/dev/null
 print_success_log "sign-up success"
 
 request_body="$(make_login_request_body "${user_login_id}" "${raw_password}")"
@@ -466,37 +462,35 @@ then
 fi
 print_success_log "current user wrong problems get success before submissions"
 
-duplicate_user_name_request_body="$(
+duplicate_user_login_id_request_body="$(
     make_sign_up_request_body \
-        "${duplicate_user_name_login_id}" \
-        "${raw_password}" \
-        "${user_name}"
+        "${duplicate_user_login_id}" \
+        "${raw_password}"
 )"
 send_http_request_and_assert_status \
     "POST" \
     "${base_url}/api/auth/sign-up" \
-    "${duplicate_user_name_response_file}" \
+    "${duplicate_user_login_id_response_file}" \
     "409" \
-    "duplicate user_name sign-up" \
+    "duplicate user_login_id sign-up" \
     "" \
-    "${duplicate_user_name_request_body}"
+    "${duplicate_user_login_id_request_body}"
 assert_json_error_code \
-    "${duplicate_user_name_response_file}" \
+    "${duplicate_user_login_id_response_file}" \
     "conflict" \
-    "duplicate user_name sign-up"
+    "duplicate user_login_id sign-up"
 assert_json_error_message \
-    "${duplicate_user_name_response_file}" \
+    "${duplicate_user_login_id_response_file}" \
     "failed to sign up: psql unique violation" \
-    "duplicate user_name sign-up"
-print_success_log "duplicate user_name failure success"
+    "duplicate user_login_id sign-up"
+print_success_log "duplicate user_login_id failure success"
 
 read -r second_user_id second_user_token < <(
     sign_up_user \
         "${second_user_login_id}" \
         "${raw_password}" \
         "${second_sign_up_response_file}" \
-        "auth flow" \
-        "${second_user_name}"
+        "auth flow"
 )
 print_success_log "second sign-up success"
 

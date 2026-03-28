@@ -7,7 +7,6 @@ std::expected<std::int64_t, error_code> login_repository::create_user(
     const auth_dto::hashed_sign_up_request& sign_up_request_value
 ){
     if(
-        sign_up_request_value.user_name.empty() ||
         sign_up_request_value.user_login_id.empty() ||
         sign_up_request_value.password_hash.empty()
     ){
@@ -15,11 +14,10 @@ std::expected<std::int64_t, error_code> login_repository::create_user(
     }
 
     const auto create_user_result = transaction.exec(
-        "INSERT INTO users(user_name, user_login_id, user_password_hash) "
-        "VALUES($1, $2, $3) "
+        "INSERT INTO users(user_login_id, user_password_hash) "
+        "VALUES($1, $2) "
         "RETURNING user_id",
         pqxx::params{
-            sign_up_request_value.user_name,
             sign_up_request_value.user_login_id,
             sign_up_request_value.password_hash
         }

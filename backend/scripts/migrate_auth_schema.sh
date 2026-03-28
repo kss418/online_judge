@@ -47,27 +47,53 @@ CREATE TABLE IF NOT EXISTS schema_migrations(
 
 CREATE TABLE IF NOT EXISTS users(
     user_id BIGSERIAL PRIMARY KEY,
-    user_name TEXT NOT NULL,
-    user_login_id TEXT,
+    user_login_id TEXT NOT NULL,
     user_password_hash TEXT,
     permission_level INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT users_user_name_not_blank CHECK(user_name <> ''),
-    CONSTRAINT users_user_login_id_not_blank CHECK(user_login_id IS NULL OR user_login_id <> ''),
+    CONSTRAINT users_user_login_id_not_blank CHECK(user_login_id <> ''),
     CONSTRAINT users_user_password_hash_not_blank
         CHECK(user_password_hash IS NULL OR user_password_hash <> '')
 );
 
 ALTER TABLE users
-    ADD COLUMN IF NOT EXISTS user_name TEXT;
+    ADD COLUMN IF NOT EXISTS user_login_id TEXT;
 
 ALTER TABLE users
     ADD COLUMN IF NOT EXISTS permission_level INTEGER;
 
-UPDATE users
-SET user_name = COALESCE(NULLIF(user_login_id, ''), 'user_' || user_id::TEXT)
-WHERE user_name IS NULL OR user_name = '';
+DO $do$
+BEGIN
+    IF EXISTS(
+        SELECT 1
+        FROM information_schema.columns
+        WHERE
+            table_schema = 'public' AND
+            table_name = 'users' AND
+            column_name = 'user_name'
+    ) THEN
+        EXECUTE $sql$
+            UPDATE users
+            SET user_login_id = COALESCE(
+                NULLIF(user_login_id, ''),
+                NULLIF(user_name, ''),
+                'user_' || user_id::TEXT
+            )
+            WHERE user_login_id IS NULL OR user_login_id = ''
+        $sql$;
+    ELSE
+        EXECUTE $sql$
+            UPDATE users
+            SET user_login_id = COALESCE(
+                NULLIF(user_login_id, ''),
+                'user_' || user_id::TEXT
+            )
+            WHERE user_login_id IS NULL OR user_login_id = ''
+        $sql$;
+    END IF;
+END
+$do$;
 
 DO $do$
 BEGIN
@@ -104,8 +130,49 @@ WHERE permission_level IS DISTINCT FROM CASE
     ELSE 0
 END;
 
+DO $do$
+DECLARE
+    duplicate_user_login_id_row RECORD;
+    deduplicated_user_login_id TEXT;
+BEGIN
+    FOR duplicate_user_login_id_row IN
+        SELECT user_id, user_login_id
+        FROM (
+            SELECT
+                user_id,
+                user_login_id,
+                ROW_NUMBER() OVER(
+                    PARTITION BY user_login_id
+                    ORDER BY user_id
+                ) AS duplicate_rank
+            FROM users
+        ) duplicate_user_login_id_values
+        WHERE duplicate_rank > 1
+    LOOP
+        deduplicated_user_login_id :=
+            duplicate_user_login_id_row.user_login_id ||
+            '__dedup_' ||
+            duplicate_user_login_id_row.user_id::TEXT;
+
+        WHILE EXISTS(
+            SELECT 1
+            FROM users
+            WHERE
+                user_id <> duplicate_user_login_id_row.user_id AND
+                user_login_id = deduplicated_user_login_id
+        ) LOOP
+            deduplicated_user_login_id := deduplicated_user_login_id || '_';
+        END LOOP;
+
+        UPDATE users
+        SET user_login_id = deduplicated_user_login_id
+        WHERE user_id = duplicate_user_login_id_row.user_id;
+    END LOOP;
+END
+$do$;
+
 ALTER TABLE users
-    ALTER COLUMN user_name SET NOT NULL;
+    ALTER COLUMN user_login_id SET NOT NULL;
 
 ALTER TABLE users
     ALTER COLUMN permission_level SET DEFAULT 0;
@@ -121,7 +188,22 @@ ALTER TABLE users
         CHECK(permission_level BETWEEN 0 AND 2);
 
 ALTER TABLE users
+    DROP CONSTRAINT IF EXISTS users_user_name_not_blank;
+
+ALTER TABLE users
+    DROP CONSTRAINT IF EXISTS users_user_login_id_not_blank;
+
+ALTER TABLE users
+    ADD CONSTRAINT users_user_login_id_not_blank
+        CHECK(user_login_id <> '');
+
+ALTER TABLE users
     DROP COLUMN IF EXISTS is_admin;
+
+DROP INDEX IF EXISTS users_user_name_unique_idx;
+
+ALTER TABLE users
+    DROP COLUMN IF EXISTS user_name;
 
 CREATE TABLE IF NOT EXISTS auth_tokens(
     token_id BIGSERIAL PRIMARY KEY,
@@ -141,54 +223,7 @@ CREATE TABLE IF NOT EXISTS auth_tokens(
 );
 
 DO $do$
-DECLARE
-    duplicate_user_name_row RECORD;
-    deduplicated_user_name TEXT;
 BEGIN
-    FOR duplicate_user_name_row IN
-        SELECT user_id, user_name
-        FROM (
-            SELECT
-                user_id,
-                user_name,
-                ROW_NUMBER() OVER(
-                    PARTITION BY user_name
-                    ORDER BY user_id
-                ) AS duplicate_rank
-            FROM users
-        ) duplicate_user_name_values
-        WHERE duplicate_rank > 1
-    LOOP
-        deduplicated_user_name :=
-            duplicate_user_name_row.user_name || '__dedup_' || duplicate_user_name_row.user_id::TEXT;
-
-        WHILE EXISTS(
-            SELECT 1
-            FROM users
-            WHERE
-                user_id <> duplicate_user_name_row.user_id AND
-                user_name = deduplicated_user_name
-        ) LOOP
-            deduplicated_user_name := deduplicated_user_name || '_';
-        END LOOP;
-
-        UPDATE users
-        SET user_name = deduplicated_user_name
-        WHERE user_id = duplicate_user_name_row.user_id;
-    END LOOP;
-
-    IF NOT EXISTS(
-        SELECT 1
-        FROM pg_constraint
-        WHERE
-            conrelid = 'users'::regclass AND
-            conname = 'users_user_name_not_blank'
-    ) THEN
-        ALTER TABLE users
-            ADD CONSTRAINT users_user_name_not_blank
-            CHECK(user_name <> '');
-    END IF;
-
     IF EXISTS(
         SELECT 1
         FROM information_schema.tables
@@ -213,12 +248,10 @@ $do$;
 CREATE INDEX IF NOT EXISTS auth_tokens_user_issued_idx
     ON auth_tokens(user_id, issued_at DESC);
 
-CREATE UNIQUE INDEX IF NOT EXISTS users_user_login_id_unique_idx
-    ON users(user_login_id)
-    WHERE user_login_id IS NOT NULL;
+DROP INDEX IF EXISTS users_user_login_id_unique_idx;
 
-CREATE UNIQUE INDEX IF NOT EXISTS users_user_name_unique_idx
-    ON users(user_name);
+CREATE UNIQUE INDEX IF NOT EXISTS users_user_login_id_unique_idx
+    ON users(user_login_id);
 
 CREATE INDEX IF NOT EXISTS auth_tokens_expires_at_idx
     ON auth_tokens(expires_at);
@@ -228,7 +261,7 @@ CREATE INDEX IF NOT EXISTS auth_tokens_active_user_expires_idx
     WHERE revoked_at IS NULL;
 
 INSERT INTO schema_migrations(version)
-VALUES('auth_schema_v9')
+VALUES('auth_schema_v10')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

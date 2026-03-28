@@ -58,10 +58,10 @@ if ! PGPASSWORD="${DB_PASSWORD}" psql \
     -U "${DB_USER}" \
     -d "${DB_NAME}" \
     -v ON_ERROR_STOP=1 <<'SQL' >>"${test_log_temp_file}" 2>&1
-INSERT INTO users(user_name, user_login_id, user_password_hash)
+INSERT INTO users(user_login_id, user_password_hash)
 VALUES
-    ('alice', 'alice', 'hash_alice'),
-    ('bob', 'bob', 'hash_bob');
+    ('alice', 'hash_alice'),
+    ('bob', 'hash_bob');
 
 INSERT INTO problems(title, version)
 VALUES

@@ -15,7 +15,6 @@ Create a local user and issue an auth token in the same request.
 
 | field | type | required | note |
 |---|---|---|---|
-| `user_name` | `string` | yes | must be non-empty |
 | `user_login_id` | `string` | yes | must be non-empty |
 | `raw_password` | `string` | yes | must be non-empty |
 
@@ -23,7 +22,6 @@ Example:
 
 ```json
 {
-  "user_name": "Alice",
   "user_login_id": "alice",
   "raw_password": "password123"
 }
@@ -59,7 +57,6 @@ Example:
 
 - invalid or empty request body: `400 Bad Request` with `invalid json`
 - missing required fields: `400 Bad Request`
-- duplicate `user_name`: `409 Conflict`
 - duplicate `user_login_id`: `409 Conflict`
 - unexpected internal failure: `500 Internal Server Error`
 

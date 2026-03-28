@@ -1098,12 +1098,8 @@ export function useSubmissionsPage(){
               submission_id: Number(submission.submission_id),
               user_id: Number(submission.user_id),
               problem_id: Number(submission.problem_id),
-              user_login_id: typeof submission.user_login_id === 'string'
-                ? submission.user_login_id
-                : '',
-              user_name:
+              user_login_id:
                 (typeof submission.user_login_id === 'string' && submission.user_login_id) ||
-                submission.user_name ||
                 `사용자 ${countFormatter.format(submission.user_id)}`,
               created_at: typeof submission.created_at === 'string' ? submission.created_at : '',
               created_at_timestamp: normalizedSubmittedAt.timestamp,

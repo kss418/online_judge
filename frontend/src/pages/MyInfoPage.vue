@@ -135,12 +135,12 @@
 
           <div v-else class="my-info-summary">
             <div class="metric-row">
-              <span class="metric-label">ID</span>
+              <span class="metric-label">계정 번호</span>
               <strong>#{{ displayedUser.user_id }}</strong>
             </div>
             <div class="metric-row">
-              <span class="metric-label">닉네임</span>
-              <strong>{{ displayedUser.user_name }}</strong>
+              <span class="metric-label">ID</span>
+              <strong>{{ displayedUser.user_login_id }}</strong>
             </div>
             <div class="metric-row">
               <span class="metric-label">만든 시각</span>
@@ -295,7 +295,7 @@ let relativeTimeRefreshTimer = null
 
 const currentUser = computed(() => authState.currentUser ?? {
   id: 0,
-  user_name: '',
+  user_login_id: '',
   role_name: 'user',
   permission_level: 0
 })
@@ -352,14 +352,14 @@ const displayedUser = computed(() => {
   if (isOwnProfile.value) {
     return {
       user_id: Number(currentUser.value.id ?? 0),
-      user_name: currentUser.value.user_name ?? '',
+      user_login_id: currentUser.value.user_login_id ?? '',
       created_at: null
     }
   }
 
   return {
     user_id: activeProfileUserId.value,
-    user_name: '',
+    user_login_id: '',
     created_at: null
   }
 })
@@ -968,14 +968,12 @@ async function loadWrongProblems(){
 }
 
 function normalizeUserSummary(payload){
-  const normalizedUserLoginId = typeof payload?.user_login_id === 'string'
-    ? payload.user_login_id
-    : (typeof payload?.user_name === 'string' ? payload.user_name : '')
+  const normalizedUserLoginId =
+    typeof payload?.user_login_id === 'string' ? payload.user_login_id : ''
 
   return {
     user_id: Number(payload?.user_id ?? 0),
     user_login_id: normalizedUserLoginId,
-    user_name: normalizedUserLoginId,
     created_at: typeof payload?.created_at === 'string' ? payload.created_at : null
   }
 }

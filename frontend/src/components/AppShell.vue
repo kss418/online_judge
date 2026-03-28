@@ -37,7 +37,7 @@
               <p class="auth-session-label">signed in</p>
               <div class="auth-session-row">
                 <div class="auth-session-user">
-                  <strong>{{ authState.currentUser.user_name }}</strong>
+                  <strong>{{ authState.currentUser.user_login_id }}</strong>
                   <StatusBadge
                     v-if="authState.currentUser.permission_level >= 1"
                     :label="getRoleBadgeLabel(authState.currentUser)"

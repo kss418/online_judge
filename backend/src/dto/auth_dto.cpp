@@ -5,25 +5,12 @@
 
 std::expected<auth_dto::sign_up_request, dto_validation_error>
 auth_dto::make_sign_up_request_from_json(const boost::json::object& json){
-    const auto user_name_opt = http_util::get_non_empty_string_field(
-        json,
-        "user_name"
-    );
-    if(!user_name_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: user_name",
-            .field_opt = "user_name"
-        });
-    }
-
     const auto credentials_exp = make_credentials_from_json(json);
     if(!credentials_exp){
         return std::unexpected(credentials_exp.error());
     }
 
     sign_up_request sign_up_request_value;
-    sign_up_request_value.user_name = std::string{*user_name_opt};
     sign_up_request_value.user_login_id = credentials_exp->user_login_id;
     sign_up_request_value.raw_password = credentials_exp->raw_password;
     return sign_up_request_value;
@@ -65,10 +52,6 @@ std::expected<auth_dto::credentials, dto_validation_error> auth_dto::make_creden
 std::expected<auth_dto::hashed_sign_up_request, error_code> auth_dto::hash_sign_up_request(
     const sign_up_request& sign_up_request_value
 ){
-    if(sign_up_request_value.user_name.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
     auth_dto::credentials credentials_value;
     credentials_value.user_login_id = sign_up_request_value.user_login_id;
     credentials_value.raw_password = sign_up_request_value.raw_password;
@@ -78,7 +61,6 @@ std::expected<auth_dto::hashed_sign_up_request, error_code> auth_dto::hash_sign_
     }
 
     hashed_sign_up_request hashed_sign_up_request_value;
-    hashed_sign_up_request_value.user_name = sign_up_request_value.user_name;
     hashed_sign_up_request_value.user_login_id = hashed_credentials_exp->user_login_id;
     hashed_sign_up_request_value.password_hash = hashed_credentials_exp->password_hash;
     return hashed_sign_up_request_value;
