@@ -142,6 +142,56 @@
             </RouterLink>
           </div>
         </article>
+
+        <article class="panel my-info-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">wrong</p>
+              <h3>틀린 문제 목록</h3>
+              <p class="my-info-copy">
+                시도했지만 아직 정답 처리하지 못한 문제를 바로 확인할 수 있습니다.
+              </p>
+            </div>
+
+            <StatusBadge
+              :label="wrongProblemsStatusLabel"
+              :tone="wrongProblemsStatusTone"
+            />
+          </div>
+
+          <div v-if="authState.isInitializing || isWrongProblemsLoading" class="empty-state">
+            <p>틀린 문제 목록을 불러오는 중입니다.</p>
+          </div>
+
+          <div v-else-if="!isAuthenticated" class="empty-state">
+            <p>로그인하면 틀린 문제 목록을 여기서 확인할 수 있습니다.</p>
+          </div>
+
+          <div v-else-if="wrongProblemsErrorMessage" class="empty-state error-state">
+            <p>{{ wrongProblemsErrorMessage }}</p>
+          </div>
+
+          <div v-else-if="wrongProblems.length === 0" class="empty-state">
+            <p>아직 틀린 문제 목록이 없습니다.</p>
+          </div>
+
+          <div v-else class="wrong-problem-grid">
+            <RouterLink
+              v-for="problem in wrongProblems"
+              :key="problem.problem_id"
+              class="wrong-problem-chip"
+              :to="{ name: 'problem-detail', params: { problemId: problem.problem_id } }"
+            >
+              <strong class="wrong-problem-chip__id">
+                #{{ problem.problem_id }}
+              </strong>
+              <div class="wrong-problem-chip__meta">
+                <span class="wrong-problem-chip__label">정답</span>
+                <strong>{{ problem.accepted_count }}</strong>
+              </div>
+            </RouterLink>
+          </div>
+        </article>
       </div>
     </div>
   </section>
@@ -150,7 +200,11 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 
-import { getMySolvedProblems, getMySubmissionStatistics } from '@/api/user'
+import {
+  getMySolvedProblems,
+  getMySubmissionStatistics,
+  getMyWrongProblems
+} from '@/api/user'
 import StatusBadge from '@/components/StatusBadge.vue'
 import SubmissionStatusBadge from '@/components/submissions/SubmissionStatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
@@ -158,12 +212,16 @@ import { useAuth } from '@/composables/useAuth'
 const { authState, isAuthenticated, initializeAuth } = useAuth()
 const submissionStatistics = ref(null)
 const solvedProblems = ref([])
+const wrongProblems = ref([])
 const isStatisticsLoading = ref(true)
 const isSolvedProblemsLoading = ref(true)
+const isWrongProblemsLoading = ref(true)
 const statisticsErrorMessage = ref('')
 const solvedProblemsErrorMessage = ref('')
+const wrongProblemsErrorMessage = ref('')
 let latestStatisticsRequestId = 0
 let latestSolvedProblemsRequestId = 0
+let latestWrongProblemsRequestId = 0
 
 const currentUser = computed(() => authState.currentUser ?? {
   id: 0,
@@ -262,6 +320,34 @@ const solvedProblemsStatusTone = computed(() => {
   }
 
   return isAuthenticated.value ? 'success' : 'neutral'
+})
+
+const wrongProblemsStatusLabel = computed(() => {
+  if (authState.isInitializing || isWrongProblemsLoading.value) {
+    return 'Loading'
+  }
+
+  if (!isAuthenticated.value) {
+    return 'Guest'
+  }
+
+  if (wrongProblemsErrorMessage.value) {
+    return 'Error'
+  }
+
+  return `${wrongProblems.value.length} Wrong`
+})
+
+const wrongProblemsStatusTone = computed(() => {
+  if (authState.isInitializing || isWrongProblemsLoading.value) {
+    return 'neutral'
+  }
+
+  if (wrongProblemsErrorMessage.value) {
+    return 'danger'
+  }
+
+  return isAuthenticated.value ? 'warning' : 'neutral'
 })
 
 const statisticsItems = computed(() => {
@@ -376,6 +462,20 @@ function normalizeSolvedProblems(payload){
     .sort((leftProblem, rightProblem) => leftProblem.problem_id - rightProblem.problem_id)
 }
 
+function normalizeWrongProblems(payload){
+  const wrongProblemValues = Array.isArray(payload?.wrong_problems)
+    ? payload.wrong_problems
+    : []
+
+  return wrongProblemValues
+    .map((problem) => ({
+      problem_id: Number(problem?.problem_id ?? 0),
+      accepted_count: normalizeCount(problem?.accepted_count)
+    }))
+    .filter((problem) => problem.problem_id > 0)
+    .sort((leftProblem, rightProblem) => leftProblem.problem_id - rightProblem.problem_id)
+}
+
 function formatTimestamp(value){
   if (typeof value !== 'string' || !value.trim()) {
     return '-'
@@ -476,29 +576,73 @@ async function loadSolvedProblems(){
   }
 }
 
+async function loadWrongProblems(){
+  const token = authState.token
+  const currentUserId = Number(currentUser.value.id ?? 0)
+
+  if (!token || currentUserId <= 0) {
+    wrongProblems.value = []
+    wrongProblemsErrorMessage.value = ''
+    isWrongProblemsLoading.value = false
+    return
+  }
+
+  const requestId = ++latestWrongProblemsRequestId
+  isWrongProblemsLoading.value = true
+  wrongProblemsErrorMessage.value = ''
+
+  try {
+    const payload = await getMyWrongProblems(token)
+    if (requestId !== latestWrongProblemsRequestId) {
+      return
+    }
+
+    wrongProblems.value = normalizeWrongProblems(payload)
+  } catch (error) {
+    if (requestId !== latestWrongProblemsRequestId) {
+      return
+    }
+
+    wrongProblems.value = []
+    wrongProblemsErrorMessage.value = error instanceof Error
+      ? error.message
+      : '틀린 문제 목록을 불러오지 못했습니다.'
+  } finally {
+    if (requestId === latestWrongProblemsRequestId) {
+      isWrongProblemsLoading.value = false
+    }
+  }
+}
+
 watch(
   () => [authState.initialized, authState.token, currentUser.value.id],
   ([initialized]) => {
     if (!initialized) {
       isStatisticsLoading.value = true
       isSolvedProblemsLoading.value = true
+      isWrongProblemsLoading.value = true
       return
     }
 
     if (!isAuthenticated.value) {
       latestStatisticsRequestId += 1
       latestSolvedProblemsRequestId += 1
+      latestWrongProblemsRequestId += 1
       submissionStatistics.value = null
       solvedProblems.value = []
+      wrongProblems.value = []
       statisticsErrorMessage.value = ''
       solvedProblemsErrorMessage.value = ''
+      wrongProblemsErrorMessage.value = ''
       isStatisticsLoading.value = false
       isSolvedProblemsLoading.value = false
+      isWrongProblemsLoading.value = false
       return
     }
 
     loadSubmissionStatistics()
     loadSolvedProblems()
+    loadWrongProblems()
   },
   {
     immediate: true
@@ -599,6 +743,58 @@ onMounted(() => {
 }
 
 .solved-problem-chip__label {
+  color: var(--text-muted);
+}
+
+.wrong-problem-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+  gap: 0.8rem;
+  max-height: 28rem;
+  overflow: auto;
+  padding-right: 0.2rem;
+}
+
+.wrong-problem-chip {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.9rem 0.95rem;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.015), rgba(15, 23, 42, 0.04)),
+    rgba(255, 255, 255, 0.96);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.wrong-problem-chip:hover,
+.wrong-problem-chip:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(239, 68, 68, 0.34);
+  box-shadow: 0 18px 30px -28px rgba(239, 68, 68, 0.55);
+}
+
+.wrong-problem-chip__id {
+  color: #b91c1c;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.wrong-problem-chip__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.65rem;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.wrong-problem-chip__label {
   color: var(--text-muted);
 }
 

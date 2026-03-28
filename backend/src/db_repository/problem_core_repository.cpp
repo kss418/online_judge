@@ -285,6 +285,38 @@ problem_core_repository::list_user_solved_problems(
     return problem_dto::make_summary_list_from_result(problem_summary_query);
 }
 
+std::expected<std::vector<problem_dto::summary>, error_code>
+problem_core_repository::list_user_wrong_problems(
+    pqxx::transaction_base& transaction,
+    std::int64_t user_id
+){
+    if(user_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto problem_summary_query = transaction.exec(
+        "SELECT "
+        "p.problem_id, "
+        "p.title, "
+        "p.version, "
+        "COALESCE(ps.submission_count, 0), "
+        "COALESCE(ps.accepted_count, 0), "
+        "'wrong'::TEXT "
+        "FROM user_problem_attempt_summary AS ups "
+        "JOIN problems AS p "
+        "ON p.problem_id = ups.problem_id "
+        "LEFT JOIN problem_statistics AS ps "
+        "ON ps.problem_id = p.problem_id "
+        "WHERE ups.user_id = $1 "
+        "AND COALESCE(ups.accepted_submission_count, 0) = 0 "
+        "AND COALESCE(ups.failed_submission_count, 0) > 0 "
+        "ORDER BY p.problem_id DESC",
+        pqxx::params{user_id}
+    );
+
+    return problem_dto::make_summary_list_from_result(problem_summary_query);
+}
+
 std::expected<problem_content_dto::limits, error_code> problem_core_repository::get_limits(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value

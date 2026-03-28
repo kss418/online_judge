@@ -137,6 +137,16 @@ boost::json::object user_json_serializer::make_solved_problem_list_object(
     return response_object;
 }
 
+boost::json::object user_json_serializer::make_wrong_problem_list_object(
+    const std::vector<problem_dto::summary>& wrong_problem_values
+){
+    boost::json::object response_object;
+    response_object["wrong_problem_count"] =
+        static_cast<std::int64_t>(wrong_problem_values.size());
+    response_object["wrong_problems"] = make_problem_summary_array(wrong_problem_values);
+    return response_object;
+}
+
 boost::json::object user_json_serializer::make_list_object(
     const auth_dto::user_summary_list& user_summary_values
 ){

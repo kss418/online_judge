@@ -57,6 +57,10 @@ namespace problem_core_repository{
         pqxx::transaction_base& transaction,
         std::int64_t user_id
     );
+    std::expected<std::vector<problem_dto::summary>, error_code> list_user_wrong_problems(
+        pqxx::transaction_base& transaction,
+        std::int64_t user_id
+    );
 
     std::expected<problem_content_dto::limits, error_code> get_limits(
         pqxx::transaction_base& transaction,

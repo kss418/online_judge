@@ -219,3 +219,24 @@ problem_core_service::list_user_solved_problems(
         }
     );
 }
+
+std::expected<std::vector<problem_dto::summary>, error_code>
+problem_core_service::list_user_wrong_problems(
+    db_connection& connection,
+    std::int64_t user_id
+){
+    if(user_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return db_service_util::with_retry_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<std::vector<problem_dto::summary>, error_code> {
+            return problem_core_repository::list_user_wrong_problems(
+                transaction,
+                user_id
+            );
+        }
+    );
+}

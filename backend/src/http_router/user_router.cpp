@@ -32,6 +32,12 @@ user_router::response_type user_router::route(
         return handle_user_me_solved_problems(request);
     }
 
+    if(path_segments.size() == 2
+        && path_segments[0] == "me"
+        && path_segments[1] == "wrong-problems"){
+        return handle_user_me_wrong_problems(request);
+    }
+
     if(path_segments.size() == 1 && path_segments[0] == "me"){
         return handle_user_me(request);
     }
@@ -95,6 +101,19 @@ user_router::response_type user_router::handle_user_me_solved_problems(
 ){
     if(request.method() == boost::beast::http::verb::get){
         return user_handler::get_me_solved_problems(
+            request,
+            db_connection_
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
+user_router::response_type user_router::handle_user_me_wrong_problems(
+    const request_type& request
+){
+    if(request.method() == boost::beast::http::verb::get){
+        return user_handler::get_me_wrong_problems(
             request,
             db_connection_
         );

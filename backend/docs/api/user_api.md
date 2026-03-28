@@ -273,6 +273,75 @@ Example:
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
+### `GET /api/user/me/wrong-problems`
+
+Get the wrong problem list for the currently authenticated user. This endpoint requires a bearer token.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <token>` |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `wrong_problem_count` | `int64` | total wrong problems in the response |
+| `wrong_problems` | `array` | wrong problem summaries ordered by `problem_id` descending |
+
+Each item in `wrong_problems` contains:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | wrong problem id |
+| `title` | `string` | problem title |
+| `version` | `int32` | current problem version |
+| `submission_count` | `int64` | total submissions on the problem |
+| `accepted_count` | `int64` | total accepted submissions on the problem |
+| `user_problem_state` | `string` | always `wrong` |
+
+Example:
+
+```json
+{
+  "wrong_problem_count": 2,
+  "wrong_problems": [
+    {
+      "problem_id": 11,
+      "title": "Stack Machine",
+      "version": 2,
+      "submission_count": 98,
+      "accepted_count": 21,
+      "user_problem_state": "wrong"
+    },
+    {
+      "problem_id": 2,
+      "title": "Echo Until EOF",
+      "version": 1,
+      "submission_count": 40,
+      "accepted_count": 19,
+      "user_problem_state": "wrong"
+    }
+  ]
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
 ### `PUT /api/user/{user_id}/admin`
 
 Promote an existing user to the `admin` role. This endpoint is superadmin-only.

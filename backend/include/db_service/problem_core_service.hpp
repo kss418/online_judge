@@ -56,4 +56,8 @@ namespace problem_core_service{
         db_connection& connection,
         std::int64_t user_id
     );
+    std::expected<std::vector<problem_dto::summary>, error_code> list_user_wrong_problems(
+        db_connection& connection,
+        std::int64_t user_id
+    );
 }

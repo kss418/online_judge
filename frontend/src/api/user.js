@@ -18,6 +18,12 @@ export function getMySolvedProblems(token){
   })
 }
 
+export function getMyWrongProblems(token){
+  return requestJson('/user/me/wrong-problems', {
+    bearerToken: token
+  })
+}
+
 export function promoteUserToAdmin(userId, token){
   return requestJson(`/user/${userId}/admin`, {
     method: 'PUT',

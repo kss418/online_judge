@@ -22,6 +22,9 @@ namespace user_json_serializer{
     boost::json::object make_solved_problem_list_object(
         const std::vector<problem_dto::summary>& solved_problem_values
     );
+    boost::json::object make_wrong_problem_list_object(
+        const std::vector<problem_dto::summary>& wrong_problem_values
+    );
 
     boost::json::object make_list_object(
         const auth_dto::user_summary_list& user_summary_values
