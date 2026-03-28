@@ -12,6 +12,12 @@ export function getMySubmissionStatistics(token){
   })
 }
 
+export function getMySolvedProblems(token){
+  return requestJson('/user/me/solved-problems', {
+    bearerToken: token
+  })
+}
+
 export function promoteUserToAdmin(userId, token){
   return requestJson(`/user/${userId}/admin`, {
     method: 'PUT',
