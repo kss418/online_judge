@@ -3,6 +3,33 @@
 #include "common/password_util.hpp"
 #include "http_core/http_util.hpp"
 
+#include <optional>
+#include <string>
+#include <string_view>
+
+namespace{
+    constexpr std::size_t credential_min_length = 4;
+    constexpr std::size_t credential_max_length = 15;
+
+    std::optional<dto_validation_error> validate_credential_length(
+        std::string_view field_name,
+        std::string_view value
+    ){
+        if(
+            value.size() < credential_min_length ||
+            value.size() > credential_max_length
+        ){
+            return dto_validation_error{
+                .code = "invalid_length",
+                .message = std::string{field_name} + " must be between 4 and 15 characters",
+                .field_opt = std::string{field_name}
+            };
+        }
+
+        return std::nullopt;
+    }
+}
+
 std::expected<auth_dto::sign_up_request, dto_validation_error>
 auth_dto::make_sign_up_request_from_json(const boost::json::object& json){
     const auto credentials_exp = make_credentials_from_json(json);
@@ -41,6 +68,22 @@ std::expected<auth_dto::credentials, dto_validation_error> auth_dto::make_creden
             .message = "required field: raw_password",
             .field_opt = "raw_password"
         });
+    }
+
+    const auto user_login_id_length_error_opt = validate_credential_length(
+        "user_login_id",
+        *user_login_id_opt
+    );
+    if(user_login_id_length_error_opt){
+        return std::unexpected(*user_login_id_length_error_opt);
+    }
+
+    const auto raw_password_length_error_opt = validate_credential_length(
+        "raw_password",
+        *raw_password_opt
+    );
+    if(raw_password_length_error_opt){
+        return std::unexpected(*raw_password_length_error_opt);
     }
 
     credentials credentials_value;

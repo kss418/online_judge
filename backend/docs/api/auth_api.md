@@ -15,8 +15,8 @@ Create a local user and issue an auth token in the same request.
 
 | field | type | required | note |
 |---|---|---|---|
-| `user_login_id` | `string` | yes | must be non-empty |
-| `raw_password` | `string` | yes | must be non-empty |
+| `user_login_id` | `string` | yes | must be 4 to 15 characters |
+| `raw_password` | `string` | yes | must be 4 to 15 characters |
 
 Example:
 
@@ -57,6 +57,7 @@ Example:
 
 - invalid or empty request body: `400 Bad Request` with `invalid json`
 - missing required fields: `400 Bad Request`
+- invalid `user_login_id` or `raw_password` length: `400 Bad Request`
 - duplicate `user_login_id`: `409 Conflict`
 - unexpected internal failure: `500 Internal Server Error`
 
@@ -103,8 +104,8 @@ Authenticate an existing local user and issue a new auth token.
 
 | field | type | required | note |
 |---|---|---|---|
-| `user_login_id` | `string` | yes | must be non-empty |
-| `raw_password` | `string` | yes | must be non-empty |
+| `user_login_id` | `string` | yes | must be 4 to 15 characters |
+| `raw_password` | `string` | yes | must be 4 to 15 characters |
 
 Example:
 
@@ -145,6 +146,7 @@ Example:
 
 - invalid or empty request body: `400 Bad Request` with `invalid json`
 - missing required fields: `400 Bad Request`
+- invalid `user_login_id` or `raw_password` length: `400 Bad Request`
 - wrong `user_login_id` or `raw_password`: `401 Unauthorized`
 - unexpected internal failure: `500 Internal Server Error`
 

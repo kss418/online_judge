@@ -63,6 +63,22 @@ append_log_line(){
     printf '%s\n' "${log_message}" >> "${log_file_path}"
 }
 
+make_test_login_id(){
+    local prefix="${1:-u}"
+    local suffix="${2:-}"
+    local unique_part=""
+
+    prefix="${prefix:0:2}"
+    if [[ -z "${prefix}" ]]; then
+        prefix="u"
+    fi
+
+    unique_part="$(printf '%05d%05d' "$$" "$RANDOM")"
+    unique_part="${unique_part:0:8}"
+
+    printf '%s%s%s\n' "${prefix}" "${unique_part}" "${suffix}"
+}
+
 publish_log_file(){
     local source_log_file_path="$1"
     local log_name="$2"

@@ -40,6 +40,8 @@
               class="field-input"
               type="text"
               autocomplete="username"
+              :minlength="minimumCredentialLength"
+              :maxlength="maximumCredentialLength"
               required
             />
           </label>
@@ -51,9 +53,15 @@
               class="field-input"
               type="password"
               autocomplete="current-password"
+              :minlength="minimumCredentialLength"
+              :maxlength="maximumCredentialLength"
               required
             />
           </label>
+
+          <p class="form-hint">
+            ID와 비밀번호는 4자 이상 15자 이하로 입력해 주세요.
+          </p>
 
           <p v-if="submitErrorMessage" class="form-error">
             {{ submitErrorMessage }}
@@ -90,6 +98,8 @@
               class="field-input"
               type="text"
               autocomplete="username"
+              :minlength="minimumCredentialLength"
+              :maxlength="maximumCredentialLength"
               required
             />
           </label>
@@ -101,12 +111,14 @@
               class="field-input"
               type="password"
               autocomplete="new-password"
+              :minlength="minimumCredentialLength"
+              :maxlength="maximumCredentialLength"
               required
             />
           </label>
 
           <p class="form-hint">
-            회원가입이 성공하면 바로 로그인된 상태로 전환됩니다.
+            ID와 비밀번호는 4자 이상 15자 이하이며, 가입이 성공하면 바로 로그인된 상태로 전환됩니다.
           </p>
 
           <p v-if="submitErrorMessage" class="form-error">
@@ -159,6 +171,8 @@ const { authState, login, signUp } = useAuth()
 const activeMode = ref('login')
 const submitErrorMessage = ref('')
 const isBackdropInteraction = ref(false)
+const minimumCredentialLength = 4
+const maximumCredentialLength = 15
 
 const loginForm = reactive({
   user_login_id: '',
@@ -229,8 +243,35 @@ function clearForms(){
   signUpForm.raw_password = ''
 }
 
+function getCredentialLengthError(userLoginId, rawPassword){
+  if (
+    userLoginId.length < minimumCredentialLength ||
+    userLoginId.length > maximumCredentialLength
+  ) {
+    return 'ID는 4자 이상 15자 이하로 입력해 주세요.'
+  }
+
+  if (
+    rawPassword.length < minimumCredentialLength ||
+    rawPassword.length > maximumCredentialLength
+  ) {
+    return '비밀번호는 4자 이상 15자 이하로 입력해 주세요.'
+  }
+
+  return ''
+}
+
 async function submitLogin(){
   submitErrorMessage.value = ''
+
+  const credentialLengthError = getCredentialLengthError(
+    loginForm.user_login_id,
+    loginForm.raw_password
+  )
+  if (credentialLengthError) {
+    submitErrorMessage.value = credentialLengthError
+    return
+  }
 
   try {
     await login({
@@ -249,6 +290,15 @@ async function submitLogin(){
 
 async function submitSignUp(){
   submitErrorMessage.value = ''
+
+  const credentialLengthError = getCredentialLengthError(
+    signUpForm.user_login_id,
+    signUpForm.raw_password
+  )
+  if (credentialLengthError) {
+    submitErrorMessage.value = credentialLengthError
+    return
+  }
 
   try {
     await signUp({

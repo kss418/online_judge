@@ -23,7 +23,7 @@ fi
 http_port="${PROBLEM_TESTCASE_FLOW_TEST_HTTP_PORT:-18083}"
 base_url="${PROBLEM_TESTCASE_FLOW_TEST_BASE_URL:-http://127.0.0.1:${http_port}}"
 http_server_bin="${PROBLEM_TESTCASE_FLOW_TEST_HTTP_SERVER_BIN:-${project_root}/http_server}"
-user_login_id="${PROBLEM_TESTCASE_FLOW_TEST_LOGIN_ID:-problem_testcase_flow_test_$(date +%s)_$$}"
+user_login_id="${PROBLEM_TESTCASE_FLOW_TEST_LOGIN_ID:-$(make_test_login_id pt)}"
 raw_password="${PROBLEM_TESTCASE_FLOW_TEST_PASSWORD:-password123}"
 test_db_name="problem_testcase_flow_test_$$_$(date +%s)"
 test_database_created="0"
