@@ -104,6 +104,15 @@ problem_router::response_type problem_router::route(
         return handle_testcase_zip(request, *problem_id_opt);
     }
 
+    if(path_segments.size() == 3 && path_segments[1] == "testcase" && path_segments[2] == "move"){
+        const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
+        if(!problem_id_opt){
+            return http_response_util::create_not_found(request);
+        }
+
+        return handle_testcase_move(request, *problem_id_opt);
+    }
+
     if(path_segments.size() == 3 && path_segments[1] == "testcase"){
         const auto problem_id_opt = string_util::parse_positive_int64(path_segments[0]);
         const auto testcase_order_opt = string_util::parse_positive_int32(path_segments[2]);
@@ -309,6 +318,21 @@ problem_router::response_type problem_router::handle_testcase_zip(
 ){
     if(request.method() == boost::beast::http::verb::post){
         return testcase_handler::post_testcase_zip(
+            request,
+            db_connection_,
+            problem_id
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
+problem_router::response_type problem_router::handle_testcase_move(
+    const request_type& request,
+    std::int64_t problem_id
+){
+    if(request.method() == boost::beast::http::verb::post){
+        return testcase_handler::move_testcase(
             request,
             db_connection_,
             problem_id

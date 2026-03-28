@@ -34,6 +34,11 @@ namespace testcase_handler{
         db_connection& db_connection_value,
         std::int64_t problem_id
     );
+    response_type move_testcase(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t problem_id
+    );
     response_type delete_testcase(
         const request_type& request,
         db_connection& db_connection_value,

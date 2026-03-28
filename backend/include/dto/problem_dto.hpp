@@ -61,6 +61,11 @@ namespace problem_dto{
         std::int32_t testcase_count = 0;
     };
 
+    struct testcase_move_request{
+        std::int32_t source_testcase_order = 0;
+        std::int32_t target_testcase_order = 0;
+    };
+
     struct testcase{
         std::int64_t id = 0;
         std::int32_t order = 0;
@@ -82,6 +87,9 @@ namespace problem_dto{
         const std::vector<http_util::query_param>& query_params
     );
     std::expected<testcase, dto_validation_error> make_testcase_from_json(
+        const boost::json::object& json
+    );
+    std::expected<testcase_move_request, dto_validation_error> make_testcase_move_request_from_json(
         const boost::json::object& json
     );
 }

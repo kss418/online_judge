@@ -367,6 +367,74 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
     );
 }
 
+testcase_handler::response_type testcase_handler::move_testcase(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t problem_id
+){
+    problem_dto::reference problem_reference_value{problem_id};
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto testcase_move_request_exp =
+            http_util::parse_json_dto_or_400<problem_dto::testcase_move_request>(
+                request,
+                problem_dto::make_testcase_move_request_from_json
+            );
+        if(!testcase_move_request_exp){
+            return std::move(testcase_move_request_exp.error());
+        }
+
+        const auto exists_problem_exp = problem_core_service::exists_problem(
+            db_connection_value,
+            problem_reference_value
+        );
+        if(!exists_problem_exp){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::internal_server_error,
+                "internal_server_error",
+                "failed to check problem: " + to_string(exists_problem_exp.error())
+            );
+        }
+        if(!exists_problem_exp->exists){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::not_found,
+                "problem_not_found",
+                "problem not found"
+            );
+        }
+
+        problem_dto::testcase_ref testcase_reference_value{
+            .problem_id = problem_id,
+            .testcase_order = testcase_move_request_exp->source_testcase_order
+        };
+        const auto move_testcase_exp = testcase_service::move_testcase(
+            db_connection_value,
+            testcase_reference_value,
+            testcase_move_request_exp->target_testcase_order
+        );
+        if(!move_testcase_exp){
+            return http_response_util::create_4xx_or_500(
+                request,
+                "move testcase",
+                move_testcase_exp.error()
+            );
+        }
+
+        return http_response_util::create_json(
+            request,
+            boost::beast::http::status::ok,
+            json_util::make_message_object("problem testcase moved")
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
 testcase_handler::response_type testcase_handler::delete_testcase(
     const request_type& request,
     db_connection& db_connection_value,

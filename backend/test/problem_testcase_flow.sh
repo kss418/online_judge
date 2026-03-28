@@ -41,6 +41,8 @@ create_empty_testcase_response_file="$(mktemp)"
 list_testcases_response_file="$(mktemp)"
 update_testcase_response_file="$(mktemp)"
 updated_testcases_response_file="$(mktemp)"
+move_testcase_response_file="$(mktemp)"
+move_testcases_response_file="$(mktemp)"
 delete_testcase_response_file="$(mktemp)"
 delete_all_testcases_response_file="$(mktemp)"
 remaining_testcases_response_file="$(mktemp)"
@@ -80,6 +82,8 @@ cleanup(){
         "${list_testcases_response_file}" \
         "${update_testcase_response_file}" \
         "${updated_testcases_response_file}" \
+        "${move_testcase_response_file}" \
+        "${move_testcases_response_file}" \
         "${delete_testcase_response_file}" \
         "${delete_all_testcases_response_file}" \
         "${remaining_testcases_response_file}" \
@@ -436,6 +440,95 @@ if response.get("version") != 4:
 PY
 
 send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/problem/${problem_id}/testcase/move" \
+    "${move_testcase_response_file}" \
+    "200" \
+    "move testcase" \
+    "${sign_up_token}" \
+    "$(
+        python3 <<'PY'
+import json
+
+print(
+    json.dumps(
+        {
+            "source_testcase_order": 2,
+            "target_testcase_order": 1,
+        }
+    )
+)
+PY
+    )"
+assert_json_message \
+    "${move_testcase_response_file}" \
+    "problem testcase moved" \
+    "move testcase"
+
+print_success_log "problem testcase move success"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}/testcase" \
+    "${move_testcases_response_file}" \
+    "200" \
+    "list moved testcases" \
+    "${sign_up_token}"
+
+python3 - "${move_testcases_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("testcase_count") != 2:
+    raise SystemExit("unexpected testcase_count after move")
+
+testcases = response.get("testcases")
+if not isinstance(testcases, list) or len(testcases) != 2:
+    raise SystemExit("unexpected testcase list size after move")
+
+first_testcase = testcases[0]
+second_testcase = testcases[1]
+
+if first_testcase.get("testcase_order") != 1:
+    raise SystemExit("unexpected first testcase_order after move")
+if first_testcase.get("testcase_input") != "":
+    raise SystemExit("unexpected first testcase_input after move")
+if first_testcase.get("testcase_output") != "":
+    raise SystemExit("unexpected first testcase_output after move")
+
+if second_testcase.get("testcase_order") != 2:
+    raise SystemExit("unexpected second testcase_order after move")
+if second_testcase.get("testcase_input") != "10 20\n":
+    raise SystemExit("unexpected second testcase_input after move")
+if second_testcase.get("testcase_output") != "30\n":
+    raise SystemExit("unexpected second testcase_output after move")
+PY
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${deleted_problem_response_file}" \
+    "200" \
+    "get problem after testcase move"
+
+python3 - "${deleted_problem_response_file}" "${problem_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+problem_id = int(sys.argv[2])
+if response.get("problem_id") != problem_id:
+    raise SystemExit("problem_id mismatch after testcase move")
+if response.get("version") != 5:
+    raise SystemExit("version mismatch after testcase move")
+PY
+
+send_http_request_and_assert_status \
     "DELETE" \
     "${base_url}/api/problem/${problem_id}/testcase/1" \
     "${delete_testcase_response_file}" \
@@ -474,9 +567,9 @@ if not isinstance(testcases, list) or len(testcases) != 1:
 first_testcase = testcases[0]
 if first_testcase.get("testcase_order") != 1:
     raise SystemExit("unexpected remaining testcase_order after delete")
-if first_testcase.get("testcase_input") != "":
+if first_testcase.get("testcase_input") != "10 20\n":
     raise SystemExit("unexpected remaining testcase_input after delete")
-if first_testcase.get("testcase_output") != "":
+if first_testcase.get("testcase_output") != "30\n":
     raise SystemExit("unexpected remaining testcase_output after delete")
 PY
 
@@ -497,7 +590,7 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
 problem_id = int(sys.argv[2])
 if response.get("problem_id") != problem_id:
     raise SystemExit("problem_id mismatch after testcase delete")
-if response.get("version") != 5:
+if response.get("version") != 6:
     raise SystemExit("version mismatch after testcase delete")
 PY
 
@@ -553,7 +646,7 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
 problem_id = int(sys.argv[2])
 if response.get("problem_id") != problem_id:
     raise SystemExit("problem_id mismatch after delete all testcases")
-if response.get("version") != 6:
+if response.get("version") != 7:
     raise SystemExit("version mismatch after delete all testcases")
 PY
 
@@ -586,7 +679,7 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
 problem_id = int(sys.argv[2])
 if response.get("problem_id") != problem_id:
     raise SystemExit("problem_id mismatch after empty delete all testcases")
-if response.get("version") != 6:
+if response.get("version") != 7:
     raise SystemExit("version mismatch after empty delete all testcases")
 PY
 
@@ -676,7 +769,7 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
 problem_id = int(sys.argv[2])
 if response.get("problem_id") != problem_id:
     raise SystemExit("problem_id mismatch after testcase zip upload")
-if response.get("version") != 7:
+if response.get("version") != 8:
     raise SystemExit("version mismatch after testcase zip upload")
 PY
 
@@ -755,7 +848,7 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
 problem_id = int(sys.argv[2])
 if response.get("problem_id") != problem_id:
     raise SystemExit("problem_id mismatch after testcase zip replace")
-if response.get("version") != 8:
+if response.get("version") != 9:
     raise SystemExit("version mismatch after testcase zip replace")
 PY
 
@@ -842,7 +935,7 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
 problem_id = int(sys.argv[2])
 if response.get("problem_id") != problem_id:
     raise SystemExit("problem_id mismatch after invalid testcase zip")
-if response.get("version") != 8:
+if response.get("version") != 9:
     raise SystemExit("version mismatch after invalid testcase zip")
 PY
 

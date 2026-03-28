@@ -162,6 +162,56 @@ std::expected<void, error_code> testcase_service::set_testcase(
     );
 }
 
+std::expected<void, error_code> testcase_service::move_testcase(
+    db_connection& connection,
+    const problem_dto::testcase_ref& testcase_reference_value,
+    std::int32_t target_testcase_order
+){
+    if(
+        testcase_reference_value.problem_id <= 0 ||
+        testcase_reference_value.testcase_order <= 0 ||
+        target_testcase_order <= 0
+    ){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    if(testcase_reference_value.testcase_order == target_testcase_order){
+        const auto testcase_exp = get_testcase(connection, testcase_reference_value);
+        if(!testcase_exp){
+            return std::unexpected(testcase_exp.error());
+        }
+
+        return {};
+    }
+
+    return db_service_util::with_retry_write_transaction(
+        connection,
+        [&](pqxx::work& transaction) -> std::expected<void, error_code> {
+            const auto move_testcase_exp = testcase_repository::move_testcase(
+                transaction,
+                testcase_reference_value,
+                target_testcase_order
+            );
+            if(!move_testcase_exp){
+                return std::unexpected(move_testcase_exp.error());
+            }
+
+            problem_dto::reference problem_reference_value{
+                testcase_reference_value.problem_id
+            };
+            const auto version_exp = problem_core_repository::increase_version(
+                transaction,
+                problem_reference_value
+            );
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
+            }
+
+            return {};
+        }
+    );
+}
+
 std::expected<void, error_code> testcase_service::delete_testcase(
     db_connection& connection,
     const problem_dto::testcase_ref& testcase_reference_value

@@ -49,6 +49,12 @@ namespace testcase_repository{
         const problem_dto::testcase& testcase_value
     );
 
+    std::expected<void, error_code> move_testcase(
+        pqxx::transaction_base& transaction,
+        const problem_dto::testcase_ref& testcase_reference_value,
+        std::int32_t target_testcase_order
+    );
+
     std::expected<void, error_code> delete_testcase(
         pqxx::transaction_base& transaction,
         const problem_dto::testcase_ref& testcase_reference_value

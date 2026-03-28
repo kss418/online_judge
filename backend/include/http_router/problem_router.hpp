@@ -59,6 +59,10 @@ private:
         const request_type& request,
         std::int64_t problem_id
     );
+    response_type handle_testcase_move(
+        const request_type& request,
+        std::int64_t problem_id
+    );
     response_type handle_testcase_all(
         const request_type& request,
         std::int64_t problem_id

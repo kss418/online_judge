@@ -979,6 +979,70 @@ Replace one hidden testcase of an existing problem. This endpoint is admin-only.
 - unknown `problem_id` or `testcase_order`: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
+### `POST /api/problem/{problem_id}/testcase/move`
+
+Move one hidden testcase to another order and shift the affected range. This endpoint is admin-only.
+
+#### request
+
+- content-type: `application/json`
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | must be positive |
+
+- body fields:
+
+| field | type | required | note |
+|---|---|---|---|
+| `source_testcase_order` | `int32` | yes | must be positive |
+| `target_testcase_order` | `int32` | yes | must be positive |
+
+Example:
+
+```json
+{
+  "source_testcase_order": 5,
+  "target_testcase_order": 2
+}
+```
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `message` | `string` | always `problem testcase moved` |
+
+Example:
+
+```json
+{
+  "message": "problem testcase moved"
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- invalid json: `400 Bad Request`
+- invalid body fields: `400 Bad Request`
+- unknown `problem_id`: `404 Not Found`
+- invalid testcase move request such as unknown testcase order: `400 Bad Request`
+- unexpected internal failure: `500 Internal Server Error`
+
 ### `DELETE /api/problem/{problem_id}/testcase/{testcase_order}`
 
 Delete one hidden testcase of an existing problem and shift all later testcase orders down by one. This endpoint is admin-only.

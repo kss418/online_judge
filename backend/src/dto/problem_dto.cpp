@@ -94,3 +94,35 @@ std::expected<problem_dto::testcase, dto_validation_error> problem_dto::make_tes
     testcase_value.output = std::string{*output_opt};
     return testcase_value;
 }
+
+std::expected<problem_dto::testcase_move_request, dto_validation_error>
+problem_dto::make_testcase_move_request_from_json(const boost::json::object& json){
+    const auto source_testcase_order_opt = http_util::get_positive_int32_field(
+        json,
+        "source_testcase_order"
+    );
+    if(!source_testcase_order_opt){
+        return std::unexpected(dto_validation_error{
+            .code = "invalid_field",
+            .message = "source_testcase_order must be a positive integer",
+            .field_opt = "source_testcase_order"
+        });
+    }
+
+    const auto target_testcase_order_opt = http_util::get_positive_int32_field(
+        json,
+        "target_testcase_order"
+    );
+    if(!target_testcase_order_opt){
+        return std::unexpected(dto_validation_error{
+            .code = "invalid_field",
+            .message = "target_testcase_order must be a positive integer",
+            .field_opt = "target_testcase_order"
+        });
+    }
+
+    testcase_move_request testcase_move_request_value;
+    testcase_move_request_value.source_testcase_order = *source_testcase_order_opt;
+    testcase_move_request_value.target_testcase_order = *target_testcase_order_opt;
+    return testcase_move_request_value;
+}
