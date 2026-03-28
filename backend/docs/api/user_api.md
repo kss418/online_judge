@@ -4,9 +4,9 @@ HTTP API handled by `user_router`.
 
 ## endpoint
 
-### `GET /api/user/{user_id}`
+### `GET /api/user/id/{user_login_id}`
 
-Get the public summary for a single user by id.
+Get the public summary for a single user by login id.
 
 #### request
 
@@ -21,7 +21,7 @@ Get the public summary for a single user by id.
 
 | field | type | note |
 |---|---|---|
-| `user_id` | `int64` | user id |
+| `user_id` | `int64` | account number |
 | `user_login_id` | `string` | login identifier |
 | `created_at` | `string` | sign-up timestamp |
 

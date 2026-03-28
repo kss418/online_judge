@@ -31,7 +31,7 @@
         </span>
         <RouterLink
           class="submission-user-link"
-          :to="{ name: 'user-info', params: { userId: submission.user_id } }"
+          :to="{ name: 'user-info', params: { userLoginId: submission.user_login_id } }"
         >
           {{ submission.user_login_id }}
         </RouterLink>

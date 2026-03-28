@@ -36,6 +36,35 @@ namespace{
 
         return get_user_summary_exp->value();
     }
+
+    std::expected<user_dto::summary, user_handler::response_type>
+    require_user_summary_by_login_id(
+        const user_handler::request_type& request,
+        db_connection& db_connection_value,
+        std::string_view user_login_id
+    ){
+        const auto get_user_summary_exp = user_service::get_summary_by_login_id(
+            db_connection_value,
+            user_login_id
+        );
+        if(!get_user_summary_exp){
+            return std::unexpected(http_response_util::create_4xx_or_500(
+                request,
+                "get user summary by login id",
+                get_user_summary_exp.error()
+            ));
+        }
+        if(!get_user_summary_exp->has_value()){
+            return std::unexpected(http_response_util::create_error(
+                request,
+                boost::beast::http::status::not_found,
+                "user_not_found",
+                "user not found"
+            ));
+        }
+
+        return get_user_summary_exp->value();
+    }
 }
 
 user_handler::response_type user_handler::get_me(
@@ -174,6 +203,27 @@ user_handler::response_type user_handler::get_user_summary(
         request,
         db_connection_value,
         user_id
+    );
+    if(!user_summary_exp){
+        return std::move(user_summary_exp.error());
+    }
+
+    return http_response_util::create_json(
+        request,
+        boost::beast::http::status::ok,
+        user_json_serializer::make_summary_object(*user_summary_exp)
+    );
+}
+
+user_handler::response_type user_handler::get_user_summary_by_login_id(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::string_view user_login_id
+){
+    const auto user_summary_exp = require_user_summary_by_login_id(
+        request,
+        db_connection_value,
+        user_login_id
     );
     if(!user_summary_exp){
         return std::move(user_summary_exp.error());

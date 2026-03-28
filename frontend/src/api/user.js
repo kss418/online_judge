@@ -1,7 +1,7 @@
 import { requestJson } from '@/api/http'
 
-export function getUserSummary(userId){
-  return requestJson(`/user/${userId}`)
+export function getUserSummary(userLoginId){
+  return requestJson(`/user/id/${encodeURIComponent(userLoginId)}`)
 }
 
 export function getUserSubmissionStatistics(userId){

@@ -2,6 +2,8 @@
 
 #include "common/db_connection.hpp"
 
+#include <string_view>
+
 #include <boost/beast/http/field.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/status.hpp>
@@ -31,6 +33,11 @@ namespace user_handler{
         const request_type& request,
         db_connection& db_connection_value,
         std::int64_t user_id
+    );
+    response_type get_user_summary_by_login_id(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::string_view user_login_id
     );
     response_type get_user_submission_statistics(
         const request_type& request,

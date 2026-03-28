@@ -4,6 +4,7 @@
 #include "http_handler/user_handler.hpp"
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 class user_router{
@@ -26,6 +27,10 @@ private:
     response_type handle_user_me_statistics(const request_type& request);
     response_type handle_user_me_solved_problems(const request_type& request);
     response_type handle_user_me_wrong_problems(const request_type& request);
+    response_type handle_user_summary_by_login_id(
+        const request_type& request,
+        const std::string& user_login_id
+    );
     response_type handle_user_summary(
         const request_type& request,
         std::int64_t user_id

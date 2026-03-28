@@ -14,4 +14,8 @@ namespace user_repository{
         pqxx::transaction_base& transaction,
         std::int64_t user_id
     );
+    std::expected<std::optional<user_dto::summary>, error_code> get_summary_by_login_id(
+        pqxx::transaction_base& transaction,
+        std::string_view user_login_id
+    );
 }

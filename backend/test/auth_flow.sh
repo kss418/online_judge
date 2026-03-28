@@ -172,7 +172,7 @@ login_token="$(read_json_field "${login_response_file}" "token" "string")"
 
 send_http_request_and_assert_status \
     "GET" \
-    "${base_url}/api/user/${login_user_id}" \
+    "${base_url}/api/user/id/${user_login_id}" \
     "${user_summary_response_file}" \
     "200" \
     "get public user summary"

@@ -53,16 +53,16 @@ const routes = [
     component: MyInfoPage
   },
   {
-    path: '/users/:userId(\\d+)',
+    path: '/users/:userLoginId',
     name: 'user-info',
     component: MyInfoPage
   },
   {
-    path: '/user/:userId(\\d+)',
+    path: '/user/:userLoginId',
     redirect: (to) => ({
       name: 'user-info',
       params: {
-        userId: String(to.params.userId)
+        userLoginId: String(to.params.userLoginId)
       }
     })
   },

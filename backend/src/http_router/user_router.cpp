@@ -42,6 +42,23 @@ user_router::response_type user_router::route(
         return handle_user_me(request);
     }
 
+    if(path_segments.size() == 2 && path_segments[0] == "id"){
+        const auto decoded_user_login_id_opt = string_util::decode_percent_encoded(
+            path_segments[1]
+        );
+        if(
+            !decoded_user_login_id_opt ||
+            decoded_user_login_id_opt->empty()
+        ){
+            return http_response_util::create_not_found(request);
+        }
+
+        return handle_user_summary_by_login_id(
+            request,
+            *decoded_user_login_id_opt
+        );
+    }
+
     if(path_segments.size() == 2 && path_segments[1] == "statistics"){
         const auto user_id_opt = string_util::parse_positive_int64(path_segments[0]);
         if(!user_id_opt){
@@ -152,6 +169,21 @@ user_router::response_type user_router::handle_user_me_wrong_problems(
         return user_handler::get_me_wrong_problems(
             request,
             db_connection_
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
+user_router::response_type user_router::handle_user_summary_by_login_id(
+    const request_type& request,
+    const std::string& user_login_id
+){
+    if(request.method() == boost::beast::http::verb::get){
+        return user_handler::get_user_summary_by_login_id(
+            request,
+            db_connection_,
+            user_login_id
         );
     }
 

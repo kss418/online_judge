@@ -22,3 +22,24 @@ std::expected<std::optional<user_dto::summary>, error_code> user_service::get_su
         }
     );
 }
+
+std::expected<std::optional<user_dto::summary>, error_code>
+user_service::get_summary_by_login_id(
+    db_connection& connection,
+    std::string_view user_login_id
+){
+    if(user_login_id.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return db_service_util::with_retry_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<std::optional<user_dto::summary>, error_code> {
+            return user_repository::get_summary_by_login_id(
+                transaction,
+                user_login_id
+            );
+        }
+    );
+}

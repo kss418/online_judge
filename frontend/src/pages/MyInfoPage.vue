@@ -300,21 +300,31 @@ const currentUser = computed(() => authState.currentUser ?? {
   permission_level: 0
 })
 
-const routeUserId = computed(() => {
-  const rawValue = Array.isArray(route.params.userId)
-    ? route.params.userId[0]
-    : route.params.userId
-  const parsedUserId = Number.parseInt(String(rawValue ?? ''), 10)
-  return Number.isInteger(parsedUserId) && parsedUserId > 0
-    ? parsedUserId
-    : 0
+const routeUserLoginId = computed(() => {
+  const rawValue = Array.isArray(route.params.userLoginId)
+    ? route.params.userLoginId[0]
+    : route.params.userLoginId
+
+  return typeof rawValue === 'string' ? rawValue.trim() : ''
 })
 
 const isUserProfileRoute = computed(() => route.name === 'user-info')
 
+const requestedProfileUserLoginId = computed(() => {
+  if (isUserProfileRoute.value) {
+    return routeUserLoginId.value
+  }
+
+  if (!authState.initialized || !isAuthenticated.value) {
+    return ''
+  }
+
+  return currentUser.value.user_login_id ?? ''
+})
+
 const activeProfileUserId = computed(() => {
   if (isUserProfileRoute.value) {
-    return routeUserId.value
+    return Number(publicUserSummary.value?.user_id ?? 0)
   }
 
   if (!authState.initialized || !isAuthenticated.value) {
@@ -327,8 +337,17 @@ const activeProfileUserId = computed(() => {
 const isOwnProfile = computed(() => (
   authState.initialized &&
   isAuthenticated.value &&
-  activeProfileUserId.value > 0 &&
-  activeProfileUserId.value === Number(currentUser.value.id ?? 0)
+  (
+    (
+      isUserProfileRoute.value &&
+      routeUserLoginId.value !== '' &&
+      routeUserLoginId.value === (currentUser.value.user_login_id ?? '')
+    ) ||
+    (
+      !isUserProfileRoute.value &&
+      Number(currentUser.value.id ?? 0) > 0
+    )
+  )
 ))
 
 const showExtendedProfilePanels = computed(() => activeProfileUserId.value > 0)
@@ -340,8 +359,8 @@ const shouldShowLoadingState = computed(() => (
 ))
 
 const hasPublicProfile = computed(() => (
-  Number(publicUserSummary.value?.user_id ?? 0) === activeProfileUserId.value &&
-  activeProfileUserId.value > 0
+  Boolean(publicUserSummary.value) &&
+  publicUserSummary.value.user_login_id === requestedProfileUserLoginId.value
 ))
 
 const displayedUser = computed(() => {
@@ -358,8 +377,8 @@ const displayedUser = computed(() => {
   }
 
   return {
-    user_id: activeProfileUserId.value,
-    user_login_id: '',
+    user_id: 0,
+    user_login_id: routeUserLoginId.value,
     created_at: null
   }
 })
@@ -377,8 +396,12 @@ const isProfileLoading = computed(() => {
 })
 
 const profileErrorMessage = computed(() => {
+  if (isUserProfileRoute.value) {
+    return publicUserSummaryErrorMessage.value
+  }
+
   if (!showExtendedProfilePanels.value) {
-    return isUserProfileRoute.value ? '유효하지 않은 사용자입니다.' : ''
+    return ''
   }
 
   return publicUserSummaryErrorMessage.value
@@ -978,8 +1001,8 @@ function normalizeUserSummary(payload){
   }
 }
 
-async function loadPublicUserSummary(userId){
-  if (!Number.isInteger(userId) || userId <= 0) {
+async function loadPublicUserSummary(userLoginId){
+  if (typeof userLoginId !== 'string' || !userLoginId.trim()) {
     publicUserSummary.value = null
     publicUserSummaryErrorMessage.value = '유효하지 않은 사용자입니다.'
     isPublicUserSummaryLoading.value = false
@@ -992,7 +1015,7 @@ async function loadPublicUserSummary(userId){
   publicUserSummaryErrorMessage.value = ''
 
   try {
-    const payload = await getUserSummary(userId)
+    const payload = await getUserSummary(userLoginId.trim())
     if (requestId !== latestPublicUserSummaryRequestId) {
       return
     }
@@ -1062,18 +1085,17 @@ watch(
 
 watch(
   () => [
-    activeProfileUserId.value,
+    requestedProfileUserLoginId.value,
     isUserProfileRoute.value,
-    authState.initialized,
-    currentUser.value.id
+    authState.initialized
   ],
-  ([profileUserId, , initialized]) => {
+  ([profileUserLoginId, , initialized]) => {
     if (!isUserProfileRoute.value && !initialized) {
       isPublicUserSummaryLoading.value = true
       return
     }
 
-    if (profileUserId <= 0) {
+    if (!profileUserLoginId) {
       latestPublicUserSummaryRequestId += 1
       publicUserSummary.value = null
       publicUserSummaryErrorMessage.value = ''
@@ -1081,7 +1103,7 @@ watch(
       return
     }
 
-    loadPublicUserSummary(profileUserId)
+    loadPublicUserSummary(profileUserLoginId)
   },
   {
     immediate: true

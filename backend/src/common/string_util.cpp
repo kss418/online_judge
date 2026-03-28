@@ -3,6 +3,25 @@
 #include <charconv>
 #include <cctype>
 #include <limits>
+#include <string>
+
+namespace{
+    std::optional<unsigned char> parse_hex_digit(char character){
+        if(character >= '0' && character <= '9'){
+            return static_cast<unsigned char>(character - '0');
+        }
+
+        if(character >= 'a' && character <= 'f'){
+            return static_cast<unsigned char>(character - 'a' + 10);
+        }
+
+        if(character >= 'A' && character <= 'F'){
+            return static_cast<unsigned char>(character - 'A' + 10);
+        }
+
+        return std::nullopt;
+    }
+}
 
 static bool is_whitespace(char character){
     return std::isspace(static_cast<unsigned char>(character)) != 0;
@@ -50,4 +69,33 @@ std::optional<std::int64_t> string_util::parse_positive_int64(std::string_view v
     }
 
     return int64_value;
+}
+
+std::optional<std::string> string_util::decode_percent_encoded(std::string_view value){
+    std::string decoded_value;
+    decoded_value.reserve(value.size());
+
+    for(std::size_t index = 0; index < value.size(); ++index){
+        if(value[index] != '%'){
+            decoded_value.push_back(value[index]);
+            continue;
+        }
+
+        if(index + 2 >= value.size()){
+            return std::nullopt;
+        }
+
+        const auto high_nibble_opt = parse_hex_digit(value[index + 1]);
+        const auto low_nibble_opt = parse_hex_digit(value[index + 2]);
+        if(!high_nibble_opt || !low_nibble_opt){
+            return std::nullopt;
+        }
+
+        const unsigned char decoded_character =
+            static_cast<unsigned char>((*high_nibble_opt << 4) | *low_nibble_opt);
+        decoded_value.push_back(static_cast<char>(decoded_character));
+        index += 2;
+    }
+
+    return decoded_value;
 }
