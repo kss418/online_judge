@@ -602,6 +602,7 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_repos
         "submission_table.user_id, "
         "user_table.user_name, "
         "submission_table.problem_id, "
+        "problem_table.title, "
         "submission_table.language, "
         "submission_table.status::text, "
         "submission_table.score, "
@@ -624,6 +625,8 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_repos
         "submission_table.created_at::text, "
         "submission_table.updated_at::text "
         "FROM submissions submission_table "
+        "JOIN problems problem_table "
+        "ON problem_table.problem_id = submission_table.problem_id "
         "JOIN users user_table "
         "ON user_table.user_id = submission_table.user_id ";
     pqxx::params query_params;

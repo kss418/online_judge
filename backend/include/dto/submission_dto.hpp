@@ -63,6 +63,7 @@ namespace submission_dto{
         std::int64_t user_id = 0;
         std::string user_name;
         std::int64_t problem_id = 0;
+        std::string problem_title;
         std::string language;
         std::string status;
         std::optional<std::int16_t> score_opt = std::nullopt;

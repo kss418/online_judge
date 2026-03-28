@@ -42,6 +42,7 @@ namespace{
         response_object["user_id"] = summary_value.user_id;
         response_object["user_name"] = summary_value.user_name;
         response_object["problem_id"] = summary_value.problem_id;
+        response_object["problem_title"] = summary_value.problem_title;
         response_object["language"] = summary_value.language;
         response_object["status"] = summary_value.status;
         response_object["created_at"] = summary_value.created_at;

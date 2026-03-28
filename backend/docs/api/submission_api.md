@@ -127,6 +127,7 @@ Get a single submission detail view. This endpoint is public and does not requir
 | `submission_id` | `int64` | submission id |
 | `user_id` | `int64` | submitter user id |
 | `problem_id` | `int64` | related problem id |
+| `problem_title` | `string` | related problem title |
 | `language` | `string` | submitted language |
 | `status` | `string` | current submission status |
 | `score` | `int16 \| null` | score, null before judging finishes |
@@ -480,6 +481,7 @@ Example:
       "submission_id": 12,
       "user_id": 7,
       "problem_id": 3,
+      "problem_title": "A + B",
       "language": "cpp",
       "status": "accepted",
       "score": 100,
@@ -493,6 +495,7 @@ Example:
       "submission_id": 9,
       "user_id": 7,
       "problem_id": 3,
+      "problem_title": "A + B",
       "language": "python",
       "status": "accepted",
       "score": 100,

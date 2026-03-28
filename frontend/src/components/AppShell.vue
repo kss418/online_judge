@@ -49,7 +49,7 @@
                   to="/me"
                   class="ghost-button auth-session-link"
                 >
-                  내 정보
+                  정보
                 </RouterLink>
               </div>
             </div>

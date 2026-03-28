@@ -273,22 +273,23 @@ submission_dto::summary submission_dto::make_summary_from_row(
     summary_value.user_id = submission_summary_row[1].as<std::int64_t>();
     summary_value.user_name = submission_summary_row[2].as<std::string>();
     summary_value.problem_id = submission_summary_row[3].as<std::int64_t>();
-    summary_value.language = submission_summary_row[4].as<std::string>();
-    summary_value.status = submission_summary_row[5].as<std::string>();
-    if(!submission_summary_row[6].is_null()){
-        summary_value.score_opt = submission_summary_row[6].as<std::int16_t>();
-    }
+    summary_value.problem_title = submission_summary_row[4].as<std::string>();
+    summary_value.language = submission_summary_row[5].as<std::string>();
+    summary_value.status = submission_summary_row[6].as<std::string>();
     if(!submission_summary_row[7].is_null()){
-        summary_value.elapsed_ms_opt = submission_summary_row[7].as<std::int64_t>();
+        summary_value.score_opt = submission_summary_row[7].as<std::int16_t>();
     }
     if(!submission_summary_row[8].is_null()){
-        summary_value.max_rss_kb_opt = submission_summary_row[8].as<std::int64_t>();
+        summary_value.elapsed_ms_opt = submission_summary_row[8].as<std::int64_t>();
     }
     if(!submission_summary_row[9].is_null()){
-        summary_value.user_problem_state_opt = submission_summary_row[9].as<std::string>();
+        summary_value.max_rss_kb_opt = submission_summary_row[9].as<std::int64_t>();
     }
-    summary_value.created_at = submission_summary_row[10].as<std::string>();
-    summary_value.updated_at = submission_summary_row[11].as<std::string>();
+    if(!submission_summary_row[10].is_null()){
+        summary_value.user_problem_state_opt = submission_summary_row[10].as<std::string>();
+    }
+    summary_value.created_at = submission_summary_row[11].as<std::string>();
+    summary_value.updated_at = submission_summary_row[12].as<std::string>();
     return summary_value;
 }
 
