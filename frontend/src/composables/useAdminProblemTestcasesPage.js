@@ -950,6 +950,7 @@ export function useAdminProblemTestcasesPage(){
     handleTestcaseZipFileChange,
     handleUploadTestcaseZip,
     handleCreateTestcase,
+    selectTestcase,
     handleDeleteLastTestcase,
     handleSaveSelectedTestcase,
     handleViewSelectedTestcase,

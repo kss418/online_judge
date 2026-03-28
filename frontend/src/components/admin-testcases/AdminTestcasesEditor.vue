@@ -519,6 +519,8 @@ defineEmits([
 }
 
 .admin-testcase-card {
+  min-width: 0;
+  overflow: hidden;
   padding: 1rem;
   border-color: var(--admin-testcases-nested-border);
   background: var(--admin-testcases-nested-surface);
@@ -608,11 +610,14 @@ defineEmits([
 }
 
 .admin-testcases-summary-panel {
+  min-width: 0;
   padding: 0.85rem;
   border: 1px solid var(--admin-testcases-section-border);
   border-radius: 20px;
   background: var(--admin-testcases-section-surface);
   box-shadow: var(--admin-testcases-section-shadow);
+  position: relative;
+  z-index: 1;
 }
 
 .admin-testcases-summary-list {

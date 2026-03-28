@@ -155,6 +155,7 @@ const {
   handleTestcaseZipFileChange,
   handleUploadTestcaseZip,
   handleCreateTestcase,
+  selectTestcase,
   handleDeleteLastTestcase,
   handleSaveSelectedTestcase,
   handleViewSelectedTestcase,
