@@ -10,7 +10,7 @@ namespace pqxx{
 namespace user_dto{
     struct summary{
         std::int64_t user_id = 0;
-        std::string user_name;
+        std::string user_login_id;
         std::string created_at;
     };
 

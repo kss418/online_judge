@@ -271,7 +271,7 @@ submission_dto::summary submission_dto::make_summary_from_row(
     summary summary_value;
     summary_value.submission_id = submission_summary_row[0].as<std::int64_t>();
     summary_value.user_id = submission_summary_row[1].as<std::int64_t>();
-    summary_value.user_name = submission_summary_row[2].as<std::string>();
+    summary_value.user_login_id = submission_summary_row[2].as<std::string>();
     summary_value.problem_id = submission_summary_row[3].as<std::int64_t>();
     summary_value.problem_title = submission_summary_row[4].as<std::string>();
     summary_value.language = submission_summary_row[5].as<std::string>();

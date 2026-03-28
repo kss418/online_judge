@@ -45,20 +45,19 @@ namespace auth_dto{
     struct identity{
         std::int64_t user_id = 0;
         std::int32_t permission_level = 0;
-        std::string user_name;
+        std::string user_login_id;
     };
 
     struct session{
         std::int64_t user_id = 0;
         std::int32_t permission_level = 0;
-        std::string user_name;
+        std::string user_login_id;
         std::string token;
     };
 
     struct user_summary{
         std::int64_t user_id = 0;
-        std::string user_name;
-        std::optional<std::string> user_login_id_opt;
+        std::string user_login_id;
         std::int32_t permission_level = 0;
         std::string created_at;
     };

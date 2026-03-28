@@ -62,7 +62,8 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_repository::ge
     }
 
     const auto token_identity_result = transaction.exec(
-        "SELECT token_table.user_id, user_table.permission_level, user_table.user_name "
+        "SELECT token_table.user_id, user_table.permission_level, "
+        "COALESCE(user_table.user_login_id, '') "
         "FROM auth_tokens token_table "
         "JOIN users user_table "
         "ON token_table.user_id = user_table.user_id "
@@ -81,7 +82,7 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_repository::ge
     auth_dto::identity identity_value;
     identity_value.user_id = token_identity_result[0][0].as<std::int64_t>();
     identity_value.permission_level = token_identity_result[0][1].as<std::int32_t>();
-    identity_value.user_name = token_identity_result[0][2].as<std::string>();
+    identity_value.user_login_id = token_identity_result[0][2].as<std::string>();
     return identity_value;
 }
 
@@ -140,8 +141,7 @@ std::expected<auth_dto::user_summary_list, error_code> auth_repository::get_user
     const auto user_list_result = transaction.exec(
         "SELECT "
         "user_id, "
-        "user_name, "
-        "user_login_id, "
+        "COALESCE(user_login_id, ''), "
         "permission_level, "
         "created_at::text "
         "FROM users "
@@ -154,12 +154,9 @@ std::expected<auth_dto::user_summary_list, error_code> auth_repository::get_user
     for(const auto& user_row : user_list_result){
         auth_dto::user_summary user_summary_value;
         user_summary_value.user_id = user_row[0].as<std::int64_t>();
-        user_summary_value.user_name = user_row[1].as<std::string>();
-        if(!user_row[2].is_null()){
-            user_summary_value.user_login_id_opt = user_row[2].as<std::string>();
-        }
-        user_summary_value.permission_level = user_row[3].as<std::int32_t>();
-        user_summary_value.created_at = user_row[4].as<std::string>();
+        user_summary_value.user_login_id = user_row[1].as<std::string>();
+        user_summary_value.permission_level = user_row[2].as<std::int32_t>();
+        user_summary_value.created_at = user_row[3].as<std::string>();
         user_summary_values.push_back(std::move(user_summary_value));
     }
 

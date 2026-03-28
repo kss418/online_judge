@@ -46,10 +46,15 @@ function normalizeCurrentUser(user){
   }
 
   const permissionLevel = normalizePermissionLevel(user.permission_level)
+  const normalizedUserLoginId =
+    typeof user.user_login_id === 'string' && user.user_login_id
+      ? user.user_login_id
+      : (user.user_name ?? '')
 
   return {
     id: Number(user.id ?? user.user_id ?? 0),
-    user_name: user.user_name ?? '',
+    user_login_id: normalizedUserLoginId,
+    user_name: normalizedUserLoginId,
     permission_level: permissionLevel,
     role_name: user.role_name || getRoleName(permissionLevel)
   }
@@ -95,7 +100,7 @@ function setSession(session){
   authState.token = session.token
   authState.currentUser = normalizeCurrentUser({
     user_id: session.user_id,
-    user_name: session.user_name,
+    user_login_id: session.user_login_id,
     permission_level: session.permission_level,
     role_name: session.role_name
   })

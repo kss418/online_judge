@@ -968,9 +968,14 @@ async function loadWrongProblems(){
 }
 
 function normalizeUserSummary(payload){
+  const normalizedUserLoginId = typeof payload?.user_login_id === 'string'
+    ? payload.user_login_id
+    : (typeof payload?.user_name === 'string' ? payload.user_name : '')
+
   return {
     user_id: Number(payload?.user_id ?? 0),
-    user_name: typeof payload?.user_name === 'string' ? payload.user_name : '',
+    user_login_id: normalizedUserLoginId,
+    user_name: normalizedUserLoginId,
     created_at: typeof payload?.created_at === 'string' ? payload.created_at : null
   }
 }

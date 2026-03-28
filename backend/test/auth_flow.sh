@@ -104,13 +104,13 @@ send_http_request_and_assert_status \
     "${request_body}"
 print_success_log "login success"
 
-if ! python3 - "${sign_up_response_file}" "${login_response_file}" "${user_name}" <<'PY'
+if ! python3 - "${sign_up_response_file}" "${login_response_file}" "${user_login_id}" <<'PY'
 import json
 import sys
 
 sign_up_response_file_path = sys.argv[1]
 login_response_file_path = sys.argv[2]
-expected_user_name = sys.argv[3]
+expected_user_login_id = sys.argv[3]
 
 with open(sign_up_response_file_path, encoding="utf-8") as response_file:
     sign_up_response = json.load(response_file)
@@ -121,13 +121,13 @@ with open(login_response_file_path, encoding="utf-8") as response_file:
 sign_up_user_id = sign_up_response.get("user_id")
 sign_up_permission_level = sign_up_response.get("permission_level")
 sign_up_role_name = sign_up_response.get("role_name")
-sign_up_user_name = sign_up_response.get("user_name")
+sign_up_user_login_id = sign_up_response.get("user_login_id")
 sign_up_token = sign_up_response.get("token")
 
 login_user_id = login_response.get("user_id")
 login_permission_level = login_response.get("permission_level")
 login_role_name = login_response.get("role_name")
-login_user_name = login_response.get("user_name")
+login_user_login_id = login_response.get("user_login_id")
 login_token = login_response.get("token")
 
 if not isinstance(sign_up_user_id, int) or sign_up_user_id <= 0:
@@ -139,8 +139,8 @@ if sign_up_permission_level != 0:
 if sign_up_role_name != "user":
     raise SystemExit("expected role_name to be user for new user")
 
-if sign_up_user_name != expected_user_name:
-    raise SystemExit("sign-up response user_name mismatch")
+if sign_up_user_login_id != expected_user_login_id:
+    raise SystemExit("sign-up response user_login_id mismatch")
 
 if not isinstance(sign_up_token, str) or not sign_up_token:
     raise SystemExit("missing token in sign-up response")
@@ -154,8 +154,8 @@ if login_permission_level != 0:
 if login_role_name != "user":
     raise SystemExit("expected role_name to stay user after login")
 
-if login_user_name != expected_user_name:
-    raise SystemExit("login response user_name mismatch")
+if login_user_login_id != expected_user_login_id:
+    raise SystemExit("login response user_login_id mismatch")
 
 if not isinstance(login_token, str) or not login_token:
     raise SystemExit("missing token in login response")
@@ -180,7 +180,7 @@ send_http_request_and_assert_status \
     "${user_summary_response_file}" \
     "200" \
     "get public user summary"
-if ! python3 - "${user_summary_response_file}" "${login_user_id}" "${user_name}" <<'PY'
+if ! python3 - "${user_summary_response_file}" "${login_user_id}" "${user_login_id}" <<'PY'
 import json
 import sys
 
@@ -188,13 +188,13 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
     user_summary = json.load(response_file)
 
 expected_user_id = int(sys.argv[2])
-expected_user_name = sys.argv[3]
+expected_user_login_id = sys.argv[3]
 
 if user_summary.get("user_id") != expected_user_id:
     raise SystemExit("public user summary id mismatch")
 
-if user_summary.get("user_name") != expected_user_name:
-    raise SystemExit("public user summary user_name mismatch")
+if user_summary.get("user_login_id") != expected_user_login_id:
+    raise SystemExit("public user summary user_login_id mismatch")
 
 created_at = user_summary.get("created_at")
 if not isinstance(created_at, str) or not created_at:
@@ -206,8 +206,8 @@ if "permission_level" in user_summary:
 if "role_name" in user_summary:
     raise SystemExit("did not expect role_name in public user summary")
 
-if "user_login_id" in user_summary:
-    raise SystemExit("did not expect user_login_id in public user summary")
+if "user_name" in user_summary:
+    raise SystemExit("did not expect user_name in public user summary")
 PY
 then
     append_log_line "${test_log_temp_file}" "public user summary validation failed"
@@ -326,7 +326,7 @@ send_http_request_and_assert_status \
     "200" \
     "get current user before promote" \
     "${login_token}"
-if ! python3 - "${user_me_response_file}" "${login_user_id}" "${user_name}" <<'PY'
+if ! python3 - "${user_me_response_file}" "${login_user_id}" "${user_login_id}" <<'PY'
 import json
 import sys
 
@@ -334,13 +334,13 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
     current_user = json.load(response_file)
 
 expected_user_id = int(sys.argv[2])
-expected_user_name = sys.argv[3]
+expected_user_login_id = sys.argv[3]
 
 if current_user.get("id") != expected_user_id:
     raise SystemExit("current user id mismatch before promote")
 
-if current_user.get("user_name") != expected_user_name:
-    raise SystemExit("current user user_name mismatch before promote")
+if current_user.get("user_login_id") != expected_user_login_id:
+    raise SystemExit("current user user_login_id mismatch before promote")
 
 if current_user.get("permission_level") != 0:
     raise SystemExit("expected current user permission_level to be 0 before promote")
@@ -532,7 +532,7 @@ send_http_request_and_assert_status \
     "200" \
     "get current user after promote" \
     "${login_token}"
-if ! python3 - "${user_me_response_file}" "${login_user_id}" "${user_name}" <<'PY'
+if ! python3 - "${user_me_response_file}" "${login_user_id}" "${user_login_id}" <<'PY'
 import json
 import sys
 
@@ -540,13 +540,13 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
     current_user = json.load(response_file)
 
 expected_user_id = int(sys.argv[2])
-expected_user_name = sys.argv[3]
+expected_user_login_id = sys.argv[3]
 
 if current_user.get("id") != expected_user_id:
     raise SystemExit("current user id mismatch after promote")
 
-if current_user.get("user_name") != expected_user_name:
-    raise SystemExit("current user user_name mismatch after promote")
+if current_user.get("user_login_id") != expected_user_login_id:
+    raise SystemExit("current user user_login_id mismatch after promote")
 
 if current_user.get("permission_level") != 2:
     raise SystemExit("expected current user permission_level to be 2 after promote")
@@ -580,7 +580,7 @@ if ! python3 \
     "${promote_admin_response_file}" \
     "${second_login_response_file}" \
     "${second_user_id}" \
-    "${second_user_name}" <<'PY'
+    "${second_user_login_id}" <<'PY'
 import json
 import sys
 
@@ -594,7 +594,7 @@ with open(sys.argv[3], encoding="utf-8") as response_file:
     second_login_response = json.load(response_file)
 
 expected_second_user_id = int(sys.argv[4])
-expected_second_user_name = sys.argv[5]
+expected_second_user_login_id = sys.argv[5]
 
 if unauthorized_promote_response.get("error", {}).get("code") != "superadmin_bearer_token_required":
     raise SystemExit("unexpected error code for unauthorized promote response")
@@ -617,8 +617,8 @@ if second_login_response.get("permission_level") != 1:
 if second_login_response.get("role_name") != "admin":
     raise SystemExit("expected second login response role_name to be admin after promotion")
 
-if second_login_response.get("user_name") != expected_second_user_name:
-    raise SystemExit("expected second login response user_name to be preserved")
+if second_login_response.get("user_login_id") != expected_second_user_login_id:
+    raise SystemExit("expected second login response user_login_id to be preserved")
 
 if "is_admin" in promote_admin_response or "is_admin" in second_login_response:
     raise SystemExit("did not expect is_admin in auth responses")
@@ -666,7 +666,7 @@ if ! python3 \
     - "${demote_user_response_file}" \
     "${third_login_response_file}" \
     "${second_user_id}" \
-    "${second_user_name}" <<'PY'
+    "${second_user_login_id}" <<'PY'
 import json
 import sys
 
@@ -677,7 +677,7 @@ with open(sys.argv[2], encoding="utf-8") as response_file:
     third_login_response = json.load(response_file)
 
 expected_second_user_id = int(sys.argv[3])
-expected_second_user_name = sys.argv[4]
+expected_second_user_login_id = sys.argv[4]
 
 if demote_user_response.get("user_id") != expected_second_user_id:
     raise SystemExit("demote user response user_id mismatch")
@@ -697,8 +697,8 @@ if third_login_response.get("permission_level") != 0:
 if third_login_response.get("role_name") != "user":
     raise SystemExit("expected third login response role_name to be user after demotion")
 
-if third_login_response.get("user_name") != expected_second_user_name:
-    raise SystemExit("expected third login response user_name to be preserved")
+if third_login_response.get("user_login_id") != expected_second_user_login_id:
+    raise SystemExit("expected third login response user_login_id to be preserved")
 
 if "is_admin" in demote_user_response or "is_admin" in third_login_response:
     raise SystemExit("did not expect is_admin in demotion responses")

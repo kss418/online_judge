@@ -10,13 +10,7 @@ namespace{
     ){
         boost::json::object response_object;
         response_object["user_id"] = user_summary_value.user_id;
-        response_object["user_name"] = user_summary_value.user_name;
-        if(user_summary_value.user_login_id_opt){
-            response_object["user_login_id"] = *user_summary_value.user_login_id_opt;
-        }
-        else{
-            response_object["user_login_id"] = nullptr;
-        }
+        response_object["user_login_id"] = user_summary_value.user_login_id;
         response_object["permission_level"] = user_summary_value.permission_level;
         response_object["role_name"] = permission_util::role_name(
             user_summary_value.permission_level
@@ -82,7 +76,7 @@ boost::json::object user_json_serializer::make_me_object(
 ){
     boost::json::object response_object;
     response_object["id"] = auth_identity_value.user_id;
-    response_object["user_name"] = auth_identity_value.user_name;
+    response_object["user_login_id"] = auth_identity_value.user_login_id;
     response_object["permission_level"] = auth_identity_value.permission_level;
     response_object["role_name"] = permission_util::role_name(
         auth_identity_value.permission_level
@@ -95,7 +89,7 @@ boost::json::object user_json_serializer::make_summary_object(
 ){
     boost::json::object response_object;
     response_object["user_id"] = summary_value.user_id;
-    response_object["user_name"] = summary_value.user_name;
+    response_object["user_login_id"] = summary_value.user_login_id;
     response_object["created_at"] = summary_value.created_at;
     return response_object;
 }

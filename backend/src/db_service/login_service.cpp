@@ -47,7 +47,7 @@ std::expected<auth_dto::session, error_code> login_service::sign_up(
             auth_dto::session session_value;
             session_value.user_id = *user_id_exp;
             session_value.permission_level = permission_util::USER;
-            session_value.user_name = hashed_sign_up_request_exp->user_name;
+            session_value.user_login_id = hashed_sign_up_request_exp->user_login_id;
             session_value.token = issued_token_exp->token;
             return session_value;
         }
@@ -100,7 +100,7 @@ std::expected<std::optional<auth_dto::session>, error_code> login_service::login
             auth_dto::session session_value;
             session_value.user_id = login_identity_exp->value().user_id;
             session_value.permission_level = login_identity_exp->value().permission_level;
-            session_value.user_name = login_identity_exp->value().user_name;
+            session_value.user_login_id = login_identity_exp->value().user_login_id;
             session_value.token = issued_token_exp->token;
             return session_value;
         }

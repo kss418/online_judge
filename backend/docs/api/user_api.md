@@ -22,7 +22,7 @@ Get the public summary for a single user by id.
 | field | type | note |
 |---|---|---|
 | `user_id` | `int64` | user id |
-| `user_name` | `string` | display name |
+| `user_login_id` | `string` | login identifier |
 | `created_at` | `string` | sign-up timestamp |
 
 Example:
@@ -30,7 +30,7 @@ Example:
 ```json
 {
   "user_id": 7,
-  "user_name": "alice",
+  "user_login_id": "alice",
   "created_at": "2026-03-26 13:14:02.000000+09"
 }
 ```
@@ -186,8 +186,7 @@ Each item in `users` contains:
 | field | type | note |
 |---|---|---|
 | `user_id` | `int64` | user id |
-| `user_name` | `string` | display name |
-| `user_login_id` | `string \| null` | login id when available |
+| `user_login_id` | `string` | login identifier |
 | `permission_level` | `int32` | numeric permission level |
 | `role_name` | `string` | derived role label |
 | `created_at` | `string` | sign-up timestamp |
@@ -200,7 +199,6 @@ Example:
   "users": [
     {
       "user_id": 1,
-      "user_name": "admin",
       "user_login_id": "admin",
       "permission_level": 2,
       "role_name": "superadmin",
@@ -208,7 +206,6 @@ Example:
     },
     {
       "user_id": 7,
-      "user_name": "alice",
       "user_login_id": "alice",
       "permission_level": 0,
       "role_name": "user",
@@ -249,7 +246,7 @@ Get the currently authenticated user profile. This endpoint requires a bearer to
 | field | type | note |
 |---|---|---|
 | `id` | `int64` | authenticated user id |
-| `user_name` | `string` | current display name |
+| `user_login_id` | `string` | current login identifier |
 | `permission_level` | `int32` | current permission level |
 | `role_name` | `string` | derived role label |
 
@@ -258,7 +255,7 @@ Example:
 ```json
 {
   "id": 7,
-  "user_name": "Alice",
+  "user_login_id": "alice",
   "permission_level": 1,
   "role_name": "admin"
 }

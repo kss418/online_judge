@@ -64,7 +64,7 @@ std::expected<std::optional<auth_dto::identity>, error_code> login_repository::g
     }
 
     const auto login_identity_result = transaction.exec(
-        "SELECT user_id, permission_level, user_name "
+        "SELECT user_id, permission_level, COALESCE(user_login_id, '') "
         "FROM users "
         "WHERE "
         "user_login_id = $1 AND "
@@ -80,6 +80,6 @@ std::expected<std::optional<auth_dto::identity>, error_code> login_repository::g
     auth_dto::identity identity_value;
     identity_value.user_id = login_identity_result[0][0].as<std::int64_t>();
     identity_value.permission_level = login_identity_result[0][1].as<std::int32_t>();
-    identity_value.user_name = login_identity_result[0][2].as<std::string>();
+    identity_value.user_login_id = login_identity_result[0][2].as<std::string>();
     return identity_value;
 }

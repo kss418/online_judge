@@ -40,7 +40,7 @@ Example:
 | `user_id` | `int64` | created user id |
 | `permission_level` | `int32` | currently `0` on sign-up |
 | `role_name` | `string` | currently `user` on sign-up |
-| `user_name` | `string` | stored display name |
+| `user_login_id` | `string` | login identifier |
 | `token` | `string` | raw bearer token |
 
 Example:
@@ -50,7 +50,7 @@ Example:
   "user_id": 1,
   "permission_level": 0,
   "role_name": "user",
-  "user_name": "Alice",
+  "user_login_id": "alice",
   "token": "..."
 }
 ```
@@ -129,7 +129,7 @@ Example:
 | `user_id` | `int64` | authenticated user id |
 | `permission_level` | `int32` | current permission level |
 | `role_name` | `string` | derived role label |
-| `user_name` | `string` | stored display name |
+| `user_login_id` | `string` | login identifier |
 | `token` | `string` | newly issued raw bearer token |
 
 Example:
@@ -139,7 +139,7 @@ Example:
   "user_id": 1,
   "permission_level": 1,
   "role_name": "admin",
-  "user_name": "Alice",
+  "user_login_id": "alice",
   "token": "..."
 }
 ```

@@ -13,7 +13,7 @@ std::expected<std::optional<user_dto::summary>, error_code> user_repository::get
     const auto user_summary_result = transaction.exec(
         "SELECT "
         "user_id, "
-        "user_name, "
+        "COALESCE(user_login_id, ''), "
         "created_at::text "
         "FROM users "
         "WHERE user_id = $1",
