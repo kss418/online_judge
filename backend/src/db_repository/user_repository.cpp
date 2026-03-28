@@ -1,5 +1,7 @@
 #include "db_repository/user_repository.hpp"
 
+#include "common/permission_util.hpp"
+
 #include <pqxx/pqxx>
 
 std::expected<user_dto::list, error_code> user_repository::get_public_list(
@@ -51,18 +53,28 @@ std::expected<user_dto::list, error_code> user_repository::get_public_list(
     if(filter_value.query_opt){
         query +=
             "WHERE "
-            "user_table.user_login_id ILIKE ('%' || $1 || '%') ";
+            "user_table.permission_level < $1 AND "
+            "user_table.user_login_id ILIKE ('%' || $2 || '%') ";
 
         query += "ORDER BY user_table.user_id ASC";
         const auto user_list_result = transaction.exec(
             query,
-            pqxx::params{*filter_value.query_opt}
+            pqxx::params{
+                permission_util::SUPERADMIN,
+                *filter_value.query_opt
+            }
         );
         return user_dto::make_list_from_result(user_list_result);
     }
 
-    query += "ORDER BY user_table.user_id ASC";
-    const auto user_list_result = transaction.exec(query);
+    query +=
+        "WHERE "
+        "user_table.permission_level < $1 "
+        "ORDER BY user_table.user_id ASC";
+    const auto user_list_result = transaction.exec(
+        query,
+        pqxx::params{permission_util::SUPERADMIN}
+    );
     return user_dto::make_list_from_result(user_list_result);
 }
 

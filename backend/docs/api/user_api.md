@@ -6,7 +6,7 @@ HTTP API handled by `user_router`.
 
 ### `GET /api/user/list`
 
-Get the public user list. This endpoint supports search by login id substring.
+Get the public user list. This endpoint supports search by login id substring and excludes superadmin accounts.
 
 #### request
 

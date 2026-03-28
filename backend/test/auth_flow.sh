@@ -562,6 +562,33 @@ promote_superadmin_user "${login_user_id}" "auth flow" >/dev/null
 print_success_log "bootstrap superadmin promote success"
 
 send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/user/list?q=${user_login_id}" \
+    "${user_public_list_response_file}" \
+    "200" \
+    "get public user list after superadmin promote"
+if ! python3 - "${user_public_list_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    user_list = json.load(response_file)
+
+if user_list.get("user_count") != 0:
+    raise SystemExit("expected promoted superadmin to be hidden from public user list")
+
+users = user_list.get("users")
+if not isinstance(users, list) or users:
+    raise SystemExit("expected no public users in filtered list for superadmin")
+PY
+then
+    append_log_line "${test_log_temp_file}" "public user list superadmin filtering failed"
+    publish_failure_logs
+    exit 1
+fi
+print_success_log "public user list hides superadmin success"
+
+send_http_request_and_assert_status \
     "PUT" \
     "${base_url}/api/user/${second_user_id}/admin" \
     "${promote_admin_response_file}" \
