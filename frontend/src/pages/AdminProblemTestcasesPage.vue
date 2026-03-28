@@ -74,6 +74,8 @@
             :selected-testcase="selectedTestcase"
             :can-delete-selected-testcase="canDeleteSelectedTestcase"
             :is-deleting-selected-testcase="isDeletingSelectedTestcase"
+            :can-move-testcases="canMoveTestcases"
+            :is-moving-testcase="isMovingTestcase"
             :can-save-selected-testcase="canSaveSelectedTestcase"
             :is-saving-selected-testcase="isSavingSelectedTestcase"
             :format-count="formatCount"
@@ -86,6 +88,7 @@
             @view-selected-testcase="handleViewSelectedTestcase"
             @select-testcase="selectTestcase"
             @delete-selected-testcase="handleDeleteSelectedTestcase"
+            @move-testcase="handleMoveTestcase"
             @save-selected-testcase="handleSaveSelectedTestcase"
           />
         </div>
@@ -134,12 +137,14 @@ const {
   isCreatingTestcase,
   isUploadingTestcaseZip,
   isDeletingSelectedTestcase,
+  isMovingTestcase,
   isSavingSelectedTestcase,
   selectedTestcaseZipName,
   selectedTestcase,
   canCreateTestcase,
   canUploadTestcaseZip,
   canDeleteSelectedTestcase,
+  canMoveTestcases,
   canSaveSelectedTestcase,
   canViewSpecificTestcase,
   formatCount,
@@ -157,6 +162,7 @@ const {
   handleCreateTestcase,
   selectTestcase,
   handleDeleteSelectedTestcase,
+  handleMoveTestcase,
   handleSaveSelectedTestcase,
   handleViewSelectedTestcase,
   setTestcaseSummaryElement

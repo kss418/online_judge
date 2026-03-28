@@ -7,6 +7,7 @@ import {
   getProblemDetail,
   getProblemList,
   getProblemTestcases,
+  moveProblemTestcase,
   uploadProblemTestcaseZip,
   updateProblemTestcase
 } from '@/api/problem'
@@ -127,6 +128,7 @@ export function useAdminProblemTestcasesPage(){
   const isCreatingTestcase = computed(() => busySection.value === 'create')
   const isUploadingTestcaseZip = computed(() => busySection.value === 'upload')
   const isDeletingSelectedTestcase = computed(() => busySection.value === 'delete-selected')
+  const isMovingTestcase = computed(() => busySection.value === 'move')
   const isSavingSelectedTestcase = computed(() => busySection.value === 'save')
   const selectedTestcaseZipName = computed(() => testcaseZipFile.value?.name || '')
   const selectedTestcase = computed(() =>
@@ -147,6 +149,12 @@ export function useAdminProblemTestcasesPage(){
     selectedProblemId.value > 0 &&
     Boolean(authState.token) &&
     Boolean(selectedTestcase.value) &&
+    !busySection.value
+  )
+  const canMoveTestcases = computed(() =>
+    selectedProblemId.value > 0 &&
+    Boolean(authState.token) &&
+    testcaseItems.value.length > 1 &&
     !busySection.value
   )
   const canSaveSelectedTestcase = computed(() => {
@@ -369,6 +377,21 @@ export function useAdminProblemTestcasesPage(){
     selectedTestcaseOrder.value = nextOrder
     viewTestcaseOrderInput.value = String(nextOrder)
     void scrollSelectedTestcaseIntoView()
+  }
+
+  function syncSelectedTestcaseById(preferredTestcaseId, fallbackOrder){
+    if (preferredTestcaseId > 0) {
+      const matchedTestcase = testcaseItems.value.find(
+        (testcase) => testcase.testcase_id === preferredTestcaseId
+      )
+
+      if (matchedTestcase) {
+        syncSelectedTestcase(matchedTestcase.testcase_order)
+        return
+      }
+    }
+
+    syncSelectedTestcase(fallbackOrder)
   }
 
   function selectTestcase(testcaseOrder){
@@ -837,6 +860,91 @@ export function useAdminProblemTestcasesPage(){
     }
   }
 
+  function reorderTestcaseItems(sourceTestcaseOrder, targetTestcaseOrder){
+    const nextTestcaseItems = testcaseItems.value.map((testcase) => {
+      if (testcase.testcase_order === sourceTestcaseOrder) {
+        return {
+          ...testcase,
+          testcase_order: targetTestcaseOrder
+        }
+      }
+
+      if (
+        sourceTestcaseOrder < targetTestcaseOrder &&
+        testcase.testcase_order > sourceTestcaseOrder &&
+        testcase.testcase_order <= targetTestcaseOrder
+      ) {
+        return {
+          ...testcase,
+          testcase_order: testcase.testcase_order - 1
+        }
+      }
+
+      if (
+        sourceTestcaseOrder > targetTestcaseOrder &&
+        testcase.testcase_order >= targetTestcaseOrder &&
+        testcase.testcase_order < sourceTestcaseOrder
+      ) {
+        return {
+          ...testcase,
+          testcase_order: testcase.testcase_order + 1
+        }
+      }
+
+      return testcase
+    })
+
+    nextTestcaseItems.sort((left, right) => left.testcase_order - right.testcase_order)
+    testcaseItems.value = nextTestcaseItems
+  }
+
+  async function handleMoveTestcase({ sourceTestcaseOrder, targetTestcaseOrder }){
+    if (!canMoveTestcases.value || !authState.token) {
+      return
+    }
+
+    const normalizedSourceOrder = Number(sourceTestcaseOrder)
+    const normalizedTargetOrder = Number(targetTestcaseOrder)
+
+    if (
+      !Number.isInteger(normalizedSourceOrder) ||
+      !Number.isInteger(normalizedTargetOrder) ||
+      normalizedSourceOrder <= 0 ||
+      normalizedTargetOrder <= 0 ||
+      normalizedSourceOrder === normalizedTargetOrder
+    ) {
+      return
+    }
+
+    const selectedTestcaseId = Number(selectedTestcase.value?.testcase_id ?? 0)
+    busySection.value = 'move'
+
+    try {
+      await moveProblemTestcase(
+        selectedProblemId.value,
+        {
+          source_testcase_order: normalizedSourceOrder,
+          target_testcase_order: normalizedTargetOrder
+        },
+        authState.token
+      )
+
+      reorderTestcaseItems(normalizedSourceOrder, normalizedTargetOrder)
+      syncSelectedTestcaseById(selectedTestcaseId, normalizedTargetOrder)
+      showSuccessNotice(
+        `테스트케이스 ${normalizedSourceOrder}번을 ${normalizedTargetOrder}번으로 이동했습니다.`
+      )
+    } catch (error) {
+      showErrorNotice(
+        error instanceof Error
+          ? error.message
+          : '테스트케이스 순서를 변경하지 못했습니다.'
+      )
+    } finally {
+      busySection.value = ''
+    }
+  }
+
   async function handleSaveSelectedTestcase(){
     if (!selectedTestcase.value || !canSaveSelectedTestcase.value || !authState.token) {
       return
@@ -942,12 +1050,14 @@ export function useAdminProblemTestcasesPage(){
     isCreatingTestcase,
     isUploadingTestcaseZip,
     isDeletingSelectedTestcase,
+    isMovingTestcase,
     isSavingSelectedTestcase,
     selectedTestcaseZipName,
     selectedTestcase,
     canCreateTestcase,
     canUploadTestcaseZip,
     canDeleteSelectedTestcase,
+    canMoveTestcases,
     canSaveSelectedTestcase,
     canViewSpecificTestcase,
     formatCount,
@@ -965,6 +1075,7 @@ export function useAdminProblemTestcasesPage(){
     handleCreateTestcase,
     selectTestcase,
     handleDeleteSelectedTestcase,
+    handleMoveTestcase,
     handleSaveSelectedTestcase,
     handleViewSelectedTestcase,
     setTestcaseSummaryElement

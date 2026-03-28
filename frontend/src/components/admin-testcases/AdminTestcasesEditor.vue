@@ -28,6 +28,12 @@
           <p class="admin-testcases-editor-copy">
             요약 리스트에서 특정 테스트케이스를 고르고, 선택한 항목만 편집해서 저장할 수 있습니다.
           </p>
+          <p
+            v-if="testcaseItems.length > 1"
+            class="admin-testcases-editor-copy"
+          >
+            요약 카드들을 드래그해서 순서를 바로 바꿀 수 있습니다.
+          </p>
         </div>
         <div class="admin-testcases-editor-side">
           <div class="admin-testcases-editor-actions">
@@ -200,9 +206,19 @@
                 :key="testcase.testcase_order"
                 type="button"
                 class="admin-testcase-summary-item"
-                :class="{ 'is-active': testcase.testcase_order === selectedTestcaseOrder }"
+                :class="{
+                  'is-active': testcase.testcase_order === selectedTestcaseOrder,
+                  'is-draggable': canMoveTestcases,
+                  'is-dragging': testcase.testcase_order === draggingTestcaseOrder,
+                  'is-drop-target': testcase.testcase_order === dropTargetTestcaseOrder
+                }"
                 :ref="(element) => setTestcaseSummaryElement(testcase.testcase_order, element)"
+                :draggable="canMoveTestcases"
                 @click="$emit('select-testcase', testcase.testcase_order)"
+                @dragstart="handleSummaryDragStart($event, testcase.testcase_order)"
+                @dragover="handleSummaryDragOver($event, testcase.testcase_order)"
+                @drop="handleSummaryDrop($event, testcase.testcase_order)"
+                @dragend="handleSummaryDragEnd"
               >
                 <div class="admin-testcase-summary-head">
                   <strong>#{{ formatCount(testcase.testcase_order) }}</strong>
@@ -287,7 +303,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { ref } from 'vue'
+
+const props = defineProps({
   selectedProblemId: {
     type: Number,
     required: true
@@ -376,6 +394,14 @@ defineProps({
     type: Boolean,
     required: true
   },
+  canMoveTestcases: {
+    type: Boolean,
+    required: true
+  },
+  isMovingTestcase: {
+    type: Boolean,
+    required: true
+  },
   selectedTestcaseInputDraft: {
     type: String,
     default: ''
@@ -410,7 +436,7 @@ defineProps({
   }
 })
 
-defineEmits([
+const emit = defineEmits([
   'testcase-zip-change',
   'upload-testcase-zip',
   'update:newTestcaseInput',
@@ -420,10 +446,85 @@ defineEmits([
   'view-selected-testcase',
   'select-testcase',
   'delete-selected-testcase',
+  'move-testcase',
   'update:selectedTestcaseInputDraft',
   'update:selectedTestcaseOutputDraft',
   'save-selected-testcase'
 ])
+
+const draggingTestcaseOrder = ref(0)
+const dropTargetTestcaseOrder = ref(0)
+
+function resetDragState(){
+  draggingTestcaseOrder.value = 0
+  dropTargetTestcaseOrder.value = 0
+}
+
+function handleSummaryDragStart(event, testcaseOrder){
+  if (!props.canMoveTestcases || props.isMovingTestcase) {
+    event.preventDefault()
+    return
+  }
+
+  draggingTestcaseOrder.value = testcaseOrder
+  dropTargetTestcaseOrder.value = 0
+
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(testcaseOrder))
+  }
+}
+
+function handleSummaryDragOver(event, testcaseOrder){
+  if (
+    !props.canMoveTestcases ||
+    props.isMovingTestcase ||
+    !draggingTestcaseOrder.value ||
+    draggingTestcaseOrder.value === testcaseOrder
+  ) {
+    return
+  }
+
+  event.preventDefault()
+  dropTargetTestcaseOrder.value = testcaseOrder
+
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+}
+
+function handleSummaryDrop(event, testcaseOrder){
+  if (!props.canMoveTestcases || props.isMovingTestcase) {
+    return
+  }
+
+  event.preventDefault()
+  const draggedOrderFromTransfer = Number.parseInt(
+    event.dataTransfer?.getData('text/plain') ?? '',
+    10
+  )
+  const sourceTestcaseOrder =
+    Number.isInteger(draggedOrderFromTransfer) && draggedOrderFromTransfer > 0
+      ? draggedOrderFromTransfer
+      : draggingTestcaseOrder.value
+
+  if (
+    sourceTestcaseOrder > 0 &&
+    testcaseOrder > 0 &&
+    sourceTestcaseOrder !== testcaseOrder
+  ) {
+    emit('move-testcase', {
+      sourceTestcaseOrder,
+      targetTestcaseOrder: testcaseOrder
+    })
+  }
+
+  resetDragState()
+}
+
+function handleSummaryDragEnd(){
+  resetDragState()
+}
 </script>
 
 <style scoped>
@@ -650,11 +751,32 @@ defineEmits([
   transform: translateY(-1px);
 }
 
+.admin-testcase-summary-item.is-draggable {
+  cursor: grab;
+}
+
+.admin-testcase-summary-item.is-draggable:active {
+  cursor: grabbing;
+}
+
+.admin-testcase-summary-item.is-dragging {
+  opacity: 0.55;
+  transform: scale(0.985);
+}
+
 .admin-testcase-summary-item:hover,
 .admin-testcase-summary-item.is-active {
   border-color: rgba(217, 119, 6, 0.34);
   background: rgba(255, 247, 237, 0.96);
   box-shadow: 0 10px 24px rgba(217, 119, 6, 0.1);
+}
+
+.admin-testcase-summary-item.is-drop-target,
+.admin-testcase-summary-item.is-drop-target:hover,
+.admin-testcase-summary-item.is-drop-target.is-active {
+  border-color: rgba(14, 116, 144, 0.42);
+  background: rgba(236, 254, 255, 0.96);
+  box-shadow: 0 12px 28px rgba(14, 116, 144, 0.14);
 }
 
 .admin-testcase-summary-head {

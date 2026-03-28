@@ -131,6 +131,14 @@ export function deleteProblemTestcase(problemId, testcaseOrder, token){
   })
 }
 
+export function moveProblemTestcase(problemId, payload, token){
+  return requestJson(`/problem/${problemId}/testcase/move`, {
+    method: 'POST',
+    body: payload,
+    bearerToken: token
+  })
+}
+
 export function updateProblemTestcase(problemId, testcaseOrder, payload, token){
   return requestJson(`/problem/${problemId}/testcase/${testcaseOrder}`, {
     method: 'PUT',
