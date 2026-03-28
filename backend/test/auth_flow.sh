@@ -51,6 +51,7 @@ register_temp_file second_sign_up_response_file
 register_temp_file second_login_response_file
 register_temp_file third_login_response_file
 register_temp_file user_me_response_file
+register_temp_file user_me_statistics_response_file
 register_temp_file promote_admin_response_file
 register_temp_file demote_user_response_file
 register_temp_file unauthorized_promote_response_file
@@ -205,6 +206,58 @@ then
     exit 1
 fi
 print_success_log "current user get success before promote"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/user/me/statistics" \
+    "${user_me_statistics_response_file}" \
+    "200" \
+    "get current user statistics before submissions" \
+    "${login_token}"
+if ! python3 - "${user_me_statistics_response_file}" "${login_user_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    statistics = json.load(response_file)
+
+expected_user_id = int(sys.argv[2])
+expected_zero_fields = [
+    "submission_count",
+    "queued_submission_count",
+    "judging_submission_count",
+    "accepted_submission_count",
+    "wrong_answer_submission_count",
+    "time_limit_exceeded_submission_count",
+    "memory_limit_exceeded_submission_count",
+    "runtime_error_submission_count",
+    "compile_error_submission_count",
+    "output_exceeded_submission_count",
+]
+
+if statistics.get("user_id") != expected_user_id:
+    raise SystemExit("current user statistics user_id mismatch")
+
+for field_name in expected_zero_fields:
+    if statistics.get(field_name) != 0:
+        raise SystemExit(f"expected {field_name} to be 0 before submissions")
+
+if statistics.get("last_submission_at") is not None:
+    raise SystemExit("expected last_submission_at to be null before submissions")
+
+if statistics.get("last_accepted_at") is not None:
+    raise SystemExit("expected last_accepted_at to be null before submissions")
+
+updated_at = statistics.get("updated_at")
+if not isinstance(updated_at, str) or not updated_at:
+    raise SystemExit("expected updated_at to be a non-empty string")
+PY
+then
+    append_log_line "${test_log_temp_file}" "current user statistics validation failed before submissions"
+    publish_failure_logs
+    exit 1
+fi
+print_success_log "current user statistics get success before submissions"
 
 duplicate_user_name_request_body="$(
     make_sign_up_request_body \

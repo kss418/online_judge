@@ -5,12 +5,13 @@
 #include "common/temp_file.hpp"
 #include "common/zip_util.hpp"
 #include "dto/problem_dto.hpp"
-#include "http_core/json_util.hpp"
 #include "http_core/testcase_uploader.hpp"
 #include "http_core/http_util.hpp"
 
 #include "db_service/problem_core_service.hpp"
 #include "db_service/testcase_service.hpp"
+#include "serializer/common_json_serializer.hpp"
+#include "serializer/problem_json_serializer.hpp"
 
 #include <utility>
 
@@ -58,7 +59,7 @@ testcase_handler::response_type testcase_handler::get_testcases(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_problem_testcase_list_object(*testcase_values_exp)
+            problem_json_serializer::make_testcase_list_object(*testcase_values_exp)
         );
     };
 
@@ -100,7 +101,7 @@ testcase_handler::response_type testcase_handler::post_testcase(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::created,
-            json_util::make_problem_testcase_created_object(*create_testcase_exp)
+            problem_json_serializer::make_testcase_created_object(*create_testcase_exp)
         );
     };
 
@@ -158,7 +159,7 @@ testcase_handler::response_type testcase_handler::put_testcase(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_problem_testcase_object(*updated_testcase_exp)
+            problem_json_serializer::make_testcase_object(*updated_testcase_exp)
         );
     };
 
@@ -349,7 +350,7 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
             );
         }
 
-        boost::json::object response_object = json_util::make_message_object(
+        boost::json::object response_object = common_json_serializer::make_message_object(
             "problem testcases uploaded"
         );
         response_object["testcase_count"] = replace_testcases_exp->testcase_count;
@@ -424,7 +425,7 @@ testcase_handler::response_type testcase_handler::move_testcase(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_message_object("problem testcase moved")
+            common_json_serializer::make_message_object("problem testcase moved")
         );
     };
 
@@ -461,7 +462,7 @@ testcase_handler::response_type testcase_handler::delete_testcase(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_message_object("problem testcase deleted")
+            common_json_serializer::make_message_object("problem testcase deleted")
         );
     };
 
@@ -515,7 +516,7 @@ testcase_handler::response_type testcase_handler::delete_all_testcases(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_message_object("problem testcases deleted")
+            common_json_serializer::make_message_object("problem testcases deleted")
         );
     };
 

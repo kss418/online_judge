@@ -107,5 +107,6 @@ apply_test_database_migrations(){
     run_schema_migration "${project_root}/scripts/migrate_auth_schema.sh" "auth_schema"
     run_schema_migration "${project_root}/scripts/migrate_problem_schema.sh" "problem_schema"
     run_schema_migration "${project_root}/scripts/migrate_submission_schema.sh" "submission_schema"
+    run_schema_migration "${project_root}/scripts/migrate_user_statistics_schema.sh" "user_statistics_schema"
     run_schema_migration "${project_root}/scripts/migrate_user_problem_schema.sh" "user_problem_schema"
 }

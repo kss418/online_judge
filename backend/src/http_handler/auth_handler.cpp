@@ -2,8 +2,9 @@
 #include "db_service/auth_service.hpp"
 #include "db_service/login_service.hpp"
 #include "dto/auth_dto.hpp"
-#include "http_core/json_util.hpp"
 #include "http_core/http_util.hpp"
+#include "serializer/auth_json_serializer.hpp"
+#include "serializer/common_json_serializer.hpp"
 
 #include <string>
 
@@ -35,7 +36,7 @@ auth_handler::response_type auth_handler::post_sign_up(
     return http_response_util::create_json(
         request,
         boost::beast::http::status::created,
-        json_util::make_auth_session_object(*sign_up_exp)
+        auth_json_serializer::make_session_object(*sign_up_exp)
     );
 }
 
@@ -74,7 +75,7 @@ auth_handler::response_type auth_handler::post_login(
     return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
-        json_util::make_auth_session_object(login_exp->value())
+        auth_json_serializer::make_session_object(login_exp->value())
     );
 }
 
@@ -119,7 +120,7 @@ auth_handler::response_type auth_handler::post_token_renew(
     return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
-        json_util::make_message_object("token renewed")
+        common_json_serializer::make_message_object("token renewed")
     );
 }
 
@@ -164,6 +165,6 @@ auth_handler::response_type auth_handler::post_logout(
     return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
-        json_util::make_message_object("logged out")
+        common_json_serializer::make_message_object("logged out")
     );
 }

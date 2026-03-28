@@ -1,7 +1,7 @@
 #include "http_core/http_response_util.hpp"
 
 #include "common/string_util.hpp"
-#include "http_core/json_util.hpp"
+#include "serializer/common_json_serializer.hpp"
 
 #include <utility>
 
@@ -46,7 +46,7 @@ http_response_util::response_type http_response_util::create_error(
     return create_json(
         request,
         status,
-        json_util::make_error_object(code, message, std::move(field_opt))
+        common_json_serializer::make_error_object(code, message, std::move(field_opt))
     );
 }
 

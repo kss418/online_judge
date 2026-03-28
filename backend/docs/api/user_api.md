@@ -139,6 +139,71 @@ Examples:
 }
 ```
 
+### `GET /api/user/me/statistics`
+
+Get submission statistics for the currently authenticated user. This endpoint requires a bearer token.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <token>` |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `user_id` | `int64` | authenticated user id |
+| `submission_count` | `int64` | total submissions |
+| `queued_submission_count` | `int64` | queued submissions |
+| `judging_submission_count` | `int64` | judging submissions |
+| `accepted_submission_count` | `int64` | accepted submissions |
+| `wrong_answer_submission_count` | `int64` | wrong answer submissions |
+| `time_limit_exceeded_submission_count` | `int64` | time limit exceeded submissions |
+| `memory_limit_exceeded_submission_count` | `int64` | memory limit exceeded submissions |
+| `runtime_error_submission_count` | `int64` | runtime error submissions |
+| `compile_error_submission_count` | `int64` | compile error submissions |
+| `output_exceeded_submission_count` | `int64` | output exceeded submissions |
+| `last_submission_at` | `string \| null` | timestamp of the most recent submission |
+| `last_accepted_at` | `string \| null` | timestamp of the most recent accepted submission |
+| `updated_at` | `string` | statistics row updated timestamp |
+
+Example:
+
+```json
+{
+  "user_id": 7,
+  "submission_count": 12,
+  "queued_submission_count": 1,
+  "judging_submission_count": 0,
+  "accepted_submission_count": 3,
+  "wrong_answer_submission_count": 4,
+  "time_limit_exceeded_submission_count": 1,
+  "memory_limit_exceeded_submission_count": 1,
+  "runtime_error_submission_count": 2,
+  "compile_error_submission_count": 1,
+  "output_exceeded_submission_count": 0,
+  "last_submission_at": "2026-03-28 17:10:11.000000+09",
+  "last_accepted_at": "2026-03-28 16:42:08.000000+09",
+  "updated_at": "2026-03-28 17:10:11.000000+09"
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
 ### `PUT /api/user/{user_id}/admin`
 
 Promote an existing user to the `admin` role. This endpoint is superadmin-only.

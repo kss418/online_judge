@@ -35,13 +35,22 @@
           <template v-else-if="isAuthenticated">
             <div class="auth-session-card">
               <p class="auth-session-label">signed in</p>
-              <div class="auth-session-user">
-                <strong>{{ authState.currentUser.user_name }}</strong>
-                <StatusBadge
-                  v-if="authState.currentUser.permission_level >= 1"
-                  :label="getRoleBadgeLabel(authState.currentUser)"
-                  :tone="getRoleBadgeTone(authState.currentUser)"
-                />
+              <div class="auth-session-row">
+                <div class="auth-session-user">
+                  <strong>{{ authState.currentUser.user_name }}</strong>
+                  <StatusBadge
+                    v-if="authState.currentUser.permission_level >= 1"
+                    :label="getRoleBadgeLabel(authState.currentUser)"
+                    :tone="getRoleBadgeTone(authState.currentUser)"
+                  />
+                </div>
+
+                <RouterLink
+                  to="/me"
+                  class="ghost-button auth-session-link"
+                >
+                  내 정보
+                </RouterLink>
               </div>
             </div>
 

@@ -3,7 +3,7 @@
 #include "db_service/submission_service.hpp"
 #include "dto/submission_dto.hpp"
 #include "http_core/http_util.hpp"
-#include "http_core/json_util.hpp"
+#include "serializer/submission_json_serializer.hpp"
 
 submission_handler::response_type submission_handler::get_submission_history(
     const request_type& request,
@@ -26,7 +26,7 @@ submission_handler::response_type submission_handler::get_submission_history(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_submission_history_list_object(
+            submission_json_serializer::make_history_list_object(
                 submission_id,
                 *submission_history_exp
             )
@@ -74,7 +74,7 @@ submission_handler::response_type submission_handler::get_submission_source(
             return http_response_util::create_json(
                 request,
                 boost::beast::http::status::ok,
-                json_util::make_submission_source_object(*submission_source_exp)
+                submission_json_serializer::make_source_object(*submission_source_exp)
             );
         };
 
@@ -105,7 +105,7 @@ submission_handler::response_type submission_handler::get_submission(
     return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
-        json_util::make_submission_detail_object(*submission_detail_exp)
+        submission_json_serializer::make_detail_object(*submission_detail_exp)
     );
 }
 
@@ -142,7 +142,7 @@ submission_handler::response_type submission_handler::post_submission(
             return http_response_util::create_json(
                 request,
                 boost::beast::http::status::created,
-                json_util::make_submission_created_object(*create_submission_exp)
+                submission_json_serializer::make_created_object(*create_submission_exp)
             );
         };
 
@@ -177,7 +177,7 @@ submission_handler::response_type submission_handler::post_submission_rejudge(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_submission_created_object(created_value)
+            submission_json_serializer::make_created_object(created_value)
         );
     };
 
@@ -238,7 +238,7 @@ submission_handler::response_type submission_handler::get_submissions(
     return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
-        json_util::make_submission_list_object(
+        submission_json_serializer::make_list_object(
             *submission_summary_values_exp,
             *total_submission_count_exp
         )

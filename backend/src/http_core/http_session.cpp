@@ -1,6 +1,6 @@
 #include "http_core/http_session.hpp"
-#include "http_core/json_util.hpp"
 #include "http_core/http_server.hpp"
+#include "serializer/common_json_serializer.hpp"
 
 #include <boost/asio/error.hpp>
 #include <boost/beast/http/error.hpp>
@@ -170,7 +170,7 @@ http_session::response_type http_session::create_read_error_response(
     );
     response.keep_alive(false);
     response.body() = boost::json::serialize(
-        json_util::make_error_object(error_code_text, error_message)
+        common_json_serializer::make_error_object(error_code_text, error_message)
     ) + "\n";
     response.prepare_payload();
     return response;

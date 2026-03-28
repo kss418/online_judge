@@ -2,11 +2,12 @@
 
 #include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
-#include "http_core/json_util.hpp"
 #include "http_core/http_util.hpp"
 
 #include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"
+#include "serializer/common_json_serializer.hpp"
+#include "serializer/problem_json_serializer.hpp"
 
 #include <utility>
 
@@ -42,7 +43,7 @@ problem_content_handler::response_type problem_content_handler::put_limits(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_message_object("problem limits updated")
+            common_json_serializer::make_message_object("problem limits updated")
         );
     };
 
@@ -85,7 +86,7 @@ problem_content_handler::response_type problem_content_handler::put_statement(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_message_object("problem statement updated")
+            common_json_serializer::make_message_object("problem statement updated")
         );
     };
 
@@ -139,7 +140,7 @@ problem_content_handler::response_type problem_content_handler::get_samples(
     return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
-        json_util::make_problem_sample_list_object(*sample_values_exp)
+        problem_json_serializer::make_sample_list_object(*sample_values_exp)
     );
 }
 
@@ -168,7 +169,7 @@ problem_content_handler::response_type problem_content_handler::post_sample(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::created,
-            json_util::make_problem_sample_created_object(*create_sample_exp)
+            problem_json_serializer::make_sample_created_object(*create_sample_exp)
         );
     };
 
@@ -227,7 +228,7 @@ problem_content_handler::response_type problem_content_handler::put_sample(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_problem_sample_object(*updated_sample_exp)
+            problem_json_serializer::make_sample_object(*updated_sample_exp)
         );
     };
 
@@ -280,7 +281,7 @@ problem_content_handler::response_type problem_content_handler::delete_sample(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_message_object("problem sample deleted")
+            common_json_serializer::make_message_object("problem sample deleted")
         );
     };
 

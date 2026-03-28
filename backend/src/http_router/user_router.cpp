@@ -20,6 +20,12 @@ user_router::response_type user_router::route(
         return handle_user_list(request);
     }
 
+    if(path_segments.size() == 2
+        && path_segments[0] == "me"
+        && path_segments[1] == "statistics"){
+        return handle_user_me_statistics(request);
+    }
+
     if(path_segments.size() == 1 && path_segments[0] == "me"){
         return handle_user_me(request);
     }
@@ -59,6 +65,17 @@ user_router::response_type user_router::handle_user_list(const request_type& req
 user_router::response_type user_router::handle_user_me(const request_type& request){
     if(request.method() == boost::beast::http::verb::get){
         return user_handler::get_me(
+            request,
+            db_connection_
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
+user_router::response_type user_router::handle_user_me_statistics(const request_type& request){
+    if(request.method() == boost::beast::http::verb::get){
+        return user_handler::get_me_submission_statistics(
             request,
             db_connection_
         );

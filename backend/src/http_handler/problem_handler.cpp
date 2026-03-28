@@ -1,13 +1,14 @@
 #include "http_handler/problem_handler.hpp"
 #include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
-#include "http_core/json_util.hpp"
 #include "http_core/http_util.hpp"
 
 #include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"
 #include "db_service/problem_statistics_service.hpp"
 #include "db_service/submission_service.hpp"
+#include "serializer/common_json_serializer.hpp"
+#include "serializer/problem_json_serializer.hpp"
 
 problem_handler::response_type problem_handler::get_problems(
     const request_type& request,
@@ -48,7 +49,7 @@ problem_handler::response_type problem_handler::get_problems(
     return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
-        json_util::make_problem_list_object(*summary_values_exp)
+        problem_json_serializer::make_list_object(*summary_values_exp)
     );
 }
 
@@ -187,7 +188,7 @@ problem_handler::response_type problem_handler::get_problem(
     return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
-        json_util::make_problem_detail_object(
+        problem_json_serializer::make_detail_object(
             problem_reference_value,
             *title_exp,
             *version_exp,
@@ -230,7 +231,7 @@ problem_handler::response_type problem_handler::post_problem(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::created,
-            json_util::make_problem_created_object(*create_problem_exp)
+            problem_json_serializer::make_created_object(*create_problem_exp)
         );
     };
 
@@ -294,7 +295,7 @@ problem_handler::response_type problem_handler::put_problem(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_message_object("problem updated")
+            common_json_serializer::make_message_object("problem updated")
         );
     };
 
@@ -348,7 +349,7 @@ problem_handler::response_type problem_handler::delete_problem(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_message_object("problem deleted")
+            common_json_serializer::make_message_object("problem deleted")
         );
     };
 
@@ -402,7 +403,7 @@ problem_handler::response_type problem_handler::post_problem_rejudge(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_message_object("problem submissions requeued")
+            common_json_serializer::make_message_object("problem submissions requeued")
         );
     };
 

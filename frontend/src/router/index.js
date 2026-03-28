@@ -5,6 +5,7 @@ import AdminProblemTestcasesPage from '@/pages/AdminProblemTestcasesPage.vue'
 import AdminProblemsPage from '@/pages/AdminProblemsPage.vue'
 import AdminUsersPage from '@/pages/AdminUsersPage.vue'
 import HomePage from '@/pages/HomePage.vue'
+import MyInfoPage from '@/pages/MyInfoPage.vue'
 import ProblemDetailPage from '@/pages/ProblemDetailPage.vue'
 import ProblemSubmitPage from '@/pages/ProblemSubmitPage.vue'
 import ProblemsPage from '@/pages/ProblemsPage.vue'
@@ -45,6 +46,11 @@ const routes = [
     path: '/submissions',
     name: 'submissions',
     component: SubmissionsPage
+  },
+  {
+    path: '/me',
+    name: 'my-info',
+    component: MyInfoPage
   },
   {
     path: '/admin/problems',

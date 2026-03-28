@@ -1,9 +1,10 @@
 #include "http_handler/user_handler.hpp"
 
 #include "db_service/auth_service.hpp"
+#include "db_service/user_statistics_service.hpp"
 #include "common/permission_util.hpp"
 #include "http_core/http_util.hpp"
-#include "http_core/json_util.hpp"
+#include "serializer/user_json_serializer.hpp"
 
 user_handler::response_type user_handler::get_me(
     const request_type& request,
@@ -14,7 +15,42 @@ user_handler::response_type user_handler::get_me(
             return http_response_util::create_json(
                 request,
                 boost::beast::http::status::ok,
-                json_util::make_user_me_object(auth_identity_value)
+                user_json_serializer::make_me_object(auth_identity_value)
+            );
+        };
+
+    return http_util::with_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
+user_handler::response_type user_handler::get_me_submission_statistics(
+    const request_type& request,
+    db_connection& db_connection_value
+){
+    const auto handle_authenticated =
+        [&](const auth_dto::identity& auth_identity_value) -> response_type {
+            const auto get_submission_statistics_exp =
+                user_statistics_service::get_submission_statistics(
+                    db_connection_value,
+                    auth_identity_value.user_id
+                );
+            if(!get_submission_statistics_exp){
+                return http_response_util::create_4xx_or_500(
+                    request,
+                    "get user submission statistics",
+                    get_submission_statistics_exp.error()
+                );
+            }
+
+            return http_response_util::create_json(
+                request,
+                boost::beast::http::status::ok,
+                user_json_serializer::make_submission_statistics_object(
+                    *get_submission_statistics_exp
+                )
             );
         };
 
@@ -55,7 +91,7 @@ user_handler::response_type user_handler::put_user_admin(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_user_permission_object(user_id, permission_util::ADMIN)
+            user_json_serializer::make_permission_object(user_id, permission_util::ADMIN)
         );
     };
 
@@ -96,7 +132,7 @@ user_handler::response_type user_handler::put_user_regular(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_user_permission_object(user_id, permission_util::USER)
+            user_json_serializer::make_permission_object(user_id, permission_util::USER)
         );
     };
 
@@ -124,7 +160,7 @@ user_handler::response_type user_handler::get_user_list(
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            json_util::make_user_list_object(*user_list_exp)
+            user_json_serializer::make_list_object(*user_list_exp)
         );
     };
 

@@ -1,0 +1,9 @@
+target_sources(lib
+    PRIVATE
+        common_json_serializer.cpp
+        auth_json_serializer.cpp
+        user_json_serializer.cpp
+        system_json_serializer.cpp
+        submission_json_serializer.cpp
+        problem_json_serializer.cpp
+)
