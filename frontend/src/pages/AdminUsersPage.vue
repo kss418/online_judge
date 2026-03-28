@@ -88,13 +88,12 @@
             >
               <strong>#{{ user.user_id }}</strong>
               <div class="admin-user-name">
-                <strong>{{ user.user_login_id || '-' }}</strong>
-                <span
-                  v-if="user.user_id === currentUserId"
-                  class="admin-user-self"
+                <RouterLink
+                  class="admin-user-link"
+                  :to="{ name: 'user-info', params: { userLoginId: user.user_login_id } }"
                 >
-                  현재 계정
-                </span>
+                  <strong>{{ user.user_login_id || '-' }}</strong>
+                </RouterLink>
               </div>
               <div class="admin-user-role">
                 <StatusBadge
@@ -568,14 +567,27 @@ onUnmounted(() => {
   gap: 0.2rem;
 }
 
-.admin-user-self,
-.admin-user-login-id,
-.admin-user-created-at {
-  color: var(--ink-soft);
+.admin-user-link {
+  width: fit-content;
+  color: inherit;
+  text-decoration: none;
+  text-decoration: underline dotted transparent;
+  text-underline-offset: 0.18em;
+  transition:
+    color 140ms ease,
+    text-decoration-color 140ms ease,
+    transform 140ms ease;
 }
 
-.admin-user-self {
-  font-size: 0.86rem;
+.admin-user-link:hover,
+.admin-user-link:focus-visible {
+  color: #1D4ED8;
+  text-decoration-color: currentColor;
+  transform: translateY(-1px);
+}
+
+.admin-user-created-at {
+  color: var(--ink-soft);
 }
 
 .admin-user-role {
