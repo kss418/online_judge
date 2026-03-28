@@ -53,6 +53,20 @@ const routes = [
     component: MyInfoPage
   },
   {
+    path: '/users/:userId(\\d+)',
+    name: 'user-info',
+    component: MyInfoPage
+  },
+  {
+    path: '/user/:userId(\\d+)',
+    redirect: (to) => ({
+      name: 'user-info',
+      params: {
+        userId: String(to.params.userId)
+      }
+    })
+  },
+  {
     path: '/admin/problems',
     name: 'admin-problems',
     component: AdminProblemsPage

@@ -4,6 +4,44 @@ HTTP API handled by `user_router`.
 
 ## endpoint
 
+### `GET /api/user/{user_id}`
+
+Get the public summary for a single user by id.
+
+#### request
+
+- request body: none
+- required header: none
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `user_id` | `int64` | user id |
+| `user_name` | `string` | display name |
+| `created_at` | `string` | sign-up timestamp |
+
+Example:
+
+```json
+{
+  "user_id": 7,
+  "user_name": "alice",
+  "created_at": "2026-03-26 13:14:02.000000+09"
+}
+```
+
+#### error response
+
+- unknown user id: `404 Not Found`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
 ### `GET /api/user`
 
 Get the full user list for management. This endpoint is admin-only.

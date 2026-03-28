@@ -26,6 +26,10 @@ private:
     response_type handle_user_me_statistics(const request_type& request);
     response_type handle_user_me_solved_problems(const request_type& request);
     response_type handle_user_me_wrong_problems(const request_type& request);
+    response_type handle_user_summary(
+        const request_type& request,
+        std::int64_t user_id
+    );
 
     response_type handle_user_admin(
         const request_type& request,

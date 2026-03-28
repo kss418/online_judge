@@ -8,5 +8,6 @@ target_sources(lib
         problem_statistics_repository.cpp
         submission_repository.cpp
         testcase_repository.cpp
+        user_repository.cpp
         user_statistics_repository.cpp
 )

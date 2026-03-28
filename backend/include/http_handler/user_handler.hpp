@@ -27,6 +27,11 @@ namespace user_handler{
         const request_type& request,
         db_connection& db_connection_value
     );
+    response_type get_user_summary(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t user_id
+    );
 
     response_type get_user_list(
         const request_type& request,

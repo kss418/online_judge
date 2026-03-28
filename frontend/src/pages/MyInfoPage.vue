@@ -1,7 +1,10 @@
 <template>
   <section class="page-grid single-column">
-    <div class="my-info-layout">
-      <div class="my-info-side-column">
+    <div
+      class="my-info-layout"
+      :class="{ 'is-summary-only': !showExtendedProfilePanels }"
+    >
+      <div v-if="showExtendedProfilePanels" class="my-info-side-column">
         <article class="panel my-info-panel my-info-statistics-panel">
           <div class="panel-header">
             <div>
@@ -121,41 +124,43 @@
             </div>
 
             <StatusBadge
-              :label="sessionLabel"
-              :tone="sessionTone"
+              :label="profileStatusLabel"
+              :tone="profileStatusTone"
             />
           </div>
 
-          <div v-if="authState.isInitializing" class="empty-state">
+          <div v-if="isProfileLoading" class="empty-state">
             <p>정보를 확인하는 중입니다.</p>
           </div>
 
-          <div v-else-if="!isAuthenticated" class="empty-state">
+          <div v-else-if="profileErrorMessage" class="empty-state error-state">
+            <p>{{ profileErrorMessage }}</p>
+          </div>
+
+          <div v-else-if="showExtendedProfilePanels && !isAuthenticated" class="empty-state">
             <p>로그인하면 계정 기본 정보를 여기서 확인할 수 있습니다.</p>
           </div>
 
           <div v-else class="my-info-summary">
             <div class="metric-row">
               <span class="metric-label">ID</span>
-              <strong>#{{ currentUser.id }}</strong>
+              <strong>#{{ displayedUser.user_id }}</strong>
             </div>
             <div class="metric-row">
               <span class="metric-label">닉네임</span>
-              <strong>{{ currentUser.user_name }}</strong>
+              <strong>{{ displayedUser.user_name }}</strong>
             </div>
             <div class="metric-row">
-              <span class="metric-label">권한</span>
-              <div class="my-info-role">
-                <StatusBadge
-                  :label="roleLabel"
-                  :tone="roleTone"
-                />
-              </div>
+              <span class="metric-label">만든 시각</span>
+              <strong>{{ formatTimestamp(displayedUser.created_at) }}</strong>
             </div>
           </div>
         </article>
 
-        <article class="panel my-info-panel">
+        <article
+          v-if="showExtendedProfilePanels"
+          class="panel my-info-panel"
+        >
           <div class="panel-header">
             <div>
               <p class="panel-kicker">solved</p>
@@ -202,7 +207,10 @@
           </div>
         </article>
 
-        <article class="panel my-info-panel">
+        <article
+          v-if="showExtendedProfilePanels"
+          class="panel my-info-panel"
+        >
           <div class="panel-header">
             <div>
               <p class="panel-kicker">wrong</p>
@@ -256,9 +264,11 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { getSubmissionList } from '@/api/submission'
 import {
+  getUserSummary,
   getMySolvedProblems,
   getMySubmissionStatistics,
   getMyWrongProblems
@@ -267,23 +277,28 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import SubmissionStatusBadge from '@/components/submissions/SubmissionStatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
 
+const route = useRoute()
 const { authState, isAuthenticated, initializeAuth } = useAuth()
 const submissionStatistics = ref(null)
 const recentSubmissions = ref([])
 const solvedProblems = ref([])
 const wrongProblems = ref([])
+const publicUserSummary = ref(null)
 const isStatisticsLoading = ref(true)
 const isRecentSubmissionsLoading = ref(true)
 const isSolvedProblemsLoading = ref(true)
 const isWrongProblemsLoading = ref(true)
+const isPublicUserSummaryLoading = ref(false)
 const statisticsErrorMessage = ref('')
 const recentSubmissionsErrorMessage = ref('')
 const solvedProblemsErrorMessage = ref('')
 const wrongProblemsErrorMessage = ref('')
+const publicUserSummaryErrorMessage = ref('')
 let latestStatisticsRequestId = 0
 let latestRecentSubmissionsRequestId = 0
 let latestSolvedProblemsRequestId = 0
 let latestWrongProblemsRequestId = 0
+let latestPublicUserSummaryRequestId = 0
 const nowTimestamp = ref(Date.now())
 let relativeTimeRefreshTimer = null
 
@@ -294,44 +309,100 @@ const currentUser = computed(() => authState.currentUser ?? {
   permission_level: 0
 })
 
-const sessionLabel = computed(() => {
-  if (authState.isInitializing) {
+const routeUserId = computed(() => {
+  const rawValue = Array.isArray(route.params.userId)
+    ? route.params.userId[0]
+    : route.params.userId
+  const parsedUserId = Number.parseInt(String(rawValue ?? ''), 10)
+  return Number.isInteger(parsedUserId) && parsedUserId > 0
+    ? parsedUserId
+    : 0
+})
+
+const isUserProfileRoute = computed(() => route.name === 'user-info')
+
+const showExtendedProfilePanels = computed(() => {
+  if (!isUserProfileRoute.value) {
+    return true
+  }
+
+  if (!authState.initialized || !isAuthenticated.value) {
+    return false
+  }
+
+  return routeUserId.value === Number(currentUser.value.id ?? 0)
+})
+
+const activeProfileUserId = computed(() => {
+  if (showExtendedProfilePanels.value) {
+    return Number(currentUser.value.id ?? 0)
+  }
+
+  return routeUserId.value
+})
+
+const displayedUser = computed(() => {
+  if (showExtendedProfilePanels.value) {
+    return {
+      user_id: Number(currentUser.value.id ?? 0),
+      user_name: currentUser.value.user_name ?? '',
+      created_at: publicUserSummary.value?.created_at ?? null
+    }
+  }
+
+  return publicUserSummary.value ?? {
+    user_id: routeUserId.value,
+    user_name: '',
+    created_at: null
+  }
+})
+
+const isProfileLoading = computed(() => {
+  if (showExtendedProfilePanels.value) {
+    return authState.isInitializing
+  }
+
+  return isPublicUserSummaryLoading.value
+})
+
+const profileErrorMessage = computed(() => {
+  if (showExtendedProfilePanels.value) {
+    return ''
+  }
+
+  return publicUserSummaryErrorMessage.value
+})
+
+const profileStatusLabel = computed(() => {
+  if (showExtendedProfilePanels.value) {
+    if (authState.isInitializing) {
+      return 'Loading'
+    }
+
+    return isAuthenticated.value ? 'Signed In' : 'Guest'
+  }
+
+  if (isPublicUserSummaryLoading.value) {
     return 'Loading'
   }
 
-  return isAuthenticated.value ? 'Signed In' : 'Guest'
+  return publicUserSummaryErrorMessage.value ? 'Error' : 'Public'
 })
 
-const sessionTone = computed(() => {
-  if (authState.isInitializing) {
+const profileStatusTone = computed(() => {
+  if (showExtendedProfilePanels.value) {
+    if (authState.isInitializing) {
+      return 'neutral'
+    }
+
+    return isAuthenticated.value ? 'success' : 'neutral'
+  }
+
+  if (isPublicUserSummaryLoading.value) {
     return 'neutral'
   }
 
-  return isAuthenticated.value ? 'success' : 'neutral'
-})
-
-const roleLabel = computed(() => {
-  if (currentUser.value.permission_level >= 2) {
-    return 'SuperAdmin'
-  }
-
-  if (currentUser.value.permission_level >= 1) {
-    return 'Admin'
-  }
-
-  return 'User'
-})
-
-const roleTone = computed(() => {
-  if (currentUser.value.permission_level >= 2) {
-    return 'danger'
-  }
-
-  if (currentUser.value.permission_level >= 1) {
-    return 'warning'
-  }
-
-  return 'neutral'
+  return publicUserSummaryErrorMessage.value ? 'danger' : 'neutral'
 })
 
 const statisticsStatusLabel = computed(() => {
@@ -865,8 +936,52 @@ async function loadWrongProblems(){
   }
 }
 
+function normalizeUserSummary(payload){
+  return {
+    user_id: Number(payload?.user_id ?? 0),
+    user_name: typeof payload?.user_name === 'string' ? payload.user_name : '',
+    created_at: typeof payload?.created_at === 'string' ? payload.created_at : null
+  }
+}
+
+async function loadPublicUserSummary(userId){
+  if (!Number.isInteger(userId) || userId <= 0) {
+    publicUserSummary.value = null
+    publicUserSummaryErrorMessage.value = '유효하지 않은 사용자입니다.'
+    isPublicUserSummaryLoading.value = false
+    return
+  }
+
+  const requestId = ++latestPublicUserSummaryRequestId
+  isPublicUserSummaryLoading.value = true
+  publicUserSummary.value = null
+  publicUserSummaryErrorMessage.value = ''
+
+  try {
+    const payload = await getUserSummary(userId)
+    if (requestId !== latestPublicUserSummaryRequestId) {
+      return
+    }
+
+    publicUserSummary.value = normalizeUserSummary(payload)
+  } catch (error) {
+    if (requestId !== latestPublicUserSummaryRequestId) {
+      return
+    }
+
+    publicUserSummary.value = null
+    publicUserSummaryErrorMessage.value = error instanceof Error
+      ? error.message
+      : '사용자 정보를 불러오지 못했습니다.'
+  } finally {
+    if (requestId === latestPublicUserSummaryRequestId) {
+      isPublicUserSummaryLoading.value = false
+    }
+  }
+}
+
 watch(
-  () => [authState.initialized, authState.token, currentUser.value.id],
+  () => [authState.initialized, authState.token, currentUser.value.id, showExtendedProfilePanels.value],
   ([initialized]) => {
     if (!initialized) {
       isStatisticsLoading.value = true
@@ -876,7 +991,7 @@ watch(
       return
     }
 
-    if (!isAuthenticated.value) {
+    if (!showExtendedProfilePanels.value || !isAuthenticated.value) {
       latestStatisticsRequestId += 1
       latestRecentSubmissionsRequestId += 1
       latestSolvedProblemsRequestId += 1
@@ -906,6 +1021,31 @@ watch(
   }
 )
 
+watch(
+  () => [
+    isUserProfileRoute.value,
+    routeUserId.value,
+    showExtendedProfilePanels.value,
+    authState.initialized,
+    authState.token,
+    currentUser.value.id
+  ],
+  () => {
+    if (activeProfileUserId.value <= 0) {
+      latestPublicUserSummaryRequestId += 1
+      publicUserSummary.value = null
+      publicUserSummaryErrorMessage.value = ''
+      isPublicUserSummaryLoading.value = false
+      return
+    }
+
+    loadPublicUserSummary(activeProfileUserId.value)
+  },
+  {
+    immediate: true
+  }
+)
+
 onMounted(() => {
   initializeAuth()
   startRelativeTimeRefresh()
@@ -922,6 +1062,10 @@ onBeforeUnmount(() => {
   grid-template-columns: minmax(364px, 468px) minmax(0, 1fr);
   gap: 1.25rem;
   align-items: start;
+}
+
+.my-info-layout.is-summary-only {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .my-info-side-column {

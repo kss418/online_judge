@@ -2,6 +2,7 @@
 
 #include "dto/auth_dto.hpp"
 #include "dto/problem_dto.hpp"
+#include "dto/user_dto.hpp"
 #include "dto/user_statistics_dto.hpp"
 
 #include <boost/json.hpp>
@@ -15,6 +16,7 @@ namespace user_json_serializer{
     );
 
     boost::json::object make_me_object(const auth_dto::identity& auth_identity_value);
+    boost::json::object make_summary_object(const user_dto::summary& summary_value);
 
     boost::json::object make_submission_statistics_object(
         const user_statistics_dto::submission_statistics& statistics_value

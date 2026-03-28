@@ -51,6 +51,7 @@ register_temp_file second_sign_up_response_file
 register_temp_file second_login_response_file
 register_temp_file third_login_response_file
 register_temp_file user_me_response_file
+register_temp_file user_summary_response_file
 register_temp_file user_me_statistics_response_file
 register_temp_file user_me_solved_problems_response_file
 register_temp_file user_me_wrong_problems_response_file
@@ -169,6 +170,48 @@ append_log_line "${test_log_temp_file}" "auth flow test passed"
 
 login_user_id="$(read_json_field "${login_response_file}" "user_id" "int")"
 login_token="$(read_json_field "${login_response_file}" "token" "string")"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/user/${login_user_id}" \
+    "${user_summary_response_file}" \
+    "200" \
+    "get public user summary"
+if ! python3 - "${user_summary_response_file}" "${login_user_id}" "${user_name}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    user_summary = json.load(response_file)
+
+expected_user_id = int(sys.argv[2])
+expected_user_name = sys.argv[3]
+
+if user_summary.get("user_id") != expected_user_id:
+    raise SystemExit("public user summary id mismatch")
+
+if user_summary.get("user_name") != expected_user_name:
+    raise SystemExit("public user summary user_name mismatch")
+
+created_at = user_summary.get("created_at")
+if not isinstance(created_at, str) or not created_at:
+    raise SystemExit("public user summary created_at missing")
+
+if "permission_level" in user_summary:
+    raise SystemExit("did not expect permission_level in public user summary")
+
+if "role_name" in user_summary:
+    raise SystemExit("did not expect role_name in public user summary")
+
+if "user_login_id" in user_summary:
+    raise SystemExit("did not expect user_login_id in public user summary")
+PY
+then
+    append_log_line "${test_log_temp_file}" "public user summary validation failed"
+    publish_failure_logs
+    exit 1
+fi
+print_success_log "public user summary get success"
 
 send_http_request_and_assert_status \
     "GET" \

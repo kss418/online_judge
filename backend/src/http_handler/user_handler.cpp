@@ -2,6 +2,7 @@
 
 #include "db_service/auth_service.hpp"
 #include "db_service/problem_core_service.hpp"
+#include "db_service/user_service.hpp"
 #include "db_service/user_statistics_service.hpp"
 #include "common/permission_util.hpp"
 #include "http_core/http_util.hpp"
@@ -129,6 +130,38 @@ user_handler::response_type user_handler::get_me_wrong_problems(
         request,
         db_connection_value,
         handle_authenticated
+    );
+}
+
+user_handler::response_type user_handler::get_user_summary(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t user_id
+){
+    const auto get_user_summary_exp = user_service::get_summary(
+        db_connection_value,
+        user_id
+    );
+    if(!get_user_summary_exp){
+        return http_response_util::create_4xx_or_500(
+            request,
+            "get user summary",
+            get_user_summary_exp.error()
+        );
+    }
+    if(!get_user_summary_exp->has_value()){
+        return http_response_util::create_error(
+            request,
+            boost::beast::http::status::not_found,
+            "user_not_found",
+            "user not found"
+        );
+    }
+
+    return http_response_util::create_json(
+        request,
+        boost::beast::http::status::ok,
+        user_json_serializer::make_summary_object(get_user_summary_exp->value())
     );
 }
 

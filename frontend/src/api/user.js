@@ -1,5 +1,9 @@
 import { requestJson } from '@/api/http'
 
+export function getUserSummary(userId){
+  return requestJson(`/user/${userId}`)
+}
+
 export function getUserList(token){
   return requestJson('/user', {
     bearerToken: token

@@ -90,6 +90,16 @@ boost::json::object user_json_serializer::make_me_object(
     return response_object;
 }
 
+boost::json::object user_json_serializer::make_summary_object(
+    const user_dto::summary& summary_value
+){
+    boost::json::object response_object;
+    response_object["user_id"] = summary_value.user_id;
+    response_object["user_name"] = summary_value.user_name;
+    response_object["created_at"] = summary_value.created_at;
+    return response_object;
+}
+
 boost::json::object user_json_serializer::make_submission_statistics_object(
     const user_statistics_dto::submission_statistics& statistics_value
 ){
