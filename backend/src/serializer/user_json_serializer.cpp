@@ -35,6 +35,35 @@ namespace{
         }
         return response_array;
     }
+
+    boost::json::object make_problem_summary_object(
+        const problem_dto::summary& summary_value
+    ){
+        boost::json::object response_object;
+        response_object["problem_id"] = summary_value.problem_id;
+        response_object["title"] = summary_value.title;
+        response_object["version"] = summary_value.version;
+        response_object["submission_count"] = summary_value.submission_count;
+        response_object["accepted_count"] = summary_value.accepted_count;
+        if(summary_value.user_problem_state_opt){
+            response_object["user_problem_state"] = *summary_value.user_problem_state_opt;
+        }
+        else{
+            response_object["user_problem_state"] = nullptr;
+        }
+        return response_object;
+    }
+
+    boost::json::array make_problem_summary_array(
+        const std::vector<problem_dto::summary>& summary_values
+    ){
+        boost::json::array response_array;
+        response_array.reserve(summary_values.size());
+        for(const auto& summary_value : summary_values){
+            response_array.push_back(make_problem_summary_object(summary_value));
+        }
+        return response_array;
+    }
 }
 
 boost::json::object user_json_serializer::make_permission_object(
@@ -95,6 +124,16 @@ boost::json::object user_json_serializer::make_submission_statistics_object(
         response_object["last_accepted_at"] = nullptr;
     }
     response_object["updated_at"] = statistics_value.updated_at;
+    return response_object;
+}
+
+boost::json::object user_json_serializer::make_solved_problem_list_object(
+    const std::vector<problem_dto::summary>& solved_problem_values
+){
+    boost::json::object response_object;
+    response_object["solved_problem_count"] =
+        static_cast<std::int64_t>(solved_problem_values.size());
+    response_object["solved_problems"] = make_problem_summary_array(solved_problem_values);
     return response_object;
 }
 

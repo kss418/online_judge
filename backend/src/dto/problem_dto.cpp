@@ -3,6 +3,8 @@
 #include "http_core/http_util.hpp"
 #include "http_core/query_param_util.hpp"
 
+#include <pqxx/pqxx>
+
 std::expected<problem_dto::create_request, dto_validation_error>
 problem_dto::make_create_request_from_json(const boost::json::object& json){
     const auto title_opt = http_util::get_non_empty_string_field(json, "title");
@@ -125,4 +127,30 @@ problem_dto::make_testcase_move_request_from_json(const boost::json::object& jso
     testcase_move_request_value.source_testcase_order = *source_testcase_order_opt;
     testcase_move_request_value.target_testcase_order = *target_testcase_order_opt;
     return testcase_move_request_value;
+}
+
+problem_dto::summary problem_dto::make_summary_from_row(
+    const pqxx::row& problem_summary_row
+){
+    summary summary_value;
+    summary_value.problem_id = problem_summary_row[0].as<std::int64_t>();
+    summary_value.title = problem_summary_row[1].as<std::string>();
+    summary_value.version = problem_summary_row[2].as<std::int32_t>();
+    summary_value.submission_count = problem_summary_row[3].as<std::int64_t>();
+    summary_value.accepted_count = problem_summary_row[4].as<std::int64_t>();
+    if(!problem_summary_row[5].is_null()){
+        summary_value.user_problem_state_opt = problem_summary_row[5].as<std::string>();
+    }
+    return summary_value;
+}
+
+std::vector<problem_dto::summary> problem_dto::make_summary_list_from_result(
+    const pqxx::result& problem_summary_result
+){
+    std::vector<summary> summary_values;
+    summary_values.reserve(problem_summary_result.size());
+    for(const auto& problem_summary_row : problem_summary_result){
+        summary_values.push_back(make_summary_from_row(problem_summary_row));
+    }
+    return summary_values;
 }

@@ -204,6 +204,75 @@ Example:
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
+### `GET /api/user/me/solved-problems`
+
+Get the solved problem list for the currently authenticated user. This endpoint requires a bearer token.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <token>` |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `solved_problem_count` | `int64` | total solved problems in the response |
+| `solved_problems` | `array` | solved problem summaries ordered by `problem_id` descending |
+
+Each item in `solved_problems` contains:
+
+| field | type | note |
+|---|---|---|
+| `problem_id` | `int64` | solved problem id |
+| `title` | `string` | problem title |
+| `version` | `int32` | current problem version |
+| `submission_count` | `int64` | total submissions on the problem |
+| `accepted_count` | `int64` | total accepted submissions on the problem |
+| `user_problem_state` | `string` | always `solved` |
+
+Example:
+
+```json
+{
+  "solved_problem_count": 2,
+  "solved_problems": [
+    {
+      "problem_id": 15,
+      "title": "A + B",
+      "version": 3,
+      "submission_count": 124,
+      "accepted_count": 61,
+      "user_problem_state": "solved"
+    },
+    {
+      "problem_id": 3,
+      "title": "Hello Output",
+      "version": 1,
+      "submission_count": 44,
+      "accepted_count": 38,
+      "user_problem_state": "solved"
+    }
+  ]
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
 ### `PUT /api/user/{user_id}/admin`
 
 Promote an existing user to the `admin` role. This endpoint is superadmin-only.

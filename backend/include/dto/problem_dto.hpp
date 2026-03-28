@@ -14,6 +14,11 @@ namespace http_util{
     struct query_param;
 }
 
+namespace pqxx{
+    class result;
+    class row;
+}
+
 namespace problem_dto{
     struct reference{
         std::int64_t problem_id = 0;
@@ -92,4 +97,6 @@ namespace problem_dto{
     std::expected<testcase_move_request, dto_validation_error> make_testcase_move_request_from_json(
         const boost::json::object& json
     );
+    summary make_summary_from_row(const pqxx::row& problem_summary_row);
+    std::vector<summary> make_summary_list_from_result(const pqxx::result& problem_summary_result);
 }

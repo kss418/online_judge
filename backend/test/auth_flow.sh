@@ -52,6 +52,7 @@ register_temp_file second_login_response_file
 register_temp_file third_login_response_file
 register_temp_file user_me_response_file
 register_temp_file user_me_statistics_response_file
+register_temp_file user_me_solved_problems_response_file
 register_temp_file promote_admin_response_file
 register_temp_file demote_user_response_file
 register_temp_file unauthorized_promote_response_file
@@ -258,6 +259,34 @@ then
     exit 1
 fi
 print_success_log "current user statistics get success before submissions"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/user/me/solved-problems" \
+    "${user_me_solved_problems_response_file}" \
+    "200" \
+    "get current user solved problems before submissions" \
+    "${login_token}"
+if ! python3 - "${user_me_solved_problems_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    solved_problems = json.load(response_file)
+
+if solved_problems.get("solved_problem_count") != 0:
+    raise SystemExit("expected solved_problem_count to be 0 before submissions")
+
+solved_problem_values = solved_problems.get("solved_problems")
+if solved_problem_values != []:
+    raise SystemExit("expected solved_problems to be an empty array before submissions")
+PY
+then
+    append_log_line "${test_log_temp_file}" "current user solved problems validation failed before submissions"
+    publish_failure_logs
+    exit 1
+fi
+print_success_log "current user solved problems get success before submissions"
 
 duplicate_user_name_request_body="$(
     make_sign_up_request_body \

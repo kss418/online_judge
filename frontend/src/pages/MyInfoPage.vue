@@ -82,7 +82,7 @@
               <strong>{{ currentUser.user_name }}</strong>
             </div>
             <div class="metric-row">
-              <span class="metric-label">역할</span>
+              <span class="metric-label">권한</span>
               <div class="my-info-role">
                 <StatusBadge
                   :label="roleLabel"

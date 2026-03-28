@@ -1,6 +1,7 @@
 #include "http_handler/user_handler.hpp"
 
 #include "db_service/auth_service.hpp"
+#include "db_service/problem_core_service.hpp"
 #include "db_service/user_statistics_service.hpp"
 #include "common/permission_util.hpp"
 #include "http_core/http_util.hpp"
@@ -50,6 +51,41 @@ user_handler::response_type user_handler::get_me_submission_statistics(
                 boost::beast::http::status::ok,
                 user_json_serializer::make_submission_statistics_object(
                     *get_submission_statistics_exp
+                )
+            );
+        };
+
+    return http_util::with_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
+user_handler::response_type user_handler::get_me_solved_problems(
+    const request_type& request,
+    db_connection& db_connection_value
+){
+    const auto handle_authenticated =
+        [&](const auth_dto::identity& auth_identity_value) -> response_type {
+            const auto list_user_solved_problems_exp =
+                problem_core_service::list_user_solved_problems(
+                    db_connection_value,
+                    auth_identity_value.user_id
+                );
+            if(!list_user_solved_problems_exp){
+                return http_response_util::create_4xx_or_500(
+                    request,
+                    "get current user solved problems",
+                    list_user_solved_problems_exp.error()
+                );
+            }
+
+            return http_response_util::create_json(
+                request,
+                boost::beast::http::status::ok,
+                user_json_serializer::make_solved_problem_list_object(
+                    *list_user_solved_problems_exp
                 )
             );
         };

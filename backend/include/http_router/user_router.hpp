@@ -24,6 +24,7 @@ private:
 
     response_type handle_user_me(const request_type& request);
     response_type handle_user_me_statistics(const request_type& request);
+    response_type handle_user_me_solved_problems(const request_type& request);
 
     response_type handle_user_admin(
         const request_type& request,
