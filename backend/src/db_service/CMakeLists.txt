@@ -7,4 +7,5 @@ target_sources(lib
         problem_statistics_service.cpp
         submission_service.cpp
         testcase_service.cpp
+        user_statistics_service.cpp
 )
