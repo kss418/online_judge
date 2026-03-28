@@ -48,6 +48,15 @@
         >
           검색 초기화
         </button>
+
+        <button
+          type="button"
+          class="ghost-button problem-refresh-button"
+          :disabled="isLoading"
+          @click="$emit('refresh')"
+        >
+          새로고침
+        </button>
       </div>
     </div>
   </div>
@@ -86,6 +95,7 @@ defineProps({
 defineEmits([
   'submitSearch',
   'resetSearch',
+  'refresh',
   'update:searchInput'
 ])
 </script>
@@ -155,7 +165,8 @@ defineEmits([
 }
 
 .problem-search-button,
-.problem-reset-button {
+.problem-reset-button,
+.problem-refresh-button {
   flex-shrink: 0;
 }
 

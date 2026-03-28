@@ -5,6 +5,30 @@
 #include <utility>
 
 namespace{
+    boost::json::object make_public_list_item_object(
+        const user_dto::list_item& user_value
+    ){
+        boost::json::object response_object;
+        response_object["user_id"] = user_value.user_id;
+        response_object["user_login_id"] = user_value.user_login_id;
+        response_object["solved_problem_count"] = user_value.solved_problem_count;
+        response_object["accepted_submission_count"] = user_value.accepted_submission_count;
+        response_object["submission_count"] = user_value.submission_count;
+        response_object["created_at"] = user_value.created_at;
+        return response_object;
+    }
+
+    boost::json::array make_public_list_item_array(
+        const user_dto::list& user_values
+    ){
+        boost::json::array response_array;
+        response_array.reserve(user_values.size());
+        for(const auto& user_value : user_values){
+            response_array.push_back(make_public_list_item_object(user_value));
+        }
+        return response_array;
+    }
+
     boost::json::object make_summary_object(
         const auth_dto::user_summary& user_summary_value
     ){
@@ -91,6 +115,15 @@ boost::json::object user_json_serializer::make_summary_object(
     response_object["user_id"] = summary_value.user_id;
     response_object["user_login_id"] = summary_value.user_login_id;
     response_object["created_at"] = summary_value.created_at;
+    return response_object;
+}
+
+boost::json::object user_json_serializer::make_public_list_object(
+    const user_dto::list& user_values
+){
+    boost::json::object response_object;
+    response_object["user_count"] = static_cast<std::int64_t>(user_values.size());
+    response_object["users"] = make_public_list_item_array(user_values);
     return response_object;
 }
 

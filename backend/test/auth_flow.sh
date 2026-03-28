@@ -50,6 +50,7 @@ register_temp_file second_login_response_file
 register_temp_file third_login_response_file
 register_temp_file user_me_response_file
 register_temp_file user_summary_response_file
+register_temp_file user_public_list_response_file
 register_temp_file user_statistics_response_file
 register_temp_file user_solved_problems_response_file
 register_temp_file user_wrong_problems_response_file
@@ -211,6 +212,56 @@ then
     exit 1
 fi
 print_success_log "public user summary get success"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/user/list?q=${user_login_id}" \
+    "${user_public_list_response_file}" \
+    "200" \
+    "get public user list before submissions"
+if ! python3 - "${user_public_list_response_file}" "${login_user_id}" "${user_login_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    user_list = json.load(response_file)
+
+expected_user_id = int(sys.argv[2])
+expected_user_login_id = sys.argv[3]
+
+if user_list.get("user_count") != 1:
+    raise SystemExit("expected one user in filtered public user list")
+
+users = user_list.get("users")
+if not isinstance(users, list) or len(users) != 1:
+    raise SystemExit("public user list users mismatch")
+
+user_value = users[0]
+if user_value.get("user_id") != expected_user_id:
+    raise SystemExit("public user list user_id mismatch")
+
+if user_value.get("user_login_id") != expected_user_login_id:
+    raise SystemExit("public user list user_login_id mismatch")
+
+if user_value.get("solved_problem_count") != 0:
+    raise SystemExit("expected solved_problem_count to be 0 before submissions")
+
+if user_value.get("accepted_submission_count") != 0:
+    raise SystemExit("expected accepted_submission_count to be 0 before submissions")
+
+if user_value.get("submission_count") != 0:
+    raise SystemExit("expected submission_count to be 0 before submissions")
+
+created_at = user_value.get("created_at")
+if not isinstance(created_at, str) or not created_at:
+    raise SystemExit("public user list created_at missing")
+PY
+then
+    append_log_line "${test_log_temp_file}" "public user list validation failed"
+    publish_failure_logs
+    exit 1
+fi
+print_success_log "public user list get success before submissions"
 
 send_http_request_and_assert_status \
     "GET" \

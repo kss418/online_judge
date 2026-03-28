@@ -1164,6 +1164,10 @@ export function useSubmissionsPage(){
     })
   }
 
+  async function refreshSubmissions(){
+    await loadSubmissions()
+  }
+
   function submitPageJump(){
     const parsedPage = Number.parseInt(pageJumpInput.value, 10)
 
@@ -1261,6 +1265,7 @@ export function useSubmissionsPage(){
     closeSourceDialog,
     copySourceCode,
     handleRejudgeSubmission,
+    refreshSubmissions,
     goToPage,
     submitPageJump
   }

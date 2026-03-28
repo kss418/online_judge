@@ -194,6 +194,56 @@ user_handler::response_type user_handler::get_me_wrong_problems(
     );
 }
 
+user_handler::response_type user_handler::get_public_user_list(
+    const request_type& request,
+    db_connection& db_connection_value
+){
+    const std::string_view target{
+        request.target().data(),
+        request.target().size()
+    };
+    const auto query_opt = http_util::get_target_query(target);
+    const auto query_params_opt = http_util::parse_query_params(query_opt.value_or(""));
+    if(!query_params_opt){
+        return http_response_util::create_error(
+            request,
+            boost::beast::http::status::bad_request,
+            "invalid_query_string",
+            "invalid query string"
+        );
+    }
+
+    const auto filter_exp = user_dto::make_list_filter_from_query_params(*query_params_opt);
+    if(!filter_exp){
+        const auto& validation_error = filter_exp.error();
+        return http_response_util::create_error(
+            request,
+            boost::beast::http::status::bad_request,
+            validation_error.code,
+            validation_error.message,
+            validation_error.field_opt
+        );
+    }
+
+    const auto get_public_list_exp = user_service::get_public_list(
+        db_connection_value,
+        *filter_exp
+    );
+    if(!get_public_list_exp){
+        return http_response_util::create_4xx_or_500(
+            request,
+            "get public user list",
+            get_public_list_exp.error()
+        );
+    }
+
+    return http_response_util::create_json(
+        request,
+        boost::beast::http::status::ok,
+        user_json_serializer::make_public_list_object(*get_public_list_exp)
+    );
+}
+
 user_handler::response_type user_handler::get_user_summary(
     const request_type& request,
     db_connection& db_connection_value,

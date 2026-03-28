@@ -439,6 +439,10 @@ export function useProblemBrowse(){
     })
   }
 
+  async function refreshProblems(){
+    await loadProblems()
+  }
+
   async function goToPage(pageNumber){
     if (pageNumber < 1 || pageNumber > totalPages.value) {
       return
@@ -490,6 +494,7 @@ export function useProblemBrowse(){
     paginationItems,
     submitSearch,
     resetSearch,
+    refreshProblems,
     cycleSort,
     applyStateFilter,
     goToPage,

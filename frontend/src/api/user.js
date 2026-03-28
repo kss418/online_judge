@@ -1,5 +1,15 @@
 import { requestJson } from '@/api/http'
 
+export function getPublicUserList(query = ''){
+  const searchParams = new URLSearchParams()
+  if (typeof query === 'string' && query.trim()) {
+    searchParams.set('q', query.trim())
+  }
+
+  const suffix = searchParams.size > 0 ? `?${searchParams.toString()}` : ''
+  return requestJson(`/user/list${suffix}`)
+}
+
 export function getUserSummary(userLoginId){
   return requestJson(`/user/id/${encodeURIComponent(userLoginId)}`)
 }

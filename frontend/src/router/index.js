@@ -10,6 +10,7 @@ import ProblemDetailPage from '@/pages/ProblemDetailPage.vue'
 import ProblemSubmitPage from '@/pages/ProblemSubmitPage.vue'
 import ProblemsPage from '@/pages/ProblemsPage.vue'
 import SubmissionsPage from '@/pages/SubmissionsPage.vue'
+import UsersPage from '@/pages/UsersPage.vue'
 
 const routes = [
   {
@@ -46,6 +47,11 @@ const routes = [
     path: '/submissions',
     name: 'submissions',
     component: SubmissionsPage
+  },
+  {
+    path: '/users',
+    name: 'users',
+    component: UsersPage
   },
   {
     path: '/me',

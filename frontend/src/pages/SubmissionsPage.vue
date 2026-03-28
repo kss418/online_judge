@@ -9,6 +9,7 @@
         :visible-range-text="visibleRangeText"
         :numeric-problem-id="numericProblemId"
         :format-count="formatCount"
+        @refresh="refreshSubmissions"
       />
 
       <SubmissionsFilterBar
@@ -154,6 +155,7 @@ const {
   closeSourceDialog,
   copySourceCode,
   handleRejudgeSubmission,
+  refreshSubmissions,
   goToPage,
   submitPageJump
 } = useSubmissionsPage()

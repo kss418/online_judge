@@ -21,6 +21,7 @@ public:
     response_type route(const request_type& request, std::string_view path);
 
 private:
+    response_type handle_public_user_list(const request_type& request);
     response_type handle_user_list(const request_type& request);
 
     response_type handle_user_me(const request_type& request);

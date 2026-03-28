@@ -3,6 +3,22 @@
 #include "db_repository/user_repository.hpp"
 #include "db_service/db_service_util.hpp"
 
+std::expected<user_dto::list, error_code> user_service::get_public_list(
+    db_connection& connection,
+    const user_dto::list_filter& filter_value
+){
+    return db_service_util::with_retry_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<user_dto::list, error_code> {
+            return user_repository::get_public_list(
+                transaction,
+                filter_value
+            );
+        }
+    );
+}
+
 std::expected<std::optional<user_dto::summary>, error_code> user_service::get_summary(
     db_connection& connection,
     std::int64_t user_id

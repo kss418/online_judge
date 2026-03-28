@@ -10,6 +10,7 @@
         :has-applied-title-filter="hasAppliedTitleFilter"
         @submit-search="submitSearch"
         @reset-search="resetSearch"
+        @refresh="refreshProblems"
       />
 
       <ProblemsFilters
@@ -88,6 +89,7 @@ const {
   paginationItems,
   submitSearch,
   resetSearch,
+  refreshProblems,
   cycleSort,
   applyStateFilter,
   goToPage,

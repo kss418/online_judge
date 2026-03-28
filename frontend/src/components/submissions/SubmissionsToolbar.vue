@@ -19,6 +19,15 @@
         </span>
       </div>
 
+      <button
+        type="button"
+        class="ghost-button submissions-refresh-button"
+        :disabled="isLoading"
+        @click="$emit('refresh')"
+      >
+        새로고침
+      </button>
+
       <RouterLink
         v-if="numericProblemId"
         class="submissions-back-link"
@@ -63,6 +72,8 @@ defineProps({
     required: true
   }
 })
+
+defineEmits(['refresh'])
 </script>
 
 <style scoped>
@@ -79,6 +90,10 @@ defineProps({
     transform 160ms ease,
     background 160ms ease,
     border-color 160ms ease;
+}
+
+.submissions-refresh-button {
+  flex-shrink: 0;
 }
 
 .submissions-back-link:hover {

@@ -128,6 +128,11 @@ const navItems = computed(() => {
       to: '/submissions',
       label: 'Submissions',
       hint: '제출 목록'
+    },
+    {
+      to: '/users',
+      label: 'Users',
+      hint: '유저 목록'
     }
   ]
 

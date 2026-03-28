@@ -4,6 +4,75 @@ HTTP API handled by `user_router`.
 
 ## endpoint
 
+### `GET /api/user/list`
+
+Get the public user list. This endpoint supports search by login id substring.
+
+#### request
+
+- request body: none
+- required header: none
+- optional query:
+
+| key | type | note |
+|---|---|---|
+| `q` | `string` | filters by `user_login_id` substring |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `user_count` | `int64` | total users in the response |
+| `users` | `array` | ordered by `user_id` ascending |
+
+Each item in `users` contains:
+
+| field | type | note |
+|---|---|---|
+| `user_id` | `int64` | account number |
+| `user_login_id` | `string` | login identifier |
+| `solved_problem_count` | `int64` | number of solved problems |
+| `accepted_submission_count` | `int64` | total accepted submissions |
+| `submission_count` | `int64` | total submissions |
+| `created_at` | `string` | sign-up timestamp |
+
+Example:
+
+```json
+{
+  "user_count": 2,
+  "users": [
+    {
+      "user_id": 1,
+      "user_login_id": "alice",
+      "solved_problem_count": 12,
+      "accepted_submission_count": 24,
+      "submission_count": 48,
+      "created_at": "2026-03-26 13:14:02.000000+09"
+    },
+    {
+      "user_id": 2,
+      "user_login_id": "bob",
+      "solved_problem_count": 0,
+      "accepted_submission_count": 0,
+      "submission_count": 0,
+      "created_at": "2026-03-26 13:15:17.000000+09"
+    }
+  ]
+}
+```
+
+#### error response
+
+- invalid query string or unsupported query parameter: `400 Bad Request`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
 ### `GET /api/user/id/{user_login_id}`
 
 Get the public summary for a single user by login id.

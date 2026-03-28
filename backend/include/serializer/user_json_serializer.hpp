@@ -17,6 +17,9 @@ namespace user_json_serializer{
 
     boost::json::object make_me_object(const auth_dto::identity& auth_identity_value);
     boost::json::object make_summary_object(const user_dto::summary& summary_value);
+    boost::json::object make_public_list_object(
+        const user_dto::list& user_values
+    );
 
     boost::json::object make_submission_statistics_object(
         const user_statistics_dto::submission_statistics& statistics_value

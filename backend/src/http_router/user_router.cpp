@@ -20,6 +20,10 @@ user_router::response_type user_router::route(
         return handle_user_list(request);
     }
 
+    if(path_segments.size() == 1 && path_segments[0] == "list"){
+        return handle_public_user_list(request);
+    }
+
     if(path_segments.size() == 2
         && path_segments[0] == "me"
         && path_segments[1] == "statistics"){
@@ -119,6 +123,19 @@ user_router::response_type user_router::route(
 user_router::response_type user_router::handle_user_list(const request_type& request){
     if(request.method() == boost::beast::http::verb::get){
         return user_handler::get_user_list(
+            request,
+            db_connection_
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
+user_router::response_type user_router::handle_public_user_list(
+    const request_type& request
+){
+    if(request.method() == boost::beast::http::verb::get){
+        return user_handler::get_public_user_list(
             request,
             db_connection_
         );
