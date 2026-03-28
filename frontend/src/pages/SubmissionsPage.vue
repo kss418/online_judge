@@ -46,8 +46,6 @@
         :format-elapsed-ms="formatElapsedMs"
         :format-memory="formatMemory"
         :format-relative-submitted-at="formatRelativeSubmittedAt"
-        :get-status-label="getStatusLabel"
-        :get-status-tone="getStatusTone"
         :can-view-source="canViewSource"
         :can-rejudge-submission="canRejudgeSubmission"
         :is-rejudging-submission="isRejudgingSubmission"
@@ -80,8 +78,6 @@
     :should-poll="shouldPollSubmissionHistory"
     :format-count="formatCount"
     :format-history-transition="formatHistoryTransition"
-    :get-status-label="getStatusLabel"
-    :get-status-tone="getStatusTone"
     @close="closeHistoryDialog"
   />
 
@@ -147,8 +143,6 @@ const {
   formatElapsedMs,
   formatMemory,
   formatHistoryTransition,
-  getStatusLabel,
-  getStatusTone,
   canViewSource,
   canRejudgeSubmission,
   isRejudgingSubmission,

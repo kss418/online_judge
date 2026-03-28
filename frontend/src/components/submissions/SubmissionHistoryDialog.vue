@@ -57,10 +57,7 @@
               <span class="submission-history-entry-marker" aria-hidden="true"></span>
               <div class="submission-history-entry-card">
                 <div class="submission-history-entry-top">
-                  <StatusBadge
-                    :label="getStatusLabel(historyEntry.to_status)"
-                    :tone="getStatusTone(historyEntry.to_status)"
-                  />
+                  <SubmissionStatusBadge :status="historyEntry.to_status" />
                   <span class="submission-history-entry-time">
                     {{ historyEntry.created_at_label }}
                   </span>
@@ -88,7 +85,7 @@
 </template>
 
 <script setup>
-import StatusBadge from '@/components/StatusBadge.vue'
+import SubmissionStatusBadge from '@/components/submissions/SubmissionStatusBadge.vue'
 
 defineProps({
   open: {
@@ -120,14 +117,6 @@ defineProps({
     required: true
   },
   formatHistoryTransition: {
-    type: Function,
-    required: true
-  },
-  getStatusLabel: {
-    type: Function,
-    required: true
-  },
-  getStatusTone: {
     type: Function,
     required: true
   }

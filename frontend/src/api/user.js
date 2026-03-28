@@ -6,6 +6,12 @@ export function getUserList(token){
   })
 }
 
+export function getMySubmissionStatistics(token){
+  return requestJson('/user/me/statistics', {
+    bearerToken: token
+  })
+}
+
 export function promoteUserToAdmin(userId, token){
   return requestJson(`/user/${userId}/admin`, {
     method: 'PUT',

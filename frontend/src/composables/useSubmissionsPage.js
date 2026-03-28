@@ -12,6 +12,7 @@ import {
 import { useAuth } from '@/composables/useAuth'
 import { useNotice } from '@/composables/useNotice'
 import { buildPaginationItems } from '@/utils/pagination'
+import { getSubmissionStatusLabel } from '@/utils/submissionStatus'
 
 const listLimit = 50
 const submissionPollingIntervalMs = 2000
@@ -26,30 +27,6 @@ const submissionStatusOptions = [
   { value: 'output_exceeded', label: '출력 초과' },
   { value: 'compile_error', label: '컴파일 에러' }
 ]
-
-const statusLabelMap = {
-  queued: '대기 중',
-  judging: '채점 중',
-  accepted: '정답',
-  wrong_answer: '오답',
-  time_limit_exceeded: '시간 초과',
-  memory_limit_exceeded: '메모리 초과',
-  runtime_error: '런타임 에러',
-  output_exceeded: '출력 초과',
-  compile_error: '컴파일 에러'
-}
-
-const statusToneMap = {
-  queued: 'neutral',
-  judging: 'warning',
-  accepted: 'success',
-  wrong_answer: 'danger',
-  time_limit_exceeded: 'danger',
-  memory_limit_exceeded: 'danger',
-  runtime_error: 'danger',
-  output_exceeded: 'danger',
-  compile_error: 'danger'
-}
 
 const finishedSubmissionStatuses = new Set([
   'accepted',
@@ -639,18 +616,10 @@ export function useSubmissionsPage(){
 
   function formatHistoryTransition(historyEntry){
     if (!historyEntry?.from_status) {
-      return 'queued'
+      return getSubmissionStatusLabel('queued')
     }
 
-    return `${historyEntry.from_status} -> ${historyEntry.to_status}`
-  }
-
-  function getStatusLabel(status){
-    return statusLabelMap[status] || status
-  }
-
-  function getStatusTone(status){
-    return statusToneMap[status] || 'neutral'
+    return `${getSubmissionStatusLabel(historyEntry.from_status)} -> ${getSubmissionStatusLabel(historyEntry.to_status)}`
   }
 
   function canRejudgeSubmission(submission){
@@ -1279,8 +1248,6 @@ export function useSubmissionsPage(){
     formatElapsedMs,
     formatMemory,
     formatHistoryTransition,
-    getStatusLabel,
-    getStatusTone,
     canViewSource,
     canRejudgeSubmission,
     isRejudgingSubmission,

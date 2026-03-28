@@ -40,10 +40,7 @@
           #{{ formatCount(submission.problem_id) }}
         </RouterLink>
         <div class="submission-cell">
-          <StatusBadge
-            :label="getStatusLabel(submission.status)"
-            :tone="getStatusTone(submission.status)"
-          />
+          <SubmissionStatusBadge :status="submission.status" />
         </div>
         <span class="submission-cell is-metric">
           {{ formatElapsedMs(submission.elapsed_ms) }}
@@ -102,7 +99,7 @@
 </template>
 
 <script setup>
-import StatusBadge from '@/components/StatusBadge.vue'
+import SubmissionStatusBadge from '@/components/submissions/SubmissionStatusBadge.vue'
 import { getProblemStateTextClass } from '@/utils/problemState'
 
 defineProps({
@@ -127,14 +124,6 @@ defineProps({
     required: true
   },
   formatRelativeSubmittedAt: {
-    type: Function,
-    required: true
-  },
-  getStatusLabel: {
-    type: Function,
-    required: true
-  },
-  getStatusTone: {
     type: Function,
     required: true
   },
