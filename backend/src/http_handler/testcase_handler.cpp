@@ -370,33 +370,17 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
 testcase_handler::response_type testcase_handler::delete_testcase(
     const request_type& request,
     db_connection& db_connection_value,
-    std::int64_t problem_id
+    std::int64_t problem_id,
+    std::int32_t testcase_order
 ){
-    problem_dto::reference problem_reference_value{problem_id};
+    problem_dto::testcase_ref testcase_reference_value{
+        .problem_id = problem_id,
+        .testcase_order = testcase_order
+    };
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto testcase_count_exp = testcase_service::get_testcase_count(
-            db_connection_value,
-            problem_reference_value
-        );
-        if(!testcase_count_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "get testcase count",
-                testcase_count_exp.error()
-            );
-        }
-        if(testcase_count_exp->testcase_count <= 0){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::bad_request,
-                "invalid_testcase_delete_request",
-                "failed to delete testcase: invalid argument"
-            );
-        }
-
         const auto delete_testcase_exp = testcase_service::delete_testcase(
             db_connection_value,
-            problem_reference_value
+            testcase_reference_value
         );
         if(!delete_testcase_exp){
             return http_response_util::create_4xx_or_500(

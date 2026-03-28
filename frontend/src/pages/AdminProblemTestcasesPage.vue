@@ -72,8 +72,8 @@
             :testcase-error-message="testcaseErrorMessage"
             :selected-testcase-order="selectedTestcaseOrder"
             :selected-testcase="selectedTestcase"
-            :can-delete-last-testcase="canDeleteLastTestcase"
-            :is-deleting-last-testcase="isDeletingLastTestcase"
+            :can-delete-selected-testcase="canDeleteSelectedTestcase"
+            :is-deleting-selected-testcase="isDeletingSelectedTestcase"
             :can-save-selected-testcase="canSaveSelectedTestcase"
             :is-saving-selected-testcase="isSavingSelectedTestcase"
             :format-count="formatCount"
@@ -85,7 +85,7 @@
             @create-testcase="handleCreateTestcase"
             @view-selected-testcase="handleViewSelectedTestcase"
             @select-testcase="selectTestcase"
-            @delete-last-testcase="handleDeleteLastTestcase"
+            @delete-selected-testcase="handleDeleteSelectedTestcase"
             @save-selected-testcase="handleSaveSelectedTestcase"
           />
         </div>
@@ -133,13 +133,13 @@ const {
   emptyProblemListMessage,
   isCreatingTestcase,
   isUploadingTestcaseZip,
-  isDeletingLastTestcase,
+  isDeletingSelectedTestcase,
   isSavingSelectedTestcase,
   selectedTestcaseZipName,
   selectedTestcase,
   canCreateTestcase,
   canUploadTestcaseZip,
-  canDeleteLastTestcase,
+  canDeleteSelectedTestcase,
   canSaveSelectedTestcase,
   canViewSpecificTestcase,
   formatCount,
@@ -156,7 +156,7 @@ const {
   handleUploadTestcaseZip,
   handleCreateTestcase,
   selectTestcase,
-  handleDeleteLastTestcase,
+  handleDeleteSelectedTestcase,
   handleSaveSelectedTestcase,
   handleViewSelectedTestcase,
   setTestcaseSummaryElement

@@ -185,11 +185,49 @@ CREATE TABLE IF NOT EXISTS problem_testcases(
     testcase_output TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT problem_testcases_testcase_order_check CHECK(testcase_order > 0),
-    CONSTRAINT problem_testcases_problem_id_testcase_order_unique UNIQUE(problem_id, testcase_order)
+    CONSTRAINT problem_testcases_problem_id_testcase_order_unique
+        UNIQUE(problem_id, testcase_order)
+        DEFERRABLE INITIALLY IMMEDIATE
 );
 
 CREATE INDEX IF NOT EXISTS problem_testcases_problem_id_testcase_order_idx
     ON problem_testcases(problem_id, testcase_order ASC);
+
+DO $do$
+DECLARE
+    testcase_order_unique_is_deferrable BOOLEAN;
+    testcase_order_unique_is_initially_deferred BOOLEAN;
+BEGIN
+    SELECT
+        pg_constraint.condeferrable,
+        pg_constraint.condeferred
+    INTO
+        testcase_order_unique_is_deferrable,
+        testcase_order_unique_is_initially_deferred
+    FROM pg_constraint
+    WHERE
+        conrelid = 'problem_testcases'::regclass AND
+        conname = 'problem_testcases_problem_id_testcase_order_unique';
+
+    IF testcase_order_unique_is_deferrable IS NULL THEN
+        ALTER TABLE problem_testcases
+            ADD CONSTRAINT problem_testcases_problem_id_testcase_order_unique
+            UNIQUE(problem_id, testcase_order)
+            DEFERRABLE INITIALLY IMMEDIATE;
+    ELSIF
+        testcase_order_unique_is_deferrable IS DISTINCT FROM TRUE OR
+        testcase_order_unique_is_initially_deferred IS DISTINCT FROM FALSE
+    THEN
+        ALTER TABLE problem_testcases
+            DROP CONSTRAINT problem_testcases_problem_id_testcase_order_unique;
+
+        ALTER TABLE problem_testcases
+            ADD CONSTRAINT problem_testcases_problem_id_testcase_order_unique
+            UNIQUE(problem_id, testcase_order)
+            DEFERRABLE INITIALLY IMMEDIATE;
+    END IF;
+END
+$do$;
 
 INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms, updated_at)
 SELECT p.problem_id, 256, 1000, NOW()
@@ -258,7 +296,7 @@ END
 $do$;
 
 INSERT INTO schema_migrations(version)
-VALUES('problem_schema_v12')
+VALUES('problem_schema_v13')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

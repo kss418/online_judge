@@ -274,14 +274,6 @@ problem_router::response_type problem_router::handle_testcases(
         );
     }
 
-    if(request.method() == boost::beast::http::verb::delete_){
-        return testcase_handler::delete_testcase(
-            request,
-            db_connection_,
-            problem_id
-        );
-    }
-
     return http_response_util::create_method_not_allowed(request);
 }
 
@@ -292,6 +284,15 @@ problem_router::response_type problem_router::handle_testcase(
 ){
     if(request.method() == boost::beast::http::verb::put){
         return testcase_handler::put_testcase(
+            request,
+            db_connection_,
+            problem_id,
+            testcase_order
+        );
+    }
+
+    if(request.method() == boost::beast::http::verb::delete_){
+        return testcase_handler::delete_testcase(
             request,
             db_connection_,
             problem_id,

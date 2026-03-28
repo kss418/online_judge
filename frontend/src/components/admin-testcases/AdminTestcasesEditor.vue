@@ -234,13 +234,12 @@
               </div>
 
               <button
-                v-if="isLastTestcase(selectedTestcase.testcase_order)"
                 type="button"
                 class="ghost-button admin-testcase-delete-button"
-                :disabled="!canDeleteLastTestcase"
-                @click="$emit('delete-last-testcase')"
+                :disabled="!canDeleteSelectedTestcase"
+                @click="$emit('delete-selected-testcase')"
               >
-                {{ isDeletingLastTestcase ? '삭제 중...' : '테스트케이스 삭제' }}
+                {{ isDeletingSelectedTestcase ? '삭제 중...' : '테스트케이스 삭제' }}
               </button>
             </div>
 
@@ -369,11 +368,11 @@ defineProps({
     type: Object,
     default: null
   },
-  canDeleteLastTestcase: {
+  canDeleteSelectedTestcase: {
     type: Boolean,
     required: true
   },
-  isDeletingLastTestcase: {
+  isDeletingSelectedTestcase: {
     type: Boolean,
     required: true
   },
@@ -420,7 +419,7 @@ defineEmits([
   'update:viewTestcaseOrderInput',
   'view-selected-testcase',
   'select-testcase',
-  'delete-last-testcase',
+  'delete-selected-testcase',
   'update:selectedTestcaseInputDraft',
   'update:selectedTestcaseOutputDraft',
   'save-selected-testcase'

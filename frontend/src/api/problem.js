@@ -124,8 +124,8 @@ export function createProblemTestcase(problemId, payload, token){
   })
 }
 
-export function deleteProblemTestcase(problemId, token){
-  return requestJson(`/problem/${problemId}/testcase`, {
+export function deleteProblemTestcase(problemId, testcaseOrder, token){
+  return requestJson(`/problem/${problemId}/testcase/${testcaseOrder}`, {
     method: 'DELETE',
     bearerToken: token
   })

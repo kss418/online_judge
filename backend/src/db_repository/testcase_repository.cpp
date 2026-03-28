@@ -201,27 +201,80 @@ std::expected<void, error_code> testcase_repository::set_testcase(
 
 std::expected<void, error_code> testcase_repository::delete_testcase(
     pqxx::transaction_base& transaction,
-    const problem_dto::reference& problem_reference_value
+    const problem_dto::testcase_ref& testcase_reference_value
 ){
-    const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    const std::int64_t problem_id = testcase_reference_value.problem_id;
+    const std::int32_t testcase_order = testcase_reference_value.testcase_order;
+    if(problem_id <= 0 || testcase_order <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
     const auto delete_result = transaction.exec(
         "DELETE FROM problem_testcases "
-        "WHERE "
-        "problem_id = $1 AND "
-        "testcase_order = ("
-        "SELECT MAX(testcase_order) "
-        "FROM problem_testcases "
-        "WHERE problem_id = $1"
-        ")",
-        pqxx::params{problem_id}
+        "WHERE problem_id = $1 AND testcase_order = $2",
+        pqxx::params{problem_id, testcase_order}
     );
 
     if(delete_result.affected_rows() == 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return {};
+}
+
+std::expected<void, error_code> testcase_repository::decrease_order(
+    pqxx::transaction_base& transaction,
+    const problem_dto::testcase_ref& testcase_reference_value
+){
+    const std::int64_t problem_id = testcase_reference_value.problem_id;
+    const std::int32_t testcase_order = testcase_reference_value.testcase_order;
+    if(problem_id <= 0 || testcase_order <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    transaction.exec(
+        "SET CONSTRAINTS problem_testcases_problem_id_testcase_order_unique DEFERRED"
+    );
+
+    transaction.exec(
+        "UPDATE problem_testcases "
+        "SET testcase_order = testcase_order - 1 "
+        "WHERE problem_id = $1 AND testcase_order > $2",
+        pqxx::params{problem_id, testcase_order}
+    );
+
+    return {};
+}
+
+std::expected<void, error_code> testcase_repository::delete_testcase_and_shift_after(
+    pqxx::transaction_base& transaction,
+    const problem_dto::testcase_ref& testcase_reference_value
+){
+    const auto delete_testcase_exp = delete_testcase(
+        transaction,
+        testcase_reference_value
+    );
+    if(!delete_testcase_exp){
+        return std::unexpected(delete_testcase_exp.error());
+    }
+
+    const auto decrease_order_exp = decrease_order(
+        transaction,
+        testcase_reference_value
+    );
+    if(!decrease_order_exp){
+        return std::unexpected(decrease_order_exp.error());
+    }
+
+    problem_dto::reference problem_reference_value{
+        testcase_reference_value.problem_id
+    };
+    const auto decreased_testcase_count_exp = decrease_testcase_count(
+        transaction,
+        problem_reference_value
+    );
+    if(!decreased_testcase_count_exp){
+        return std::unexpected(decreased_testcase_count_exp.error());
     }
 
     return {};

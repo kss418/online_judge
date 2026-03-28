@@ -126,7 +126,7 @@ export function useAdminProblemTestcasesPage(){
   })
   const isCreatingTestcase = computed(() => busySection.value === 'create')
   const isUploadingTestcaseZip = computed(() => busySection.value === 'upload')
-  const isDeletingLastTestcase = computed(() => busySection.value === 'delete-last')
+  const isDeletingSelectedTestcase = computed(() => busySection.value === 'delete-selected')
   const isSavingSelectedTestcase = computed(() => busySection.value === 'save')
   const selectedTestcaseZipName = computed(() => testcaseZipFile.value?.name || '')
   const selectedTestcase = computed(() =>
@@ -143,10 +143,10 @@ export function useAdminProblemTestcasesPage(){
     Boolean(testcaseZipFile.value) &&
     !busySection.value
   )
-  const canDeleteLastTestcase = computed(() =>
+  const canDeleteSelectedTestcase = computed(() =>
     selectedProblemId.value > 0 &&
     Boolean(authState.token) &&
-    Boolean(testcaseItems.value.length) &&
+    Boolean(selectedTestcase.value) &&
     !busySection.value
   )
   const canSaveSelectedTestcase = computed(() => {
@@ -801,18 +801,31 @@ export function useAdminProblemTestcasesPage(){
     }
   }
 
-  async function handleDeleteLastTestcase(){
-    if (!canDeleteLastTestcase.value || !authState.token) {
+  async function handleDeleteSelectedTestcase(){
+    if (!canDeleteSelectedTestcase.value || !authState.token || !selectedTestcase.value) {
       return
     }
 
-    busySection.value = 'delete-last'
+    const deletedTestcaseOrder = selectedTestcase.value.testcase_order
+
+    busySection.value = 'delete-selected'
 
     try {
-      await deleteProblemTestcase(selectedProblemId.value, authState.token)
-      testcaseItems.value = testcaseItems.value.slice(0, -1)
-      syncSelectedTestcase(selectedTestcaseOrder.value)
-      showSuccessNotice('마지막 테스트케이스를 삭제했습니다.')
+      await deleteProblemTestcase(
+        selectedProblemId.value,
+        deletedTestcaseOrder,
+        authState.token
+      )
+      testcaseItems.value = testcaseItems.value
+        .filter((testcase) => testcase.testcase_order !== deletedTestcaseOrder)
+        .map((testcase) => ({
+          ...testcase,
+          testcase_order: testcase.testcase_order > deletedTestcaseOrder
+            ? testcase.testcase_order - 1
+            : testcase.testcase_order
+        }))
+      syncSelectedTestcase(deletedTestcaseOrder)
+      showSuccessNotice(`테스트케이스 ${deletedTestcaseOrder}번을 삭제했습니다.`)
     } catch (error) {
       showErrorNotice(
         error instanceof Error
@@ -928,13 +941,13 @@ export function useAdminProblemTestcasesPage(){
     emptyProblemListMessage,
     isCreatingTestcase,
     isUploadingTestcaseZip,
-    isDeletingLastTestcase,
+    isDeletingSelectedTestcase,
     isSavingSelectedTestcase,
     selectedTestcaseZipName,
     selectedTestcase,
     canCreateTestcase,
     canUploadTestcaseZip,
-    canDeleteLastTestcase,
+    canDeleteSelectedTestcase,
     canSaveSelectedTestcase,
     canViewSpecificTestcase,
     formatCount,
@@ -951,7 +964,7 @@ export function useAdminProblemTestcasesPage(){
     handleUploadTestcaseZip,
     handleCreateTestcase,
     selectTestcase,
-    handleDeleteLastTestcase,
+    handleDeleteSelectedTestcase,
     handleSaveSelectedTestcase,
     handleViewSelectedTestcase,
     setTestcaseSummaryElement

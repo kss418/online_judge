@@ -98,7 +98,7 @@ Constraints:
 - `problem_testcases_pkey`
 - `problem_testcases_problem_id_fkey`
 - `problem_testcases_testcase_order_check`
-- `problem_testcases_problem_id_testcase_order_unique (problem_id, testcase_order)`
+- `problem_testcases_problem_id_testcase_order_unique (problem_id, testcase_order)` deferrable, initially immediate
 
 Indexes:
 

@@ -979,9 +979,9 @@ Replace one hidden testcase of an existing problem. This endpoint is admin-only.
 - unknown `problem_id` or `testcase_order`: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
-### `DELETE /api/problem/{problem_id}/testcase`
+### `DELETE /api/problem/{problem_id}/testcase/{testcase_order}`
 
-Delete the last hidden testcase of an existing problem. This endpoint is admin-only.
+Delete one hidden testcase of an existing problem and shift all later testcase orders down by one. This endpoint is admin-only.
 
 #### request
 
@@ -997,6 +997,7 @@ Delete the last hidden testcase of an existing problem. This endpoint is admin-o
 | field | type | note |
 |---|---|---|
 | `problem_id` | `int64` | must be positive |
+| `testcase_order` | `int32` | must be positive |
 
 #### success response
 
@@ -1021,7 +1022,7 @@ Example:
 - missing or malformed bearer token: `401 Unauthorized`
 - invalid, expired, or revoked token: `401 Unauthorized`
 - authenticated but not admin: `401 Unauthorized`
-- no testcase to delete or invalid `problem_id`: `400 Bad Request`
+- invalid `problem_id` or `testcase_order`, or no testcase exists at the requested order: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
 Examples:

@@ -437,7 +437,7 @@ PY
 
 send_http_request_and_assert_status \
     "DELETE" \
-    "${base_url}/api/problem/${problem_id}/testcase" \
+    "${base_url}/api/problem/${problem_id}/testcase/1" \
     "${delete_testcase_response_file}" \
     "200" \
     "delete testcase" \
@@ -474,9 +474,9 @@ if not isinstance(testcases, list) or len(testcases) != 1:
 first_testcase = testcases[0]
 if first_testcase.get("testcase_order") != 1:
     raise SystemExit("unexpected remaining testcase_order after delete")
-if first_testcase.get("testcase_input") != "10 20\n":
+if first_testcase.get("testcase_input") != "":
     raise SystemExit("unexpected remaining testcase_input after delete")
-if first_testcase.get("testcase_output") != "30\n":
+if first_testcase.get("testcase_output") != "":
     raise SystemExit("unexpected remaining testcase_output after delete")
 PY
 

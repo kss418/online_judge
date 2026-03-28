@@ -51,7 +51,17 @@ namespace testcase_repository{
 
     std::expected<void, error_code> delete_testcase(
         pqxx::transaction_base& transaction,
-        const problem_dto::reference& problem_reference_value
+        const problem_dto::testcase_ref& testcase_reference_value
+    );
+
+    std::expected<void, error_code> decrease_order(
+        pqxx::transaction_base& transaction,
+        const problem_dto::testcase_ref& testcase_reference_value
+    );
+
+    std::expected<void, error_code> delete_testcase_and_shift_after(
+        pqxx::transaction_base& transaction,
+        const problem_dto::testcase_ref& testcase_reference_value
     );
 
     std::expected<void, error_code> delete_all_testcases(
