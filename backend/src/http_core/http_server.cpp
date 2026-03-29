@@ -7,12 +7,12 @@
 #include <utility>
 
 namespace{
-    constexpr std::size_t DEFAULT_HTTP_DB_POOL_SIZE = 1;
-
-    std::expected<std::size_t, error_code> resolve_http_db_pool_size(){
+    std::expected<std::size_t, error_code> resolve_http_db_pool_size(
+        std::size_t default_http_db_pool_size
+    ){
         const char* pool_size_text = std::getenv("HTTP_DB_POOL_SIZE");
         if(pool_size_text == nullptr || *pool_size_text == '\0'){
-            return DEFAULT_HTTP_DB_POOL_SIZE;
+            return default_http_db_pool_size;
         }
 
         const auto pool_size_opt = string_util::parse_positive_int64(pool_size_text);
@@ -27,8 +27,10 @@ namespace{
     }
 }
 
-std::expected<std::shared_ptr<http_server>, error_code> http_server::create(){
-    auto pool_size_exp = resolve_http_db_pool_size();
+std::expected<std::shared_ptr<http_server>, error_code> http_server::create(
+    std::size_t default_db_connection_pool_size
+){
+    auto pool_size_exp = resolve_http_db_pool_size(default_db_connection_pool_size);
     if(!pool_size_exp){
         return std::unexpected(pool_size_exp.error());
     }

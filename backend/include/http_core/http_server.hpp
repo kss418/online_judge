@@ -20,7 +20,9 @@ public:
     http_server(http_server&&) noexcept = delete;
     http_server& operator=(http_server&&) noexcept = delete;
 
-    static std::expected<std::shared_ptr<http_server>, error_code> create();
+    static std::expected<std::shared_ptr<http_server>, error_code> create(
+        std::size_t default_db_connection_pool_size
+    );
     response_type handle(const request_type& request);
 private:
     explicit http_server(db_connection_pool&& db_connection_pool);

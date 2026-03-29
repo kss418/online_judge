@@ -63,7 +63,7 @@ int main(){
     const std::uint32_t worker_count = *worker_count_exp;
 
     boost::asio::io_context io_context{static_cast<int>(worker_count)};
-    auto http_server_exp = http_server::create();
+    auto http_server_exp = http_server::create(static_cast<std::size_t>(worker_count));
     if(!http_server_exp){
         std::cerr << "http_server create failed: " << to_string(http_server_exp.error()) << '\n';
         return 1;
