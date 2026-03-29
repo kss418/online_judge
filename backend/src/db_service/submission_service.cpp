@@ -2,6 +2,7 @@
 #include "db_service/db_service_util.hpp"
 #include "db_repository/problem_statistics_repository.hpp"
 #include "db_repository/submission_repository.hpp"
+#include "db_repository/user_repository.hpp"
 
 #include <string>
 #include <utility>
@@ -120,6 +121,18 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<submission_dto::created, error_code> {
+            const auto active_submission_ban_exp =
+                user_repository::get_active_submission_banned_until(
+                    transaction,
+                    create_request_value.user_id
+                );
+            if(!active_submission_ban_exp){
+                return std::unexpected(active_submission_ban_exp.error());
+            }
+            if(active_submission_ban_exp->has_value()){
+                return std::unexpected(error_code::create(errno_error::permission_denied));
+            }
+
             const auto create_submission_exp = submission_repository::create_submission(
                 transaction,
                 create_request_value

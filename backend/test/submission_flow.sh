@@ -73,6 +73,9 @@ register_temp_file rejudge_detail_response_file
 register_temp_file problem_rejudge_response_file
 register_temp_file problem_rejudge_unauthorized_response_file
 register_temp_file problem_rejudge_missing_response_file
+register_temp_file submission_ban_response_file
+register_temp_file banned_submission_response_file
+register_temp_file clear_submission_ban_response_file
 register_temp_file test_log_temp_file
 register_temp_file server_log_temp_file
 register_temp_file sign_up_response_file
@@ -226,6 +229,84 @@ print(
 PY
 )"
 
+submission_ban_request_body="$(
+    python3 <<'PY'
+import json
+
+print(json.dumps({"duration_minutes": 60}))
+PY
+)"
+
+submission_ban_status_code="$(
+    send_http_request \
+        "POST" \
+        "${base_url}/api/user/${sign_up_user_id}/submission-ban" \
+        "${submission_ban_response_file}" \
+        "${admin_user_token}" \
+        "${submission_ban_request_body}"
+)"
+assert_status_code \
+    "${submission_ban_status_code}" \
+    "201" \
+    "${submission_ban_response_file}" \
+    "submission ban create"
+python3 - "${submission_ban_response_file}" "${sign_up_user_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+user_id = response.get("user_id")
+duration_minutes = response.get("duration_minutes")
+submission_banned_until = response.get("submission_banned_until")
+
+if user_id != int(sys.argv[2]):
+    raise SystemExit("unexpected user_id in submission ban response")
+if duration_minutes != 60:
+    raise SystemExit("unexpected duration_minutes in submission ban response")
+if not isinstance(submission_banned_until, str) or not submission_banned_until:
+    raise SystemExit("missing submission_banned_until in submission ban response")
+PY
+print_success_log "submission ban create success"
+
+banned_submission_status_code="$(
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${problem_id}" \
+        "${banned_submission_response_file}" \
+        "${sign_up_token}" \
+        "${second_submission_request_body}"
+)"
+assert_status_code \
+    "${banned_submission_status_code}" \
+    "403" \
+    "${banned_submission_response_file}" \
+    "banned submission create"
+assert_json_error_code \
+    "${banned_submission_response_file}" \
+    "submission_banned" \
+    "banned submission create"
+assert_json_error_message \
+    "${banned_submission_response_file}" \
+    "submission is currently banned" \
+    "banned submission create"
+print_success_log "banned submission blocked success"
+
+clear_submission_ban_status_code="$(
+    send_http_request \
+        "DELETE" \
+        "${base_url}/api/user/${sign_up_user_id}/submission-ban" \
+        "${clear_submission_ban_response_file}" \
+        "${admin_user_token}"
+)"
+assert_status_code \
+    "${clear_submission_ban_status_code}" \
+    "200" \
+    "${clear_submission_ban_response_file}" \
+    "submission ban clear"
+print_success_log "submission ban clear success"
+
 second_submission_status_code="$(
     send_http_request \
         "POST" \
@@ -326,7 +407,8 @@ submission_history_status_code="$(
     send_http_request \
         "GET" \
         "${base_url}/api/submission/${submission_id}/history" \
-        "${submission_history_response_file}"
+        "${submission_history_response_file}" \
+        "${admin_user_token}"
 )"
 assert_status_code "${submission_history_status_code}" "200" "${submission_history_response_file}" "submission history get"
 print_success_log "submission history get success"
@@ -335,7 +417,8 @@ missing_history_status_code="$(
     send_http_request \
         "GET" \
         "${base_url}/api/submission/${missing_submission_id}/history" \
-        "${missing_history_response_file}"
+        "${missing_history_response_file}" \
+        "${admin_user_token}"
 )"
 assert_status_code "${missing_history_status_code}" "404" "${missing_history_response_file}" "missing submission history get"
 print_success_log "missing submission history get success"

@@ -5,6 +5,12 @@
 #include "http_core/http_util.hpp"
 #include "serializer/submission_json_serializer.hpp"
 
+namespace{
+    bool is_submission_banned_error(const error_code& code){
+        return code == errno_error::permission_denied;
+    }
+}
+
 submission_handler::response_type submission_handler::get_submission_history(
     const request_type& request,
     db_connection& db_connection_value,
@@ -132,6 +138,15 @@ submission_handler::response_type submission_handler::post_submission(
                 *create_request_exp
             );
             if(!create_submission_exp){
+                if(is_submission_banned_error(create_submission_exp.error())){
+                    return http_response_util::create_error(
+                        request,
+                        boost::beast::http::status::forbidden,
+                        "submission_banned",
+                        "submission is currently banned"
+                    );
+                }
+
                 return http_response_util::create_4xx_or_500(
                     request,
                     "create submission",
