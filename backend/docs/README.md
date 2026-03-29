@@ -11,6 +11,7 @@
 - [`api/auth_api.md`](./api/auth_api.md)
 - [`api/submission_api.md`](./api/submission_api.md)
 - [`api/problem_api.md`](./api/problem_api.md)
+- [`schema/user_schema.md`](./schema/user_schema.md)
 - [`schema/auth_schema.md`](./schema/auth_schema.md)
 - [`schema/problem_schema.md`](./schema/problem_schema.md)
 - [`schema/submission_schema.md`](./schema/submission_schema.md)

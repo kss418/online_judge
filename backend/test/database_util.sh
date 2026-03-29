@@ -104,6 +104,7 @@ run_schema_migration(){
 apply_test_database_migrations(){
     require_database_test_env
 
+    run_schema_migration "${project_root}/scripts/migrate_user_schema.sh" "user_schema"
     run_schema_migration "${project_root}/scripts/migrate_auth_schema.sh" "auth_schema"
     run_schema_migration "${project_root}/scripts/migrate_problem_schema.sh" "problem_schema"
     run_schema_migration "${project_root}/scripts/migrate_submission_schema.sh" "submission_schema"

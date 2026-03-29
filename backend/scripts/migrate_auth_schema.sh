@@ -45,13 +45,28 @@ CREATE TABLE IF NOT EXISTS schema_migrations(
     applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DO $do$
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'user_info'
+    ) THEN
+        RAISE EXCEPTION 'user_schema must be applied before auth_schema';
+    END IF;
+END
+$do$;
+
 CREATE TABLE IF NOT EXISTS users(
-    user_id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT PRIMARY KEY,
     user_login_id TEXT NOT NULL,
     user_password_hash TEXT,
     permission_level INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    auth_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT users_user_id_fkey
+        FOREIGN KEY(user_id)
+        REFERENCES user_info(user_id)
+        ON DELETE CASCADE,
     CONSTRAINT users_user_login_id_not_blank CHECK(user_login_id <> ''),
     CONSTRAINT users_user_password_hash_not_blank
         CHECK(user_password_hash IS NULL OR user_password_hash <> '')
@@ -62,6 +77,55 @@ ALTER TABLE users
 
 ALTER TABLE users
     ADD COLUMN IF NOT EXISTS permission_level INTEGER;
+
+DO $do$
+BEGIN
+    IF EXISTS(
+        SELECT 1
+        FROM information_schema.columns
+        WHERE
+            table_schema = 'public' AND
+            table_name = 'users' AND
+            column_name = 'updated_at'
+    ) AND NOT EXISTS(
+        SELECT 1
+        FROM information_schema.columns
+        WHERE
+            table_schema = 'public' AND
+            table_name = 'users' AND
+            column_name = 'auth_updated_at'
+    ) THEN
+        ALTER TABLE users
+            RENAME COLUMN updated_at TO auth_updated_at;
+    END IF;
+END
+$do$;
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS auth_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+DO $do$
+BEGIN
+    IF EXISTS(
+        SELECT 1
+        FROM information_schema.columns
+        WHERE
+            table_schema = 'public' AND
+            table_name = 'users' AND
+            column_name = 'created_at'
+    ) THEN
+        INSERT INTO user_info(user_id, created_at)
+        SELECT user_id, created_at
+        FROM users
+        ON CONFLICT(user_id) DO NOTHING;
+    ELSE
+        INSERT INTO user_info(user_id)
+        SELECT user_id
+        FROM users
+        ON CONFLICT(user_id) DO NOTHING;
+    END IF;
+END
+$do$;
 
 DO $do$
 BEGIN
@@ -175,6 +239,9 @@ ALTER TABLE users
     ALTER COLUMN user_login_id SET NOT NULL;
 
 ALTER TABLE users
+    ALTER COLUMN user_id DROP DEFAULT;
+
+ALTER TABLE users
     ALTER COLUMN permission_level SET DEFAULT 0;
 
 ALTER TABLE users
@@ -194,8 +261,17 @@ ALTER TABLE users
     DROP CONSTRAINT IF EXISTS users_user_login_id_not_blank;
 
 ALTER TABLE users
+    DROP CONSTRAINT IF EXISTS users_user_id_fkey;
+
+ALTER TABLE users
     ADD CONSTRAINT users_user_login_id_not_blank
         CHECK(user_login_id <> '');
+
+ALTER TABLE users
+    ADD CONSTRAINT users_user_id_fkey
+        FOREIGN KEY(user_id)
+        REFERENCES user_info(user_id)
+        ON DELETE CASCADE;
 
 ALTER TABLE users
     DROP COLUMN IF EXISTS is_admin;
@@ -204,6 +280,9 @@ DROP INDEX IF EXISTS users_user_name_unique_idx;
 
 ALTER TABLE users
     DROP COLUMN IF EXISTS user_name;
+
+ALTER TABLE users
+    DROP COLUMN IF EXISTS created_at;
 
 CREATE TABLE IF NOT EXISTS auth_tokens(
     token_id BIGSERIAL PRIMARY KEY,
@@ -261,7 +340,11 @@ CREATE INDEX IF NOT EXISTS auth_tokens_active_user_expires_idx
     WHERE revoked_at IS NULL;
 
 INSERT INTO schema_migrations(version)
-VALUES('auth_schema_v10')
+VALUES('auth_schema_v11')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('auth_schema_v12')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

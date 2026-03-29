@@ -15,8 +15,10 @@ std::expected<user_dto::list, error_code> user_repository::get_public_list(
         "COALESCE(solved_problem_counts.solved_problem_count, 0)::BIGINT, "
         "COALESCE(accepted_submission_counts.accepted_submission_count, 0)::BIGINT, "
         "COALESCE(submission_counts.submission_count, 0)::BIGINT, "
-        "user_table.created_at::text "
+        "user_info_table.created_at::text "
         "FROM users user_table "
+        "JOIN user_info user_info_table "
+        "ON user_info_table.user_id = user_table.user_id "
         "LEFT JOIN ("
         "    SELECT "
         "    user_id, "
@@ -88,11 +90,13 @@ std::expected<std::optional<user_dto::summary>, error_code> user_repository::get
 
     const auto user_summary_result = transaction.exec(
         "SELECT "
-        "user_id, "
-        "COALESCE(user_login_id, ''), "
-        "created_at::text "
-        "FROM users "
-        "WHERE user_id = $1",
+        "user_table.user_id, "
+        "COALESCE(user_table.user_login_id, ''), "
+        "user_info_table.created_at::text "
+        "FROM users user_table "
+        "JOIN user_info user_info_table "
+        "ON user_info_table.user_id = user_table.user_id "
+        "WHERE user_table.user_id = $1",
         pqxx::params{user_id}
     );
 
@@ -114,11 +118,13 @@ user_repository::get_summary_by_login_id(
 
     const auto user_summary_result = transaction.exec(
         "SELECT "
-        "user_id, "
-        "COALESCE(user_login_id, ''), "
-        "created_at::text "
-        "FROM users "
-        "WHERE user_login_id = $1",
+        "user_table.user_id, "
+        "COALESCE(user_table.user_login_id, ''), "
+        "user_info_table.created_at::text "
+        "FROM users user_table "
+        "JOIN user_info user_info_table "
+        "ON user_info_table.user_id = user_table.user_id "
+        "WHERE user_table.user_login_id = $1",
         pqxx::params{user_login_id}
     );
 

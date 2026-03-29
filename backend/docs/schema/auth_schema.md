@@ -2,22 +2,26 @@
 
 Base migration: `scripts/migrate_auth_schema.sh`
 
+Prerequisites:
+
+- `user_schema`
+
 ## table
 
 ### `users`
 
 | column | type | nullable | default | note |
 |---|---|---|---|---|
-| `user_id` | `bigserial` | no | | pk |
+| `user_id` | `bigint` | no | | pk; fk -> `user_info(user_id)` on delete cascade |
 | `user_login_id` | `text` | no | | login identifier for local auth |
 | `user_password_hash` | `text` | yes | | password hash for local auth |
 | `permission_level` | `integer` | no | `0` | source of truth for authorization; `0=user`, `1=admin`, `2=superadmin` |
-| `created_at` | `timestamptz` | no | `now()` |  |
-| `updated_at` | `timestamptz` | no | `now()` |  |
+| `auth_updated_at` | `timestamptz` | no | `now()` | auth row update timestamp |
 
 Constraints:
 
 - `users_pkey`
+- `users_user_id_fkey`
 - `users_user_login_id_not_blank`
 - `users_user_password_hash_not_blank`
 - `users_permission_level_check`
@@ -56,6 +60,7 @@ Indexes:
 
 ## cross-schema relation
 
+- `users.user_id -> user_info.user_id`
 - `auth_tokens.user_id -> users.user_id`
 - `submissions.user_id -> users.user_id` is enforced when both schemas are applied.
 
@@ -63,7 +68,7 @@ Indexes:
 
 ### `schema_migrations`
 
-Shared table used together with `submission_schema` and `problem_schema`.
+Shared table used together with `user_schema`, `submission_schema`, and `problem_schema`.
 
 | column | type | nullable | default |
 |---|---|---|---|

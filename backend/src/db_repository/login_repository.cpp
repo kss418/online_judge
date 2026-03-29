@@ -14,8 +14,13 @@ std::expected<std::int64_t, error_code> login_repository::create_user(
     }
 
     const auto create_user_result = transaction.exec(
-        "INSERT INTO users(user_login_id, user_password_hash) "
-        "VALUES($1, $2) "
+        "WITH new_user_info AS ("
+        "    INSERT INTO user_info DEFAULT VALUES "
+        "    RETURNING user_id"
+        ") "
+        "INSERT INTO users(user_id, user_login_id, user_password_hash) "
+        "SELECT user_id, $1, $2 "
+        "FROM new_user_info "
         "RETURNING user_id",
         pqxx::params{
             sign_up_request_value.user_login_id,

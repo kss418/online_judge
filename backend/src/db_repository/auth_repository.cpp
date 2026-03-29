@@ -124,11 +124,17 @@ std::expected<bool, error_code> auth_repository::update_permission_level(
     }
 
     const auto update_result = transaction.exec(
-        "UPDATE users "
-        "SET "
-        "permission_level = $2, "
-        "updated_at = NOW() "
-        "WHERE user_id = $1",
+        "WITH updated_user AS ("
+        "    UPDATE users "
+        "    SET "
+        "    permission_level = $2, "
+        "    auth_updated_at = NOW() "
+        "    WHERE user_id = $1 "
+        "    RETURNING user_id"
+        ") "
+        "UPDATE user_info "
+        "SET updated_at = NOW() "
+        "WHERE user_id IN (SELECT user_id FROM updated_user)",
         pqxx::params{user_id, permission_level}
     );
 
@@ -140,12 +146,14 @@ std::expected<auth_dto::user_summary_list, error_code> auth_repository::get_user
 ){
     const auto user_list_result = transaction.exec(
         "SELECT "
-        "user_id, "
-        "COALESCE(user_login_id, ''), "
-        "permission_level, "
-        "created_at::text "
-        "FROM users "
-        "ORDER BY permission_level DESC, user_id ASC"
+        "user_table.user_id, "
+        "COALESCE(user_table.user_login_id, ''), "
+        "user_table.permission_level, "
+        "user_info_table.created_at::text "
+        "FROM users user_table "
+        "JOIN user_info user_info_table "
+        "ON user_info_table.user_id = user_table.user_id "
+        "ORDER BY user_table.permission_level DESC, user_table.user_id ASC"
     );
 
     auth_dto::user_summary_list user_summary_values;

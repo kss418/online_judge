@@ -82,6 +82,11 @@ psql "${database_url}" \
     -v superadmin_password_hash="${superadmin_password_hash}" <<'SQL'
 BEGIN;
 
+INSERT INTO user_info(user_id)
+VALUES(0)
+ON CONFLICT(user_id) DO UPDATE
+SET updated_at = NOW();
+
 INSERT INTO users(
     user_id,
     user_login_id,
@@ -99,7 +104,7 @@ SET
     user_login_id = EXCLUDED.user_login_id,
     user_password_hash = EXCLUDED.user_password_hash,
     permission_level = 2,
-    updated_at = NOW();
+    auth_updated_at = NOW();
 
 COMMIT;
 SQL
