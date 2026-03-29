@@ -3,6 +3,7 @@
 #include "common/error_code.hpp"
 
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/post.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/parser.hpp>
@@ -40,12 +41,10 @@ private:
     void write_response(std::shared_ptr<response_type> response);
     std::expected<void, error_code> close();
 
-    response_type create_response() const;
     response_type create_read_error_response(const boost::system::error_code& ec) const;
 
     tcp::socket socket_;
     boost::beast::flat_buffer buffer_;
-    request_type request_;
     std::optional<boost::beast::http::request_parser<boost::beast::http::string_body>>
         request_parser_;
     std::shared_ptr<http_server> http_server_;

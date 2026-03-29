@@ -1,8 +1,10 @@
 #include "http_core/http_session.hpp"
 #include "http_core/http_server.hpp"
+#include "http_core/http_response_util.hpp"
 #include "serializer/common_json_serializer.hpp"
 
 #include <boost/asio/error.hpp>
+#include <boost/asio/post.hpp>
 #include <boost/beast/http/error.hpp>
 #include <boost/beast/http/field.hpp>
 #include <boost/beast/http/read.hpp>
@@ -55,7 +57,6 @@ void http_session::handle_error(error_code code) const{
 }
 
 void http_session::read(){
-    request_ = {};
     request_parser_.emplace();
     request_parser_->body_limit(max_request_body_size_bytes);
 
@@ -91,11 +92,30 @@ void http_session::on_read(boost::system::error_code ec, std::size_t bytes_trans
         return;
     }
 
-    request_ = request_parser_->release();
+    request_type request = request_parser_->release();
     request_parser_.reset();
 
-    auto response = std::make_shared<response_type>(create_response());
-    write_response(response);
+    auto self = shared_from_this();
+    http_server_->async_handle(
+        std::move(request),
+        [self](response_type response) mutable {
+            auto response_ptr = std::make_shared<response_type>(std::move(response));
+            try{
+                boost::asio::post(
+                    self->socket_.get_executor(),
+                    [self, response_ptr = std::move(response_ptr)]() mutable {
+                        self->write_response(std::move(response_ptr));
+                    }
+                );
+            }
+            catch(const std::bad_alloc&){
+                self->handle_error(error_code::create(errno_error::out_of_memory));
+            }
+            catch(...){
+                self->handle_error(error_code::create(errno_error::unknown_error));
+            }
+        }
+    );
 }
 
 void http_session::on_write(
@@ -139,10 +159,6 @@ std::expected<void, error_code> http_session::close(){
     }
 
     return {};
-}
-
-http_session::response_type http_session::create_response() const{
-    return http_server_->handle(request_);
 }
 
 http_session::response_type http_session::create_read_error_response(

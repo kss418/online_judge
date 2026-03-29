@@ -83,10 +83,6 @@
             <span class="metric-label">제출 금지</span>
             <strong>{{ activeBanCount }}</strong>
           </div>
-          <div class="metric-row">
-            <span class="metric-label">만료된 제한</span>
-            <strong>{{ expiredBanCount }}</strong>
-          </div>
         </div>
 
         <div v-if="isLoading" class="empty-state">
@@ -137,7 +133,7 @@
                 {{ formatSubmissionBanWindow(user) }}
               </strong>
               <span
-                v-if="user.submission_banned_until_label"
+                v-if="shouldShowSubmissionBanUntil(user)"
                 class="admin-user-ban-until"
               >
                 해제 시각 {{ user.submission_banned_until_label }}
@@ -279,9 +275,6 @@ const activeBanCount = computed(() =>
 )
 const normalUserCount = computed(() =>
   users.value.filter((user) => getSubmissionBanState(user) === 'none').length
-)
-const expiredBanCount = computed(() =>
-  users.value.filter((user) => getSubmissionBanState(user) === 'expired').length
 )
 
 watch(
@@ -705,7 +698,7 @@ function getSubmissionBanState(user){
     return 'active'
   }
 
-  return 'expired'
+  return 'none'
 }
 
 function getSubmissionBanLabel(user){
@@ -720,10 +713,6 @@ function getSubmissionBanLabel(user){
 
   if (state === 'active') {
     return '제출 금지'
-  }
-
-  if (state === 'expired') {
-    return '만료됨'
   }
 
   return '정상'
@@ -741,10 +730,6 @@ function getSubmissionBanTone(user){
 
   if (state === 'active') {
     return 'danger'
-  }
-
-  if (state === 'expired') {
-    return 'warning'
   }
 
   return 'success'
@@ -776,7 +761,14 @@ function formatSubmissionBanWindow(user){
     return `${distanceLabel} 남음`
   }
 
-  return `${distanceLabel} 전에 만료`
+  return ''
+}
+
+function shouldShowSubmissionBanUntil(user){
+  return Boolean(
+    getSubmissionBanState(user) === 'active' &&
+    user.submission_banned_until_label
+  )
 }
 
 function formatRelativeCreatedAt(timestamp){
@@ -955,7 +947,7 @@ onUnmounted(() => {
 .admin-user-management-summary {
   display: grid;
   gap: 0.85rem;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .admin-user-management-table {

@@ -4,6 +4,8 @@
 - Schema documents live in [`schema/`](./schema).
 - `HTTP_WORKER_COUNT` is optional. If omitted, `http_server` starts one
   worker thread per detected hardware thread.
+- `HTTP_HANDLER_WORKER_COUNT` is optional. If omitted, `http_server` uses the
+  same size as the resolved HTTP worker count for response handling work.
 - `HTTP_DB_POOL_SIZE` is optional. If omitted, `http_server` uses the same
   size as the resolved HTTP worker count.
 - `judge_server` sandbox execution requires `nsjail` and the
