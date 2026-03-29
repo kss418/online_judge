@@ -43,6 +43,18 @@ std::string_view string_util::trim_right_whitespace(std::string_view value){
     return value;
 }
 
+std::optional<std::uint16_t> string_util::parse_positive_int16(std::string_view value){
+    const auto int64_value_opt = parse_positive_int64(value);
+    if(
+        !int64_value_opt ||
+        *int64_value_opt > std::numeric_limits<std::uint16_t>::max()
+    ){
+        return std::nullopt;
+    }
+
+    return static_cast<std::uint16_t>(*int64_value_opt);
+}
+
 std::optional<std::int32_t> string_util::parse_positive_int32(std::string_view value){
     const auto int64_value_opt = parse_positive_int64(value);
     if(

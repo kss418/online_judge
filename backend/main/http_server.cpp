@@ -1,26 +1,38 @@
 #include "http_core/acceptor.hpp"
 #include "http_core/http_server.hpp"
 #include "common/env_util.hpp"
+#include "common/string_util.hpp"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <charconv>
 #include <cstdlib>
 #include <cstdint>
 #include <iostream>
+#include <limits>
 #include <string_view>
+#include <thread>
+#include <vector>
 
-std::expected<std::uint16_t, error_code> parse_port(std::string_view text){
-    std::uint16_t port = 0;
-    const char* begin = text.data();
-    const char* end = text.data() + text.size();
+std::uint32_t default_http_worker_count(){
+    const std::uint32_t hardware_thread_count = std::thread::hardware_concurrency();
+    return hardware_thread_count == 0 ? std::uint32_t{1} : hardware_thread_count;
+}
 
-    auto parse_result = std::from_chars(begin, end, port);
-    if(parse_result.ec != std::errc() || parse_result.ptr != end || port == 0){
+std::expected<std::uint32_t, error_code> resolve_http_worker_count(){
+    const char* worker_count_text = std::getenv("HTTP_WORKER_COUNT");
+    if(worker_count_text == nullptr || *worker_count_text == '\0'){
+        return default_http_worker_count();
+    }
+
+    const auto worker_count_opt = string_util::parse_positive_int64(worker_count_text);
+    if(
+        !worker_count_opt ||
+        *worker_count_opt > static_cast<std::int64_t>(std::numeric_limits<std::uint32_t>::max())
+    ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return port;
+    return static_cast<std::uint32_t>(*worker_count_opt);
 }
 
 int main(){
@@ -36,14 +48,21 @@ int main(){
         return 1;
     }
 
-    auto port_exp = parse_port(http_port_text);
-    if(!port_exp){
+    const auto port_opt = string_util::parse_positive_int16(http_port_text);
+    if(!port_opt){
         std::cerr << "invalid HTTP_PORT: " << http_port_text << '\n';
         return 1;
     }
-    std::uint16_t port = *port_exp;
+    const std::uint16_t port = *port_opt;
 
-    boost::asio::io_context io_context{1};
+    const auto worker_count_exp = resolve_http_worker_count();
+    if(!worker_count_exp){
+        std::cerr << "invalid HTTP_WORKER_COUNT\n";
+        return 1;
+    }
+    const std::uint32_t worker_count = *worker_count_exp;
+
+    boost::asio::io_context io_context{static_cast<int>(worker_count)};
     auto http_server_exp = http_server::create();
     if(!http_server_exp){
         std::cerr << "http_server create failed: " << to_string(http_server_exp.error()) << '\n';
@@ -67,6 +86,22 @@ int main(){
         return 1;
     }
 
+    std::cerr << "starting http workers: " << worker_count << '\n';
+
+    std::vector<std::thread> worker_threads;
+    worker_threads.reserve(worker_count > 0 ? worker_count - 1 : 0);
+    for(std::uint32_t worker_index = 1; worker_index < worker_count; ++worker_index){
+        worker_threads.emplace_back(
+            [&io_context]{
+                io_context.run();
+            }
+        );
+    }
+
     io_context.run();
+
+    for(auto& worker_thread : worker_threads){
+        worker_thread.join();
+    }
     return 0;
 }
