@@ -293,6 +293,55 @@ Example:
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
+### `GET /api/user/{user_id}/submission-ban`
+
+Get the current submission-ban timestamp for a single user. This endpoint is admin-only.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `user_id` | `int64` | must be positive |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `user_id` | `int64` | requested user id |
+| `submission_banned_until` | `string \| null` | current submission-ban expiry timestamp, or `null` when not set |
+
+Example:
+
+```json
+{
+  "user_id": 7,
+  "submission_banned_until": "2026-03-29 16:42:31.123456+09"
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- authenticated but not admin: `401 Unauthorized`
+- unknown `user_id`: `404 Not Found`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
+
 ### `GET /api/user/me`
 
 Get the currently authenticated user profile. This endpoint requires a bearer token.
@@ -357,6 +406,47 @@ Examples:
   }
 }
 ```
+
+### `GET /api/user/me/submission-ban`
+
+Get the current submission-ban timestamp for the authenticated user.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <token>` |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+- body fields:
+
+| field | type | note |
+|---|---|---|
+| `user_id` | `int64` | authenticated user id |
+| `submission_banned_until` | `string \| null` | current submission-ban expiry timestamp, or `null` when not set |
+
+Example:
+
+```json
+{
+  "user_id": 7,
+  "submission_banned_until": "2026-03-29 16:42:31.123456+09"
+}
+```
+
+#### error response
+
+- missing or malformed bearer token: `401 Unauthorized`
+- invalid, expired, or revoked token: `401 Unauthorized`
+- unexpected internal failure: `500 Internal Server Error`
+
+Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
 
 ### `GET /api/user/me/statistics`
 
@@ -680,3 +770,66 @@ Examples:
   }
 }
 ```
+
+### `POST /api/user/{user_id}/submission-ban`
+
+Set or refresh a user's submission ban for a duration in minutes. This endpoint is admin-only.
+
+#### request
+
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `user_id` | `int64` | must be positive |
+
+- request body:
+
+| field | type | note |
+|---|---|---|
+| `duration_minutes` | `int32` | must be greater than `0` |
+
+#### success response
+
+- status: `201 Created`
+- content-type: `application/json; charset=utf-8`
+
+| field | type | note |
+|---|---|---|
+| `user_id` | `int64` | updated user id |
+| `duration_minutes` | `int32` | applied duration |
+| `submission_banned_until` | `string` | computed ban expiry timestamp |
+
+### `DELETE /api/user/{user_id}/submission-ban`
+
+Clear a user's submission ban. This endpoint is admin-only.
+
+#### request
+
+- request body: none
+- required header:
+
+| header | required | note |
+|---|---|---|
+| `Authorization` | yes | format: `Bearer <admin-token>` |
+
+- path parameter:
+
+| field | type | note |
+|---|---|---|
+| `user_id` | `int64` | must be positive |
+
+#### success response
+
+- status: `200 OK`
+- content-type: `application/json; charset=utf-8`
+
+| field | type | note |
+|---|---|---|
+| `message` | `string` | always `user submission ban cleared` |

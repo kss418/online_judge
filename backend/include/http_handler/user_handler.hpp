@@ -22,6 +22,10 @@ namespace user_handler{
         const request_type& request,
         db_connection& db_connection_value
     );
+    response_type get_me_submission_ban(
+        const request_type& request,
+        db_connection& db_connection_value
+    );
     response_type get_me_solved_problems(
         const request_type& request,
         db_connection& db_connection_value
@@ -71,6 +75,11 @@ namespace user_handler{
         std::int64_t user_id
     );
     response_type put_user_regular(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t user_id
+    );
+    response_type get_user_submission_ban(
         const request_type& request,
         db_connection& db_connection_value,
         std::int64_t user_id

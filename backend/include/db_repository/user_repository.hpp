@@ -28,6 +28,11 @@ namespace user_repository{
         std::int64_t user_id,
         std::int32_t duration_minutes
     );
+    std::expected<std::optional<user_dto::submission_ban_status>, error_code>
+    get_submission_ban_status(
+        pqxx::transaction_base& transaction,
+        std::int64_t user_id
+    );
     std::expected<std::optional<std::string>, error_code> get_active_submission_banned_until(
         pqxx::transaction_base& transaction,
         std::int64_t user_id

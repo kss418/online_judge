@@ -32,6 +32,12 @@ user_router::response_type user_router::route(
 
     if(path_segments.size() == 2
         && path_segments[0] == "me"
+        && path_segments[1] == "submission-ban"){
+        return handle_user_me_submission_ban(request);
+    }
+
+    if(path_segments.size() == 2
+        && path_segments[0] == "me"
         && path_segments[1] == "solved-problems"){
         return handle_user_me_solved_problems(request);
     }
@@ -175,6 +181,19 @@ user_router::response_type user_router::handle_user_me_statistics(const request_
     return http_response_util::create_method_not_allowed(request);
 }
 
+user_router::response_type user_router::handle_user_me_submission_ban(
+    const request_type& request
+){
+    if(request.method() == boost::beast::http::verb::get){
+        return user_handler::get_me_submission_ban(
+            request,
+            db_connection_
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
 user_router::response_type user_router::handle_user_me_solved_problems(
     const request_type& request
 ){
@@ -310,6 +329,14 @@ user_router::response_type user_router::handle_user_submission_ban(
     const request_type& request,
     std::int64_t user_id
 ){
+    if(request.method() == boost::beast::http::verb::get){
+        return user_handler::get_user_submission_ban(
+            request,
+            db_connection_,
+            user_id
+        );
+    }
+
     if(request.method() == boost::beast::http::verb::post){
         return user_handler::post_user_submission_ban(
             request,

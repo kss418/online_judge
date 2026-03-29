@@ -26,6 +26,7 @@ private:
 
     response_type handle_user_me(const request_type& request);
     response_type handle_user_me_statistics(const request_type& request);
+    response_type handle_user_me_submission_ban(const request_type& request);
     response_type handle_user_me_solved_problems(const request_type& request);
     response_type handle_user_me_wrong_problems(const request_type& request);
     response_type handle_user_summary_by_login_id(

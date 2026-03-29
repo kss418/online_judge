@@ -146,6 +146,23 @@
               <span class="metric-label">만든 시각</span>
               <strong>{{ formatTimestamp(displayedUser.created_at) }}</strong>
             </div>
+            <div v-if="isOwnProfile" class="metric-row">
+              <span class="metric-label">제출 상태</span>
+              <span class="my-info-role">
+                <StatusBadge
+                  :label="mySubmissionBanStatusLabel"
+                  :tone="mySubmissionBanStatusTone"
+                />
+              </span>
+            </div>
+            <div v-if="isOwnProfile" class="metric-row">
+              <span class="metric-label">제출 제한</span>
+              <strong>{{ mySubmissionBanWindowText }}</strong>
+            </div>
+            <div v-if="isOwnProfile && mySubmissionBan.submission_banned_until" class="metric-row">
+              <span class="metric-label">제출 가능 시각</span>
+              <strong>{{ mySubmissionBanUntilText }}</strong>
+            </div>
           </div>
         </article>
 
@@ -258,6 +275,7 @@ import { useRoute } from 'vue-router'
 
 import { getSubmissionList } from '@/api/submission'
 import {
+  getMySubmissionBan,
   getUserSummary,
   getUserSolvedProblems,
   getUserSubmissionStatistics,
@@ -280,16 +298,24 @@ const isRecentSubmissionsLoading = ref(true)
 const isSolvedProblemsLoading = ref(true)
 const isWrongProblemsLoading = ref(true)
 const isPublicUserSummaryLoading = ref(false)
+const isMySubmissionBanLoading = ref(false)
 const statisticsErrorMessage = ref('')
 const recentSubmissionsErrorMessage = ref('')
 const solvedProblemsErrorMessage = ref('')
 const wrongProblemsErrorMessage = ref('')
 const publicUserSummaryErrorMessage = ref('')
+const mySubmissionBanErrorMessage = ref('')
+const mySubmissionBan = ref({
+  submission_banned_until: null,
+  timestamp: null,
+  label: ''
+})
 let latestStatisticsRequestId = 0
 let latestRecentSubmissionsRequestId = 0
 let latestSolvedProblemsRequestId = 0
 let latestWrongProblemsRequestId = 0
 let latestPublicUserSummaryRequestId = 0
+let latestMySubmissionBanRequestId = 0
 const nowTimestamp = ref(Date.now())
 let relativeTimeRefreshTimer = null
 
@@ -381,6 +407,85 @@ const displayedUser = computed(() => {
     user_login_id: routeUserLoginId.value,
     created_at: null
   }
+})
+
+const isMySubmissionBanActive = computed(() => (
+  isOwnProfile.value &&
+  typeof mySubmissionBan.value.timestamp === 'number' &&
+  !Number.isNaN(mySubmissionBan.value.timestamp) &&
+  mySubmissionBan.value.timestamp > nowTimestamp.value
+))
+
+const mySubmissionBanStatusLabel = computed(() => {
+  if (!isOwnProfile.value) {
+    return ''
+  }
+
+  if (isMySubmissionBanLoading.value) {
+    return '확인 중'
+  }
+
+  if (mySubmissionBanErrorMessage.value) {
+    return '조회 실패'
+  }
+
+  if (isMySubmissionBanActive.value) {
+    return '제출 금지'
+  }
+
+  return '정상'
+})
+
+const mySubmissionBanStatusTone = computed(() => {
+  if (!isOwnProfile.value) {
+    return 'neutral'
+  }
+
+  if (isMySubmissionBanLoading.value) {
+    return 'neutral'
+  }
+
+  if (mySubmissionBanErrorMessage.value) {
+    return 'warning'
+  }
+
+  return isMySubmissionBanActive.value ? 'danger' : 'success'
+})
+
+const mySubmissionBanWindowText = computed(() => {
+  if (!isOwnProfile.value) {
+    return ''
+  }
+
+  if (isMySubmissionBanLoading.value) {
+    return '제출 제한 상태를 확인하는 중입니다.'
+  }
+
+  if (mySubmissionBanErrorMessage.value) {
+    return mySubmissionBanErrorMessage.value
+  }
+
+  if (!mySubmissionBan.value.submission_banned_until) {
+    return '현재 제출 제한이 없습니다.'
+  }
+
+  if (isMySubmissionBanActive.value) {
+    return `${formatRelativeRemainingTime(mySubmissionBan.value.timestamp)} 남음`
+  }
+
+  return '이전 제출 제한이 만료되었습니다.'
+})
+
+const mySubmissionBanUntilText = computed(() => {
+  if (
+    !isOwnProfile.value ||
+    typeof mySubmissionBan.value.submission_banned_until !== 'string' ||
+    !mySubmissionBan.value.submission_banned_until
+  ) {
+    return '-'
+  }
+
+  return formatTimestamp(mySubmissionBan.value.submission_banned_until)
 })
 
 const isProfileLoading = computed(() => {
@@ -742,6 +847,39 @@ function formatTimestamp(value){
   return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
+function formatRelativeRemainingTime(timestamp){
+  if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
+    return '-'
+  }
+
+  const remainingSeconds = Math.max(1, Math.floor((timestamp - nowTimestamp.value) / 1000))
+  if (remainingSeconds < 60) {
+    return `${remainingSeconds}초`
+  }
+
+  const remainingMinutes = Math.floor(remainingSeconds / 60)
+  if (remainingMinutes < 60) {
+    return `${remainingMinutes}분`
+  }
+
+  const remainingHours = Math.floor(remainingMinutes / 60)
+  if (remainingHours < 24) {
+    return `${remainingHours}시간`
+  }
+
+  const remainingDays = Math.floor(remainingHours / 24)
+  if (remainingDays < 30) {
+    return `${remainingDays}일`
+  }
+
+  const remainingMonths = Math.floor(remainingDays / 30)
+  if (remainingMonths < 12) {
+    return `${remainingMonths}달`
+  }
+
+  return `${Math.floor(remainingDays / 365)}년`
+}
+
 function normalizeSubmittedAt(value){
   if (typeof value !== 'string' || !value.trim()) {
     return {
@@ -1037,6 +1175,60 @@ async function loadPublicUserSummary(userLoginId){
   }
 }
 
+async function loadMySubmissionBan(){
+  if (!isOwnProfile.value || !authState.token) {
+    latestMySubmissionBanRequestId += 1
+    mySubmissionBan.value = {
+      submission_banned_until: null,
+      timestamp: null,
+      label: ''
+    }
+    mySubmissionBanErrorMessage.value = ''
+    isMySubmissionBanLoading.value = false
+    return
+  }
+
+  const requestId = ++latestMySubmissionBanRequestId
+  isMySubmissionBanLoading.value = true
+  mySubmissionBanErrorMessage.value = ''
+
+  try {
+    const payload = await getMySubmissionBan(authState.token)
+    if (requestId !== latestMySubmissionBanRequestId) {
+      return
+    }
+
+    const submissionBannedUntil =
+      typeof payload?.submission_banned_until === 'string'
+        ? payload.submission_banned_until
+        : null
+    const normalizedSubmissionBan = normalizeSubmittedAt(submissionBannedUntil)
+
+    mySubmissionBan.value = {
+      submission_banned_until: submissionBannedUntil,
+      timestamp: normalizedSubmissionBan.timestamp,
+      label: normalizedSubmissionBan.label
+    }
+  } catch (error) {
+    if (requestId !== latestMySubmissionBanRequestId) {
+      return
+    }
+
+    mySubmissionBan.value = {
+      submission_banned_until: null,
+      timestamp: null,
+      label: ''
+    }
+    mySubmissionBanErrorMessage.value = error instanceof Error
+      ? error.message
+      : '제출 제한 상태를 불러오지 못했습니다.'
+  } finally {
+    if (requestId === latestMySubmissionBanRequestId) {
+      isMySubmissionBanLoading.value = false
+    }
+  }
+}
+
 watch(
   () => [
     activeProfileUserId.value,
@@ -1077,6 +1269,38 @@ watch(
     loadRecentSubmissions()
     loadSolvedProblems()
     loadWrongProblems()
+  },
+  {
+    immediate: true
+  }
+)
+
+watch(
+  () => [
+    isOwnProfile.value,
+    authState.initialized,
+    authState.token,
+    currentUser.value.id
+  ],
+  ([ownProfile, initialized]) => {
+    if (!initialized) {
+      isMySubmissionBanLoading.value = ownProfile
+      return
+    }
+
+    if (!ownProfile || !authState.token) {
+      latestMySubmissionBanRequestId += 1
+      mySubmissionBan.value = {
+        submission_banned_until: null,
+        timestamp: null,
+        label: ''
+      }
+      mySubmissionBanErrorMessage.value = ''
+      isMySubmissionBanLoading.value = false
+      return
+    }
+
+    loadMySubmissionBan()
   },
   {
     immediate: true

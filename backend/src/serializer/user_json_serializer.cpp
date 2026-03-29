@@ -105,6 +105,21 @@ boost::json::object user_json_serializer::make_submission_ban_object(
     return response_object;
 }
 
+boost::json::object user_json_serializer::make_submission_ban_status_object(
+    const user_dto::submission_ban_status& submission_ban_status_value
+){
+    boost::json::object response_object;
+    response_object["user_id"] = submission_ban_status_value.user_id;
+    if(submission_ban_status_value.submission_banned_until_opt){
+        response_object["submission_banned_until"] =
+            *submission_ban_status_value.submission_banned_until_opt;
+    }
+    else{
+        response_object["submission_banned_until"] = nullptr;
+    }
+    return response_object;
+}
+
 boost::json::object user_json_serializer::make_me_object(
     const auth_dto::identity& auth_identity_value
 ){

@@ -50,6 +50,11 @@ namespace user_dto{
         std::string submission_banned_until;
     };
 
+    struct submission_ban_status{
+        std::int64_t user_id = 0;
+        std::optional<std::string> submission_banned_until_opt = std::nullopt;
+    };
+
     using list = std::vector<list_item>;
 
     std::expected<submission_ban_request, dto_validation_error>

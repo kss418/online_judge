@@ -87,7 +87,13 @@
               </div>
             </div>
 
-            <p v-if="languageErrorMessage" class="submission-feedback is-error">
+            <p v-if="isSubmissionBanActive" class="submission-feedback is-warning">
+              제출이 {{ submissionBanUntilText }}까지 제한되어 있습니다.
+              <span v-if="submissionBanRemainingText">
+                {{ submissionBanRemainingText }}
+              </span>
+            </p>
+            <p v-else-if="languageErrorMessage" class="submission-feedback is-error">
               {{ languageErrorMessage }}
             </p>
             <p v-else-if="submitErrorMessage" class="submission-feedback is-error">
@@ -120,12 +126,13 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getSupportedLanguages } from '@/api/http'
 import { getProblemDetail } from '@/api/problem'
 import { createSubmission } from '@/api/submission'
+import { getMySubmissionBan } from '@/api/user'
 import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
@@ -147,6 +154,14 @@ const sourceEditorElement = ref(null)
 const isSubmittingSubmission = ref(false)
 const submitErrorMessage = ref('')
 const submissionSuccessMessage = ref('')
+const isLoadingSubmissionBan = ref(false)
+const submissionBan = ref({
+  submission_banned_until: null,
+  timestamp: null,
+  label: ''
+})
+const nowTimestamp = ref(Date.now())
+let submissionBanRefreshTimer = null
 
 const activeLanguage = computed(() =>
   supportedLanguages.value.find((language) => language.language === selectedLanguage.value) || null
@@ -215,8 +230,34 @@ const canSubmit = computed(() =>
   Boolean(selectedLanguage.value) &&
   Boolean(sourceCode.value.trim()) &&
   !isSubmittingSubmission.value &&
-  !isLoadingLanguages.value
+  !isLoadingLanguages.value &&
+  !isSubmissionBanActive.value
 )
+
+const isSubmissionBanActive = computed(() => (
+  typeof submissionBan.value.timestamp === 'number' &&
+  !Number.isNaN(submissionBan.value.timestamp) &&
+  submissionBan.value.timestamp > nowTimestamp.value
+))
+
+const submissionBanUntilText = computed(() => {
+  if (
+    typeof submissionBan.value.submission_banned_until !== 'string' ||
+    !submissionBan.value.submission_banned_until
+  ) {
+    return '-'
+  }
+
+  return formatTimestamp(submissionBan.value.submission_banned_until)
+})
+
+const submissionBanRemainingText = computed(() => {
+  if (!isSubmissionBanActive.value) {
+    return ''
+  }
+
+  return `약 ${formatRemainingDuration(submissionBan.value.timestamp)} 남음`
+})
 
 watch(numericProblemId, () => {
   submitErrorMessage.value = ''
@@ -243,6 +284,29 @@ watch(supportedLanguages, (languages) => {
     selectedLanguage.value = languages[0].language
   }
 })
+
+watch(
+  () => [authState.initialized, authState.token, isAuthenticated.value],
+  ([initialized, token, authenticated]) => {
+    if (!initialized) {
+      isLoadingSubmissionBan.value = true
+      return
+    }
+
+    if (!authenticated || !token) {
+      submissionBan.value = {
+        submission_banned_until: null,
+        timestamp: null,
+        label: ''
+      }
+      isLoadingSubmissionBan.value = false
+      return
+    }
+
+    void loadMySubmissionBan()
+  },
+  { immediate: true }
+)
 
 async function loadProblemDetail(){
   isLoadingProblem.value = true
@@ -295,6 +359,152 @@ async function loadSupportedLanguageList(){
     supportedLanguages.value = []
   } finally {
     isLoadingLanguages.value = false
+  }
+}
+
+function normalizeDateTime(value){
+  if (typeof value !== 'string' || !value.trim()) {
+    return {
+      timestamp: null,
+      label: ''
+    }
+  }
+
+  const trimmedValue = value.trim()
+  const matchedTimestamp = trimmedValue.match(
+    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?([+-]\d{2})(?::?(\d{2}))?$/
+  )
+
+  if (matchedTimestamp) {
+    const [, datePart, timePart, fractionPart = '', offsetHour, offsetMinute = '00'] =
+      matchedTimestamp
+    const normalizedFraction = fractionPart
+      ? `.${fractionPart.slice(0, 3).padEnd(3, '0')}`
+      : ''
+    const parsedTimestamp = Date.parse(
+      `${datePart}T${timePart}${normalizedFraction}${offsetHour}:${offsetMinute}`
+    )
+
+    return {
+      timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
+      label: `${datePart} ${timePart}`
+    }
+  }
+
+  const parsedTimestamp = Date.parse(trimmedValue.replace(' ', 'T'))
+  return {
+    timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
+    label: trimmedValue
+  }
+}
+
+function formatTimestamp(value){
+  if (typeof value !== 'string' || !value.trim()) {
+    return '-'
+  }
+
+  const trimmedValue = value.trim()
+  const directMatch = trimmedValue.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/)
+  if (directMatch) {
+    return `${directMatch[1]} ${directMatch[2]}`
+  }
+
+  const parsedDate = new Date(trimmedValue)
+  if (Number.isNaN(parsedDate.getTime())) {
+    return trimmedValue
+  }
+
+  const year = String(parsedDate.getFullYear())
+  const month = String(parsedDate.getMonth() + 1).padStart(2, '0')
+  const day = String(parsedDate.getDate()).padStart(2, '0')
+  const hours = String(parsedDate.getHours()).padStart(2, '0')
+  const minutes = String(parsedDate.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}`
+}
+
+function formatRemainingDuration(timestamp){
+  if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
+    return '-'
+  }
+
+  const remainingSeconds = Math.max(1, Math.floor((timestamp - nowTimestamp.value) / 1000))
+  if (remainingSeconds < 60) {
+    return `${remainingSeconds}초`
+  }
+
+  const remainingMinutes = Math.floor(remainingSeconds / 60)
+  if (remainingMinutes < 60) {
+    return `${remainingMinutes}분`
+  }
+
+  const remainingHours = Math.floor(remainingMinutes / 60)
+  if (remainingHours < 24) {
+    return `${remainingHours}시간`
+  }
+
+  const remainingDays = Math.floor(remainingHours / 24)
+  if (remainingDays < 30) {
+    return `${remainingDays}일`
+  }
+
+  const remainingMonths = Math.floor(remainingDays / 30)
+  if (remainingMonths < 12) {
+    return `${remainingMonths}달`
+  }
+
+  return `${Math.floor(remainingDays / 365)}년`
+}
+
+async function loadMySubmissionBan(){
+  if (!isAuthenticated.value || !authState.token) {
+    submissionBan.value = {
+      submission_banned_until: null,
+      timestamp: null,
+      label: ''
+    }
+    isLoadingSubmissionBan.value = false
+    return null
+  }
+
+  isLoadingSubmissionBan.value = true
+
+  try {
+    const response = await getMySubmissionBan(authState.token)
+    const submissionBannedUntil =
+      typeof response?.submission_banned_until === 'string'
+        ? response.submission_banned_until
+        : null
+    const normalizedSubmissionBan = normalizeDateTime(submissionBannedUntil)
+    submissionBan.value = {
+      submission_banned_until: submissionBannedUntil,
+      timestamp: normalizedSubmissionBan.timestamp,
+      label: normalizedSubmissionBan.label
+    }
+    return submissionBan.value
+  } catch {
+    submissionBan.value = {
+      submission_banned_until: null,
+      timestamp: null,
+      label: ''
+    }
+    return null
+  } finally {
+    isLoadingSubmissionBan.value = false
+  }
+}
+
+function startSubmissionBanRefresh(){
+  stopSubmissionBanRefresh()
+  nowTimestamp.value = Date.now()
+  submissionBanRefreshTimer = window.setInterval(() => {
+    nowTimestamp.value = Date.now()
+  }, 30_000)
+}
+
+function stopSubmissionBanRefresh(){
+  if (submissionBanRefreshTimer) {
+    clearInterval(submissionBanRefreshTimer)
+    submissionBanRefreshTimer = null
   }
 }
 
@@ -486,9 +696,19 @@ async function submitSolution(){
       }
     })
   } catch (error) {
-    submitErrorMessage.value = error instanceof Error
-      ? error.message
-      : '제출을 처리하지 못했습니다.'
+    if (error?.code === 'submission_banned') {
+      const submissionBanStatus = await loadMySubmissionBan()
+      if (submissionBanStatus?.submission_banned_until) {
+        submitErrorMessage.value =
+          `제출이 ${formatTimestamp(submissionBanStatus.submission_banned_until)}까지 제한되어 있습니다.`
+      } else {
+        submitErrorMessage.value = '현재 제출이 제한되어 있습니다.'
+      }
+    } else {
+      submitErrorMessage.value = error instanceof Error
+        ? error.message
+        : '제출을 처리하지 못했습니다.'
+    }
   } finally {
     isSubmittingSubmission.value = false
   }
@@ -499,6 +719,11 @@ onMounted(() => {
   loadProblemDetail()
   loadSupportedLanguageList()
   scheduleEditorResize()
+  startSubmissionBanRefresh()
+})
+
+onBeforeUnmount(() => {
+  stopSubmissionBanRefresh()
 })
 </script>
 
@@ -654,6 +879,11 @@ onMounted(() => {
 .submission-feedback.is-success {
   color: var(--success);
   background: var(--success-soft);
+}
+
+.submission-feedback.is-warning {
+  color: var(--warning);
+  background: var(--warning-soft);
 }
 
 .submission-actions {

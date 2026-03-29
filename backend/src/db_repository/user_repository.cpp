@@ -161,6 +161,36 @@ std::expected<std::optional<std::string>, error_code> user_repository::create_su
     return update_result[0][0].as<std::string>();
 }
 
+std::expected<std::optional<user_dto::submission_ban_status>, error_code>
+user_repository::get_submission_ban_status(
+    pqxx::transaction_base& transaction,
+    std::int64_t user_id
+){
+    if(user_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto user_info_result = transaction.exec(
+        "SELECT submission_banned_until::text "
+        "FROM user_info "
+        "WHERE user_id = $1",
+        pqxx::params{user_id}
+    );
+
+    if(user_info_result.empty()){
+        return std::optional<user_dto::submission_ban_status>{std::nullopt};
+    }
+
+    user_dto::submission_ban_status submission_ban_status_value;
+    submission_ban_status_value.user_id = user_id;
+    if(!user_info_result[0][0].is_null()){
+        submission_ban_status_value.submission_banned_until_opt =
+            user_info_result[0][0].as<std::string>();
+    }
+
+    return submission_ban_status_value;
+}
+
 std::expected<std::optional<std::string>, error_code>
 user_repository::get_active_submission_banned_until(
     pqxx::transaction_base& transaction,

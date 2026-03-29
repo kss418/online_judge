@@ -149,6 +149,12 @@ const navItems = computed(() => {
       hint: '테스트케이스 관리'
     })
 
+    items.push({
+      to: '/admin/user-management',
+      label: 'User Admin',
+      hint: '유저 관리'
+    })
+
     if (authState.currentUser.permission_level >= 2) {
       items.push({
         to: '/admin/users',

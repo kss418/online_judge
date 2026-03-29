@@ -27,6 +27,11 @@ namespace user_service{
         std::int64_t user_id,
         std::int32_t duration_minutes
     );
+    std::expected<std::optional<user_dto::submission_ban_status>, error_code>
+    get_submission_ban_status(
+        db_connection& connection,
+        std::int64_t user_id
+    );
     std::expected<bool, error_code> update_submission_banned_until(
         db_connection& connection,
         std::int64_t user_id,

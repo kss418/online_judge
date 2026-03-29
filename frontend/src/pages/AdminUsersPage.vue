@@ -12,9 +12,38 @@
 
         <div class="admin-users-actions">
           <StatusBadge
-            :label="isLoading ? 'Loading' : `${users.length} Users`"
+            :label="isLoading ? 'Loading' : `${filteredUsers.length} Users`"
             :tone="errorMessage ? 'danger' : 'success'"
           />
+          <div class="admin-users-search-row">
+            <form class="admin-users-search" @submit.prevent="submitSearch">
+              <label class="sr-only" for="admin-users-search">유저 검색</label>
+              <input
+                id="admin-users-search"
+                v-model.trim="searchInput"
+                class="admin-users-search-input"
+                type="search"
+                placeholder="ID 검색"
+              />
+              <button
+                type="submit"
+                class="primary-button admin-users-search-button"
+                :disabled="isLoading"
+              >
+                검색
+              </button>
+            </form>
+
+            <button
+              v-if="appliedQuery"
+              type="button"
+              class="ghost-button admin-users-reset-button"
+              :disabled="isLoading"
+              @click="resetSearch"
+            >
+              검색 초기화
+            </button>
+          </div>
           <button
             v-if="canManageUsers"
             type="button"
@@ -68,8 +97,8 @@
             </div>
           </div>
 
-          <div v-if="!users.length" class="empty-state">
-            <p>표시할 사용자가 아직 없습니다.</p>
+          <div v-if="!filteredUsers.length" class="empty-state">
+            <p>{{ appliedQuery ? '검색 결과가 없습니다.' : '표시할 사용자가 아직 없습니다.' }}</p>
           </div>
 
           <div v-else class="admin-user-table">
@@ -77,12 +106,11 @@
               <span>계정 번호</span>
               <span>ID</span>
               <span>권한</span>
-              <span>가입 시각</span>
               <span>관리</span>
             </div>
 
             <div
-              v-for="user in users"
+              v-for="user in pagedUsers"
               :key="user.user_id"
               class="admin-user-row"
             >
@@ -101,23 +129,6 @@
                   :tone="getPermissionTone(user.permission_level)"
                 />
               </div>
-              <time
-                class="admin-user-created-at"
-                :datetime="user.created_at"
-              >
-                <span
-                  class="admin-user-relative-time"
-                  tabindex="0"
-                >
-                  {{ formatRelativeCreatedAt(user.created_at_timestamp) }}
-                  <span
-                    v-if="user.created_at_label"
-                    class="admin-user-time-tooltip"
-                  >
-                    {{ user.created_at_label }}
-                  </span>
-                </span>
-              </time>
               <div class="admin-user-actions">
                 <button
                   v-if="user.permission_level === 0"
@@ -142,6 +153,19 @@
             </div>
           </div>
         </div>
+
+        <PaginationBar
+          v-if="!isLoading && !errorMessage && filteredUsers.length > pageSize"
+          v-model:jump-input="pageJumpInput"
+          :current-page="currentPage"
+          :total-pages="totalPages"
+          :is-loading="isLoading"
+          :items="paginationItems"
+          jump-input-id="admin-users-page-jump"
+          :jump-placeholder="`1-${totalPages}`"
+          @page-change="goToPage"
+          @jump-submit="submitPageJump"
+        />
       </template>
     </article>
   </section>
@@ -150,19 +174,26 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
+import PaginationBar from '@/components/PaginationBar.vue'
 import { demoteUserToUser, getUserList, promoteUserToAdmin } from '@/api/user'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useNotice } from '@/composables/useNotice'
+import { buildPaginationItems } from '@/utils/pagination'
 
 const { authState, isAuthenticated, initializeAuth, refreshCurrentUser } = useAuth()
 const { showErrorNotice, showSuccessNotice } = useNotice()
+const pageSize = 20
 const isLoading = ref(true)
 const errorMessage = ref('')
 const actionMessage = ref('')
 const actionErrorMessage = ref('')
 const savingUserId = ref(0)
 const users = ref([])
+const searchInput = ref('')
+const appliedQuery = ref('')
+const currentPage = ref(1)
+const pageJumpInput = ref('')
 const nowTimestamp = ref(Date.now())
 let latestLoadRequestId = 0
 let relativeTimeRefreshTimer = null
@@ -170,6 +201,26 @@ let relativeTimeRefreshTimer = null
 const canManageUsers = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 2)
 const canEditPermissions = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 2)
 const currentUserId = computed(() => Number(authState.currentUser?.id ?? 0))
+const filteredUsers = computed(() => {
+  const keyword = appliedQuery.value.trim().toLowerCase()
+  if (!keyword) {
+    return users.value
+  }
+
+  return users.value.filter((user) => (
+    String(user.user_login_id || '').toLowerCase().includes(keyword)
+  ))
+})
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredUsers.value.length / pageSize))
+)
+const pagedUsers = computed(() => {
+  const startIndex = (currentPage.value - 1) * pageSize
+  return filteredUsers.value.slice(startIndex, startIndex + pageSize)
+})
+const paginationItems = computed(() =>
+  buildPaginationItems(currentPage.value, totalPages.value)
+)
 const superAdminCount = computed(() =>
   users.value.filter((user) => user.permission_level === 2).length
 )
@@ -197,6 +248,16 @@ watch(
     }
   }
 )
+
+watch(currentPage, () => {
+  pageJumpInput.value = ''
+})
+
+watch(totalPages, (pageCount) => {
+  if (currentPage.value > pageCount) {
+    currentPage.value = pageCount
+  }
+})
 
 watch(
   () => [authState.initialized, authState.token, authState.currentUser?.permission_level],
@@ -269,6 +330,36 @@ async function loadUsers(){
 
 async function handlePromoteToAdmin(user){
   return handleRoleAction(user, permissionLevelToRole.admin)
+}
+
+function submitSearch(){
+  appliedQuery.value = searchInput.value.trim()
+  currentPage.value = 1
+}
+
+function resetSearch(){
+  searchInput.value = ''
+  appliedQuery.value = ''
+  currentPage.value = 1
+}
+
+function goToPage(pageNumber){
+  const clampedPageNumber = Math.min(Math.max(pageNumber, 1), totalPages.value)
+  if (clampedPageNumber === currentPage.value) {
+    return
+  }
+
+  currentPage.value = clampedPageNumber
+}
+
+function submitPageJump(){
+  const parsedPage = Number.parseInt(pageJumpInput.value, 10)
+  if (!Number.isInteger(parsedPage)) {
+    pageJumpInput.value = ''
+    return
+  }
+
+  goToPage(parsedPage)
 }
 
 async function handleDemoteToUser(user){
@@ -504,6 +595,44 @@ onUnmounted(() => {
   justify-content: end;
 }
 
+.admin-users-search-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.admin-users-search {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.admin-users-search-input {
+  width: min(100%, 300px);
+  min-height: 2.9rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(20, 33, 61, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink-strong);
+  font: inherit;
+}
+
+.admin-users-search-input:focus {
+  outline: 2px solid rgba(217, 119, 6, 0.18);
+  border-color: rgba(217, 119, 6, 0.5);
+}
+
+.admin-users-search-button,
+.admin-users-reset-button {
+  flex-shrink: 0;
+}
+
 .admin-users-feedback {
   padding: 1rem;
   border-radius: 18px;
@@ -544,7 +673,7 @@ onUnmounted(() => {
 .admin-user-table-head,
 .admin-user-row {
   display: grid;
-  grid-template-columns: 0.8fr 1.8fr 0.9fr 1.3fr 1fr;
+  grid-template-columns: 0.8fr 1.9fr 1fr 1.2fr;
   gap: 1rem;
   align-items: center;
   padding: 1rem 1.15rem;
@@ -690,6 +819,11 @@ onUnmounted(() => {
   }
 
   .admin-users-actions {
+    justify-content: flex-start;
+  }
+
+  .admin-users-search-row,
+  .admin-users-search {
     justify-content: flex-start;
   }
 

@@ -30,6 +30,12 @@ export function getUserWrongProblems(userId, bearerToken){
   })
 }
 
+export function getMySubmissionBan(token){
+  return requestJson('/user/me/submission-ban', {
+    bearerToken: token
+  })
+}
+
 export function getUserList(token){
   return requestJson('/user', {
     bearerToken: token
@@ -46,6 +52,29 @@ export function promoteUserToAdmin(userId, token){
 export function demoteUserToUser(userId, token){
   return requestJson(`/user/${userId}/user`, {
     method: 'PUT',
+    bearerToken: token
+  })
+}
+
+export function createUserSubmissionBan(userId, durationMinutes, token){
+  return requestJson(`/user/${userId}/submission-ban`, {
+    method: 'POST',
+    bearerToken: token,
+    body: {
+      duration_minutes: durationMinutes
+    }
+  })
+}
+
+export function getUserSubmissionBan(userId, token){
+  return requestJson(`/user/${userId}/submission-ban`, {
+    bearerToken: token
+  })
+}
+
+export function clearUserSubmissionBan(userId, token){
+  return requestJson(`/user/${userId}/submission-ban`, {
+    method: 'DELETE',
     bearerToken: token
   })
 }

@@ -123,6 +123,48 @@ user_handler::response_type user_handler::get_me_submission_statistics(
     );
 }
 
+user_handler::response_type user_handler::get_me_submission_ban(
+    const request_type& request,
+    db_connection& db_connection_value
+){
+    const auto handle_authenticated =
+        [&](const auth_dto::identity& auth_identity_value) -> response_type {
+            const auto get_submission_ban_status_exp = user_service::get_submission_ban_status(
+                db_connection_value,
+                auth_identity_value.user_id
+            );
+            if(!get_submission_ban_status_exp){
+                return http_response_util::create_4xx_or_500(
+                    request,
+                    "get current user submission ban",
+                    get_submission_ban_status_exp.error()
+                );
+            }
+            if(!get_submission_ban_status_exp->has_value()){
+                return http_response_util::create_error(
+                    request,
+                    boost::beast::http::status::not_found,
+                    "user_not_found",
+                    "user not found"
+                );
+            }
+
+            return http_response_util::create_json(
+                request,
+                boost::beast::http::status::ok,
+                user_json_serializer::make_submission_ban_status_object(
+                    get_submission_ban_status_exp->value()
+                )
+            );
+        };
+
+    return http_util::with_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
 user_handler::response_type user_handler::get_me_solved_problems(
     const request_type& request,
     db_connection& db_connection_value
@@ -493,6 +535,48 @@ user_handler::response_type user_handler::put_user_regular(
     };
 
     return http_util::with_superadmin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
+user_handler::response_type user_handler::get_user_submission_ban(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t user_id
+){
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto get_submission_ban_status_exp = user_service::get_submission_ban_status(
+            db_connection_value,
+            user_id
+        );
+        if(!get_submission_ban_status_exp){
+            return http_response_util::create_4xx_or_500(
+                request,
+                "get user submission ban",
+                get_submission_ban_status_exp.error()
+            );
+        }
+        if(!get_submission_ban_status_exp->has_value()){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::not_found,
+                "user_not_found",
+                "user not found"
+            );
+        }
+
+        return http_response_util::create_json(
+            request,
+            boost::beast::http::status::ok,
+            user_json_serializer::make_submission_ban_status_object(
+                get_submission_ban_status_exp->value()
+            )
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated

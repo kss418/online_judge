@@ -74,8 +74,12 @@ register_temp_file problem_rejudge_response_file
 register_temp_file problem_rejudge_unauthorized_response_file
 register_temp_file problem_rejudge_missing_response_file
 register_temp_file submission_ban_response_file
+register_temp_file submission_ban_status_response_file
+register_temp_file my_submission_ban_status_response_file
 register_temp_file banned_submission_response_file
 register_temp_file clear_submission_ban_response_file
+register_temp_file cleared_submission_ban_status_response_file
+register_temp_file my_cleared_submission_ban_status_response_file
 register_temp_file test_log_temp_file
 register_temp_file server_log_temp_file
 register_temp_file sign_up_response_file
@@ -270,6 +274,62 @@ if not isinstance(submission_banned_until, str) or not submission_banned_until:
 PY
 print_success_log "submission ban create success"
 
+submission_ban_get_status_code="$(
+    send_http_request \
+        "GET" \
+        "${base_url}/api/user/${sign_up_user_id}/submission-ban" \
+        "${submission_ban_status_response_file}" \
+        "${admin_user_token}"
+)"
+assert_status_code \
+    "${submission_ban_get_status_code}" \
+    "200" \
+    "${submission_ban_status_response_file}" \
+    "submission ban get"
+python3 - "${submission_ban_status_response_file}" "${sign_up_user_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("user_id") != int(sys.argv[2]):
+    raise SystemExit("unexpected user_id in submission ban status response")
+
+submission_banned_until = response.get("submission_banned_until")
+if not isinstance(submission_banned_until, str) or not submission_banned_until:
+    raise SystemExit("missing submission_banned_until in submission ban status response")
+PY
+print_success_log "submission ban get success"
+
+self_submission_ban_get_status_code="$(
+    send_http_request \
+        "GET" \
+        "${base_url}/api/user/me/submission-ban" \
+        "${my_submission_ban_status_response_file}" \
+        "${sign_up_token}"
+)"
+assert_status_code \
+    "${self_submission_ban_get_status_code}" \
+    "200" \
+    "${my_submission_ban_status_response_file}" \
+    "self submission ban get"
+python3 - "${my_submission_ban_status_response_file}" "${sign_up_user_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("user_id") != int(sys.argv[2]):
+    raise SystemExit("unexpected user_id in self submission ban status response")
+
+submission_banned_until = response.get("submission_banned_until")
+if not isinstance(submission_banned_until, str) or not submission_banned_until:
+    raise SystemExit("missing submission_banned_until in self submission ban status response")
+PY
+print_success_log "self submission ban get success"
+
 banned_submission_status_code="$(
     send_http_request \
         "POST" \
@@ -306,6 +366,60 @@ assert_status_code \
     "${clear_submission_ban_response_file}" \
     "submission ban clear"
 print_success_log "submission ban clear success"
+
+cleared_submission_ban_get_status_code="$(
+    send_http_request \
+        "GET" \
+        "${base_url}/api/user/${sign_up_user_id}/submission-ban" \
+        "${cleared_submission_ban_status_response_file}" \
+        "${admin_user_token}"
+)"
+assert_status_code \
+    "${cleared_submission_ban_get_status_code}" \
+    "200" \
+    "${cleared_submission_ban_status_response_file}" \
+    "cleared submission ban get"
+python3 - "${cleared_submission_ban_status_response_file}" "${sign_up_user_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("user_id") != int(sys.argv[2]):
+    raise SystemExit("unexpected user_id in cleared submission ban status response")
+
+if response.get("submission_banned_until", "__missing__") is not None:
+    raise SystemExit("expected cleared submission_banned_until to be null")
+PY
+print_success_log "submission ban cleared status success"
+
+self_cleared_submission_ban_get_status_code="$(
+    send_http_request \
+        "GET" \
+        "${base_url}/api/user/me/submission-ban" \
+        "${my_cleared_submission_ban_status_response_file}" \
+        "${sign_up_token}"
+)"
+assert_status_code \
+    "${self_cleared_submission_ban_get_status_code}" \
+    "200" \
+    "${my_cleared_submission_ban_status_response_file}" \
+    "self cleared submission ban get"
+python3 - "${my_cleared_submission_ban_status_response_file}" "${sign_up_user_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("user_id") != int(sys.argv[2]):
+    raise SystemExit("unexpected user_id in self cleared submission ban status response")
+
+if response.get("submission_banned_until", "__missing__") is not None:
+    raise SystemExit("expected self cleared submission_banned_until to be null")
+PY
+print_success_log "self submission ban cleared status success"
 
 second_submission_status_code="$(
     send_http_request \

@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import AdminProblemTestcasesPage from '@/pages/AdminProblemTestcasesPage.vue'
 import AdminProblemsPage from '@/pages/AdminProblemsPage.vue'
+import AdminUserManagementPage from '@/pages/AdminUserManagementPage.vue'
 import AdminUsersPage from '@/pages/AdminUsersPage.vue'
 import HomePage from '@/pages/HomePage.vue'
 import MyInfoPage from '@/pages/MyInfoPage.vue'
@@ -93,6 +94,14 @@ const routes = [
         problemId: String(to.params.problemId)
       }
     })
+  },
+  {
+    path: '/admin/user-management',
+    name: 'admin-user-management',
+    component: AdminUserManagementPage,
+    meta: {
+      requiredPermissionLevel: 1
+    }
   },
   {
     path: '/admin/users',

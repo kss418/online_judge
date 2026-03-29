@@ -96,6 +96,27 @@ user_service::create_submission_ban(
     );
 }
 
+std::expected<std::optional<user_dto::submission_ban_status>, error_code>
+user_service::get_submission_ban_status(
+    db_connection& connection,
+    std::int64_t user_id
+){
+    if(user_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return db_service_util::with_retry_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<std::optional<user_dto::submission_ban_status>, error_code> {
+            return user_repository::get_submission_ban_status(
+                transaction,
+                user_id
+            );
+        }
+    );
+}
+
 std::expected<bool, error_code> user_service::update_submission_banned_until(
     db_connection& connection,
     std::int64_t user_id,

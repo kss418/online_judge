@@ -71,7 +71,7 @@
         <p>{{ appliedQuery ? '검색 결과가 없습니다.' : '표시할 유저가 아직 없습니다.' }}</p>
       </div>
 
-        <div v-else class="users-table">
+      <div v-else class="users-table">
           <div class="users-table-head">
             <span>계정 번호</span>
             <span>ID</span>
@@ -82,7 +82,7 @@
           </div>
 
         <div
-          v-for="user in users"
+          v-for="user in pagedUsers"
           :key="user.user_id"
           class="users-row"
         >
@@ -114,28 +114,57 @@
           </time>
         </div>
       </div>
+
+      <PaginationBar
+        v-if="!isLoading && !errorMessage && users.length > pageSize"
+        v-model:jump-input="pageJumpInput"
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :is-loading="isLoading"
+        :items="paginationItems"
+        jump-input-id="users-page-jump"
+        :jump-placeholder="`1-${totalPages}`"
+        @page-change="goToPage"
+        @jump-submit="submitPageJump"
+      />
     </article>
   </section>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
+import PaginationBar from '@/components/PaginationBar.vue'
 import { getPublicUserList } from '@/api/user'
 import StatusBadge from '@/components/StatusBadge.vue'
+import { buildPaginationItems } from '@/utils/pagination'
 
 const countFormatter = new Intl.NumberFormat('ko-KR')
 const rateFormatter = new Intl.NumberFormat('ko-KR', {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1
 })
+const pageSize = 20
 const users = ref([])
 const isLoading = ref(true)
 const errorMessage = ref('')
 const searchInput = ref('')
 const appliedQuery = ref('')
+const currentPage = ref(1)
+const pageJumpInput = ref('')
 const nowTimestamp = ref(Date.now())
 let relativeTimeRefreshTimer = null
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(users.value.length / pageSize))
+)
+const pagedUsers = computed(() => {
+  const startIndex = (currentPage.value - 1) * pageSize
+  return users.value.slice(startIndex, startIndex + pageSize)
+})
+const paginationItems = computed(() =>
+  buildPaginationItems(currentPage.value, totalPages.value)
+)
 
 function formatAcceptanceRate(acceptedSubmissionCount, submissionCount){
   if (submissionCount <= 0) {
@@ -234,6 +263,16 @@ function stopRelativeTimeRefresh(){
   }
 }
 
+watch(currentPage, () => {
+  pageJumpInput.value = ''
+})
+
+watch(totalPages, (pageCount) => {
+  if (currentPage.value > pageCount) {
+    currentPage.value = pageCount
+  }
+})
+
 async function loadUsers(){
   isLoading.value = true
   errorMessage.value = ''
@@ -263,13 +302,34 @@ async function loadUsers(){
 
 function submitSearch(){
   appliedQuery.value = searchInput.value.trim()
+  currentPage.value = 1
   void loadUsers()
 }
 
 function resetSearch(){
   searchInput.value = ''
   appliedQuery.value = ''
+  currentPage.value = 1
   void loadUsers()
+}
+
+function goToPage(pageNumber){
+  const clampedPageNumber = Math.min(Math.max(pageNumber, 1), totalPages.value)
+  if (clampedPageNumber === currentPage.value) {
+    return
+  }
+
+  currentPage.value = clampedPageNumber
+}
+
+function submitPageJump(){
+  const parsedPage = Number.parseInt(pageJumpInput.value, 10)
+  if (!Number.isInteger(parsedPage)) {
+    pageJumpInput.value = ''
+    return
+  }
+
+  goToPage(parsedPage)
 }
 
 onMounted(() => {
