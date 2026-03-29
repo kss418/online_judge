@@ -14,6 +14,9 @@ namespace user_json_serializer{
         std::int64_t user_id,
         std::int32_t permission_level
     );
+    boost::json::object make_submission_ban_object(
+        const user_dto::submission_ban& submission_ban_value
+    );
 
     boost::json::object make_me_object(const auth_dto::identity& auth_identity_value);
     boost::json::object make_summary_object(const user_dto::summary& summary_value);

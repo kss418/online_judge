@@ -6,6 +6,7 @@
 #include "db_service/user_statistics_service.hpp"
 #include "common/permission_util.hpp"
 #include "http_core/http_util.hpp"
+#include "serializer/common_json_serializer.hpp"
 #include "serializer/user_json_serializer.hpp"
 
 namespace{
@@ -492,6 +493,99 @@ user_handler::response_type user_handler::put_user_regular(
     };
 
     return http_util::with_superadmin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
+user_handler::response_type user_handler::post_user_submission_ban(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t user_id
+){
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto submission_ban_request_exp =
+            http_util::parse_json_dto_or_400<user_dto::submission_ban_request>(
+                request,
+                user_dto::make_submission_ban_request_from_json
+            );
+        if(!submission_ban_request_exp){
+            return std::move(submission_ban_request_exp.error());
+        }
+
+        const auto create_submission_ban_exp = user_service::create_submission_ban(
+            db_connection_value,
+            user_id,
+            submission_ban_request_exp->duration_minutes
+        );
+        if(!create_submission_ban_exp){
+            return http_response_util::create_4xx_or_500(
+                request,
+                "create user submission ban",
+                create_submission_ban_exp.error()
+            );
+        }
+        if(!create_submission_ban_exp->has_value()){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::not_found,
+                "user_not_found",
+                "user not found"
+            );
+        }
+
+        return http_response_util::create_json(
+            request,
+            boost::beast::http::status::created,
+            user_json_serializer::make_submission_ban_object(
+                create_submission_ban_exp->value()
+            )
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
+user_handler::response_type user_handler::delete_user_submission_ban(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t user_id
+){
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto clear_submission_banned_until_exp =
+            user_service::clear_submission_banned_until(
+                db_connection_value,
+                user_id
+            );
+        if(!clear_submission_banned_until_exp){
+            return http_response_util::create_4xx_or_500(
+                request,
+                "clear user submission ban",
+                clear_submission_banned_until_exp.error()
+            );
+        }
+        if(!clear_submission_banned_until_exp.value()){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::not_found,
+                "user_not_found",
+                "user not found"
+            );
+        }
+
+        return http_response_util::create_json(
+            request,
+            boost::beast::http::status::ok,
+            common_json_serializer::make_message_object("user submission ban cleared")
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated

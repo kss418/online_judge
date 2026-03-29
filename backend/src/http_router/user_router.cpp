@@ -117,6 +117,15 @@ user_router::response_type user_router::route(
         return handle_user_regular(request, *user_id_opt);
     }
 
+    if(path_segments.size() == 2 && path_segments[1] == "submission-ban"){
+        const auto user_id_opt = string_util::parse_positive_int64(path_segments[0]);
+        if(!user_id_opt){
+            return http_response_util::create_not_found(request);
+        }
+
+        return handle_user_submission_ban(request, *user_id_opt);
+    }
+
     return http_response_util::create_not_found(request);
 }
 
@@ -288,6 +297,29 @@ user_router::response_type user_router::handle_user_regular(
 ){
     if(request.method() == boost::beast::http::verb::put){
         return user_handler::put_user_regular(
+            request,
+            db_connection_,
+            user_id
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
+user_router::response_type user_router::handle_user_submission_ban(
+    const request_type& request,
+    std::int64_t user_id
+){
+    if(request.method() == boost::beast::http::verb::post){
+        return user_handler::post_user_submission_ban(
+            request,
+            db_connection_,
+            user_id
+        );
+    }
+
+    if(request.method() == boost::beast::http::verb::delete_){
+        return user_handler::delete_user_submission_ban(
             request,
             db_connection_,
             user_id

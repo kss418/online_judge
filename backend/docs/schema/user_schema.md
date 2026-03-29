@@ -11,6 +11,7 @@ Base migration: `scripts/migrate_user_schema.sh`
 | `user_id` | `bigserial` | no | | pk; source of truth for user ids |
 | `created_at` | `timestamptz` | no | `now()` | sign-up timestamp |
 | `updated_at` | `timestamptz` | no | `now()` | user row update timestamp |
+| `submission_banned_until` | `timestamptz` | yes | | submissions are blocked before this timestamp; `null` means not banned |
 
 Constraints:
 

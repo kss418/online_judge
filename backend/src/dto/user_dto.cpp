@@ -5,6 +5,25 @@
 
 #include <pqxx/pqxx>
 
+std::expected<user_dto::submission_ban_request, dto_validation_error>
+user_dto::make_submission_ban_request_from_json(const boost::json::object& json){
+    const auto duration_minutes_opt = http_util::get_positive_int32_field(
+        json,
+        "duration_minutes"
+    );
+    if(!duration_minutes_opt){
+        return std::unexpected(dto_validation_error{
+            .code = "invalid_field",
+            .message = "duration_minutes must be a positive integer",
+            .field_opt = "duration_minutes"
+        });
+    }
+
+    submission_ban_request request_value;
+    request_value.duration_minutes = *duration_minutes_opt;
+    return request_value;
+}
+
 std::expected<user_dto::list_filter, dto_validation_error>
 user_dto::make_list_filter_from_query_params(
     const std::vector<http_util::query_param>& query_params

@@ -134,3 +134,70 @@ user_repository::get_summary_by_login_id(
 
     return user_dto::make_summary_from_row(user_summary_result[0]);
 }
+
+std::expected<std::optional<std::string>, error_code> user_repository::create_submission_ban(
+    pqxx::transaction_base& transaction,
+    std::int64_t user_id,
+    std::int32_t duration_minutes
+){
+    if(user_id <= 0 || duration_minutes <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto update_result = transaction.exec(
+        "UPDATE user_info "
+        "SET "
+        "submission_banned_until = NOW() + ($2 * INTERVAL '1 minute'), "
+        "updated_at = NOW() "
+        "WHERE user_id = $1 "
+        "RETURNING submission_banned_until::text",
+        pqxx::params{user_id, duration_minutes}
+    );
+
+    if(update_result.empty()){
+        return std::nullopt;
+    }
+
+    return update_result[0][0].as<std::string>();
+}
+
+std::expected<bool, error_code> user_repository::update_submission_banned_until(
+    pqxx::transaction_base& transaction,
+    std::int64_t user_id,
+    std::string_view submission_banned_until
+){
+    if(user_id <= 0 || submission_banned_until.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto update_result = transaction.exec(
+        "UPDATE user_info "
+        "SET "
+        "submission_banned_until = $2::timestamptz, "
+        "updated_at = NOW() "
+        "WHERE user_id = $1",
+        pqxx::params{user_id, submission_banned_until}
+    );
+
+    return update_result.affected_rows() > 0;
+}
+
+std::expected<bool, error_code> user_repository::clear_submission_banned_until(
+    pqxx::transaction_base& transaction,
+    std::int64_t user_id
+){
+    if(user_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto update_result = transaction.exec(
+        "UPDATE user_info "
+        "SET "
+        "submission_banned_until = NULL, "
+        "updated_at = NOW() "
+        "WHERE user_id = $1",
+        pqxx::params{user_id}
+    );
+
+    return update_result.affected_rows() > 0;
+}

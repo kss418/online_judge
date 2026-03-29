@@ -48,11 +48,15 @@ CREATE TABLE IF NOT EXISTS schema_migrations(
 CREATE TABLE IF NOT EXISTS user_info(
     user_id BIGSERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    submission_banned_until TIMESTAMPTZ
 );
 
 ALTER TABLE user_info
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE user_info
+    ADD COLUMN IF NOT EXISTS submission_banned_until TIMESTAMPTZ;
 
 DO $do$
 BEGIN
@@ -137,6 +141,10 @@ ON CONFLICT(version) DO NOTHING;
 
 INSERT INTO schema_migrations(version)
 VALUES('user_schema_v2')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('user_schema_v3')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

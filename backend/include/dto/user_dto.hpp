@@ -2,6 +2,8 @@
 
 #include "dto/dto_validation_error.hpp"
 
+#include <boost/json/fwd.hpp>
+
 #include <cstdint>
 #include <expected>
 #include <optional>
@@ -38,8 +40,20 @@ namespace user_dto{
         std::string created_at;
     };
 
+    struct submission_ban_request{
+        std::int32_t duration_minutes = 0;
+    };
+
+    struct submission_ban{
+        std::int64_t user_id = 0;
+        std::int32_t duration_minutes = 0;
+        std::string submission_banned_until;
+    };
+
     using list = std::vector<list_item>;
 
+    std::expected<submission_ban_request, dto_validation_error>
+    make_submission_ban_request_from_json(const boost::json::object& json);
     std::expected<list_filter, dto_validation_error> make_list_filter_from_query_params(
         const std::vector<http_util::query_param>& query_params
     );

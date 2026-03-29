@@ -2,6 +2,7 @@
 
 #include "common/db_connection.hpp"
 
+#include <cstdint>
 #include <string_view>
 
 #include <boost/beast/http/field.hpp>
@@ -70,6 +71,16 @@ namespace user_handler{
         std::int64_t user_id
     );
     response_type put_user_regular(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t user_id
+    );
+    response_type post_user_submission_ban(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t user_id
+    );
+    response_type delete_user_submission_ban(
         const request_type& request,
         db_connection& db_connection_value,
         std::int64_t user_id
