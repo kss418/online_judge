@@ -1,6 +1,7 @@
 target_sources(lib
     PRIVATE
         db_connection.cpp
+        db_connection_pool.cpp
         file_util.cpp
         env_util.cpp
         error_code.cpp
