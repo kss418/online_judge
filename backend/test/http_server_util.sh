@@ -66,7 +66,7 @@ ensure_http_server(){
             echo "http_server binary not found or not executable: ${http_server_bin}" >&2
             append_log_line "${test_log_temp_file}" "http_server binary not found: ${http_server_bin}"
             publish_failure_logs
-            echo "hint: run 'cmake --build ${project_root}/build'" >&2
+            echo "hint: run '${project_root}/scripts/build_backend.sh'" >&2
             return 1
         fi
 
@@ -102,7 +102,7 @@ ensure_dedicated_http_server(){
         echo "http_server binary not found or not executable: ${http_server_bin}" >&2
         append_log_line "${test_log_temp_file}" "http_server binary not found: ${http_server_bin}"
         publish_failure_logs
-        echo "hint: run 'cmake --build ${project_root}/build'" >&2
+        echo "hint: run '${project_root}/scripts/build_backend.sh'" >&2
         return 1
     fi
 

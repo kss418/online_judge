@@ -39,11 +39,7 @@ RUN /workspace/vcpkg/vcpkg install \
 
 COPY . .
 
-RUN cmake -S . -B build -G Ninja \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_TOOLCHAIN_FILE=/workspace/vcpkg/scripts/buildsystems/vcpkg.cmake \
-        -DVCPKG_INSTALLED_DIR=/workspace/vcpkg_installed \
-    && cmake --build build -j --target http_server judge_server
+RUN BACKEND_CMAKE_GENERATOR=Ninja /workspace/scripts/build_backend.sh
 
 RUN git clone --depth 1 https://github.com/google/nsjail.git /tmp/nsjail \
     && make -C /tmp/nsjail \

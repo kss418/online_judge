@@ -8,6 +8,7 @@ backend_dir="${project_root}/backend"
 frontend_dir="${project_root}/frontend"
 backend_env_file="${backend_dir}/.env"
 frontend_env_local="${frontend_dir}/.env.local"
+backend_build_script="${backend_dir}/scripts/build_backend.sh"
 
 frontend_port="${FRONTEND_PORT:-5173}"
 frontend_url="http://127.0.0.1:${frontend_port}"
@@ -18,6 +19,8 @@ cloudflared_bin="${CLOUDFLARED_BIN:-cloudflared}"
 cloudflared_timeout="${CLOUDFLARED_TIMEOUT:-45}"
 backend_ready_timeout="${BACKEND_READY_TIMEOUT:-30}"
 frontend_ready_timeout="${FRONTEND_READY_TIMEOUT:-30}"
+backend_build_parallel="${BACKEND_BUILD_PARALLEL:-2}"
+dev_tunnel_build_backend="${DEV_TUNNEL_BUILD_BACKEND:-0}"
 
 run_dir="$(mktemp -d /tmp/online_judge_dev_tunnel.XXXXXX)"
 http_log="${run_dir}/http_server.log"
@@ -112,6 +115,27 @@ require_file(){
         echo "error: required executable not found: ${file_path}" >&2
         exit 1
     fi
+}
+
+ensure_backend_binaries(){
+    local should_build=0
+
+    if [[ "${dev_tunnel_build_backend}" == "1" ]]; then
+        should_build=1
+    fi
+
+    if (( should_build == 0 )) && [[ ! -x "${backend_dir}/http_server" || ! -x "${backend_dir}/judge_server" ]]; then
+        should_build=1
+    fi
+
+    if (( should_build == 0 )); then
+        return
+    fi
+
+    require_file "${backend_build_script}"
+
+    echo "building backend binaries (parallel=${backend_build_parallel})"
+    "${backend_build_script}" http_server judge_server
 }
 
 resolve_command_path(){
@@ -387,6 +411,7 @@ export HTTP_PORT="${HTTP_PORT:-8080}"
 
 require_command curl
 require_command "${cloudflared_bin}"
+ensure_backend_binaries
 require_file "${backend_dir}/http_server"
 require_file "${backend_dir}/judge_server"
 ensure_judge_runtime_env

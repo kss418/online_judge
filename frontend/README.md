@@ -34,12 +34,14 @@ That means Vite proxies browser requests like `/api/system/health` to the backen
 Build the backend binaries:
 
 ```bash
-cmake -S backend -B backend/build -G "Unix Makefiles" \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_TOOLCHAIN_FILE=backend/vcpkg/scripts/buildsystems/vcpkg.cmake \
-  -DVCPKG_INSTALLED_DIR=backend/vcpkg_installed
+./backend/scripts/build_backend.sh
+```
 
-cmake --build backend/build --parallel 2 --target http_server judge_server
+The script configures `backend/build` and builds with `BACKEND_BUILD_PARALLEL=2` by default.
+If you need a different limit for your machine, override it explicitly:
+
+```bash
+BACKEND_BUILD_PARALLEL=1 ./backend/scripts/build_backend.sh
 ```
 
 Run the HTTP API server:
@@ -74,6 +76,12 @@ The script:
 - passes the tunnel host into Vite `allowedHosts` automatically at runtime
 
 You can stop everything with `Ctrl+C`.
+
+If you want `dev_tunnel.sh` to rebuild the backend before starting, run:
+
+```bash
+DEV_TUNNEL_BUILD_BACKEND=1 ./scripts/dev_tunnel.sh
+```
 
 If your default `node` is too old, you can point the script to another install:
 

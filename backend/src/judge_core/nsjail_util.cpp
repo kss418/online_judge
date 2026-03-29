@@ -7,7 +7,9 @@
 #include "judge_core/sandbox_runner.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cerrno>
+#include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
 #include <linux/sched.h>
@@ -26,6 +28,41 @@ namespace nsjail_util::detail{
     constexpr rlim_t default_run_nproc_limit = 64;
     constexpr rlim_t java_run_nproc_limit = 512;
     constexpr std::int64_t output_file_limit_mb = 8;
+    std::string ascii_lowercase(std::string value){
+        std::transform(
+            value.begin(),
+            value.end(),
+            value.begin(),
+            [](unsigned char character){
+                return static_cast<char>(std::tolower(character));
+            }
+        );
+        return value;
+    }
+
+    bool running_under_wsl(){
+        for(const char* env_name : {"WSL_DISTRO_NAME", "WSL_INTEROP"}){
+            const char* env_value = getenv(env_name);
+            if(env_value != nullptr && *env_value != '\0'){
+                return true;
+            }
+        }
+
+        const auto osrelease_text_exp =
+            file_util::read_file_content("/proc/sys/kernel/osrelease");
+        if(!osrelease_text_exp){
+            return false;
+        }
+
+        const std::string normalized_osrelease = ascii_lowercase(*osrelease_text_exp);
+        return
+            normalized_osrelease.find("microsoft") != std::string::npos ||
+            normalized_osrelease.find("wsl") != std::string::npos;
+    }
+
+    bool should_disable_network_namespace(){
+        return running_under_wsl();
+    }
 
     std::string join_syscall_names(std::initializer_list<std::string_view> syscalls){
         std::string joined;
@@ -59,7 +96,7 @@ namespace nsjail_util::detail{
         };
         static constexpr std::initializer_list<std::string_view> runtime_extra_blocked_syscalls = {
             "clone",
-            "clone3",
+            // nsjail 3.4 bundles a kafel parser that does not recognize clone3.
             "fork",
             "vfork",
             "pipe",
@@ -368,6 +405,9 @@ std::expected<std::vector<std::string>, error_code> nsjail_util::make_command_ar
     sandbox_command_args.push_back("-Me");
     sandbox_command_args.push_back("-Q");
     sandbox_command_args.push_back("--disable_clone_newcgroup");
+    if(detail::should_disable_network_namespace()){
+        sandbox_command_args.push_back("--disable_clone_newnet");
+    }
     sandbox_command_args.push_back("-c");
     sandbox_command_args.push_back(sandbox_artifacts_value.rootfs_path_.string());
     sandbox_command_args.push_back("-D");

@@ -165,7 +165,7 @@ ensure_judge_server(){
         echo "judge_server binary not found or not executable: ${judge_server_bin}" >&2
         append_log_line "${test_log_temp_file}" "judge_server binary not found: ${judge_server_bin}"
         publish_all_failure_logs
-        echo "hint: run 'cmake --build ${project_root}/build'" >&2
+        echo "hint: run '${project_root}/scripts/build_backend.sh'" >&2
         return 1
     fi
 
