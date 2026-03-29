@@ -4,6 +4,8 @@
 - Schema documents live in [`schema/`](./schema).
 - `judge_server` sandbox execution requires `nsjail` and the
   `JUDGE_NSJAIL_PATH` / `JUDGE_JAVA_COMPILER_PATH` environment variables.
+- `JUDGE_WORKER_COUNT` is optional. If omitted, `judge_server` starts one
+  worker thread per detected hardware thread.
 
 ## structure
 

@@ -8,4 +8,5 @@ target_sources(lib
         testcase_util.cpp
         checker.cpp
         testcase_downloader.cpp
+        problem_lock_registry.cpp
 )

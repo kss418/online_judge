@@ -13,8 +13,13 @@
 #include <vector>
 
 std::expected<judge_worker, error_code> judge_worker::create(
-    submission_event_listener submission_event_listener
+    submission_event_listener submission_event_listener,
+    std::shared_ptr<problem_lock_registry> problem_lock_registry
 ){
+    if(!problem_lock_registry){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
     const auto source_directory_path_exp = judge_util::instance().make_source_directory_path();
     if(!source_directory_path_exp){
         return std::unexpected(source_directory_path_exp.error());
@@ -52,18 +57,21 @@ std::expected<judge_worker, error_code> judge_worker::create(
     return judge_worker(
         std::move(submission_event_listener),
         std::move(*db_connection_exp),
-        std::move(*testcase_downloader_exp)
+        std::move(*testcase_downloader_exp),
+        std::move(problem_lock_registry)
     );
 }
 
 judge_worker::judge_worker(
     submission_event_listener submission_event_listener,
     db_connection db_connection,
-    testcase_downloader testcase_downloader
+    testcase_downloader testcase_downloader,
+    std::shared_ptr<problem_lock_registry> problem_lock_registry
 ) :
     submission_event_listener_(std::move(submission_event_listener)),
     db_connection_(std::move(db_connection)),
-    testcase_downloader_(std::move(testcase_downloader)){}
+    testcase_downloader_(std::move(testcase_downloader)),
+    problem_lock_registry_(std::move(problem_lock_registry)){}
 
 submission_status judge_worker::to_submission_status(judge_result result){
     switch(result){
@@ -240,6 +248,21 @@ std::expected<void, error_code> judge_worker::process_submission(
         return std::unexpected(mark_judging_exp.error());
     }
 
+    auto problem_lock_exp = problem_lock_registry_->lock(
+        queued_submission_value.problem_id
+    );
+    if(!problem_lock_exp){
+        return std::unexpected(problem_lock_exp.error());
+    }
+
+    // Keep the shared testcase cache stable while syncing and reading it.
+    const auto sync_testcases_exp = testcase_downloader_.sync_testcases(
+        queued_submission_value.problem_id
+    );
+    if(!sync_testcases_exp){
+        return std::unexpected(sync_testcases_exp.error());
+    }
+
     auto judge_submission_exp = judge_submission(
         *source_file_path_exp,
         queued_submission_value.problem_id
@@ -352,13 +375,6 @@ std::expected<std::filesystem::path, error_code> judge_worker::prepare_submissio
     );
     if(!create_file_exp){
         return std::unexpected(create_file_exp.error());
-    }
-
-    const auto sync_testcases_exp = testcase_downloader_.sync_testcases(
-        queued_submission_value.problem_id
-    );
-    if(!sync_testcases_exp){
-        return std::unexpected(sync_testcases_exp.error());
     }
 
     return *source_file_path_exp;

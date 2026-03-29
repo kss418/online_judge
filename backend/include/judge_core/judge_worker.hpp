@@ -5,6 +5,7 @@
 #include "common/db_connection.hpp"
 #include "db_event/submission_event_listener.hpp"
 #include "dto/submission_dto.hpp"
+#include "judge_core/problem_lock_registry.hpp"
 #include "judge_core/testcase_downloader.hpp"
 #include "judge_core/testcase_runner.hpp"
 #include "judge_core/judge_util.hpp"
@@ -14,6 +15,7 @@
 #include <cstdint>
 #include <expected>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -21,7 +23,8 @@
 class judge_worker{
 public:
     static std::expected<judge_worker, error_code> create(
-        submission_event_listener submission_event_listener
+        submission_event_listener submission_event_listener,
+        std::shared_ptr<problem_lock_registry> problem_lock_registry
     );
 
     std::expected<void, error_code> run();
@@ -43,7 +46,8 @@ private:
     judge_worker(
         submission_event_listener submission_event_listener,
         db_connection db_connection,
-        testcase_downloader testcase_downloader
+        testcase_downloader testcase_downloader,
+        std::shared_ptr<problem_lock_registry> problem_lock_registry
     );
 
     static submission_status to_submission_status(judge_result result);
@@ -81,4 +85,5 @@ private:
     submission_event_listener submission_event_listener_;
     db_connection db_connection_;
     testcase_downloader testcase_downloader_;
+    std::shared_ptr<problem_lock_registry> problem_lock_registry_;
 };
