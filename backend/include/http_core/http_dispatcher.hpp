@@ -1,12 +1,12 @@
 #pragma once
 
+#include "common/db_connection_pool.hpp"
 #include "http_router/auth_router.hpp"
 #include "http_router/problem_router.hpp"
 #include "http_router/submission_router.hpp"
 #include "http_router/system_router.hpp"
 #include "http_router/user_router.hpp"
 #include "common/error_code.hpp"
-#include "common/db_connection.hpp"
 
 #include <expected>
 #include <optional>
@@ -19,19 +19,26 @@ public:
 
     http_dispatcher(const http_dispatcher&) = delete;
     http_dispatcher& operator=(const http_dispatcher&) = delete;
-    http_dispatcher(http_dispatcher&& other) noexcept;
+    http_dispatcher(http_dispatcher&&) noexcept = delete;
     http_dispatcher& operator=(http_dispatcher&&) noexcept = delete;
 
-    static std::expected<http_dispatcher, error_code> create(db_connection db_connection);
+    explicit http_dispatcher(db_connection_pool& db_connection_pool);
     response_type handle(const request_type& request);
 private:
-    explicit http_dispatcher(db_connection db_connection);
-
     static std::optional<std::string_view> strip_path_prefix(
         std::string_view prefix_path,
         std::string_view path
     );
-    std::optional<response_type> try_handle_route(const request_type& request);
+    static bool has_db_route_prefix(std::string_view path);
+    std::optional<response_type> try_handle_system_route(
+        const request_type& request,
+        std::string_view path
+    );
+    std::optional<response_type> try_handle_route(
+        const request_type& request,
+        std::string_view path,
+        db_connection& db_connection
+    );
 
     static constexpr std::string_view system_path_prefix_ = "/api/system";
     static constexpr std::string_view auth_path_prefix_ = "/api/auth";
@@ -39,10 +46,6 @@ private:
     static constexpr std::string_view problem_path_prefix_ = "/api/problem";
     static constexpr std::string_view user_path_prefix_ = "/api/user";
 
-    db_connection db_connection_;
-    auth_router auth_router_;
-    problem_router problem_router_;
-    submission_router submission_router_;
+    db_connection_pool& db_connection_pool_;
     system_router system_router_;
-    user_router user_router_;
 };

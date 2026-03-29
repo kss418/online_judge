@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/db_connection_pool.hpp"
 #include "common/error_code.hpp"
 #include "http_core/http_dispatcher.hpp"
 
@@ -16,12 +17,13 @@ public:
 
     http_server(const http_server&) = delete;
     http_server& operator=(const http_server&) = delete;
-    http_server(http_server&&) noexcept = default;
-    http_server& operator=(http_server&&) noexcept = default;
+    http_server(http_server&&) noexcept = delete;
+    http_server& operator=(http_server&&) noexcept = delete;
 
     static std::expected<std::shared_ptr<http_server>, error_code> create();
     response_type handle(const request_type& request);
 private:
-    explicit http_server(http_dispatcher&& http_dispatcher);
+    explicit http_server(db_connection_pool&& db_connection_pool);
+    db_connection_pool db_connection_pool_;
     http_dispatcher http_dispatcher_;
 };
