@@ -76,37 +76,121 @@ if [[ -z "${database_url}" ]]; then
 fi
 
 echo "ensure superadmin user"
-psql "${database_url}" \
-    -v ON_ERROR_STOP=1 \
-    -v superadmin_login_id="${superadmin_login_id}" \
-    -v superadmin_password_hash="${superadmin_password_hash}" <<'SQL'
+existing_user_id="$(
+    psql "${database_url}" \
+        -v ON_ERROR_STOP=1 \
+        -v superadmin_login_id="${superadmin_login_id}" \
+        -qAt <<'SQL'
+SELECT user_id
+FROM users
+WHERE user_login_id = :'superadmin_login_id'
+LIMIT 1;
+SQL
+)"
+
+if [[ -n "${existing_user_id}" && ! "${existing_user_id}" =~ ^-?[0-9]+$ ]]; then
+    echo "error: invalid existing user_id: ${existing_user_id}" >&2
+    exit 1
+fi
+
+if [[ -z "${existing_user_id}" ]]; then
+    psql "${database_url}" \
+        -v ON_ERROR_STOP=1 \
+        -v superadmin_login_id="${superadmin_login_id}" \
+        -v superadmin_password_hash="${superadmin_password_hash}" <<'SQL'
 BEGIN;
 
-INSERT INTO user_info(user_id)
-VALUES(0)
-ON CONFLICT(user_id) DO UPDATE
-SET updated_at = NOW();
-
+WITH new_user_info AS (
+    INSERT INTO user_info DEFAULT VALUES
+    RETURNING user_id
+)
 INSERT INTO users(
     user_id,
     user_login_id,
     user_password_hash,
     permission_level
 )
-VALUES(
-    0,
+SELECT
+    user_id,
     :'superadmin_login_id',
     :'superadmin_password_hash',
     2
-)
-ON CONFLICT (user_id) DO UPDATE
-SET
-    user_login_id = EXCLUDED.user_login_id,
-    user_password_hash = EXCLUDED.user_password_hash,
-    permission_level = 2,
-    auth_updated_at = NOW();
+FROM new_user_info;
 
 COMMIT;
 SQL
+elif (( existing_user_id <= 0 )); then
+    psql "${database_url}" \
+        -v ON_ERROR_STOP=1 \
+        -v existing_user_id="${existing_user_id}" \
+        -v superadmin_login_id="${superadmin_login_id}" \
+        -v superadmin_password_hash="${superadmin_password_hash}" <<'SQL'
+BEGIN;
 
-echo "superadmin user ensured: user_id=0, user_login_id=${superadmin_login_id}"
+UPDATE users
+SET
+    user_login_id = user_login_id || '__legacy_' || txid_current()::text,
+    user_password_hash = NULL,
+    permission_level = 0,
+    auth_updated_at = NOW()
+WHERE user_id = :'existing_user_id';
+
+UPDATE user_info
+SET updated_at = NOW()
+WHERE user_id = :'existing_user_id';
+
+WITH new_user_info AS (
+    INSERT INTO user_info DEFAULT VALUES
+    RETURNING user_id
+)
+INSERT INTO users(
+    user_id,
+    user_login_id,
+    user_password_hash,
+    permission_level
+)
+SELECT
+    user_id,
+    :'superadmin_login_id',
+    :'superadmin_password_hash',
+    2
+FROM new_user_info;
+
+COMMIT;
+SQL
+else
+    psql "${database_url}" \
+        -v ON_ERROR_STOP=1 \
+        -v existing_user_id="${existing_user_id}" \
+        -v superadmin_password_hash="${superadmin_password_hash}" <<'SQL'
+BEGIN;
+
+INSERT INTO user_info(user_id)
+VALUES(:'existing_user_id')
+ON CONFLICT(user_id) DO UPDATE
+SET updated_at = NOW();
+
+UPDATE users
+SET
+    user_password_hash = :'superadmin_password_hash',
+    permission_level = 2,
+    auth_updated_at = NOW()
+WHERE user_id = :'existing_user_id';
+
+COMMIT;
+SQL
+fi
+
+ensured_user_id="$(
+    psql "${database_url}" \
+        -v ON_ERROR_STOP=1 \
+        -v superadmin_login_id="${superadmin_login_id}" \
+        -qAt <<'SQL'
+SELECT user_id
+FROM users
+WHERE user_login_id = :'superadmin_login_id'
+LIMIT 1;
+SQL
+)"
+
+echo "superadmin user ensured: user_id=${ensured_user_id}, user_login_id=${superadmin_login_id}"
