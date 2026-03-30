@@ -9,6 +9,7 @@ target_sources(lib
         password_util.cpp
         submission_status.cpp
         string_util.cpp
+        logger.cpp
         token_util.cpp
         unique_fd.cpp
         temp_file.cpp

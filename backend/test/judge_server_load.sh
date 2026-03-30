@@ -27,6 +27,7 @@ raw_password="${JUDGE_SERVER_LOAD_TEST_PASSWORD:-password123}"
 problem_title="${JUDGE_SERVER_LOAD_TEST_PROBLEM_TITLE:-judge load fixture}"
 server_pid=""
 judge_server_pid=""
+poller_pid=""
 test_log_name="test_judge_server_load.log"
 server_log_name="test_judge_server_load_http_server.log"
 judge_server_log_name="test_judge_server_load_judge_server.log"
@@ -37,11 +38,15 @@ test_database_created="0"
 
 declare -a worker_metrics_files=()
 declare -a worker_submission_info_files=()
-declare -A submission_started_at_ms=()
 
 cleanup(){
     local exit_status=$?
     trap - EXIT
+
+    if [[ -n "${poller_pid:-}" ]]; then
+        kill "${poller_pid}" >/dev/null 2>&1 || true
+        wait "${poller_pid}" >/dev/null 2>&1 || true
+    fi
 
     finish_flow_test \
         cleanup_judge_server \
@@ -194,7 +199,7 @@ run_submission_worker(){
 
         if [[ "${status_code}" == "201" ]]; then
             submission_id="$(read_submission_id_from_response "${response_file_path}")"
-            printf '%s\t%s\n' "${submission_id}" "${start_ms}" >> "${worker_submission_info_file}"
+            printf '%s\t%s\t%s\n' "${submission_id}" "${start_ms}" "${end_ms}" >> "${worker_submission_info_file}"
             record_metric \
                 "${worker_metrics_file}" \
                 "submission_create" \
@@ -214,6 +219,290 @@ run_submission_worker(){
             "0" \
             "${status_code}" \
             "${duration_ms}"
+    done
+}
+
+parse_submission_list_entries(){
+    local response_file_path="$1"
+
+    if [[ -z "${response_file_path}" ]]; then
+        echo "missing response_file_path" >&2
+        return 1
+    fi
+
+    python3 - "${response_file_path}" <<'PY'
+import datetime
+import json
+import sys
+
+response_file_path = sys.argv[1]
+local_tz = datetime.datetime.now().astimezone().tzinfo
+
+
+def to_epoch_ms(value):
+    if not isinstance(value, str):
+        return 0
+
+    text = value.strip()
+    if not text:
+        return 0
+
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+
+    try:
+        dt = datetime.datetime.fromisoformat(text)
+    except ValueError:
+        return 0
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=local_tz)
+
+    return int(dt.timestamp() * 1000)
+
+
+with open(response_file_path, encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+submissions = response.get("submissions")
+if not isinstance(submissions, list):
+    raise SystemExit("missing submissions array")
+
+for submission in submissions:
+    if not isinstance(submission, dict):
+        continue
+
+    submission_id = submission.get("submission_id")
+    status = submission.get("status")
+    if not isinstance(submission_id, int) or not isinstance(status, str) or not status:
+        continue
+
+    print(
+        f"{submission_id}\t{status}\t"
+        f"{to_epoch_ms(submission.get('created_at'))}\t"
+        f"{to_epoch_ms(submission.get('updated_at'))}"
+    )
+PY
+}
+
+run_submission_poller(){
+    local poller_metrics_file="$1"
+    local submit_workers_done_file="$2"
+    shift 2
+    local -a submission_info_files=("$@")
+    local poll_response_file_path=""
+    local known_submission_count=0
+    local parsed_submission_entries=""
+    local list_request_start_ms=0
+    local list_request_end_ms=0
+    local list_request_duration_ms=0
+    local poll_status_code=""
+    local poll_deadline_ms=0
+    local submission_list_url=""
+    local submission_id=""
+    local current_status=""
+    local created_at_ms=0
+    local updated_at_ms=0
+    local submission_start_ms=0
+    local submission_visible_total_duration_ms=0
+    local submission_terminal_server_duration_ms=0
+    local submission_server_lifecycle_duration_ms=0
+    local submission_observation_lag_ms=0
+    local metric_is_success="0"
+
+    local -A known_submission_started_at_ms=()
+    local -A pending_submission_started_at_ms=()
+
+    poll_response_file_path="$(mktemp)"
+    trap 'rm -f "${poll_response_file_path}"' RETURN
+
+    poll_deadline_ms=$(( $(now_ms) + max_wait_ms ))
+    submission_list_url="${base_url}/api/submission?user_id=${JUDGE_SERVER_LOAD_SIGN_UP_USER_ID}&problem_id=${JUDGE_SERVER_LOAD_PROBLEM_ID}&limit=${submission_count}"
+
+    while true; do
+        for submission_info_file in "${submission_info_files[@]}"; do
+            [[ -f "${submission_info_file}" ]] || continue
+
+            while IFS=$'\t' read -r submission_id submission_start_ms _; do
+                [[ -n "${submission_id}" ]] || continue
+                if [[ -n "${known_submission_started_at_ms["${submission_id}"]+x}" ]]; then
+                    continue
+                fi
+
+                known_submission_started_at_ms["${submission_id}"]="${submission_start_ms}"
+                pending_submission_started_at_ms["${submission_id}"]="${submission_start_ms}"
+                known_submission_count=$((known_submission_count + 1))
+            done < "${submission_info_file}"
+        done
+
+        if [[ -f "${submit_workers_done_file}" ]] && (( ${#pending_submission_started_at_ms[@]} == 0 )); then
+            break
+        fi
+
+        if (( $(now_ms) > poll_deadline_ms )); then
+            for submission_id in "${!pending_submission_started_at_ms[@]}"; do
+                submission_visible_total_duration_ms=$((poll_deadline_ms - pending_submission_started_at_ms["${submission_id}"]))
+                record_metric \
+                    "${poller_metrics_file}" \
+                    "submission_total" \
+                    "0" \
+                    "timeout" \
+                    "${submission_visible_total_duration_ms}"
+                append_log_line \
+                    "${test_log_temp_file}" \
+                    "submission timeout: submission_id=${submission_id}, waited_ms=${submission_visible_total_duration_ms}"
+            done
+            break
+        fi
+
+        if (( known_submission_count == 0 )); then
+            sleep "${poll_interval_seconds}"
+            continue
+        fi
+
+        list_request_start_ms="$(now_ms)"
+        if poll_status_code="$(
+            send_http_request \
+                "GET" \
+                "${submission_list_url}" \
+                "${poll_response_file_path}" \
+                "${JUDGE_SERVER_LOAD_SIGN_UP_TOKEN}" \
+                "" \
+                2>>"${test_log_temp_file}"
+        )"; then
+            :
+        else
+            poll_status_code="curl_error"
+        fi
+        list_request_end_ms="$(now_ms)"
+        list_request_duration_ms=$((list_request_end_ms - list_request_start_ms))
+
+        if [[ "${poll_status_code}" != "200" ]]; then
+            append_log_line \
+                "${test_log_temp_file}" \
+                "submission list poll failed: status=${poll_status_code}, duration_ms=${list_request_duration_ms}"
+            record_metric \
+                "${poller_metrics_file}" \
+                "submission_list_poll" \
+                "0" \
+                "${poll_status_code}" \
+                "${list_request_duration_ms}"
+            sleep "${poll_interval_seconds}"
+            continue
+        fi
+
+        record_metric \
+            "${poller_metrics_file}" \
+            "submission_list_poll" \
+            "1" \
+            "200" \
+            "${list_request_duration_ms}"
+
+        if ! parsed_submission_entries="$(
+            parse_submission_list_entries "${poll_response_file_path}"
+        )"; then
+            append_log_line \
+                "${test_log_temp_file}" \
+                "submission list parse failed"
+            return 1
+        fi
+
+        while IFS=$'\t' read -r submission_id current_status created_at_ms updated_at_ms; do
+            [[ -n "${submission_id}" ]] || continue
+            if [[ -z "${pending_submission_started_at_ms["${submission_id}"]+x}" ]]; then
+                continue
+            fi
+
+            if ! is_terminal_submission_status "${current_status}"; then
+                continue
+            fi
+
+            submission_start_ms="${pending_submission_started_at_ms["${submission_id}"]}"
+            submission_visible_total_duration_ms=$((list_request_end_ms - submission_start_ms))
+            metric_is_success="0"
+            if [[ "${current_status}" == "${expected_final_status}" ]]; then
+                metric_is_success="1"
+            else
+                append_log_line \
+                    "${test_log_temp_file}" \
+                    "unexpected final submission status: submission_id=${submission_id}, status=${current_status}, expected=${expected_final_status}"
+            fi
+
+            record_metric \
+                "${poller_metrics_file}" \
+                "submission_total" \
+                "${metric_is_success}" \
+                "${current_status}" \
+                "${submission_visible_total_duration_ms}"
+            record_metric \
+                "${poller_metrics_file}" \
+                "submission_visible_total" \
+                "1" \
+                "${current_status}" \
+                "${submission_visible_total_duration_ms}"
+
+            if (( updated_at_ms > 0 )); then
+                submission_terminal_server_duration_ms=$((updated_at_ms - submission_start_ms))
+                if (( submission_terminal_server_duration_ms >= 0 )); then
+                    record_metric \
+                        "${poller_metrics_file}" \
+                        "submission_terminal_server" \
+                        "1" \
+                        "${current_status}" \
+                        "${submission_terminal_server_duration_ms}"
+                else
+                    append_log_line \
+                        "${test_log_temp_file}" \
+                        "submission terminal timestamp earlier than client start: submission_id=${submission_id}, updated_at_ms=${updated_at_ms}, submission_start_ms=${submission_start_ms}"
+                fi
+
+                submission_observation_lag_ms=$((list_request_end_ms - updated_at_ms))
+                if (( submission_observation_lag_ms < 0 )); then
+                    append_log_line \
+                        "${test_log_temp_file}" \
+                        "submission observation lag negative, clamping to zero: submission_id=${submission_id}, updated_at_ms=${updated_at_ms}, observed_at_ms=${list_request_end_ms}"
+                    submission_observation_lag_ms=0
+                fi
+                record_metric \
+                    "${poller_metrics_file}" \
+                    "submission_observation_lag" \
+                    "1" \
+                    "${current_status}" \
+                    "${submission_observation_lag_ms}"
+            else
+                append_log_line \
+                    "${test_log_temp_file}" \
+                    "submission missing updated_at timestamp: submission_id=${submission_id}, status=${current_status}"
+            fi
+
+            if (( created_at_ms > 0 && updated_at_ms > 0 )); then
+                submission_server_lifecycle_duration_ms=$((updated_at_ms - created_at_ms))
+                if (( submission_server_lifecycle_duration_ms >= 0 )); then
+                    record_metric \
+                        "${poller_metrics_file}" \
+                        "submission_server_lifecycle" \
+                        "1" \
+                        "${current_status}" \
+                        "${submission_server_lifecycle_duration_ms}"
+                else
+                    append_log_line \
+                        "${test_log_temp_file}" \
+                        "submission lifecycle timestamp order invalid: submission_id=${submission_id}, created_at_ms=${created_at_ms}, updated_at_ms=${updated_at_ms}"
+                fi
+            else
+                append_log_line \
+                    "${test_log_temp_file}" \
+                    "submission missing lifecycle timestamps: submission_id=${submission_id}, created_at_ms=${created_at_ms}, updated_at_ms=${updated_at_ms}"
+            fi
+
+            unset "pending_submission_started_at_ms[${submission_id}]"
+        done <<< "${parsed_submission_entries}"
+
+        if [[ -f "${submit_workers_done_file}" ]] && (( ${#pending_submission_started_at_ms[@]} == 0 )); then
+            break
+        fi
+
+        sleep "${poll_interval_seconds}"
     done
 }
 
@@ -250,7 +539,6 @@ register_temp_file create_problem_response_file
 register_temp_file set_limits_response_file
 register_temp_file create_testcase_response_file
 register_temp_file metrics_temp_file
-register_temp_file poll_response_file
 register_temp_dir judge_source_root
 register_temp_dir testcase_root
 
@@ -284,8 +572,11 @@ setup_judge_fixture
 
 load_start_ms="$(now_ms)"
 declare -a worker_pids=()
-declare -a active_worker_metrics_files=()
-declare -a active_worker_submission_info_files=()
+declare -a worker_indices=()
+declare -a worker_submission_counts=()
+register_temp_file poller_metrics_file
+register_temp_file submit_workers_done_file
+rm -f "${submit_workers_done_file}"
 for (( worker_index = 0; worker_index < submit_concurrency; ++worker_index )); do
     worker_submission_count=$(( submission_count / submit_concurrency ))
     if (( worker_index < submission_count % submit_concurrency )); then
@@ -298,16 +589,24 @@ for (( worker_index = 0; worker_index < submit_concurrency; ++worker_index )); d
 
     register_temp_file worker_metrics_file
     register_temp_file worker_submission_info_file
+    worker_indices+=("${worker_index}")
+    worker_submission_counts+=("${worker_submission_count}")
     worker_metrics_files+=("${worker_metrics_file}")
     worker_submission_info_files+=("${worker_submission_info_file}")
-    active_worker_metrics_files+=("${worker_metrics_file}")
-    active_worker_submission_info_files+=("${worker_submission_info_file}")
+done
 
+run_submission_poller \
+    "${poller_metrics_file}" \
+    "${submit_workers_done_file}" \
+    "${worker_submission_info_files[@]}" &
+poller_pid="$!"
+
+for worker_slot in "${!worker_indices[@]}"; do
     run_submission_worker \
-        "${worker_index}" \
-        "${worker_submission_count}" \
-        "${worker_metrics_file}" \
-        "${worker_submission_info_file}" &
+        "${worker_indices[worker_slot]}" \
+        "${worker_submission_counts[worker_slot]}" \
+        "${worker_metrics_files[worker_slot]}" \
+        "${worker_submission_info_files[worker_slot]}" &
     worker_pids+=("$!")
 done
 
@@ -318,111 +617,33 @@ for worker_pid in "${worker_pids[@]}"; do
     fi
 done
 
-for worker_metrics_file in "${active_worker_metrics_files[@]}"; do
-    cat "${worker_metrics_file}" >> "${metrics_temp_file}"
-done
+touch "${submit_workers_done_file}"
 
-for worker_submission_info_file in "${active_worker_submission_info_files[@]}"; do
-    while IFS=$'\t' read -r submission_id submission_start_ms; do
+poller_wait_failed="0"
+if ! wait "${poller_pid}"; then
+    poller_wait_failed="1"
+fi
+poller_pid=""
+
+created_submission_count=0
+for worker_submission_info_file in "${worker_submission_info_files[@]}"; do
+    while IFS=$'\t' read -r submission_id _ _; do
         [[ -n "${submission_id}" ]] || continue
-        submission_started_at_ms["${submission_id}"]="${submission_start_ms}"
+        created_submission_count=$((created_submission_count + 1))
     done < "${worker_submission_info_file}"
 done
 
-if (( ${#submission_started_at_ms[@]} == 0 )); then
+for worker_metrics_file in "${worker_metrics_files[@]}"; do
+    cat "${worker_metrics_file}" >> "${metrics_temp_file}"
+done
+
+cat "${poller_metrics_file}" >> "${metrics_temp_file}"
+
+if (( created_submission_count == 0 )); then
     append_log_line "${test_log_temp_file}" "judge load created no submissions"
     publish_extended_failure_logs
     exit 1
 fi
-
-poll_deadline_ms=$(( $(now_ms) + max_wait_ms ))
-while (( ${#submission_started_at_ms[@]} > 0 )); do
-    if (( $(now_ms) > poll_deadline_ms )); then
-        for submission_id in "${!submission_started_at_ms[@]}"; do
-            waited_ms=$((poll_deadline_ms - submission_started_at_ms["${submission_id}"]))
-            record_metric \
-                "${metrics_temp_file}" \
-                "submission_total" \
-                "0" \
-                "timeout" \
-                "${waited_ms}"
-            append_log_line \
-                "${test_log_temp_file}" \
-                "submission timeout: submission_id=${submission_id}, waited_ms=${waited_ms}"
-        done
-        break
-    fi
-
-    for submission_id in "${!submission_started_at_ms[@]}"; do
-        poll_request_start_ms="$(now_ms)"
-        if poll_status_code="$(
-            send_http_request \
-                "GET" \
-                "${base_url}/api/submission/${submission_id}" \
-                "${poll_response_file}" \
-                "" \
-                "" \
-                2>>"${test_log_temp_file}"
-        )"; then
-            :
-        else
-            poll_status_code="curl_error"
-        fi
-        poll_request_end_ms="$(now_ms)"
-        poll_request_duration_ms=$((poll_request_end_ms - poll_request_start_ms))
-
-        if [[ "${poll_status_code}" != "200" ]]; then
-            append_log_line \
-                "${test_log_temp_file}" \
-                "submission poll failed: submission_id=${submission_id}, status=${poll_status_code}, duration_ms=${poll_request_duration_ms}"
-            record_metric \
-                "${metrics_temp_file}" \
-                "submission_poll" \
-                "0" \
-                "${poll_status_code}" \
-                "${poll_request_duration_ms}"
-            continue
-        fi
-
-        current_status="$(read_json_field "${poll_response_file}" "status" "string")"
-        record_metric \
-            "${metrics_temp_file}" \
-            "submission_poll" \
-            "1" \
-            "${current_status}" \
-            "${poll_request_duration_ms}"
-
-        if ! is_terminal_submission_status "${current_status}"; then
-            continue
-        fi
-
-        submission_total_duration_ms=$((poll_request_end_ms - submission_started_at_ms["${submission_id}"]))
-        if [[ "${current_status}" == "${expected_final_status}" ]]; then
-            record_metric \
-                "${metrics_temp_file}" \
-                "submission_total" \
-                "1" \
-                "${current_status}" \
-                "${submission_total_duration_ms}"
-        else
-            record_metric \
-                "${metrics_temp_file}" \
-                "submission_total" \
-                "0" \
-                "${current_status}" \
-                "${submission_total_duration_ms}"
-            append_log_line \
-                "${test_log_temp_file}" \
-                "unexpected final submission status: submission_id=${submission_id}, status=${current_status}, expected=${expected_final_status}"
-        fi
-
-        unset "submission_started_at_ms[${submission_id}]"
-    done
-
-    if (( ${#submission_started_at_ms[@]} > 0 )); then
-        sleep "${poll_interval_seconds}"
-    fi
-done
 load_end_ms="$(now_ms)"
 
 summary_text="$(
@@ -441,10 +662,10 @@ print_log_file_created "${metrics_log_path}"
 publish_judge_server_failure_log
 
 failure_count="$(count_metric_failures "${metrics_temp_file}")"
-if [[ "${worker_wait_failed}" != "0" || "${failure_count}" != "0" ]]; then
+if [[ "${worker_wait_failed}" != "0" || "${poller_wait_failed}" != "0" || "${failure_count}" != "0" ]]; then
     append_log_line \
         "${test_log_temp_file}" \
-        "judge_server_load failed: worker_wait_failed=${worker_wait_failed}, failure_count=${failure_count}"
+        "judge_server_load failed: worker_wait_failed=${worker_wait_failed}, poller_wait_failed=${poller_wait_failed}, failure_count=${failure_count}"
     publish_extended_failure_logs
     exit 1
 fi

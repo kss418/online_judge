@@ -1,6 +1,7 @@
 #include "judge_core/judge_worker.hpp"
 
 #include "common/file_util.hpp"
+#include "common/logger.hpp"
 #include "common/timer.hpp"
 #include "db_service/submission_service.hpp"
 #include "judge_core/checker.hpp"
@@ -8,7 +9,6 @@
 #include "judge_core/testcase_runner.hpp"
 
 #include <algorithm>
-#include <iostream>
 #include <optional>
 #include <string>
 #include <thread>
@@ -20,28 +20,37 @@ namespace{
         std::int64_t submission_id,
         const judge_worker::submission_stage_metrics& submission_stage_metrics_value
     ){
-        std::clog
-            << "submission_stage_metrics "
-            << "thread_id=" << std::this_thread::get_id() << ' '
-            << "submission_id=" << submission_id << ' '
-            << "event=" << submission_stage_metrics_value.event << ' '
-            << "final_status=" << to_string(submission_stage_metrics_value.final_submission_status) << ' '
-            << "queue_wait_ms=" << submission_stage_metrics_value.queue_wait_ms << ' '
-            << "prepare_workspace_ms=" << submission_stage_metrics_value.prepare_workspace_elapsed_ms << ' '
-            << "testcase_snapshot_ms=" << submission_stage_metrics_value.testcase_snapshot_elapsed_ms << ' '
-            << "compile_prepare_ms=" << submission_stage_metrics_value.compile_prepare_elapsed_ms << ' '
-            << "testcase_run_ms=" << submission_stage_metrics_value.testcase_execution_elapsed_ms << ' '
-            << "finalize_ms=" << submission_stage_metrics_value.finalize_elapsed_ms << ' '
-            << "cleanup_ms=" << submission_stage_metrics_value.cleanup_elapsed_ms << ' '
-            << "total_ms=" << submission_stage_metrics_value.total_elapsed_ms << ' '
-            << "testcase_count=" << submission_stage_metrics_value.testcase_count;
-
-        if(submission_stage_metrics_value.error_message_opt.has_value()){
-            std::clog << ' ' << "error=" << *submission_stage_metrics_value.error_message_opt;
-        }
-
-        std::clog << '\n';
-
+        logger::clog()
+            .log("submission_stage_metrics")
+            .field("thread_id", std::this_thread::get_id())
+            .field("submission_id", submission_id)
+            .field("event", submission_stage_metrics_value.event)
+            .field(
+                "final_status",
+                to_string(submission_stage_metrics_value.final_submission_status)
+            )
+            .field("queue_wait_ms", submission_stage_metrics_value.queue_wait_ms)
+            .field(
+                "prepare_workspace_ms",
+                submission_stage_metrics_value.prepare_workspace_elapsed_ms
+            )
+            .field(
+                "testcase_snapshot_ms",
+                submission_stage_metrics_value.testcase_snapshot_elapsed_ms
+            )
+            .field(
+                "compile_prepare_ms",
+                submission_stage_metrics_value.compile_prepare_elapsed_ms
+            )
+            .field(
+                "testcase_run_ms",
+                submission_stage_metrics_value.testcase_execution_elapsed_ms
+            )
+            .field("finalize_ms", submission_stage_metrics_value.finalize_elapsed_ms)
+            .field("cleanup_ms", submission_stage_metrics_value.cleanup_elapsed_ms)
+            .field("total_ms", submission_stage_metrics_value.total_elapsed_ms)
+            .field("testcase_count", submission_stage_metrics_value.testcase_count)
+            .optional_field("error", submission_stage_metrics_value.error_message_opt);
     }
 }
 
