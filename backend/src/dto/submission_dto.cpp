@@ -337,8 +337,9 @@ submission_dto::queued_submission submission_dto::make_queued_submission_from_ro
     queued_submission queued_submission_value;
     queued_submission_value.submission_id = submission_queue_row[0].as<std::int64_t>();
     queued_submission_value.problem_id = submission_queue_row[1].as<std::int64_t>();
-    queued_submission_value.language = submission_queue_row[2].as<std::string>();
-    queued_submission_value.source_code = submission_queue_row[3].as<std::string>();
+    queued_submission_value.queue_wait_ms = submission_queue_row[2].as<std::int64_t>();
+    queued_submission_value.language = submission_queue_row[3].as<std::string>();
+    queued_submission_value.source_code = submission_queue_row[4].as<std::string>();
     return queued_submission_value;
 }
 

@@ -31,6 +31,20 @@ public:
     std::expected<void, error_code> run();
     std::expected<std::optional<submission_dto::queued_submission>, error_code> lease_submission();
 
+    struct submission_stage_metrics{
+        std::string event = "completed";
+        std::optional<std::string> error_message_opt = std::nullopt;
+        std::int64_t queue_wait_ms = 0;
+        std::int64_t prepare_workspace_elapsed_ms = 0;
+        std::int64_t testcase_snapshot_elapsed_ms = 0;
+        std::int64_t compile_prepare_elapsed_ms = 0;
+        std::int64_t testcase_execution_elapsed_ms = 0;
+        std::int64_t finalize_elapsed_ms = 0;
+        std::int64_t cleanup_elapsed_ms = 0;
+        std::int64_t total_elapsed_ms = 0;
+        std::int32_t testcase_count = 0;
+        submission_status final_submission_status = submission_status::queued;
+    };
 private:
     struct finalize_submission_data{
         std::optional<std::int16_t> score = std::nullopt;
@@ -42,6 +56,9 @@ private:
     struct process_submission_data{
         judge_result judge_result_value = judge_result::wrong_answer;
         std::vector<sandbox_runner::run_result> run_results;
+        std::int32_t testcase_count = 0;
+        std::int64_t compile_prepare_elapsed_ms = 0;
+        std::int64_t testcase_execution_elapsed_ms = 0;
     };
 
     judge_worker(
@@ -56,12 +73,27 @@ private:
         submission_status submission_status_value,
         const std::vector<sandbox_runner::run_result>& run_results
     );
+    static submission_stage_metrics make_submission_stage_metrics(
+        const submission_dto::queued_submission& queued_submission_value
+    );
+    static submission_stage_metrics make_submission_stage_metrics(
+        submission_stage_metrics submission_stage_metrics_value,
+        const process_submission_data& process_submission_data_value
+    );
+    static submission_stage_metrics make_requeued_submission_stage_metrics(
+        const submission_dto::queued_submission& queued_submission_value,
+        std::string error_message
+    );
+    static process_submission_data make_process_submission_data(
+        judge_result judge_result_value,
+        testcase_runner::run_batch&& run_batch_value
+    );
     std::expected<void, error_code> finalize_submission(
         std::int64_t submission_id,
         judge_result result,
         const std::vector<sandbox_runner::run_result>& run_results
     );
-    std::expected<void, error_code> process_submission(
+    std::expected<submission_stage_metrics, error_code> process_submission(
         const submission_dto::queued_submission& queued_submission_value
     );
     std::expected<std::filesystem::path, error_code> prepare_submission(

@@ -131,7 +131,11 @@ setup_judge_fixture(){
         "${sign_up_token}" \
         "${limits_request_body}"
 
-    testcase_request_body="$(make_testcase_request_body "1 2\n" "3\n")"
+    testcase_request_body="$(
+        make_testcase_request_body             $'1 2
+'             $'3
+'
+    )"
     send_http_request_and_assert_status \
         "POST" \
         "${base_url}/api/problem/${problem_id_value}/testcase" \
@@ -434,6 +438,7 @@ metrics_log_path="$(
     publish_log_file "${metrics_temp_file}" "test_judge_server_load_metrics.tsv"
 )"
 print_log_file_created "${metrics_log_path}"
+publish_judge_server_failure_log
 
 failure_count="$(count_metric_failures "${metrics_temp_file}")"
 if [[ "${worker_wait_failed}" != "0" || "${failure_count}" != "0" ]]; then

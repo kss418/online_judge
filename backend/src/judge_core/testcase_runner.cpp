@@ -1,6 +1,7 @@
 #include "judge_core/testcase_runner.hpp"
 
-#include <chrono>
+#include "common/timer.hpp"
+
 #include <utility>
 #include <vector>
 
@@ -33,37 +34,53 @@ std::expected<testcase_runner::run_batch, error_code> testcase_runner::run_all_t
         return std::unexpected(validated_testcase_count_exp.error());
     }
 
-    const auto prepare_source_exp = pl_runner_util::instance().prepare_source(source_file_path);
+    run_batch run_batch_value;
+    run_batch_value.testcase_count = *validated_testcase_count_exp;
+
+    const auto prepare_source_exp = timer::measure_elapsed_ms(
+        run_batch_value.prepare_elapsed_ms,
+        [&source_file_path]{
+            return pl_runner_util::instance().prepare_source(source_file_path);
+        }
+    );
     if(!prepare_source_exp){
         return std::unexpected(prepare_source_exp.error());
     }
 
     if(!prepare_source_exp->is_runnable()){
-        run_batch run_batch_value;
         run_batch_value.compile_failed = true;
         run_batch_value.run_results.push_back(*prepare_source_exp->compile_failed_run_result_);
         return run_batch_value;
     }
 
-    run_batch run_batch_value;
     run_batch_value.run_results.reserve(static_cast<std::size_t>(*validated_testcase_count_exp));
 
-    for(std::int32_t order = 1; order <= *validated_testcase_count_exp; ++order){
-        const auto input_path_exp = testcase_snapshot_value.make_input_path(order);
-        if(!input_path_exp){
-            return std::unexpected(input_path_exp.error());
-        }
+    const auto run_testcases_exp = timer::measure_elapsed_ms(
+        run_batch_value.testcase_execution_elapsed_ms,
+        [&]() -> std::expected<void, error_code> {
+            for(std::int32_t order = 1; order <= *validated_testcase_count_exp; ++order){
+                const auto input_path_exp = testcase_snapshot_value.make_input_path(order);
+                if(!input_path_exp){
+                    return std::unexpected(input_path_exp.error());
+                }
 
-        const auto run_one_testcase_exp = run_one_testcase(
-            *prepare_source_exp,
-            *input_path_exp,
-            testcase_snapshot_value.limits_value
-        );
-        if(!run_one_testcase_exp){
-            return std::unexpected(run_one_testcase_exp.error());
-        }
+                const auto run_one_testcase_exp = run_one_testcase(
+                    *prepare_source_exp,
+                    *input_path_exp,
+                    testcase_snapshot_value.limits_value
+                );
+                if(!run_one_testcase_exp){
+                    return std::unexpected(run_one_testcase_exp.error());
+                }
 
-        run_batch_value.run_results.push_back(std::move(*run_one_testcase_exp));
+                run_batch_value.run_results.push_back(std::move(*run_one_testcase_exp));
+            }
+
+            return {};
+        }
+    );
+    if(!run_testcases_exp){
+        return std::unexpected(run_testcases_exp.error());
     }
 
     return run_batch_value;

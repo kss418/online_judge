@@ -495,6 +495,7 @@ std::expected<submission_dto::queued_submission, error_code> submission_reposito
         "SELECT "
         "queue_table.submission_id, "
         "submission_table.problem_id, "
+        "GREATEST(0::bigint, FLOOR(EXTRACT(EPOCH FROM (NOW() - queue_table.available_at)) * 1000))::bigint, "
         "submission_table.language, "
         "submission_table.source_code "
         "FROM submission_queue queue_table "

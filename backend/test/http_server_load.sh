@@ -113,7 +113,11 @@ setup_http_fixture(){
         "http server load create sample" \
         "${sign_up_token}"
 
-    testcase_request_body="$(make_testcase_request_body "1 2\n" "3\n")"
+    testcase_request_body="$(
+        make_testcase_request_body             $'1 2
+'             $'3
+'
+    )"
     send_http_request_and_assert_status \
         "POST" \
         "${base_url}/api/problem/${problem_id_value}/testcase" \

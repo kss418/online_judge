@@ -103,6 +103,7 @@ namespace submission_dto{
     struct queued_submission{
         std::int64_t submission_id = 0;
         std::int64_t problem_id = 0;
+        std::int64_t queue_wait_ms = 0;
         std::string language;
         std::string source_code;
     };

@@ -14,6 +14,9 @@ namespace testcase_runner{
     struct run_batch{
         std::vector<sandbox_runner::run_result> run_results;
         bool compile_failed = false;
+        std::int32_t testcase_count = 0;
+        std::int64_t prepare_elapsed_ms = 0;
+        std::int64_t testcase_execution_elapsed_ms = 0;
     };
 
     std::expected<sandbox_runner::run_result, error_code> run_one_testcase(

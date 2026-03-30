@@ -1,16 +1,49 @@
 #include "judge_core/judge_worker.hpp"
 
 #include "common/file_util.hpp"
+#include "common/timer.hpp"
 #include "db_service/submission_service.hpp"
 #include "judge_core/checker.hpp"
 #include "judge_core/judge_util.hpp"
 #include "judge_core/testcase_runner.hpp"
 
 #include <algorithm>
+#include <iostream>
 #include <optional>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
+
+namespace{
+    void log_submission_stage_metrics(
+        std::int64_t submission_id,
+        const judge_worker::submission_stage_metrics& submission_stage_metrics_value
+    ){
+        std::clog
+            << "submission_stage_metrics "
+            << "thread_id=" << std::this_thread::get_id() << ' '
+            << "submission_id=" << submission_id << ' '
+            << "event=" << submission_stage_metrics_value.event << ' '
+            << "final_status=" << to_string(submission_stage_metrics_value.final_submission_status) << ' '
+            << "queue_wait_ms=" << submission_stage_metrics_value.queue_wait_ms << ' '
+            << "prepare_workspace_ms=" << submission_stage_metrics_value.prepare_workspace_elapsed_ms << ' '
+            << "testcase_snapshot_ms=" << submission_stage_metrics_value.testcase_snapshot_elapsed_ms << ' '
+            << "compile_prepare_ms=" << submission_stage_metrics_value.compile_prepare_elapsed_ms << ' '
+            << "testcase_run_ms=" << submission_stage_metrics_value.testcase_execution_elapsed_ms << ' '
+            << "finalize_ms=" << submission_stage_metrics_value.finalize_elapsed_ms << ' '
+            << "cleanup_ms=" << submission_stage_metrics_value.cleanup_elapsed_ms << ' '
+            << "total_ms=" << submission_stage_metrics_value.total_elapsed_ms << ' '
+            << "testcase_count=" << submission_stage_metrics_value.testcase_count;
+
+        if(submission_stage_metrics_value.error_message_opt.has_value()){
+            std::clog << ' ' << "error=" << *submission_stage_metrics_value.error_message_opt;
+        }
+
+        std::clog << '\n';
+
+    }
+}
 
 std::expected<judge_worker, error_code> judge_worker::create(
     submission_event_listener submission_event_listener,
@@ -150,6 +183,57 @@ judge_worker::finalize_submission_data judge_worker::make_finalize_submission_da
     return finalize_submission_data_value;
 }
 
+judge_worker::submission_stage_metrics judge_worker::make_submission_stage_metrics(
+    const submission_dto::queued_submission& queued_submission_value
+){
+    submission_stage_metrics submission_stage_metrics_value;
+    submission_stage_metrics_value.queue_wait_ms = queued_submission_value.queue_wait_ms;
+    return submission_stage_metrics_value;
+}
+
+judge_worker::submission_stage_metrics judge_worker::make_submission_stage_metrics(
+    submission_stage_metrics submission_stage_metrics_value,
+    const process_submission_data& process_submission_data_value
+){
+    submission_stage_metrics_value.testcase_count =
+        process_submission_data_value.testcase_count;
+    submission_stage_metrics_value.compile_prepare_elapsed_ms =
+        process_submission_data_value.compile_prepare_elapsed_ms;
+    submission_stage_metrics_value.testcase_execution_elapsed_ms =
+        process_submission_data_value.testcase_execution_elapsed_ms;
+    submission_stage_metrics_value.final_submission_status = to_submission_status(
+        process_submission_data_value.judge_result_value
+    );
+    return submission_stage_metrics_value;
+}
+
+judge_worker::submission_stage_metrics judge_worker::make_requeued_submission_stage_metrics(
+    const submission_dto::queued_submission& queued_submission_value,
+    std::string error_message
+){
+    submission_stage_metrics submission_stage_metrics_value = make_submission_stage_metrics(
+        queued_submission_value
+    );
+    submission_stage_metrics_value.event = "requeued";
+    submission_stage_metrics_value.error_message_opt = std::move(error_message);
+    return submission_stage_metrics_value;
+}
+
+judge_worker::process_submission_data judge_worker::make_process_submission_data(
+    judge_result judge_result_value,
+    testcase_runner::run_batch&& run_batch_value
+){
+    process_submission_data process_submission_data_value;
+    process_submission_data_value.judge_result_value = judge_result_value;
+    process_submission_data_value.testcase_count = run_batch_value.testcase_count;
+    process_submission_data_value.compile_prepare_elapsed_ms =
+        run_batch_value.prepare_elapsed_ms;
+    process_submission_data_value.testcase_execution_elapsed_ms =
+        run_batch_value.testcase_execution_elapsed_ms;
+    process_submission_data_value.run_results = std::move(run_batch_value.run_results);
+    return process_submission_data_value;
+}
+
 std::expected<judge_result, error_code> judge_worker::check_result(
     const testcase_snapshot& testcase_snapshot_value,
     const testcase_runner::run_batch& run_batch_value
@@ -201,41 +285,65 @@ std::expected<void, error_code> judge_worker::run(){
 
         const submission_dto::queued_submission& queued_submission_value =
             queued_submission_opt_exp->value();
+        timer processing_timer;
         const auto process_submission_exp = process_submission(
             queued_submission_value
         );
-        
-        if(!process_submission_exp){
-            const auto cleanup_workspace_exp = cleanup_submission_workspace(
-                queued_submission_value.submission_id
-            );
-            if(!cleanup_workspace_exp){
-                return std::unexpected(cleanup_workspace_exp.error());
-            }
 
-            const auto requeue_submission_exp = requeue_submission(
-                queued_submission_value.submission_id,
+        submission_stage_metrics submission_stage_metrics_value;
+        if(process_submission_exp){
+            submission_stage_metrics_value = *process_submission_exp;
+        }
+        else{
+            submission_stage_metrics_value = make_requeued_submission_stage_metrics(
+                queued_submission_value,
                 to_string(process_submission_exp.error())
             );
-            if(!requeue_submission_exp){
-                return std::unexpected(requeue_submission_exp.error());
-            }
-            continue;
         }
 
-        const auto cleanup_workspace_exp = cleanup_submission_workspace(
-            queued_submission_value.submission_id
+        const auto cleanup_workspace_exp = timer::measure_elapsed_ms(
+            submission_stage_metrics_value.cleanup_elapsed_ms,
+            [this, &queued_submission_value]{
+                return cleanup_submission_workspace(
+                    queued_submission_value.submission_id
+                );
+            }
         );
         if(!cleanup_workspace_exp){
             return std::unexpected(cleanup_workspace_exp.error());
         }
+
+        if(!process_submission_exp){
+            const auto requeue_submission_exp = requeue_submission(
+                queued_submission_value.submission_id,
+                *submission_stage_metrics_value.error_message_opt
+            );
+            if(!requeue_submission_exp){
+                return std::unexpected(requeue_submission_exp.error());
+            }
+        }
+
+        submission_stage_metrics_value.total_elapsed_ms = processing_timer.elapsed_ms();
+        log_submission_stage_metrics(
+            queued_submission_value.submission_id,
+            submission_stage_metrics_value
+        );
     }
 }
 
-std::expected<void, error_code> judge_worker::process_submission(
+std::expected<judge_worker::submission_stage_metrics, error_code> judge_worker::process_submission(
     const submission_dto::queued_submission& queued_submission_value
 ){
-    const auto source_file_path_exp = prepare_submission(queued_submission_value);
+    submission_stage_metrics submission_stage_metrics_value = make_submission_stage_metrics(
+        queued_submission_value
+    );
+
+    const auto source_file_path_exp = timer::measure_elapsed_ms(
+        submission_stage_metrics_value.prepare_workspace_elapsed_ms,
+        [this, &queued_submission_value]{
+            return prepare_submission(queued_submission_value);
+        }
+    );
     if(!source_file_path_exp){
         return std::unexpected(source_file_path_exp.error());
     }
@@ -248,45 +356,52 @@ std::expected<void, error_code> judge_worker::process_submission(
         return std::unexpected(mark_judging_exp.error());
     }
 
-    testcase_snapshot testcase_snapshot_value;
-    {
-        auto problem_lock_exp = problem_lock_registry_->lock(
-            queued_submission_value.problem_id
-        );
-        if(!problem_lock_exp){
-            return std::unexpected(problem_lock_exp.error());
-        }
+    const auto testcase_snapshot_exp = timer::measure_elapsed_ms(
+        submission_stage_metrics_value.testcase_snapshot_elapsed_ms,
+        [this, &queued_submission_value]() -> std::expected<testcase_snapshot, error_code> {
+            auto problem_lock_exp = problem_lock_registry_->lock(
+                queued_submission_value.problem_id
+            );
+            if(!problem_lock_exp){
+                return std::unexpected(problem_lock_exp.error());
+            }
 
-        // Pin this submission to an immutable testcase version before unlocking.
-        const auto ensure_testcase_snapshot_exp =
-            testcase_downloader_.ensure_testcase_snapshot(
-            queued_submission_value.problem_id
-        );
-        if(!ensure_testcase_snapshot_exp){
-            return std::unexpected(ensure_testcase_snapshot_exp.error());
+            return testcase_downloader_.ensure_testcase_snapshot(
+                queued_submission_value.problem_id
+            );
         }
-
-        testcase_snapshot_value = *ensure_testcase_snapshot_exp;
+    );
+    if(!testcase_snapshot_exp){
+        return std::unexpected(testcase_snapshot_exp.error());
     }
 
     auto judge_submission_exp = judge_submission(
         *source_file_path_exp,
-        testcase_snapshot_value
+        *testcase_snapshot_exp
     );
     if(!judge_submission_exp){
         return std::unexpected(judge_submission_exp.error());
     }
+    submission_stage_metrics_value = make_submission_stage_metrics(
+        std::move(submission_stage_metrics_value),
+        *judge_submission_exp
+    );
 
-    const auto finalize_submission_exp = finalize_submission(
-        queued_submission_value.submission_id,
-        judge_submission_exp->judge_result_value,
-        judge_submission_exp->run_results
+    const auto finalize_submission_exp = timer::measure_elapsed_ms(
+        submission_stage_metrics_value.finalize_elapsed_ms,
+        [this, &queued_submission_value, &judge_submission_exp]{
+            return finalize_submission(
+                queued_submission_value.submission_id,
+                judge_submission_exp->judge_result_value,
+                judge_submission_exp->run_results
+            );
+        }
     );
     if(!finalize_submission_exp){
         return std::unexpected(finalize_submission_exp.error());
     }
 
-    return {};
+    return submission_stage_metrics_value;
 }
 
 std::expected<judge_worker::process_submission_data, error_code> judge_worker::judge_submission(
@@ -309,10 +424,10 @@ std::expected<judge_worker::process_submission_data, error_code> judge_worker::j
         return std::unexpected(judge_result_exp.error());
     }
 
-    process_submission_data process_submission_data_value;
-    process_submission_data_value.judge_result_value = *judge_result_exp;
-    process_submission_data_value.run_results = std::move(run_all_testcases_exp->run_results);
-    return process_submission_data_value;
+    return make_process_submission_data(
+        *judge_result_exp,
+        std::move(*run_all_testcases_exp)
+    );
 }
 
 std::expected<void, error_code> judge_worker::finalize_submission(
