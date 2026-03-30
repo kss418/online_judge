@@ -50,33 +50,6 @@ if ! PGPASSWORD="${admin_password}" psql \
     exit 1
 fi
 
-configure_sql="$(cat <<'SQL'
-DO $do$
-DECLARE
-    preload_value TEXT := current_setting('shared_preload_libraries', true);
-BEGIN
-    IF preload_value IS NULL OR btrim(preload_value) = '' THEN
-        EXECUTE 'ALTER SYSTEM SET shared_preload_libraries = ''pg_stat_statements''';
-    ELSIF position('pg_stat_statements' IN preload_value) = 0 THEN
-        EXECUTE format(
-            'ALTER SYSTEM SET shared_preload_libraries = %L',
-            preload_value || ',pg_stat_statements'
-        );
-    END IF;
-END
-$do$;
-
-ALTER SYSTEM SET compute_query_id = 'on';
-ALTER SYSTEM SET pg_stat_statements.max = '10000';
-ALTER SYSTEM SET pg_stat_statements.track = 'top';
-ALTER SYSTEM SET pg_stat_statements.save = 'on';
-ALTER SYSTEM SET log_lock_waits = 'on';
-ALTER SYSTEM SET deadlock_timeout = '50ms';
-
-SELECT pg_reload_conf();
-SQL
-)"
-
 shared_preload_before="$(
     PGPASSWORD="${admin_password}" psql \
         -X \
@@ -90,14 +63,37 @@ shared_preload_before="$(
         -c "SELECT current_setting('shared_preload_libraries', true);"
 )"
 
-PGPASSWORD="${admin_password}" psql \
-    -X \
-    -h "${db_host}" \
-    -p "${db_port}" \
-    -U "${admin_user}" \
-    -d postgres \
-    -v ON_ERROR_STOP=1 \
-    -c "${configure_sql}"
+if [[ -z "${shared_preload_before}" ]]; then
+    desired_shared_preload="pg_stat_statements"
+elif [[ "${shared_preload_before}" == *"pg_stat_statements"* ]]; then
+    desired_shared_preload="${shared_preload_before}"
+else
+    desired_shared_preload="${shared_preload_before},pg_stat_statements"
+fi
+
+psql_admin(){
+    PGPASSWORD="${admin_password}" psql \
+        -X \
+        -h "${db_host}" \
+        -p "${db_port}" \
+        -U "${admin_user}" \
+        -d postgres \
+        -v ON_ERROR_STOP=1 \
+        -c "$1"
+}
+
+psql_admin "ALTER SYSTEM SET shared_preload_libraries = '${desired_shared_preload}';"
+psql_admin "ALTER SYSTEM SET compute_query_id = 'on';"
+psql_admin "ALTER SYSTEM SET log_lock_waits = 'on';"
+psql_admin "ALTER SYSTEM SET deadlock_timeout = '50ms';"
+
+if [[ "${shared_preload_before}" == *"pg_stat_statements"* ]]; then
+    psql_admin "ALTER SYSTEM SET pg_stat_statements.max = '10000';"
+    psql_admin "ALTER SYSTEM SET pg_stat_statements.track = 'top';"
+    psql_admin "ALTER SYSTEM SET pg_stat_statements.save = 'on';"
+fi
+
+psql_admin "SELECT pg_reload_conf();"
 
 if [[ "${shared_preload_before}" == *"pg_stat_statements"* ]]; then
     PGPASSWORD="${admin_password}" psql \
