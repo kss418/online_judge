@@ -12,6 +12,9 @@
   `JUDGE_NSJAIL_PATH` / `JUDGE_JAVA_COMPILER_PATH` environment variables.
 - `JUDGE_WORKER_COUNT` is optional. If omitted, `judge_server` starts one
   worker thread per detected hardware thread.
+- PostgreSQL profiling helpers for `pg_stat_statements`, `log_lock_waits`, and
+  `deadlock_timeout` are documented in
+  [`db_performance_debugging.md`](./db_performance_debugging.md).
 
 ## structure
 
@@ -19,6 +22,7 @@
 - [`api/auth_api.md`](./api/auth_api.md)
 - [`api/submission_api.md`](./api/submission_api.md)
 - [`api/problem_api.md`](./api/problem_api.md)
+- [`db_performance_debugging.md`](./db_performance_debugging.md)
 - [`schema/user_schema.md`](./schema/user_schema.md)
 - [`schema/auth_schema.md`](./schema/auth_schema.md)
 - [`schema/problem_schema.md`](./schema/problem_schema.md)
