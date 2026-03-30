@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/error_code.hpp"
+#include "common/submission_status.hpp"
 
 #include <cstdint>
 #include <expected>
@@ -47,5 +48,13 @@ namespace user_problem_summary_repository{
         pqxx::transaction_base& transaction,
         std::int64_t user_id,
         std::int64_t problem_id
+    );
+
+    std::expected<void, error_code> apply_submission_status_transition(
+        pqxx::transaction_base& transaction,
+        std::int64_t user_id,
+        std::int64_t problem_id,
+        submission_status from_status,
+        submission_status to_status
     );
 }

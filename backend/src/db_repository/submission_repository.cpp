@@ -1,5 +1,6 @@
 #include "db_repository/submission_repository.hpp"
 #include "db_repository/problem_statistics_repository.hpp"
+#include "db_repository/user_problem_summary_repository.hpp"
 #include "common/language_util.hpp"
 
 #include <pqxx/pqxx>
@@ -48,6 +49,73 @@ namespace{
             (filter_value.limit_opt && *filter_value.limit_opt <= 0) ||
             (filter_value.status_opt && !parse_submission_status(*filter_value.status_opt));
     }
+}
+
+std::expected<submission_repository::locked_submission_context, error_code>
+submission_repository::get_locked_submission_context(
+    pqxx::transaction_base& transaction,
+    std::int64_t submission_id
+){
+    if(submission_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto submission_result = transaction.exec(
+        "SELECT user_id, problem_id, status::text "
+        "FROM submissions "
+        "WHERE submission_id = $1 "
+        "FOR UPDATE",
+        pqxx::params{submission_id}
+    );
+    if(submission_result.empty()){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto submission_status_exp = submission_dto::make_submission_status_from_row(
+        submission_result[0],
+        2
+    );
+    if(!submission_status_exp){
+        return std::unexpected(submission_status_exp.error());
+    }
+
+    locked_submission_context context_value;
+    context_value.user_id = submission_result[0][0].as<std::int64_t>();
+    context_value.problem_id = submission_result[0][1].as<std::int64_t>();
+    context_value.status = *submission_status_exp;
+    return context_value;
+}
+
+std::expected<void, error_code> submission_repository::persist_submission_status_transition(
+    pqxx::transaction_base& transaction,
+    std::int64_t submission_id,
+    submission_status from_status,
+    submission_status to_status,
+    const std::optional<std::string>& reason_opt
+){
+    if(submission_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    transaction.exec(
+        "UPDATE submissions "
+        "SET status = $2::submission_status, updated_at = NOW() "
+        "WHERE submission_id = $1",
+        pqxx::params{submission_id, to_string(to_status)}
+    );
+
+    transaction.exec(
+        "INSERT INTO submission_status_history(submission_id, from_status, to_status, reason) "
+        "VALUES($1, $2::submission_status, $3::submission_status, $4)",
+        pqxx::params{
+            submission_id,
+            to_string(from_status),
+            to_string(to_status),
+            reason_opt
+        }
+    );
+
+    return {};
 }
 
 std::expected<submission_dto::history_list, error_code> submission_repository::get_submission_history(
@@ -202,13 +270,10 @@ std::expected<submission_status, error_code> submission_repository::get_submissi
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    const std::string submission_status_string = submission_status_result[0][0].as<std::string>();
-    const auto submission_status_opt = parse_submission_status(submission_status_string);
-    if(!submission_status_opt){
-        return std::unexpected(error_code::create(errno_error::unknown_error));
-    }
-
-    return *submission_status_opt;
+    return submission_dto::make_submission_status_from_row(
+        submission_status_result[0],
+        0
+    );
 }
 
 std::expected<submission_dto::created, error_code> submission_repository::create_submission(
@@ -280,39 +345,32 @@ std::expected<void, error_code> submission_repository::update_submission_status(
     const submission_dto::status_update& status_update_value
 ){
     const std::int64_t submission_id = status_update_value.submission_id;
-    if(submission_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    const auto locked_submission_exp = get_locked_submission_context(
+        transaction,
+        submission_id
+    );
+    if(!locked_submission_exp){
+        return std::unexpected(locked_submission_exp.error());
     }
 
-    const auto current_status_result = transaction.exec(
-        "SELECT status::text FROM submissions WHERE submission_id = $1 FOR UPDATE",
-        pqxx::params{submission_id}
+    const auto persist_transition_exp = persist_submission_status_transition(
+        transaction,
+        submission_id,
+        locked_submission_exp->status,
+        status_update_value.to_status,
+        status_update_value.reason_opt
     );
-
-    if(current_status_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    if(!persist_transition_exp){
+        return std::unexpected(persist_transition_exp.error());
     }
 
-    const std::string from_status = current_status_result[0][0].as<std::string>();
-    transaction.exec(
-        "UPDATE submissions "
-        "SET status = $2::submission_status, updated_at = NOW() "
-        "WHERE submission_id = $1",
-        pqxx::params{submission_id, to_string(status_update_value.to_status)}
+    return user_problem_summary_repository::apply_submission_status_transition(
+        transaction,
+        locked_submission_exp->user_id,
+        locked_submission_exp->problem_id,
+        locked_submission_exp->status,
+        status_update_value.to_status
     );
-
-    transaction.exec(
-        "INSERT INTO submission_status_history(submission_id, from_status, to_status, reason) "
-        "VALUES($1, $2::submission_status, $3::submission_status, $4)",
-        pqxx::params{
-            submission_id,
-            from_status,
-            to_string(status_update_value.to_status),
-            status_update_value.reason_opt
-        }
-    );
-
-    return {};
 }
 
 std::expected<void, error_code> submission_repository::clear_submission_result(
@@ -343,71 +401,37 @@ std::expected<void, error_code> submission_repository::clear_submission_result(
     return {};
 }
 
-std::expected<void, error_code> submission_repository::decrease_accepted_count_if_submission_accepted(
-    pqxx::transaction_base& transaction,
-    std::int64_t submission_id
-){
-    const auto submission_status_exp = get_submission_status(
-        transaction,
-        submission_id
-    );
-    if(!submission_status_exp){
-        return std::unexpected(submission_status_exp.error());
-    }
-
-    if(*submission_status_exp != submission_status::accepted){
-        return {};
-    }
-
-    const auto problem_result = transaction.exec(
-        "SELECT problem_id "
-        "FROM submissions "
-        "WHERE submission_id = $1 AND status = $2::submission_status "
-        "FOR UPDATE",
-        pqxx::params{
-            submission_id,
-            to_string(submission_status::accepted)
-        }
-    );
-    if(problem_result.empty()){
-        return {};
-    }
-
-    const problem_dto::reference problem_reference_value{
-        problem_result[0][0].as<std::int64_t>()
-    };
-    return problem_statistics_repository::decrease_accepted_count(
-        transaction,
-        problem_reference_value
-    );
-}
-
 std::expected<void, error_code> submission_repository::rejudge_submission(
     pqxx::transaction_base& transaction,
     std::int64_t submission_id
 ){
-    const auto submission_status_exp = get_submission_status(
+    const auto locked_submission_exp = get_locked_submission_context(
         transaction,
         submission_id
     );
-    if(!submission_status_exp){
-        return std::unexpected(submission_status_exp.error());
+    if(!locked_submission_exp){
+        return std::unexpected(locked_submission_exp.error());
     }
 
     if(
-        *submission_status_exp == submission_status::queued ||
-        *submission_status_exp == submission_status::judging
+        locked_submission_exp->status == submission_status::queued ||
+        locked_submission_exp->status == submission_status::judging
     ){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    const auto decrease_accepted_count_exp =
-        decrease_accepted_count_if_submission_accepted(
+    if(locked_submission_exp->status == submission_status::accepted){
+        const problem_dto::reference problem_reference_value{
+            locked_submission_exp->problem_id
+        };
+        const auto decrease_accepted_count_exp =
+            problem_statistics_repository::decrease_accepted_count(
             transaction,
-            submission_id
+            problem_reference_value
         );
-    if(!decrease_accepted_count_exp){
-        return std::unexpected(decrease_accepted_count_exp.error());
+        if(!decrease_accepted_count_exp){
+            return std::unexpected(decrease_accepted_count_exp.error());
+        }
     }
 
     const auto clear_submission_result_exp = clear_submission_result(
@@ -423,12 +447,27 @@ std::expected<void, error_code> submission_repository::rejudge_submission(
             submission_id,
             submission_status::queued
         );
-    const auto update_submission_status_exp = update_submission_status(
+    const auto persist_transition_exp = persist_submission_status_transition(
         transaction,
-        status_update_value
+        submission_id,
+        locked_submission_exp->status,
+        status_update_value.to_status,
+        status_update_value.reason_opt
     );
-    if(!update_submission_status_exp){
-        return std::unexpected(update_submission_status_exp.error());
+    if(!persist_transition_exp){
+        return std::unexpected(persist_transition_exp.error());
+    }
+
+    const auto update_summary_exp =
+        user_problem_summary_repository::apply_submission_status_transition(
+            transaction,
+            locked_submission_exp->user_id,
+            locked_submission_exp->problem_id,
+            locked_submission_exp->status,
+            status_update_value.to_status
+        );
+    if(!update_summary_exp){
+        return std::unexpected(update_summary_exp.error());
     }
 
     const auto enqueue_submission_exp = enqueue_submission(
@@ -518,24 +557,17 @@ std::expected<submission_dto::finalize_result, error_code> submission_repository
     const submission_dto::finalize_request& finalize_request_value
 ){
     const std::int64_t submission_id = finalize_request_value.submission_id;
-    if(submission_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    const auto current_status_result = transaction.exec(
-        "SELECT status::text, problem_id FROM submissions WHERE submission_id = $1 FOR UPDATE",
-        pqxx::params{submission_id}
+    const auto locked_submission_exp = get_locked_submission_context(
+        transaction,
+        submission_id
     );
-
-    if(current_status_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    if(!locked_submission_exp){
+        return std::unexpected(locked_submission_exp.error());
     }
 
-    const std::string from_status = current_status_result[0][0].as<std::string>();
-    const std::int64_t problem_id = current_status_result[0][1].as<std::int64_t>();
     const bool should_increase_accepted_count =
         finalize_request_value.to_status == submission_status::accepted &&
-        from_status != to_string(submission_status::accepted);
+        locked_submission_exp->status != submission_status::accepted;
     transaction.exec(
         "UPDATE submissions "
         "SET "
@@ -563,7 +595,7 @@ std::expected<submission_dto::finalize_result, error_code> submission_repository
         "VALUES($1, $2::submission_status, $3::submission_status, $4)",
         pqxx::params{
             submission_id,
-            from_status,
+            to_string(locked_submission_exp->status),
             to_string(finalize_request_value.to_status),
             finalize_request_value.reason_opt
         }
@@ -574,8 +606,20 @@ std::expected<submission_dto::finalize_result, error_code> submission_repository
         pqxx::params{submission_id}
     );
 
+    const auto update_summary_exp =
+        user_problem_summary_repository::apply_submission_status_transition(
+            transaction,
+            locked_submission_exp->user_id,
+            locked_submission_exp->problem_id,
+            locked_submission_exp->status,
+            finalize_request_value.to_status
+        );
+    if(!update_summary_exp){
+        return std::unexpected(update_summary_exp.error());
+    }
+
     return submission_dto::make_finalize_result(
-        problem_id,
+        locked_submission_exp->problem_id,
         should_increase_accepted_count
     );
 }

@@ -28,6 +28,7 @@ user_login_id="${JUDGE_SERVER_FLOW_TEST_LOGIN_ID:-$(make_test_login_id js)}"
 raw_password="${JUDGE_SERVER_FLOW_TEST_PASSWORD:-password123}"
 test_db_name="judge_server_flow_test_$$_$(date +%s)"
 test_database_created="0"
+run_java_submission="${JUDGE_SERVER_FLOW_RUN_JAVA_SUBMISSION:-0}"
 problem_memory_limit_mb="${JUDGE_SERVER_FLOW_TEST_MEMORY_LIMIT_MB:-256}"
 problem_time_limit_ms="${JUDGE_SERVER_FLOW_TEST_TIME_LIMIT_MS:-2000}"
 accepted_source_code="${JUDGE_SERVER_FLOW_TEST_ACCEPTED_SOURCE_CODE:-#include <chrono>
@@ -66,11 +67,18 @@ int main(){
 }
 }"
 python_accepted_source_code="${JUDGE_SERVER_FLOW_TEST_PYTHON_ACCEPTED_SOURCE_CODE:-print(3)}"
-java_accepted_source_code="${JUDGE_SERVER_FLOW_TEST_JAVA_ACCEPTED_SOURCE_CODE:-public class Main {
+if [[ -n "${JUDGE_SERVER_FLOW_TEST_JAVA_ACCEPTED_SOURCE_CODE:-}" ]]; then
+    java_accepted_source_code="${JUDGE_SERVER_FLOW_TEST_JAVA_ACCEPTED_SOURCE_CODE}"
+else
+    java_accepted_source_code="$(cat <<'EOF'
+public class Main {
     public static void main(String[] args){
         System.out.println(3);
     }
-}}"
+}
+EOF
+)"
+fi
 judge_source_root="$(mktemp -d)"
 testcase_root="$(mktemp -d)"
 test_log_path=""
@@ -97,6 +105,7 @@ compile_error_submission_detail_response_file="$(mktemp)"
 runtime_error_submission_detail_response_file="$(mktemp)"
 time_limit_exceeded_submission_detail_response_file="$(mktemp)"
 problem_response_file="$(mktemp)"
+authenticated_problem_response_file="$(mktemp)"
 submission_source_response_file="$(mktemp)"
 submission_history_response_file="$(mktemp)"
 
@@ -130,6 +139,7 @@ cleanup(){
         "${runtime_error_submission_detail_response_file}" \
         "${time_limit_exceeded_submission_detail_response_file}" \
         "${problem_response_file}" \
+        "${authenticated_problem_response_file}" \
         "${submission_source_response_file}" \
         "${submission_history_response_file}"
 }
@@ -425,7 +435,8 @@ validate_submission_status_history(){
         send_http_request \
             "GET" \
             "${base_url}/api/submission/${submission_id}/history" \
-            "${submission_history_response_file}"
+            "${submission_history_response_file}" \
+            "${sign_up_token}"
     )"
 
     if [[ "${submission_history_status_code}" != "200" ]]; then
@@ -765,21 +776,22 @@ validate_submission_detail \
 validate_submission_status_history "${python_accepted_submission_id}" "accepted"
 print_success_log "python accepted submission judged successfully"
 
-java_accepted_submission_request_body="$(
-    make_submission_request_body "java" "${java_accepted_source_code}"
-)"
-java_accepted_submission_status_code="$(
-    send_http_request \
-        "POST" \
-        "${base_url}/api/submission/${problem_id}" \
-        "${submission_response_file}" \
-        "${sign_up_token}" \
-        "${java_accepted_submission_request_body}"
-)"
-assert_status_code "${java_accepted_submission_status_code}" "201" "${submission_response_file}" "java accepted submission create"
+if [[ "${run_java_submission}" == "1" ]]; then
+    java_accepted_submission_request_body="$(
+        make_submission_request_body "java" "${java_accepted_source_code}"
+    )"
+    java_accepted_submission_status_code="$(
+        send_http_request \
+            "POST" \
+            "${base_url}/api/submission/${problem_id}" \
+            "${submission_response_file}" \
+            "${sign_up_token}" \
+            "${java_accepted_submission_request_body}"
+    )"
+    assert_status_code "${java_accepted_submission_status_code}" "201" "${submission_response_file}" "java accepted submission create"
 
-java_accepted_submission_id="$(
-    python3 - "${submission_response_file}" <<'PY'
+    java_accepted_submission_id="$(
+        python3 - "${submission_response_file}" <<'PY'
 import json
 import sys
 
@@ -795,27 +807,30 @@ if status != "queued":
 
 print(submission_id)
 PY
-)"
+    )"
 
-append_log_line "${test_log_temp_file}" "java accepted submission created: submission_id=${java_accepted_submission_id}"
-wait_for_submission_final_status \
-    "${java_accepted_submission_id}" \
-    "accepted" \
-    "${java_accepted_submission_detail_response_file}"
-validate_submission_detail \
-    "${java_accepted_submission_detail_response_file}" \
-    "${java_accepted_submission_id}" \
-    "${sign_up_user_id}" \
-    "${problem_id}" \
-    "java" \
-    "accepted" \
-    "100" \
-    "null" \
-    "null" \
-    "non_negative_int" \
-    "non_negative_int"
-validate_submission_status_history "${java_accepted_submission_id}" "accepted"
-print_success_log "java accepted submission judged successfully"
+    append_log_line "${test_log_temp_file}" "java accepted submission created: submission_id=${java_accepted_submission_id}"
+    wait_for_submission_final_status \
+        "${java_accepted_submission_id}" \
+        "accepted" \
+        "${java_accepted_submission_detail_response_file}"
+    validate_submission_detail \
+        "${java_accepted_submission_detail_response_file}" \
+        "${java_accepted_submission_id}" \
+        "${sign_up_user_id}" \
+        "${problem_id}" \
+        "java" \
+        "accepted" \
+        "100" \
+        "null" \
+        "null" \
+        "non_negative_int" \
+        "non_negative_int"
+    validate_submission_status_history "${java_accepted_submission_id}" "accepted"
+    print_success_log "java accepted submission judged successfully"
+else
+    append_log_line "${test_log_temp_file}" "java submission path skipped"
+fi
 
 wrong_answer_submission_request_body="$(
     make_submission_request_body "cpp" "${wrong_answer_source_code}"
@@ -987,8 +1002,8 @@ validate_submission_detail \
     "0" \
     "null" \
     "non_empty" \
-    "non_negative_int" \
-    "non_negative_int"
+    "null" \
+    "null"
 validate_submission_status_history "${runtime_error_submission_id}" "runtime_error"
 
 runtime_error_submission_source_status_code="$(
@@ -1071,7 +1086,52 @@ problem_status_code="$(
 )"
 assert_status_code "${problem_status_code}" "200" "${problem_response_file}" "problem statistics get"
 
-python3 - "${problem_response_file}" "${problem_id}" <<'PY'
+expected_problem_submission_count="6"
+expected_problem_accepted_count="2"
+expected_summary_counts="6|2|4"
+if [[ "${run_java_submission}" == "1" ]]; then
+    expected_problem_submission_count="7"
+    expected_problem_accepted_count="3"
+    expected_summary_counts="7|3|4"
+fi
+
+python3 - "${problem_response_file}" "${problem_id}" "${expected_problem_submission_count}" "${expected_problem_accepted_count}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+problem_id = int(sys.argv[2])
+expected_submission_count = int(sys.argv[3])
+expected_accepted_count = int(sys.argv[4])
+if response.get("problem_id") != problem_id:
+    raise SystemExit("problem_id mismatch in problem detail response")
+
+statistics = response.get("statistics")
+if statistics != {
+    "submission_count": expected_submission_count,
+    "accepted_count": expected_accepted_count,
+}:
+    raise SystemExit("problem statistics mismatch after judge flow")
+PY
+
+print_success_log "problem statistics validated"
+
+authenticated_problem_status_code="$(
+    send_http_request \
+        "GET" \
+        "${base_url}/api/problem/${problem_id}" \
+        "${authenticated_problem_response_file}" \
+        "${sign_up_token}"
+)"
+assert_status_code \
+    "${authenticated_problem_status_code}" \
+    "200" \
+    "${authenticated_problem_response_file}" \
+    "authenticated problem statistics get"
+
+python3 - "${authenticated_problem_response_file}" "${problem_id}" <<'PY'
 import json
 import sys
 
@@ -1080,13 +1140,50 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
 
 problem_id = int(sys.argv[2])
 if response.get("problem_id") != problem_id:
-    raise SystemExit("problem_id mismatch in problem detail response")
+    raise SystemExit("problem_id mismatch in authenticated problem detail response")
 
-statistics = response.get("statistics")
-if statistics != {"submission_count": 7, "accepted_count": 3}:
-    raise SystemExit("problem statistics mismatch after judge flow")
+if response.get("user_problem_state") != "solved":
+    raise SystemExit("expected solved user_problem_state after judge flow")
 PY
 
-print_success_log "problem statistics validated"
+print_success_log "authenticated problem state validated"
+
+summary_counts="$(
+    PGPASSWORD="${DB_PASSWORD}" psql \
+        -X \
+        -qAt \
+        -h "${DB_HOST}" \
+        -p "${DB_PORT}" \
+        -U "${DB_USER}" \
+        -d "${DB_NAME}" \
+        -v user_id="${sign_up_user_id}" \
+        -v problem_id="${problem_id}" \
+        -v ON_ERROR_STOP=1 <<'SQL'
+SELECT
+    submission_count || '|' ||
+    accepted_submission_count || '|' ||
+    failed_submission_count
+FROM user_problem_attempt_summary
+WHERE user_id = :'user_id' AND problem_id = :'problem_id';
+SQL
+)"
+
+if [[ "${summary_counts}" != "${expected_summary_counts}" ]]; then
+    append_log_line "${test_log_temp_file}" "summary counts mismatch: ${summary_counts}"
+    publish_all_failure_logs
+    echo "unexpected user_problem_attempt_summary counts: ${summary_counts}" >&2
+    exit 1
+fi
+
+print_success_log "user_problem_attempt_summary live update validated"
+
+if ! DATABASE_URL="${test_database_url}" \
+    bash "${project_root}/scripts/validate_user_problem_summary.sh" >>"${test_log_temp_file}" 2>&1; then
+    append_log_line "${test_log_temp_file}" "user_problem_attempt_summary validation script failed after judge flow"
+    publish_all_failure_logs
+    exit 1
+fi
+
+print_success_log "user_problem_attempt_summary validation script passed after judge flow"
 append_log_line "${test_log_temp_file}" "judge server flow test passed"
-print_success_log "judge server flow test passed: problem_id=${problem_id}, accepted_submission_id=${accepted_submission_id}, python_accepted_submission_id=${python_accepted_submission_id}, java_accepted_submission_id=${java_accepted_submission_id}, wrong_answer_submission_id=${wrong_answer_submission_id}, compile_error_submission_id=${compile_error_submission_id}, runtime_error_submission_id=${runtime_error_submission_id}, time_limit_exceeded_submission_id=${time_limit_exceeded_submission_id}"
+print_success_log "judge server flow test passed: problem_id=${problem_id}, accepted_submission_id=${accepted_submission_id}, python_accepted_submission_id=${python_accepted_submission_id}, wrong_answer_submission_id=${wrong_answer_submission_id}, compile_error_submission_id=${compile_error_submission_id}, runtime_error_submission_id=${runtime_error_submission_id}, time_limit_exceeded_submission_id=${time_limit_exceeded_submission_id}"

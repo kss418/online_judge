@@ -2,6 +2,7 @@
 #include "db_service/db_service_util.hpp"
 #include "db_repository/problem_statistics_repository.hpp"
 #include "db_repository/submission_repository.hpp"
+#include "db_repository/user_problem_summary_repository.hpp"
 #include "db_repository/user_repository.hpp"
 
 #include <string>
@@ -139,6 +140,16 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
             );
             if(!create_submission_exp){
                 return std::unexpected(create_submission_exp.error());
+            }
+
+            const auto increase_user_problem_submission_count_exp =
+                user_problem_summary_repository::increase_submission_count(
+                    transaction,
+                    create_request_value.user_id,
+                    create_request_value.problem_id
+                );
+            if(!increase_user_problem_submission_count_exp){
+                return std::unexpected(increase_user_problem_submission_count_exp.error());
             }
 
             const auto enqueue_submission_exp = submission_repository::enqueue_submission(

@@ -265,6 +265,33 @@ submission_dto::created submission_dto::make_created(
     return created_value;
 }
 
+std::expected<submission_status, error_code> submission_dto::make_submission_status(
+    std::string_view submission_status_string
+){
+    const auto submission_status_opt = parse_submission_status(submission_status_string);
+    if(!submission_status_opt){
+        return std::unexpected(error_code::create(errno_error::unknown_error));
+    }
+
+    return *submission_status_opt;
+}
+
+std::expected<submission_status, error_code> submission_dto::make_submission_status_from_row(
+    const pqxx::row& submission_row,
+    std::size_t status_column_index
+){
+    if(
+        status_column_index >= submission_row.size() ||
+        submission_row[status_column_index].is_null()
+    ){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const std::string submission_status_string =
+        submission_row[status_column_index].as<std::string>();
+    return make_submission_status(submission_status_string);
+}
+
 submission_dto::summary submission_dto::make_summary_from_row(
     const pqxx::row& submission_summary_row
 ){

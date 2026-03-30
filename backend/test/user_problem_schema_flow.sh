@@ -178,6 +178,15 @@ fi
 
 print_success_log "user_problem_attempt_summary table validated"
 
+if ! DATABASE_URL="${test_database_url}" \
+    bash "${project_root}/scripts/validate_user_problem_summary.sh" >>"${test_log_temp_file}" 2>&1; then
+    append_log_line "${test_log_temp_file}" "user_problem_attempt_summary validation script failed"
+    publish_failure_logs
+    exit 1
+fi
+
+print_success_log "user_problem_attempt_summary validation script passed"
+
 if ! PGPASSWORD="${DB_PASSWORD}" psql \
     -X \
     -qAt \

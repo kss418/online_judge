@@ -613,6 +613,15 @@ UPDATE problem_statistics
 SET accepted_count = accepted_count + 1, updated_at = NOW()
 WHERE problem_id = :'problem_id';
 
+UPDATE user_problem_attempt_summary
+SET
+    accepted_submission_count = 1,
+    failed_submission_count = 0,
+    updated_at = NOW()
+WHERE
+    user_id = (SELECT user_id FROM submissions WHERE submission_id = :'submission_id') AND
+    problem_id = :'problem_id';
+
 INSERT INTO submission_status_history(submission_id, from_status, to_status, reason)
 VALUES(
     :'submission_id',
@@ -751,13 +760,19 @@ WHERE submission_id = :'submission_id';
 SELECT priority
 FROM submission_queue
 WHERE submission_id = :'submission_id';
+
+SELECT accepted_submission_count, failed_submission_count
+FROM user_problem_attempt_summary
+WHERE
+    user_id = (SELECT user_id FROM submissions WHERE submission_id = :'submission_id') AND
+    problem_id = :'problem_id';
 SQL
 )
 
-if [[ "${#rejudge_db_values[@]}" -ne 3 ]]; then
+if [[ "${#rejudge_db_values[@]}" -ne 4 ]]; then
     append_log_line "${test_log_temp_file}" "rejudge db validation failed: unexpected row count"
     publish_failure_logs
-    echo "rejudge db validation failed: expected 3 rows, got ${#rejudge_db_values[@]}" >&2
+    echo "rejudge db validation failed: expected 4 rows, got ${#rejudge_db_values[@]}" >&2
     exit 1
 fi
 
@@ -779,6 +794,13 @@ if [[ "${rejudge_db_values[2]}" != "0" ]]; then
     append_log_line "${test_log_temp_file}" "rejudge db validation failed: queue_priority=${rejudge_db_values[2]}"
     publish_failure_logs
     echo "rejudge db validation failed: expected queue priority 0, got ${rejudge_db_values[2]}" >&2
+    exit 1
+fi
+
+if [[ "${rejudge_db_values[3]}" != "0|0" ]]; then
+    append_log_line "${test_log_temp_file}" "rejudge db validation failed: summary_counts=${rejudge_db_values[3]}"
+    publish_failure_logs
+    echo "rejudge db validation failed: expected summary counts 0|0, got ${rejudge_db_values[3]}" >&2
     exit 1
 fi
 
@@ -1622,6 +1644,15 @@ WHERE submission_id IN (
 UPDATE problem_statistics
 SET accepted_count = accepted_count + 1, updated_at = NOW()
 WHERE problem_id = :'problem_id';
+
+UPDATE user_problem_attempt_summary
+SET
+    accepted_submission_count = 1,
+    failed_submission_count = 2,
+    updated_at = NOW()
+WHERE
+    user_id = (SELECT user_id FROM submissions WHERE submission_id = :'first_submission_id') AND
+    problem_id = :'problem_id';
 SQL
 then
     append_log_line "${test_log_temp_file}" "problem rejudge setup failed"
@@ -1793,13 +1824,19 @@ WHERE submission_id IN (
     :'second_submission_id',
     :'third_submission_id'
 );
+
+SELECT accepted_submission_count, failed_submission_count
+FROM user_problem_attempt_summary
+WHERE
+    user_id = (SELECT user_id FROM submissions WHERE submission_id = :'first_submission_id') AND
+    problem_id = :'problem_id';
 SQL
 )
 
-if [[ "${#problem_rejudge_values[@]}" -ne 7 ]]; then
+if [[ "${#problem_rejudge_values[@]}" -ne 8 ]]; then
     append_log_line "${test_log_temp_file}" "problem rejudge db validation failed: unexpected row count"
     publish_failure_logs
-    echo "problem rejudge db validation failed: expected 7 rows, got ${#problem_rejudge_values[@]}" >&2
+    echo "problem rejudge db validation failed: expected 8 rows, got ${#problem_rejudge_values[@]}" >&2
     exit 1
 fi
 
@@ -1849,6 +1886,13 @@ if [[ "${problem_rejudge_values[6]}" != "2" ]]; then
     append_log_line "${test_log_temp_file}" "problem rejudge db validation failed: queue_count=${problem_rejudge_values[6]}"
     publish_failure_logs
     echo "problem rejudge db validation failed: expected queue_count 2, got ${problem_rejudge_values[6]}" >&2
+    exit 1
+fi
+
+if [[ "${problem_rejudge_values[7]}" != "0|1" ]]; then
+    append_log_line "${test_log_temp_file}" "problem rejudge db validation failed: summary_counts=${problem_rejudge_values[7]}"
+    publish_failure_logs
+    echo "problem rejudge db validation failed: expected summary counts 0|1, got ${problem_rejudge_values[7]}" >&2
     exit 1
 fi
 

@@ -15,6 +15,12 @@ namespace pqxx{
 }
 
 namespace submission_repository{
+    struct locked_submission_context{
+        std::int64_t user_id = 0;
+        std::int64_t problem_id = 0;
+        submission_status status = submission_status::queued;
+    };
+
     inline constexpr std::int16_t NORMAL_SUBMISSION_QUEUE_PRIORITY = 100;
     inline constexpr std::int16_t REJUDGE_SUBMISSION_QUEUE_PRIORITY = 0;
 
@@ -40,6 +46,17 @@ namespace submission_repository{
         pqxx::transaction_base& transaction,
         std::int64_t submission_id
     );
+    std::expected<locked_submission_context, error_code> get_locked_submission_context(
+        pqxx::transaction_base& transaction,
+        std::int64_t submission_id
+    );
+    std::expected<void, error_code> persist_submission_status_transition(
+        pqxx::transaction_base& transaction,
+        std::int64_t submission_id,
+        submission_status from_status,
+        submission_status to_status,
+        const std::optional<std::string>& reason_opt
+    );
 
     std::expected<submission_dto::created, error_code> create_submission(
         pqxx::transaction_base& transaction,
@@ -58,11 +75,6 @@ namespace submission_repository{
     );
 
     std::expected<void, error_code> clear_submission_result(
-        pqxx::transaction_base& transaction,
-        std::int64_t submission_id
-    );
-
-    std::expected<void, error_code> decrease_accepted_count_if_submission_accepted(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id
     );

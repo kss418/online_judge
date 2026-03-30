@@ -56,6 +56,20 @@ submission. Pending-only problems are excluded.
 - `user_problem_attempt_summary` stores incremental aggregates derived from `submissions(user_id, problem_id, status, created_at)`
 - `user_wrong_problem_list` is a filtered projection of `user_problem_attempt_summary`
 
+## validation
+
+- `scripts/validate_user_problem_summary.sh` compares `user_problem_attempt_summary` against a fresh `GROUP BY` over `submissions`
+- The script accepts `DATABASE_URL`; if unset, it falls back to `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, and `DB_NAME`
+- Typical usage:
+  - `bash ./scripts/validate_user_problem_summary.sh`
+  - `DATABASE_URL=postgresql://... bash ./scripts/validate_user_problem_summary.sh`
+
+## rollout
+
+1. Apply `migrate_user_problem_schema.sh` so the summary table exists and is backfilled from `submissions`.
+2. Deploy the server code that updates the summary table on submission create, finalize, and rejudge.
+3. Run `bash ./scripts/validate_user_problem_summary.sh` to confirm the stored summary matches the live submission history.
+
 ## shared table
 
 ### `schema_migrations`

@@ -191,6 +191,18 @@ INSERT INTO submissions(
 VALUES
     (:'sign_up_user_id', :'full_problem_id', 'cpp17', 'accepted code', 'accepted', '2026-01-01T00:00:01Z', '2026-01-01T00:00:01Z'),
     (:'sign_up_user_id', :'blank_problem_id', 'cpp17', 'wrong code', 'wrong_answer', '2026-01-01T00:00:02Z', '2026-01-01T00:00:02Z');
+
+INSERT INTO user_problem_attempt_summary(
+    user_id,
+    problem_id,
+    submission_count,
+    accepted_submission_count,
+    failed_submission_count,
+    updated_at
+)
+VALUES
+    (:'sign_up_user_id', :'full_problem_id', 1, 1, 0, NOW()),
+    (:'sign_up_user_id', :'blank_problem_id', 1, 0, 1, NOW());
 SQL
 then
     append_log_line "${test_log_temp_file}" "problem get submission fixture insert failed"

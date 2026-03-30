@@ -106,6 +106,19 @@ VALUES
     (:'sign_up_user_id', :'second_problem_id', 'cpp17', 'wrong code', 'wrong_answer', '2026-01-01T00:00:02Z', '2026-01-01T00:00:02Z'),
     (:'sign_up_user_id', :'third_problem_id', 'cpp17', 'queued code', 'queued', '2026-01-01T00:00:03Z', '2026-01-01T00:00:03Z');
 
+INSERT INTO user_problem_attempt_summary(
+    user_id,
+    problem_id,
+    submission_count,
+    accepted_submission_count,
+    failed_submission_count,
+    updated_at
+)
+VALUES
+    (:'sign_up_user_id', :'first_problem_id', 1, 1, 0, NOW()),
+    (:'sign_up_user_id', :'second_problem_id', 1, 0, 1, NOW()),
+    (:'sign_up_user_id', :'third_problem_id', 1, 0, 0, NOW());
+
 UPDATE problem_statistics
 SET submission_count = 1, accepted_count = 1
 WHERE problem_id = :'first_problem_id';
