@@ -5,17 +5,14 @@
 #include <cstdint>
 #include <expected>
 #include <filesystem>
-#include <mutex>
-#include <optional>
 
-class testcase_util{
-public:
-    static testcase_util& instance();
-
+namespace testcase_util{
     std::expected<std::filesystem::path, error_code> make_testcase_problem_directory_path(
+        const std::filesystem::path& testcase_root_path,
         std::int64_t problem_id
     );
     std::expected<std::filesystem::path, error_code> make_testcase_version_directory_path(
+        const std::filesystem::path& testcase_root_path,
         std::int64_t problem_id,
         std::int32_t version
     );
@@ -40,11 +37,4 @@ public:
         const std::filesystem::path& testcase_directory_path,
         std::int32_t testcase_count
     );
-
-private:
-    testcase_util() = default;
-    void initialize_if_needed();
-
-    std::mutex initialize_mutex_;
-    std::optional<std::filesystem::path> testcase_root_path_;
-};
+}

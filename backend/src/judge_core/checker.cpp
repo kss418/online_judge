@@ -3,7 +3,6 @@
 #include "common/unique_fd.hpp"
 #include "common/blocking_io.hpp"
 #include "judge_core/judge_util.hpp"
-#include "judge_core/testcase_util.hpp"
 
 #include <cerrno>
 #include <fcntl.h>
@@ -29,33 +28,20 @@ std::expected<bool, error_code> checker::check(
 
 std::expected<judge_result, error_code> checker::check_all(
     const std::vector<std::vector<std::string>>& output,
-    const path& testcase_directory_path
+    const testcase_snapshot& testcase_snapshot_value
 ){
-    const auto testcase_count_exp = testcase_util::instance().count_testcase_output(
-        testcase_directory_path
-    );
-    if(!testcase_count_exp){
-        return std::unexpected(testcase_count_exp.error());
-    }
-
-    if(output.size() != static_cast<std::size_t>(testcase_count_exp.value())){
+    if(output.size() != static_cast<std::size_t>(testcase_snapshot_value.testcase_count)){
         return judge_result::wrong_answer;
     }
 
-    const auto validated_testcase_count_exp = testcase_util::instance().validate_testcase_output(
-        testcase_directory_path,
-        testcase_count_exp.value()
-    );
+    const auto validated_testcase_count_exp = testcase_snapshot_value.validate_testcase_layout();
     
     if(!validated_testcase_count_exp){
         return std::unexpected(validated_testcase_count_exp.error());
     }
 
     for(std::int32_t order = 1; order <= validated_testcase_count_exp.value(); ++order){
-        const auto answer_path_exp = testcase_util::instance().make_testcase_output_path(
-            testcase_directory_path,
-            order
-        );
+        const auto answer_path_exp = testcase_snapshot_value.make_output_path(order);
 
         if(!answer_path_exp){
             return std::unexpected(answer_path_exp.error());

@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <charconv>
-#include <cstdlib>
 #include <iomanip>
 #include <sstream>
 #include <string_view>
@@ -10,6 +9,16 @@
 #include <vector>
 
 namespace{
+    std::expected<std::filesystem::path, error_code> validate_testcase_root_path(
+        const std::filesystem::path& testcase_root_path
+    ){
+        if(testcase_root_path.empty()){
+            return std::unexpected(error_code::create(errno_error::invalid_argument));
+        }
+
+        return testcase_root_path;
+    }
+
     std::string format_testcase_file_name(
         std::int32_t order,
         std::string_view extension
@@ -30,35 +39,24 @@ namespace{
     }
 }
 
-testcase_util& testcase_util::instance(){
-    static testcase_util testcase_util_value;
-    testcase_util_value.initialize_if_needed();
-    return testcase_util_value;
-}
-
-void testcase_util::initialize_if_needed(){
-    std::scoped_lock lock(initialize_mutex_);
-    if(testcase_root_path_.has_value()){
-        return;
-    }
-
-    const char* testcase_root_path = std::getenv("TESTCASE_PATH");
-    if(testcase_root_path != nullptr && *testcase_root_path != '\0'){
-        testcase_root_path_ = std::filesystem::path(testcase_root_path);
-    }
-}
-
 std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_problem_directory_path(
+    const std::filesystem::path& testcase_root_path,
     std::int64_t problem_id
 ){
-    if(!testcase_root_path_.has_value() || testcase_root_path_->empty()){
+    if(problem_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    return *testcase_root_path_ / std::to_string(problem_id);
+    const auto validated_testcase_root_path_exp = validate_testcase_root_path(testcase_root_path);
+    if(!validated_testcase_root_path_exp){
+        return std::unexpected(validated_testcase_root_path_exp.error());
+    }
+
+    return *validated_testcase_root_path_exp / std::to_string(problem_id);
 }
 
 std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_version_directory_path(
+    const std::filesystem::path& testcase_root_path,
     std::int64_t problem_id,
     std::int32_t version
 ){
@@ -66,7 +64,10 @@ std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_ve
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    const auto problem_directory_path_exp = make_testcase_problem_directory_path(problem_id);
+    const auto problem_directory_path_exp = make_testcase_problem_directory_path(
+        testcase_root_path,
+        problem_id
+    );
     if(!problem_directory_path_exp){
         return std::unexpected(problem_directory_path_exp.error());
     }

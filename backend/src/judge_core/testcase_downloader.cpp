@@ -7,6 +7,7 @@
 #include "db_service/testcase_service.hpp"
 #include "judge_core/testcase_util.hpp"
 
+#include <cstdlib>
 #include <filesystem>
 #include <string>
 #include <system_error>
@@ -14,6 +15,15 @@
 
 namespace{
     constexpr int FILE_OPERATION_ATTEMPT_COUNT = 5;
+
+    std::expected<std::filesystem::path, error_code> read_testcase_root_path(){
+        const char* testcase_root_path = std::getenv("TESTCASE_PATH");
+        if(testcase_root_path == nullptr || *testcase_root_path == '\0'){
+            return std::unexpected(error_code::create(errno_error::invalid_argument));
+        }
+
+        return std::filesystem::path(testcase_root_path);
+    }
 
     std::expected<void, error_code> rename_directory(
         const std::filesystem::path& source_path,
@@ -64,27 +74,95 @@ std::expected<std::int32_t, error_code> testcase_downloader::fetch_problem_versi
     return version_exp->version;
 }
 
-std::expected<void, error_code> testcase_downloader::sync_limit_file(
-    std::int64_t problem_id,
-    const std::filesystem::path& testcase_directory_path
+std::expected<problem_content_dto::limits, error_code> testcase_downloader::fetch_problem_limits(
+    std::int64_t problem_id
 ){
     const problem_dto::reference problem_reference_value{problem_id};
-    const auto limits_exp = problem_content_service::get_limits(
+    return problem_content_service::get_limits(
         connection_,
         problem_reference_value
     );
-    if(!limits_exp){
-        return std::unexpected(limits_exp.error());
-    }
+}
 
-    const auto memory_limit_file_path_exp = testcase_util::instance().make_testcase_memory_limit_file_path(
+std::expected<problem_content_dto::limits, error_code> testcase_downloader::read_problem_limits(
+    const std::filesystem::path& testcase_directory_path
+) const{
+    const auto memory_limit_file_path_exp = testcase_util::intestcase_memory_limit_file_path(
         testcase_directory_path
     );
     if(!memory_limit_file_path_exp){
         return std::unexpected(memory_limit_file_path_exp.error());
     }
 
-    const auto time_limit_file_path_exp = testcase_util::instance().make_testcase_time_limit_file_path(
+    const auto time_limit_file_path_exp = testcase_util::make_testcase_time_limit_file_path(
+        testcase_directory_path
+    );
+    if(!time_limit_file_path_exp){
+        return std::unexpected(time_limit_file_path_exp.error());
+    }
+
+    const auto memory_limit_exp = file_util::read_int32_file(*memory_limit_file_path_exp);
+    if(!memory_limit_exp){
+        return std::unexpected(memory_limit_exp.error());
+    }
+
+    const auto time_limit_exp = file_util::read_int32_file(*time_limit_file_path_exp);
+    if(!time_limit_exp){
+        return std::unexpected(time_limit_exp.error());
+    }
+
+    problem_content_dto::limits problem_limits_value;
+    problem_limits_value.memory_mb = *memory_limit_exp;
+    problem_limits_value.time_ms = *time_limit_exp;
+    return problem_limits_value;
+}
+
+std::expected<testcase_snapshot, error_code> testcase_downloader::make_testcase_snapshot(
+    std::int64_t problem_id,
+    std::int32_t version,
+    const std::filesystem::path& testcase_directory_path
+) const{
+    const auto testcase_count_exp = testcase_util::count_testcase_output(
+        testcase_directory_path
+    );
+    if(!testcase_count_exp){
+        return std::unexpected(testcase_count_exp.error());
+    }
+
+    const auto validated_testcase_count_exp = testcase_util::validate_testcase_output(
+        testcase_directory_path,
+        *testcase_count_exp
+    );
+    if(!validated_testcase_count_exp){
+        return std::unexpected(validated_testcase_count_exp.error());
+    }
+
+    const auto problem_limits_exp = read_problem_limits(testcase_directory_path);
+    if(!problem_limits_exp){
+        return std::unexpected(problem_limits_exp.error());
+    }
+
+    return testcase_snapshot::make(
+        problem_id,
+        version,
+        testcase_directory_path,
+        *validated_testcase_count_exp,
+        *problem_limits_exp
+    );
+}
+
+std::expected<void, error_code> testcase_downloader::sync_limit_file(
+    const problem_content_dto::limits& problem_limits_value,
+    const std::filesystem::path& testcase_directory_path
+){
+    const auto memory_limit_file_path_exp = testcase_util::make_testcase_memory_limit_file_path(
+        testcase_directory_path
+    );
+    if(!memory_limit_file_path_exp){
+        return std::unexpected(memory_limit_file_path_exp.error());
+    }
+
+    const auto time_limit_file_path_exp = testcase_util::make_testcase_time_limit_file_path(
         testcase_directory_path
     );
     if(!time_limit_file_path_exp){
@@ -100,7 +178,7 @@ std::expected<void, error_code> testcase_downloader::sync_limit_file(
 
     const auto create_memory_limit_file_exp = file_util::create_file(
         *memory_limit_file_path_exp,
-        std::to_string(limits_exp->memory_mb)
+        std::to_string(problem_limits_value.memory_mb)
     );
     if(!create_memory_limit_file_exp){
         return std::unexpected(create_memory_limit_file_exp.error());
@@ -108,7 +186,7 @@ std::expected<void, error_code> testcase_downloader::sync_limit_file(
 
     const auto create_time_limit_file_exp = file_util::create_file(
         *time_limit_file_path_exp,
-        std::to_string(limits_exp->time_ms)
+        std::to_string(problem_limits_value.time_ms)
     );
     if(!create_time_limit_file_exp){
         return std::unexpected(create_time_limit_file_exp.error());
@@ -118,10 +196,13 @@ std::expected<void, error_code> testcase_downloader::sync_limit_file(
 }
 
 std::expected<void, error_code> testcase_downloader::sync_version_directory(
+    const std::filesystem::path& testcase_root_path,
     std::int64_t problem_id,
-    std::int32_t version
+    std::int32_t version,
+    const problem_content_dto::limits& problem_limits_value
 ){
-    const auto version_directory_path_exp = testcase_util::instance().make_testcase_version_directory_path(
+    const auto version_directory_path_exp = testcase_util::make_testcase_version_directory_path(
+        testcase_root_path,
         problem_id,
         version
     );
@@ -137,7 +218,8 @@ std::expected<void, error_code> testcase_downloader::sync_version_directory(
         return {};
     }
 
-    const auto problem_directory_path_exp = testcase_util::instance().make_testcase_problem_directory_path(
+    const auto problem_directory_path_exp = testcase_util::make_testcase_problem_directory_path(
+        testcase_root_path,
         problem_id
     );
     if(!problem_directory_path_exp){
@@ -164,7 +246,10 @@ std::expected<void, error_code> testcase_downloader::sync_version_directory(
         return std::unexpected(download_all_exp.error());
     }
 
-    const auto sync_limit_file_exp = sync_limit_file(problem_id, temp_directory_exp->get_path());
+    const auto sync_limit_file_exp = sync_limit_file(
+        problem_limits_value,
+        temp_directory_exp->get_path()
+    );
     if(!sync_limit_file_exp){
         return std::unexpected(sync_limit_file_exp.error());
     }
@@ -187,15 +272,21 @@ std::expected<void, error_code> testcase_downloader::sync_version_directory(
     return {};
 }
 
-std::expected<std::filesystem::path, error_code> testcase_downloader::sync_testcases(
+std::expected<testcase_snapshot, error_code> testcase_downloader::ensure_testcase_snapshot(
     std::int64_t problem_id
 ){
+    const auto testcase_root_path_exp = read_testcase_root_path();
+    if(!testcase_root_path_exp){
+        return std::unexpected(testcase_root_path_exp.error());
+    }
+
     const auto version_exp = fetch_problem_version(problem_id);
     if(!version_exp){
         return std::unexpected(version_exp.error());
     }
 
-    const auto version_directory_path_exp = testcase_util::instance().make_testcase_version_directory_path(
+    const auto version_directory_path_exp = testcase_util::make_testcase_version_directory_path(
+        *testcase_root_path_exp,
         problem_id,
         *version_exp
     );
@@ -209,13 +300,27 @@ std::expected<std::filesystem::path, error_code> testcase_downloader::sync_testc
     }
 
     if(!version_directory_exists_exp.value()){
-        const auto sync_version_directory_exp = sync_version_directory(problem_id, *version_exp);
+        const auto problem_limits_exp = fetch_problem_limits(problem_id);
+        if(!problem_limits_exp){
+            return std::unexpected(problem_limits_exp.error());
+        }
+
+        const auto sync_version_directory_exp = sync_version_directory(
+            *testcase_root_path_exp,
+            problem_id,
+            *version_exp,
+            *problem_limits_exp
+        );
         if(!sync_version_directory_exp){
             return std::unexpected(sync_version_directory_exp.error());
         }
     }
 
-    return *version_directory_path_exp;
+    return make_testcase_snapshot(
+        problem_id,
+        *version_exp,
+        *version_directory_path_exp
+    );
 }
 
 std::expected<void, error_code> testcase_downloader::download_all(
@@ -257,14 +362,14 @@ std::expected<void, error_code> testcase_downloader::download_one(
         return std::unexpected(testcase_exp.error());
     }
 
-    const auto input_path_exp = testcase_util::instance().make_testcase_input_path(
+    const auto input_path_exp = testcase_util::make_testcase_input_path(
         testcase_directory_path,
         order
     );
     if(!input_path_exp){
         return std::unexpected(input_path_exp.error());
     }
-    const auto output_path_exp = testcase_util::instance().make_testcase_output_path(
+    const auto output_path_exp = testcase_util::make_testcase_output_path(
         testcase_directory_path,
         order
     );

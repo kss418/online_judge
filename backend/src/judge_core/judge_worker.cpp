@@ -151,7 +151,7 @@ judge_worker::finalize_submission_data judge_worker::make_finalize_submission_da
 }
 
 std::expected<judge_result, error_code> judge_worker::check_result(
-    const std::filesystem::path& testcase_directory_path,
+    const testcase_snapshot& testcase_snapshot_value,
     const testcase_runner::run_batch& run_batch_value
 ){
     std::vector<std::vector<std::string>> output_lines;
@@ -178,7 +178,7 @@ std::expected<judge_result, error_code> judge_worker::check_result(
         output_lines.push_back(run_result.output_lines_);
     }
 
-    return checker::check_all(output_lines, testcase_directory_path);
+    return checker::check_all(output_lines, testcase_snapshot_value);
 }
 
 std::expected<void, error_code> judge_worker::run(){
@@ -248,7 +248,7 @@ std::expected<void, error_code> judge_worker::process_submission(
         return std::unexpected(mark_judging_exp.error());
     }
 
-    std::filesystem::path testcase_directory_path;
+    testcase_snapshot testcase_snapshot_value;
     {
         auto problem_lock_exp = problem_lock_registry_->lock(
             queued_submission_value.problem_id
@@ -258,19 +258,20 @@ std::expected<void, error_code> judge_worker::process_submission(
         }
 
         // Pin this submission to an immutable testcase version before unlocking.
-        const auto sync_testcases_exp = testcase_downloader_.sync_testcases(
+        const auto ensure_testcase_snapshot_exp =
+            testcase_downloader_.ensure_testcase_snapshot(
             queued_submission_value.problem_id
         );
-        if(!sync_testcases_exp){
-            return std::unexpected(sync_testcases_exp.error());
+        if(!ensure_testcase_snapshot_exp){
+            return std::unexpected(ensure_testcase_snapshot_exp.error());
         }
 
-        testcase_directory_path = *sync_testcases_exp;
+        testcase_snapshot_value = *ensure_testcase_snapshot_exp;
     }
 
     auto judge_submission_exp = judge_submission(
         *source_file_path_exp,
-        testcase_directory_path
+        testcase_snapshot_value
     );
     if(!judge_submission_exp){
         return std::unexpected(judge_submission_exp.error());
@@ -290,18 +291,18 @@ std::expected<void, error_code> judge_worker::process_submission(
 
 std::expected<judge_worker::process_submission_data, error_code> judge_worker::judge_submission(
     const std::filesystem::path& source_file_path,
-    const std::filesystem::path& testcase_directory_path
+    const testcase_snapshot& testcase_snapshot_value
 ){
     auto run_all_testcases_exp = testcase_runner::run_all_testcases(
         source_file_path,
-        testcase_directory_path
+        testcase_snapshot_value
     );
     if(!run_all_testcases_exp){
         return std::unexpected(run_all_testcases_exp.error());
     }
 
     const auto judge_result_exp = check_result(
-        testcase_directory_path,
+        testcase_snapshot_value,
         *run_all_testcases_exp
     );
     if(!judge_result_exp){

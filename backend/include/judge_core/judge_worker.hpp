@@ -6,6 +6,7 @@
 #include "db_event/submission_event_listener.hpp"
 #include "dto/submission_dto.hpp"
 #include "judge_core/problem_lock_registry.hpp"
+#include "judge_core/testcase_snapshot.hpp"
 #include "judge_core/testcase_downloader.hpp"
 #include "judge_core/testcase_runner.hpp"
 #include "judge_core/judge_util.hpp"
@@ -73,10 +74,10 @@ private:
     );
     std::expected<process_submission_data, error_code> judge_submission(
         const std::filesystem::path& source_file_path,
-        const std::filesystem::path& testcase_directory_path
+        const testcase_snapshot& testcase_snapshot_value
     );
     std::expected<judge_result, error_code> check_result(
-        const std::filesystem::path& testcase_directory_path,
+        const testcase_snapshot& testcase_snapshot_value,
         const testcase_runner::run_batch& run_batch_value
     );
     static constexpr std::chrono::seconds LEASE_DURATION{300};

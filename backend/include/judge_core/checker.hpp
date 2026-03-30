@@ -1,8 +1,8 @@
 #pragma once
 #include "common/error_code.hpp"
 #include "judge_core/judge_util.hpp"
+#include "judge_core/testcase_snapshot.hpp"
 
-#include <cstdint>
 #include <filesystem>
 #include <expected>
 #include <string>
@@ -16,6 +16,6 @@ namespace checker{
     );
     std::expected<judge_result, error_code> check_all(
         const std::vector<std::vector<std::string>>& output,
-        const path& testcase_directory_path
+        const testcase_snapshot& testcase_snapshot_value
     );
 }

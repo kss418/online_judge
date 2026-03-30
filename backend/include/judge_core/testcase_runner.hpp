@@ -1,8 +1,8 @@
 #pragma once
 
 #include "common/error_code.hpp"
-#include "dto/problem_content_dto.hpp"
 #include "judge_core/sandbox_runner.hpp"
+#include "judge_core/testcase_snapshot.hpp"
 #include "pl_runner/pl_runner_util.hpp"
 
 #include <cstdint>
@@ -16,10 +16,6 @@ namespace testcase_runner{
         bool compile_failed = false;
     };
 
-    std::expected<problem_content_dto::limits, error_code> read_problem_limits(
-        const std::filesystem::path& testcase_directory_path
-    );
-
     std::expected<sandbox_runner::run_result, error_code> run_one_testcase(
         const pl_runner_util::prepared_source& prepared_source_value,
         const std::filesystem::path& input_path,
@@ -28,6 +24,6 @@ namespace testcase_runner{
 
     std::expected<run_batch, error_code> run_all_testcases(
         const std::filesystem::path& source_file_path,
-        const std::filesystem::path& testcase_directory_path
+        const testcase_snapshot& testcase_snapshot_value
     );
 }
