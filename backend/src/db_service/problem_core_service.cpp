@@ -11,9 +11,9 @@ std::expected<problem_dto::existence, error_code> problem_core_service::exists_p
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
-    return db_service_util::with_retry_write_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection,
-        [&](pqxx::work& transaction)
+        [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::existence, error_code> {
             return problem_core_repository::exists_problem(
                 transaction,
@@ -69,6 +69,98 @@ std::expected<std::optional<std::string>, error_code> problem_core_service::get_
                 problem_reference_value,
                 user_id
             );
+        }
+    );
+}
+
+std::expected<problem_dto::detail, error_code> problem_core_service::get_problem_detail(
+    db_connection& connection,
+    const problem_dto::reference& problem_reference_value,
+    std::optional<std::int64_t> viewer_user_id_opt
+){
+    if(
+        problem_reference_value.problem_id <= 0 ||
+        (viewer_user_id_opt && *viewer_user_id_opt <= 0)
+    ){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return db_service_util::with_retry_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<problem_dto::detail, error_code> {
+            problem_dto::detail detail_value;
+            detail_value.problem_reference_value = problem_reference_value;
+
+            const auto title_exp = problem_core_repository::get_title(
+                transaction,
+                problem_reference_value
+            );
+            if(!title_exp){
+                return std::unexpected(title_exp.error());
+            }
+            detail_value.title_value = *title_exp;
+
+            const auto version_exp = problem_core_repository::get_version(
+                transaction,
+                problem_reference_value
+            );
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
+            }
+            detail_value.version_value = *version_exp;
+
+            const auto limits_exp = problem_core_repository::get_limits(
+                transaction,
+                problem_reference_value
+            );
+            if(!limits_exp){
+                return std::unexpected(limits_exp.error());
+            }
+            detail_value.limits_value = *limits_exp;
+
+            const auto statement_exp = problem_content_repository::get_statement(
+                transaction,
+                problem_reference_value
+            );
+            if(statement_exp){
+                detail_value.statement_opt = *statement_exp;
+            }
+            else if(statement_exp.error() != errno_error::invalid_argument){
+                return std::unexpected(statement_exp.error());
+            }
+
+            const auto sample_values_exp = problem_content_repository::list_samples(
+                transaction,
+                problem_reference_value
+            );
+            if(!sample_values_exp){
+                return std::unexpected(sample_values_exp.error());
+            }
+            detail_value.sample_values = std::move(*sample_values_exp);
+
+            const auto statistics_exp = problem_statistics_repository::get_statistics(
+                transaction,
+                problem_reference_value
+            );
+            if(!statistics_exp){
+                return std::unexpected(statistics_exp.error());
+            }
+            detail_value.statistics_value = *statistics_exp;
+
+            if(viewer_user_id_opt){
+                const auto user_problem_state_exp = problem_core_repository::get_user_problem_state(
+                    transaction,
+                    problem_reference_value,
+                    *viewer_user_id_opt
+                );
+                if(!user_problem_state_exp){
+                    return std::unexpected(user_problem_state_exp.error());
+                }
+                detail_value.user_problem_state_opt = *user_problem_state_exp;
+            }
+
+            return detail_value;
         }
     );
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dto/problem_content_dto.hpp"
 #include "dto/dto_validation_error.hpp"
 
 #include <boost/json/fwd.hpp>
@@ -55,6 +56,17 @@ namespace problem_dto{
 
     struct version{
         std::int32_t version = 0;
+    };
+
+    struct detail{
+        reference problem_reference_value;
+        title title_value;
+        version version_value;
+        problem_content_dto::limits limits_value;
+        std::optional<problem_content_dto::statement> statement_opt = std::nullopt;
+        std::vector<problem_content_dto::sample> sample_values;
+        problem_content_dto::statistics statistics_value;
+        std::optional<std::string> user_problem_state_opt = std::nullopt;
     };
 
     struct testcase_ref{

@@ -19,6 +19,10 @@ namespace problem_json_serializer{
     );
 
     boost::json::object make_detail_object(
+        const problem_dto::detail& detail_value
+    );
+
+    boost::json::object make_detail_object(
         const problem_dto::reference& problem_reference_value,
         const problem_dto::title& title_value,
         const problem_dto::version& version_value,

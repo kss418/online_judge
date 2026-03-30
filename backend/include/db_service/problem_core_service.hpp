@@ -32,6 +32,11 @@ namespace problem_core_service{
         const problem_dto::reference& problem_reference_value,
         std::int64_t user_id
     );
+    std::expected<problem_dto::detail, error_code> get_problem_detail(
+        db_connection& connection,
+        const problem_dto::reference& problem_reference_value,
+        std::optional<std::int64_t> viewer_user_id_opt = std::nullopt
+    );
 
     std::expected<problem_dto::created, error_code> create_problem(
         db_connection& connection,

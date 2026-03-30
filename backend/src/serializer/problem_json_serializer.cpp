@@ -119,6 +119,21 @@ boost::json::object problem_json_serializer::make_list_object(
 }
 
 boost::json::object problem_json_serializer::make_detail_object(
+    const problem_dto::detail& detail_value
+){
+    return make_detail_object(
+        detail_value.problem_reference_value,
+        detail_value.title_value,
+        detail_value.version_value,
+        detail_value.limits_value,
+        detail_value.statement_opt,
+        detail_value.sample_values,
+        detail_value.statistics_value,
+        detail_value.user_problem_state_opt
+    );
+}
+
+boost::json::object problem_json_serializer::make_detail_object(
     const problem_dto::reference& problem_reference_value,
     const problem_dto::title& title_value,
     const problem_dto::version& version_value,

@@ -1,11 +1,8 @@
 #include "http_handler/problem_handler.hpp"
-#include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_core/http_util.hpp"
 
-#include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"
-#include "db_service/problem_statistics_service.hpp"
 #include "db_service/submission_service.hpp"
 #include "serializer/common_json_serializer.hpp"
 #include "serializer/problem_json_serializer.hpp"
@@ -67,137 +64,37 @@ problem_handler::response_type problem_handler::get_problem(
     }
 
     problem_dto::reference problem_reference_value{problem_id};
-    const auto exists_problem_exp = problem_core_service::exists_problem(
-        db_connection_value,
-        problem_reference_value
-    );
-    if(!exists_problem_exp){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to check problem: " + to_string(exists_problem_exp.error())
-        );
-    }
-    if(!exists_problem_exp->exists){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::not_found,
-            "problem_not_found",
-            "problem not found"
-        );
-    }
-
-    const auto title_exp = problem_core_service::get_title(
-        db_connection_value,
-        problem_reference_value
-    );
-    if(!title_exp){
-        return http_response_util::create_404_or_500(
-            request,
-            "get problem title",
-            title_exp.error()
-        );
-    }
-
-    const auto version_exp = problem_core_service::get_version(
-        db_connection_value,
-        problem_reference_value
-    );
-    if(!version_exp){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to get problem version: " + to_string(version_exp.error())
-        );
-    }
-
-    const auto limits_exp = problem_content_service::get_limits(
-        db_connection_value,
-        problem_reference_value
-    );
-    if(!limits_exp){
-        return http_response_util::create_404_or_500(
-            request,
-            "get problem limits",
-            limits_exp.error()
-        );
-    }
-
-    std::optional<problem_content_dto::statement> statement_opt = std::nullopt;
-    const auto statement_exp = problem_content_service::get_statement(
-        db_connection_value,
-        problem_reference_value
-    );
-    if(statement_exp){
-        statement_opt = statement_exp.value();
-    }
-    else if(statement_exp.error() != errno_error::invalid_argument){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to get problem statement: " + to_string(statement_exp.error())
-        );
-    }
-
-    const auto samples_exp = problem_content_service::list_samples(
-        db_connection_value,
-        problem_reference_value
-    );
-    if(!samples_exp){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to list problem samples: " + to_string(samples_exp.error())
-        );
-    }
-
-    const auto statistics_exp = problem_statistics_service::get_statistics(
-        db_connection_value,
-        problem_reference_value
-    );
-    if(!statistics_exp){
-        return http_response_util::create_404_or_500(
-            request,
-            "get problem statistics",
-            statistics_exp.error()
-        );
-    }
-
-    std::optional<std::string> user_problem_state_opt = std::nullopt;
+    std::optional<std::int64_t> viewer_user_id_opt = std::nullopt;
     if(auth_identity_opt_exp->has_value()){
-        const auto user_problem_state_exp = problem_core_service::get_user_problem_state(
-            db_connection_value,
-            problem_reference_value,
-            auth_identity_opt_exp->value().user_id
-        );
-        if(!user_problem_state_exp){
+        viewer_user_id_opt = auth_identity_opt_exp->value().user_id;
+    }
+
+    const auto problem_detail_exp = problem_core_service::get_problem_detail(
+        db_connection_value,
+        problem_reference_value,
+        viewer_user_id_opt
+    );
+    if(!problem_detail_exp){
+        if(problem_detail_exp.error() == errno_error::invalid_argument){
             return http_response_util::create_error(
                 request,
-                boost::beast::http::status::internal_server_error,
-                "internal_server_error",
-                "failed to get user problem state: " + to_string(user_problem_state_exp.error())
+                boost::beast::http::status::not_found,
+                "problem_not_found",
+                "problem not found"
             );
         }
-        user_problem_state_opt = *user_problem_state_exp;
+
+        return http_response_util::create_404_or_500(
+            request,
+            "get problem detail",
+            problem_detail_exp.error()
+        );
     }
 
     return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
-        problem_json_serializer::make_detail_object(
-            problem_reference_value,
-            *title_exp,
-            *version_exp,
-            *limits_exp,
-            statement_opt,
-            *samples_exp,
-            *statistics_exp,
-            user_problem_state_opt
-        )
+        problem_json_serializer::make_detail_object(*problem_detail_exp)
     );
 }
 
