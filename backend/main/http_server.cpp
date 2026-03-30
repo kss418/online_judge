@@ -1,13 +1,13 @@
 #include "http_core/acceptor.hpp"
 #include "http_core/http_server.hpp"
 #include "common/env_util.hpp"
+#include "common/logger.hpp"
 #include "common/string_util.hpp"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <cstdlib>
 #include <cstdint>
-#include <iostream>
 #include <limits>
 #include <string_view>
 #include <thread>
@@ -38,26 +38,35 @@ std::expected<std::uint32_t, error_code> resolve_http_worker_count(){
 int main(){
     const auto require_http_envs_exp = env_util::require_http_server_envs();
     if(!require_http_envs_exp){
-        std::cerr << "required environment variables are missing\n";
+        logger::cerr()
+            .log("http_server_startup_error")
+            .field("reason", "required_env_missing");
         return 1;
     }
 
     const char* http_port_text = std::getenv("HTTP_PORT");
     if(http_port_text == nullptr || std::string_view{http_port_text}.empty()){
-        std::cerr << "HTTP_PORT environment variable is missing\n";
+        logger::cerr()
+            .log("http_server_startup_error")
+            .field("reason", "http_port_missing");
         return 1;
     }
 
     const auto port_opt = string_util::parse_positive_int16(http_port_text);
     if(!port_opt){
-        std::cerr << "invalid HTTP_PORT: " << http_port_text << '\n';
+        logger::cerr()
+            .log("http_server_startup_error")
+            .field("reason", "invalid_http_port")
+            .field("http_port", http_port_text);
         return 1;
     }
     const std::uint16_t port = *port_opt;
 
     const auto worker_count_exp = resolve_http_worker_count();
     if(!worker_count_exp){
-        std::cerr << "invalid HTTP_WORKER_COUNT\n";
+        logger::cerr()
+            .log("http_server_startup_error")
+            .field("reason", "invalid_http_worker_count");
         return 1;
     }
     const std::uint32_t worker_count = *worker_count_exp;
@@ -65,7 +74,9 @@ int main(){
     boost::asio::io_context io_context{static_cast<int>(worker_count)};
     auto http_server_exp = http_server::create(static_cast<std::size_t>(worker_count));
     if(!http_server_exp){
-        std::cerr << "http_server create failed: " << to_string(http_server_exp.error()) << '\n';
+        logger::cerr()
+            .log("http_server_create_failed")
+            .field("error", to_string(http_server_exp.error()));
         return 1;
     }
 
@@ -76,17 +87,26 @@ int main(){
     );
     
     if(!acceptor_exp){
-        std::cerr << "acceptor create failed: " << to_string(acceptor_exp.error()) << '\n';
+        logger::cerr()
+            .log("http_acceptor_create_failed")
+            .field("error", to_string(acceptor_exp.error()))
+            .field("port", port);
         return 1;
     }
 
     auto run_exp = (*acceptor_exp)->run();
     if(!run_exp){
-        std::cerr << "acceptor run failed: " << to_string(run_exp.error()) << '\n';
+        logger::cerr()
+            .log("http_acceptor_run_failed")
+            .field("error", to_string(run_exp.error()))
+            .field("port", port);
         return 1;
     }
 
-    std::cerr << "starting http workers: " << worker_count << '\n';
+    logger::cerr()
+        .log("http_server_start")
+        .field("port", port)
+        .field("worker_count", worker_count);
 
     std::vector<std::thread> worker_threads;
     worker_threads.reserve(worker_count > 0 ? worker_count - 1 : 0);

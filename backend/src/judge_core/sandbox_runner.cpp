@@ -1,6 +1,7 @@
 #include "judge_core/sandbox_runner.hpp"
 
 #include "common/blocking_io.hpp"
+#include "common/logger.hpp"
 #include "common/temp_file.hpp"
 #include "common/unique_fd.hpp"
 #include "judge_core/judge_util.hpp"
@@ -12,7 +13,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <iostream>
 #include <utility>
 
 std::expected<void, error_code> sandbox_runner::startup_self_check(){
@@ -44,7 +44,9 @@ std::expected<void, error_code> sandbox_runner::startup_self_check(){
     }
     if(!run_exp->is_success()){
         if(!run_exp->stderr_text_.empty()){
-            std::cerr << "sandbox self-check stderr: " << run_exp->stderr_text_ << '\n';
+            logger::cerr()
+                .log("sandbox_startup_self_check_stderr")
+                .field("stderr", run_exp->stderr_text_);
         }
         return std::unexpected(error_code::create(errno_error::operation_not_supported));
     }

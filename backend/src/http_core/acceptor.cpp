@@ -1,9 +1,9 @@
 #include "http_core/acceptor.hpp"
+#include "common/logger.hpp"
 #include "http_core/http_server.hpp"
 #include "http_core/http_session.hpp"
 
 #include <boost/asio/strand.hpp>
-#include <iostream>
 #include <memory>
 #include <utility>
 
@@ -72,7 +72,9 @@ std::expected<void, error_code> acceptor::run(){
 }
 
 void acceptor::handle_error(error_code code) const{
-    std::cerr << "acceptor error: " << to_string(code) << '\n';
+    logger::cerr()
+        .log("acceptor_error")
+        .field("code", to_string(code));
 }
 
 void acceptor::accept(){

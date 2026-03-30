@@ -1,4 +1,5 @@
 #include "http_core/http_session.hpp"
+#include "common/logger.hpp"
 #include "http_core/http_server.hpp"
 #include "http_core/http_response_util.hpp"
 #include "serializer/common_json_serializer.hpp"
@@ -11,7 +12,6 @@
 #include <boost/beast/http/write.hpp>
 #include <boost/beast/version.hpp>
 
-#include <iostream>
 #include <memory>
 #include <utility>
 
@@ -53,7 +53,9 @@ std::expected<void, error_code> http_session::run(){
 }
 
 void http_session::handle_error(error_code code) const{
-    std::cerr << "http_session error: " << to_string(code) << '\n';
+    logger::cerr()
+        .log("http_session_error")
+        .field("code", to_string(code));
 }
 
 void http_session::read(){

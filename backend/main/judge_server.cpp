@@ -1,6 +1,7 @@
 #include "common/env_util.hpp"
 #include "common/error_code.hpp"
 #include "common/db_connection.hpp"
+#include "common/logger.hpp"
 #include "common/string_util.hpp"
 #include "db_event/submission_event_listener.hpp"
 #include "judge_core/problem_lock_registry.hpp"
@@ -10,7 +11,6 @@
 #include <chrono>
 #include <cstdint>
 #include <expected>
-#include <iostream>
 #include <limits>
 #include <memory>
 #include <thread>
@@ -64,9 +64,11 @@ void run_judge_worker_loop(
     while(true){
         auto submission_event_listener_exp = create_submission_event_listener();
         if(!submission_event_listener_exp){
-            std::cerr << "[judge_worker " << worker_index
-                      << "] failed to initialize submission_event_listener: "
-                      << to_string(submission_event_listener_exp.error()) << '\n';
+            logger::cerr()
+                .log("judge_worker_initialize_failed")
+                .field("worker_index", worker_index)
+                .field("stage", "submission_event_listener")
+                .field("error", to_string(submission_event_listener_exp.error()));
             std::this_thread::sleep_for(WORKER_RESTART_DELAY);
             continue;
         }
@@ -76,22 +78,29 @@ void run_judge_worker_loop(
             shared_problem_lock_registry
         );
         if(!judge_worker_exp){
-            std::cerr << "[judge_worker " << worker_index
-                      << "] failed to initialize judge_worker: "
-                      << to_string(judge_worker_exp.error()) << '\n';
+            logger::cerr()
+                .log("judge_worker_initialize_failed")
+                .field("worker_index", worker_index)
+                .field("stage", "judge_worker")
+                .field("error", to_string(judge_worker_exp.error()));
             std::this_thread::sleep_for(WORKER_RESTART_DELAY);
             continue;
         }
 
         auto run_exp = judge_worker_exp->run();
         if(run_exp){
-            std::cerr << "[judge_worker " << worker_index
-                      << "] stopped unexpectedly, restarting\n";
+            logger::cerr()
+                .log("judge_worker_stopped")
+                .field("worker_index", worker_index)
+                .field("result", "unexpected_stop")
+                .field("action", "restart");
         }
         else{
-            std::cerr << "[judge_worker " << worker_index
-                      << "] run failed: "
-                      << to_string(run_exp.error()) << '\n';
+            logger::cerr()
+                .log("judge_worker_run_failed")
+                .field("worker_index", worker_index)
+                .field("error", to_string(run_exp.error()))
+                .field("action", "restart");
         }
 
         std::this_thread::sleep_for(WORKER_RESTART_DELAY);
@@ -101,20 +110,26 @@ void run_judge_worker_loop(
 int main(){
     const auto require_judge_envs_exp = env_util::require_judge_server_envs();
     if(!require_judge_envs_exp){
-        std::cerr << "required environment variables are missing\n";
+        logger::cerr()
+            .log("judge_server_startup_error")
+            .field("reason", "required_env_missing");
         return 1;
     }
 
     const auto sandbox_self_check_exp = sandbox_runner::startup_self_check();
     if(!sandbox_self_check_exp){
-        std::cerr << "sandbox startup self-check failed: "
-                  << to_string(sandbox_self_check_exp.error()) << '\n';
+        logger::cerr()
+            .log("judge_server_startup_error")
+            .field("reason", "sandbox_startup_self_check_failed")
+            .field("error", to_string(sandbox_self_check_exp.error()));
         return 1;
     }
 
     const auto worker_count_exp = resolve_worker_count();
     if(!worker_count_exp){
-        std::cerr << "invalid JUDGE_WORKER_COUNT\n";
+        logger::cerr()
+            .log("judge_server_startup_error")
+            .field("reason", "invalid_judge_worker_count");
         return 1;
     }
     const std::uint32_t worker_count = *worker_count_exp;
@@ -123,7 +138,9 @@ int main(){
     std::vector<std::thread> worker_threads;
     worker_threads.reserve(worker_count);
 
-    std::cerr << "starting judge workers: " << worker_count << '\n';
+    logger::cerr()
+        .log("judge_server_start")
+        .field("worker_count", worker_count);
 
     for(std::uint32_t worker_index = 1; worker_index <= worker_count; ++worker_index){
         worker_threads.emplace_back(
