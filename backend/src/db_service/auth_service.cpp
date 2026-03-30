@@ -22,9 +22,9 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_service::auth_
     auth_dto::hashed_token hashed_token_value;
     hashed_token_value.token_hash = *token_hash_exp;
 
-    return db_service_util::with_retry_write_transaction(
+    return db_service_util::with_retry_read_transaction(
         connection_value,
-        [&](pqxx::work& transaction)
+        [&](pqxx::read_transaction& transaction)
             -> std::expected<std::optional<auth_dto::identity>, error_code> {
             const auto get_token_identity_exp = auth_repository::get_token_identity(
                 transaction,
@@ -35,14 +35,6 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_service::auth_
             }
             if(!get_token_identity_exp->has_value()){
                 return std::nullopt;
-            }
-
-            const auto update_last_used_at_exp = auth_repository::update_last_used_at(
-                transaction,
-                hashed_token_value
-            );
-            if(!update_last_used_at_exp){
-                return std::unexpected(update_last_used_at_exp.error());
             }
 
             return get_token_identity_exp->value();

@@ -291,15 +291,18 @@ CREATE TABLE IF NOT EXISTS auth_tokens(
     issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL,
     revoked_at TIMESTAMPTZ,
-    last_used_at TIMESTAMPTZ,
     CONSTRAINT auth_tokens_token_hash_unique UNIQUE(token_hash),
     CONSTRAINT auth_tokens_token_hash_not_blank CHECK(token_hash <> ''),
     CONSTRAINT auth_tokens_expires_at_order_check CHECK(expires_at >= issued_at),
-    CONSTRAINT auth_tokens_last_used_at_order_check
-        CHECK(last_used_at IS NULL OR last_used_at >= issued_at),
     CONSTRAINT auth_tokens_revoked_at_order_check
         CHECK(revoked_at IS NULL OR revoked_at >= issued_at)
 );
+
+ALTER TABLE auth_tokens
+    DROP CONSTRAINT IF EXISTS auth_tokens_last_used_at_order_check;
+
+ALTER TABLE auth_tokens
+    DROP COLUMN IF EXISTS last_used_at;
 
 DO $do$
 BEGIN
@@ -345,6 +348,10 @@ ON CONFLICT(version) DO NOTHING;
 
 INSERT INTO schema_migrations(version)
 VALUES('auth_schema_v12')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('auth_schema_v13')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

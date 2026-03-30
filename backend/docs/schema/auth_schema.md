@@ -40,7 +40,6 @@ Indexes:
 | `issued_at` | `timestamptz` | no | `now()` |  |
 | `expires_at` | `timestamptz` | no | | token expiration time |
 | `revoked_at` | `timestamptz` | yes | | null means not explicitly revoked |
-| `last_used_at` | `timestamptz` | yes | | updated when token is successfully used |
 
 Constraints:
 
@@ -49,7 +48,6 @@ Constraints:
 - `auth_tokens_token_hash_unique`
 - `auth_tokens_token_hash_not_blank`
 - `auth_tokens_expires_at_order_check`
-- `auth_tokens_last_used_at_order_check`
 - `auth_tokens_revoked_at_order_check`
 
 Indexes:

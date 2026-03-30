@@ -27,11 +27,6 @@ namespace auth_repository{
         const auth_dto::hashed_token& hashed_token_value
     );
 
-    std::expected<void, error_code> update_last_used_at(
-        pqxx::transaction_base& transaction,
-        const auth_dto::hashed_token& hashed_token_value
-    );
-
     std::expected<bool, error_code> update_permission_level(
         pqxx::transaction_base& transaction,
         std::int64_t user_id,

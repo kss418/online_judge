@@ -70,8 +70,7 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_repository::ge
         "WHERE "
         "token_table.token_hash = $1 AND "
         "token_table.revoked_at IS NULL AND "
-        "token_table.expires_at > NOW() "
-        "FOR UPDATE OF token_table",
+        "token_table.expires_at > NOW() ",
         pqxx::params{hashed_token_value.token_hash}
     );
 
@@ -84,31 +83,6 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_repository::ge
     identity_value.permission_level = token_identity_result[0][1].as<std::int32_t>();
     identity_value.user_login_id = token_identity_result[0][2].as<std::string>();
     return identity_value;
-}
-
-std::expected<void, error_code> auth_repository::update_last_used_at(
-    pqxx::transaction_base& transaction,
-    const auth_dto::hashed_token& hashed_token_value
-){
-    if(hashed_token_value.token_hash.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    const auto update_result = transaction.exec(
-        "UPDATE auth_tokens "
-        "SET last_used_at = NOW() "
-        "WHERE "
-        "token_hash = $1 AND "
-        "revoked_at IS NULL AND "
-        "expires_at > NOW()",
-        pqxx::params{hashed_token_value.token_hash}
-    );
-
-    if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
-    return {};
 }
 
 std::expected<bool, error_code> auth_repository::update_permission_level(
