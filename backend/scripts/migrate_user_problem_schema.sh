@@ -75,9 +75,56 @@ $do$;
 
 DROP VIEW IF EXISTS user_wrong_problem_list;
 DROP VIEW IF EXISTS user_problem_list;
-DROP VIEW IF EXISTS user_problem_attempt_summary;
 
-CREATE VIEW user_problem_attempt_summary AS
+DO $do$
+DECLARE
+    summary_relation_kind "char";
+BEGIN
+    SELECT pg_class.relkind
+    INTO summary_relation_kind
+    FROM pg_class
+    JOIN pg_namespace
+      ON pg_namespace.oid = pg_class.relnamespace
+    WHERE
+        pg_namespace.nspname = 'public' AND
+        pg_class.relname = 'user_problem_attempt_summary';
+
+    IF summary_relation_kind = 'v' THEN
+        EXECUTE 'DROP VIEW public.user_problem_attempt_summary';
+    ELSIF summary_relation_kind = 'm' THEN
+        EXECUTE 'DROP MATERIALIZED VIEW public.user_problem_attempt_summary';
+    END IF;
+END
+$do$;
+
+CREATE TABLE IF NOT EXISTS user_problem_attempt_summary(
+    user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    problem_id BIGINT NOT NULL REFERENCES problems(problem_id) ON DELETE CASCADE,
+    submission_count BIGINT NOT NULL DEFAULT 1,
+    accepted_submission_count BIGINT NOT NULL DEFAULT 0,
+    failed_submission_count BIGINT NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT user_problem_attempt_summary_pkey PRIMARY KEY(user_id, problem_id),
+    CONSTRAINT user_problem_attempt_summary_submission_count_check
+        CHECK(submission_count > 0),
+    CONSTRAINT user_problem_attempt_summary_accepted_count_check
+        CHECK(accepted_submission_count >= 0),
+    CONSTRAINT user_problem_attempt_summary_failed_count_check
+        CHECK(failed_submission_count >= 0),
+    CONSTRAINT user_problem_attempt_summary_count_order_check
+        CHECK(accepted_submission_count + failed_submission_count <= submission_count)
+);
+
+DELETE FROM user_problem_attempt_summary;
+
+INSERT INTO user_problem_attempt_summary(
+    user_id,
+    problem_id,
+    submission_count,
+    accepted_submission_count,
+    failed_submission_count,
+    updated_at
+)
 SELECT
     submission_table.user_id,
     submission_table.problem_id,
@@ -94,7 +141,8 @@ SELECT
             'compile_error'::submission_status,
             'output_exceeded'::submission_status
         )
-    )::BIGINT AS failed_submission_count
+    )::BIGINT AS failed_submission_count,
+    NOW()
 FROM submissions submission_table
 GROUP BY submission_table.user_id, submission_table.problem_id;
 
@@ -115,6 +163,10 @@ CREATE INDEX IF NOT EXISTS submissions_user_problem_idx
 
 INSERT INTO schema_migrations(version)
 VALUES('user_problem_schema_v6')
+ON CONFLICT(version) DO NOTHING;
+
+INSERT INTO schema_migrations(version)
+VALUES('user_problem_schema_v7')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

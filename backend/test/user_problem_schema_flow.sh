@@ -58,10 +58,19 @@ if ! PGPASSWORD="${DB_PASSWORD}" psql \
     -U "${DB_USER}" \
     -d "${DB_NAME}" \
     -v ON_ERROR_STOP=1 <<'SQL' >>"${test_log_temp_file}" 2>&1
-INSERT INTO users(user_login_id, user_password_hash)
-VALUES
-    ('alice', 'hash_alice'),
-    ('bob', 'hash_bob');
+WITH inserted_user_info AS (
+    INSERT INTO user_info DEFAULT VALUES
+    RETURNING user_id
+), inserted_user_info_2 AS (
+    INSERT INTO user_info DEFAULT VALUES
+    RETURNING user_id
+)
+INSERT INTO users(user_id, user_login_id, user_password_hash)
+SELECT user_id, 'alice', 'hash_alice'
+FROM inserted_user_info
+UNION ALL
+SELECT user_id, 'bob', 'hash_bob'
+FROM inserted_user_info_2;
 
 INSERT INTO problems(title, version)
 VALUES
@@ -85,6 +94,13 @@ VALUES
 SQL
 then
     append_log_line "${test_log_temp_file}" "fixture insert failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! DATABASE_URL="${test_database_url}" \
+    bash "${project_root}/scripts/migrate_user_problem_schema.sh" >>"${test_log_temp_file}" 2>&1; then
+    append_log_line "${test_log_temp_file}" "user_problem_schema remigration failed"
     publish_failure_logs
     exit 1
 fi
@@ -160,7 +176,7 @@ then
     exit 1
 fi
 
-print_success_log "user_problem_attempt_summary view validated"
+print_success_log "user_problem_attempt_summary table validated"
 
 if ! PGPASSWORD="${DB_PASSWORD}" psql \
     -X \

@@ -9,5 +9,6 @@ target_sources(lib
         submission_repository.cpp
         testcase_repository.cpp
         user_repository.cpp
+        user_problem_summary_repository.cpp
         user_statistics_repository.cpp
 )
