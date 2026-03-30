@@ -87,7 +87,7 @@ std::expected<problem_content_dto::limits, error_code> testcase_downloader::fetc
 std::expected<problem_content_dto::limits, error_code> testcase_downloader::read_problem_limits(
     const std::filesystem::path& testcase_directory_path
 ) const{
-    const auto memory_limit_file_path_exp = testcase_util::intestcase_memory_limit_file_path(
+    const auto memory_limit_file_path_exp = testcase_util::make_testcase_memory_limit_file_path(
         testcase_directory_path
     );
     if(!memory_limit_file_path_exp){
