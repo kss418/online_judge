@@ -73,30 +73,6 @@ BEGIN
 END
 $do$;
 
-DROP VIEW IF EXISTS user_wrong_problem_list;
-DROP VIEW IF EXISTS user_problem_list;
-
-DO $do$
-DECLARE
-    summary_relation_kind "char";
-BEGIN
-    SELECT pg_class.relkind
-    INTO summary_relation_kind
-    FROM pg_class
-    JOIN pg_namespace
-      ON pg_namespace.oid = pg_class.relnamespace
-    WHERE
-        pg_namespace.nspname = 'public' AND
-        pg_class.relname = 'user_problem_attempt_summary';
-
-    IF summary_relation_kind = 'v' THEN
-        EXECUTE 'DROP VIEW public.user_problem_attempt_summary';
-    ELSIF summary_relation_kind = 'm' THEN
-        EXECUTE 'DROP MATERIALIZED VIEW public.user_problem_attempt_summary';
-    END IF;
-END
-$do$;
-
 CREATE TABLE IF NOT EXISTS user_problem_attempt_summary(
     user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     problem_id BIGINT NOT NULL REFERENCES problems(problem_id) ON DELETE CASCADE,
@@ -114,6 +90,8 @@ CREATE TABLE IF NOT EXISTS user_problem_attempt_summary(
     CONSTRAINT user_problem_attempt_summary_count_order_check
         CHECK(accepted_submission_count + failed_submission_count <= submission_count)
 );
+
+DROP VIEW IF EXISTS user_wrong_problem_list;
 
 DELETE FROM user_problem_attempt_summary;
 
@@ -160,10 +138,6 @@ WHERE user_problem_attempt_summary.accepted_submission_count = 0
 
 CREATE INDEX IF NOT EXISTS submissions_user_problem_idx
     ON submissions(user_id, problem_id);
-
-INSERT INTO schema_migrations(version)
-VALUES('user_problem_schema_v6')
-ON CONFLICT(version) DO NOTHING;
 
 INSERT INTO schema_migrations(version)
 VALUES('user_problem_schema_v7')

@@ -67,10 +67,30 @@ BEGIN
 END
 $do$;
 
+DO $do$
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'users'
+    ) THEN
+        RAISE EXCEPTION 'auth_schema must be applied before submission_schema';
+    END IF;
+
+    IF NOT EXISTS(
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'problems'
+    ) THEN
+        RAISE EXCEPTION 'problem_schema must be applied before submission_schema';
+    END IF;
+END
+$do$;
+
 CREATE TABLE IF NOT EXISTS submissions(
     submission_id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    problem_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL REFERENCES users(user_id),
+    problem_id BIGINT NOT NULL REFERENCES problems(problem_id),
     language TEXT NOT NULL,
     source_code TEXT NOT NULL,
     status submission_status NOT NULL DEFAULT 'queued',
@@ -88,44 +108,6 @@ CREATE TABLE IF NOT EXISTS submissions(
     CONSTRAINT submissions_max_rss_kb_check
         CHECK(max_rss_kb IS NULL OR max_rss_kb >= 0)
 );
-
-ALTER TABLE submissions
-    ADD COLUMN IF NOT EXISTS elapsed_ms BIGINT;
-
-ALTER TABLE submissions
-    ADD COLUMN IF NOT EXISTS max_rss_kb BIGINT;
-
-DO $do$
-BEGIN
-    IF NOT EXISTS(
-        SELECT 1
-        FROM pg_constraint
-        WHERE
-            conrelid = 'submissions'::regclass AND
-            conname = 'submissions_elapsed_ms_check'
-    ) THEN
-        ALTER TABLE submissions
-            ADD CONSTRAINT submissions_elapsed_ms_check
-            CHECK(elapsed_ms IS NULL OR elapsed_ms >= 0);
-    END IF;
-END
-$do$;
-
-DO $do$
-BEGIN
-    IF NOT EXISTS(
-        SELECT 1
-        FROM pg_constraint
-        WHERE
-            conrelid = 'submissions'::regclass AND
-            conname = 'submissions_max_rss_kb_check'
-    ) THEN
-        ALTER TABLE submissions
-            ADD CONSTRAINT submissions_max_rss_kb_check
-            CHECK(max_rss_kb IS NULL OR max_rss_kb >= 0);
-    END IF;
-END
-$do$;
 
 CREATE TABLE IF NOT EXISTS submission_status_history(
     history_id BIGSERIAL PRIMARY KEY,
@@ -147,72 +129,6 @@ CREATE TABLE IF NOT EXISTS submission_queue(
     CONSTRAINT submission_queue_attempt_count_check CHECK(attempt_count >= 0)
 );
 
-DO $do$
-BEGIN
-    IF EXISTS(
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'submission_queue'
-    ) AND NOT EXISTS(
-        SELECT 1
-        FROM information_schema.columns
-        WHERE
-            table_schema = 'public' AND
-            table_name = 'submission_queue' AND
-            column_name = 'priority'
-    ) THEN
-        ALTER TABLE submission_queue
-            ADD COLUMN priority SMALLINT NOT NULL DEFAULT 0;
-    END IF;
-END
-$do$;
-
-DO $do$
-BEGIN
-    IF EXISTS(
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'users'
-    ) THEN
-        IF NOT EXISTS(
-            SELECT 1
-            FROM pg_constraint
-            WHERE
-                conrelid = 'submissions'::regclass AND
-                conname = 'submissions_user_id_fkey'
-        ) THEN
-            ALTER TABLE submissions
-                ADD CONSTRAINT submissions_user_id_fkey
-                FOREIGN KEY(user_id)
-                REFERENCES users(user_id);
-        END IF;
-    END IF;
-END
-$do$;
-
-DO $do$
-BEGIN
-    IF EXISTS(
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'problems'
-    ) THEN
-        IF NOT EXISTS(
-            SELECT 1
-            FROM pg_constraint
-            WHERE
-                conrelid = 'submissions'::regclass AND
-                conname = 'submissions_problem_id_fkey'
-        ) THEN
-            ALTER TABLE submissions
-                ADD CONSTRAINT submissions_problem_id_fkey
-                FOREIGN KEY(problem_id)
-                REFERENCES problems(problem_id);
-        END IF;
-    END IF;
-END
-$do$;
-
 CREATE INDEX IF NOT EXISTS submissions_user_created_idx
     ON submissions(user_id, created_at DESC);
 
@@ -227,14 +143,6 @@ CREATE INDEX IF NOT EXISTS submission_queue_available_priority_created_idx
 
 CREATE INDEX IF NOT EXISTS submission_queue_leased_until_idx
     ON submission_queue(leased_until);
-
-INSERT INTO schema_migrations(version)
-VALUES('submission_schema_v1')
-ON CONFLICT(version) DO NOTHING;
-
-INSERT INTO schema_migrations(version)
-VALUES('submission_schema_v2')
-ON CONFLICT(version) DO NOTHING;
 
 INSERT INTO schema_migrations(version)
 VALUES('submission_schema_v3')

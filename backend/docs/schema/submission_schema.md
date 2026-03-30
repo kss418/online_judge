@@ -2,6 +2,11 @@
 
 Base migration: `scripts/migrate_submission_schema.sh`
 
+Prerequisites:
+
+- `auth_schema`
+- `problem_schema`
+
 ## enum
 
 ### `submission_status`
@@ -42,8 +47,8 @@ Constraints:
 - `submissions_score_range_check`
 - `submissions_elapsed_ms_check`
 - `submissions_max_rss_kb_check`
-- `submissions_user_id_fkey` (added when auth schema is already applied)
-- `submissions_problem_id_fkey` (added when problem schema is already applied)
+- `submissions_user_id_fkey`
+- `submissions_problem_id_fkey`
 
 Indexes:
 

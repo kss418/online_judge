@@ -34,7 +34,6 @@ init_flow_test
 register_temp_file test_log_temp_file
 register_temp_file user_problem_attempt_summary_response_file
 register_temp_file user_wrong_problem_list_response_file
-register_temp_file user_problem_list_exists_response_file
 
 trap 'finish_flow_test drop_test_database' EXIT
 
@@ -186,41 +185,6 @@ if ! DATABASE_URL="${test_database_url}" \
 fi
 
 print_success_log "user_problem_attempt_summary validation script passed"
-
-if ! PGPASSWORD="${DB_PASSWORD}" psql \
-    -X \
-    -qAt \
-    -h "${DB_HOST}" \
-    -p "${DB_PORT}" \
-    -U "${DB_USER}" \
-    -d "${DB_NAME}" \
-    -v ON_ERROR_STOP=1 <<'SQL' >"${user_problem_list_exists_response_file}" 2>>"${test_log_temp_file}"
-SELECT COUNT(*)::TEXT
-FROM information_schema.views
-WHERE table_schema = 'public' AND table_name = 'user_problem_list';
-SQL
-then
-    append_log_line "${test_log_temp_file}" "user_problem_list existence check failed"
-    publish_failure_logs
-    exit 1
-fi
-
-if ! python3 - "${user_problem_list_exists_response_file}" <<'PY'
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as response_file:
-    value = response_file.read().strip()
-
-if value != "0":
-    raise SystemExit(f"user_problem_list still exists: {value}")
-PY
-then
-    append_log_line "${test_log_temp_file}" "user_problem_list removal validation failed"
-    publish_failure_logs
-    exit 1
-fi
-
-print_success_log "user_problem_list removal validated"
 
 if ! PGPASSWORD="${DB_PASSWORD}" psql \
     -X \

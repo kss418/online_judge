@@ -53,45 +53,6 @@ CREATE TABLE IF NOT EXISTS problems(
     CONSTRAINT problems_title_check CHECK(char_length(title) > 0)
 );
 
-DO $do$
-BEGIN
-    IF NOT EXISTS(
-        SELECT 1
-        FROM information_schema.columns
-        WHERE
-            table_schema = 'public' AND
-            table_name = 'problems' AND
-            column_name = 'title'
-    ) THEN
-        ALTER TABLE problems
-            ADD COLUMN title TEXT;
-    END IF;
-END
-$do$;
-
-UPDATE problems
-SET title = 'problem ' || problem_id::text
-WHERE title IS NULL OR title = '';
-
-ALTER TABLE problems
-    ALTER COLUMN title SET NOT NULL;
-
-DO $do$
-BEGIN
-    IF NOT EXISTS(
-        SELECT 1
-        FROM pg_constraint
-        WHERE
-            conrelid = 'problems'::regclass AND
-            conname = 'problems_title_check'
-    ) THEN
-        ALTER TABLE problems
-            ADD CONSTRAINT problems_title_check
-            CHECK(char_length(title) > 0);
-    END IF;
-END
-$do$;
-
 CREATE TABLE IF NOT EXISTS problem_limits(
     problem_id BIGINT PRIMARY KEY REFERENCES problems(problem_id) ON DELETE CASCADE,
     memory_limit_mb INTEGER NOT NULL,
@@ -131,38 +92,6 @@ CREATE TABLE IF NOT EXISTS problem_statements(
     CONSTRAINT problem_statements_testcase_count_check CHECK(testcase_count >= 0)
 );
 
-DO $do$
-BEGIN
-    IF NOT EXISTS(
-        SELECT 1
-        FROM information_schema.columns
-        WHERE
-            table_schema = 'public' AND
-            table_name = 'problem_statements' AND
-            column_name = 'testcase_count'
-    ) THEN
-        ALTER TABLE problem_statements
-            ADD COLUMN testcase_count INTEGER NOT NULL DEFAULT 0;
-    END IF;
-END
-$do$;
-
-DO $do$
-BEGIN
-    IF NOT EXISTS(
-        SELECT 1
-        FROM pg_constraint
-        WHERE
-            conrelid = 'problem_statements'::regclass AND
-            conname = 'problem_statements_testcase_count_check'
-    ) THEN
-        ALTER TABLE problem_statements
-            ADD CONSTRAINT problem_statements_testcase_count_check
-            CHECK(testcase_count >= 0);
-    END IF;
-END
-$do$;
-
 CREATE TABLE IF NOT EXISTS problem_samples(
     sample_id BIGSERIAL PRIMARY KEY,
     problem_id BIGINT NOT NULL REFERENCES problems(problem_id) ON DELETE CASCADE,
@@ -192,42 +121,6 @@ CREATE TABLE IF NOT EXISTS problem_testcases(
 
 CREATE INDEX IF NOT EXISTS problem_testcases_problem_id_testcase_order_idx
     ON problem_testcases(problem_id, testcase_order ASC);
-
-DO $do$
-DECLARE
-    testcase_order_unique_is_deferrable BOOLEAN;
-    testcase_order_unique_is_initially_deferred BOOLEAN;
-BEGIN
-    SELECT
-        pg_constraint.condeferrable,
-        pg_constraint.condeferred
-    INTO
-        testcase_order_unique_is_deferrable,
-        testcase_order_unique_is_initially_deferred
-    FROM pg_constraint
-    WHERE
-        conrelid = 'problem_testcases'::regclass AND
-        conname = 'problem_testcases_problem_id_testcase_order_unique';
-
-    IF testcase_order_unique_is_deferrable IS NULL THEN
-        ALTER TABLE problem_testcases
-            ADD CONSTRAINT problem_testcases_problem_id_testcase_order_unique
-            UNIQUE(problem_id, testcase_order)
-            DEFERRABLE INITIALLY IMMEDIATE;
-    ELSIF
-        testcase_order_unique_is_deferrable IS DISTINCT FROM TRUE OR
-        testcase_order_unique_is_initially_deferred IS DISTINCT FROM FALSE
-    THEN
-        ALTER TABLE problem_testcases
-            DROP CONSTRAINT problem_testcases_problem_id_testcase_order_unique;
-
-        ALTER TABLE problem_testcases
-            ADD CONSTRAINT problem_testcases_problem_id_testcase_order_unique
-            UNIQUE(problem_id, testcase_order)
-            DEFERRABLE INITIALLY IMMEDIATE;
-    END IF;
-END
-$do$;
 
 INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms, updated_at)
 SELECT p.problem_id, 256, 1000, NOW()
@@ -271,29 +164,6 @@ LEFT JOIN problem_statements AS st
     ON st.problem_id = p.problem_id
 WHERE st.problem_id IS NULL
 ON CONFLICT(problem_id) DO NOTHING;
-
-DO $do$
-BEGIN
-    IF EXISTS(
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'submissions'
-    ) THEN
-        IF NOT EXISTS(
-            SELECT 1
-            FROM pg_constraint
-            WHERE
-                conrelid = 'submissions'::regclass AND
-                conname = 'submissions_problem_id_fkey'
-        ) THEN
-            ALTER TABLE submissions
-                ADD CONSTRAINT submissions_problem_id_fkey
-                FOREIGN KEY(problem_id)
-                REFERENCES problems(problem_id);
-        END IF;
-    END IF;
-END
-$do$;
 
 INSERT INTO schema_migrations(version)
 VALUES('problem_schema_v13')
