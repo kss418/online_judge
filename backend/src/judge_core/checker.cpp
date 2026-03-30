@@ -28,9 +28,12 @@ std::expected<bool, error_code> checker::check(
 }
 
 std::expected<judge_result, error_code> checker::check_all(
-    const std::vector<std::vector<std::string>>& output, std::int64_t problem_id
+    const std::vector<std::vector<std::string>>& output,
+    const path& testcase_directory_path
 ){
-    const auto testcase_count_exp = testcase_util::instance().count_testcase_output(problem_id);
+    const auto testcase_count_exp = testcase_util::instance().count_testcase_output(
+        testcase_directory_path
+    );
     if(!testcase_count_exp){
         return std::unexpected(testcase_count_exp.error());
     }
@@ -40,7 +43,7 @@ std::expected<judge_result, error_code> checker::check_all(
     }
 
     const auto validated_testcase_count_exp = testcase_util::instance().validate_testcase_output(
-        problem_id,
+        testcase_directory_path,
         testcase_count_exp.value()
     );
     
@@ -50,7 +53,8 @@ std::expected<judge_result, error_code> checker::check_all(
 
     for(std::int32_t order = 1; order <= validated_testcase_count_exp.value(); ++order){
         const auto answer_path_exp = testcase_util::instance().make_testcase_output_path(
-            problem_id, order
+            testcase_directory_path,
+            order
         );
 
         if(!answer_path_exp){

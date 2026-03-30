@@ -252,6 +252,29 @@ print(
 PY
 }
 
+validate_testcase_cache_layout(){
+    local problem_id="$1"
+    local expected_version="$2"
+    local problem_directory_path="${testcase_root}/${problem_id}"
+    local version_directory_path="${problem_directory_path}/${expected_version}"
+
+    if [[ ! -d "${version_directory_path}" ]]; then
+        append_log_line "${test_log_temp_file}" "missing version directory: ${version_directory_path}"
+        publish_all_failure_logs
+        echo "missing testcase version directory: ${version_directory_path}" >&2
+        exit 1
+    fi
+
+    for required_file_name in 001.in 001.out memory_limit time_limit; do
+        if [[ ! -f "${version_directory_path}/${required_file_name}" ]]; then
+            append_log_line "${test_log_temp_file}" "missing testcase cache file: ${version_directory_path}/${required_file_name}"
+            publish_all_failure_logs
+            echo "missing testcase cache file: ${version_directory_path}/${required_file_name}" >&2
+            exit 1
+        fi
+    done
+}
+
 wait_for_submission_final_status(){
     local submission_id="$1"
     local expected_status="$2"
@@ -723,6 +746,8 @@ validate_submission_detail \
     "non_negative_int"
 validate_submission_status_history "${accepted_submission_id}" "accepted"
 print_success_log "accepted submission judged successfully"
+validate_testcase_cache_layout "${problem_id}" "3"
+print_success_log "testcase version directory layout validated"
 
 python_accepted_submission_request_body="$(
     make_submission_request_body "python" "${python_accepted_source_code}"

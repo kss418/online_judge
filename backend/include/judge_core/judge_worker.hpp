@@ -73,10 +73,10 @@ private:
     );
     std::expected<process_submission_data, error_code> judge_submission(
         const std::filesystem::path& source_file_path,
-        std::int64_t problem_id
+        const std::filesystem::path& testcase_directory_path
     );
     std::expected<judge_result, error_code> check_result(
-        std::int64_t problem_id,
+        const std::filesystem::path& testcase_directory_path,
         const testcase_runner::run_batch& run_batch_value
     );
     static constexpr std::chrono::seconds LEASE_DURATION{300};

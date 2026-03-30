@@ -8,17 +8,17 @@
 #include <vector>
 
 std::expected<problem_content_dto::limits, error_code> testcase_runner::read_problem_limits(
-    std::int64_t problem_id
+    const std::filesystem::path& testcase_directory_path
 ){
     const auto time_limit_file_path_exp = testcase_util::instance().make_testcase_time_limit_file_path(
-        problem_id
+        testcase_directory_path
     );
     if(!time_limit_file_path_exp){
         return std::unexpected(time_limit_file_path_exp.error());
     }
 
     const auto memory_limit_file_path_exp = testcase_util::instance().make_testcase_memory_limit_file_path(
-        problem_id
+        testcase_directory_path
     );
     if(!memory_limit_file_path_exp){
         return std::unexpected(memory_limit_file_path_exp.error());
@@ -64,15 +64,17 @@ std::expected<sandbox_runner::run_result, error_code> testcase_runner::run_one_t
 
 std::expected<testcase_runner::run_batch, error_code> testcase_runner::run_all_testcases(
     const std::filesystem::path& source_file_path,
-    std::int64_t problem_id
+    const std::filesystem::path& testcase_directory_path
 ){
-    const auto testcase_count_exp = testcase_util::instance().count_testcase_output(problem_id);
+    const auto testcase_count_exp = testcase_util::instance().count_testcase_output(
+        testcase_directory_path
+    );
     if(!testcase_count_exp){
         return std::unexpected(testcase_count_exp.error());
     }
 
     const auto validated_testcase_count_exp = testcase_util::instance().validate_testcase_output(
-        problem_id,
+        testcase_directory_path,
         testcase_count_exp.value()
     );
     if(!validated_testcase_count_exp){
@@ -91,7 +93,7 @@ std::expected<testcase_runner::run_batch, error_code> testcase_runner::run_all_t
         return run_batch_value;
     }
 
-    const auto problem_limits_exp = read_problem_limits(problem_id);
+    const auto problem_limits_exp = read_problem_limits(testcase_directory_path);
     if(!problem_limits_exp){
         return std::unexpected(problem_limits_exp.error());
     }
@@ -100,7 +102,10 @@ std::expected<testcase_runner::run_batch, error_code> testcase_runner::run_all_t
     run_batch_value.run_results.reserve(static_cast<std::size_t>(*validated_testcase_count_exp));
 
     for(std::int32_t order = 1; order <= *validated_testcase_count_exp; ++order){
-        const auto input_path_exp = testcase_util::instance().make_testcase_input_path(problem_id, order);
+        const auto input_path_exp = testcase_util::instance().make_testcase_input_path(
+            testcase_directory_path,
+            order
+        );
         if(!input_path_exp){
             return std::unexpected(input_path_exp.error());
         }

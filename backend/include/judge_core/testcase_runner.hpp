@@ -17,7 +17,7 @@ namespace testcase_runner{
     };
 
     std::expected<problem_content_dto::limits, error_code> read_problem_limits(
-        std::int64_t problem_id
+        const std::filesystem::path& testcase_directory_path
     );
 
     std::expected<sandbox_runner::run_result, error_code> run_one_testcase(
@@ -28,6 +28,6 @@ namespace testcase_runner{
 
     std::expected<run_batch, error_code> run_all_testcases(
         const std::filesystem::path& source_file_path,
-        std::int64_t problem_id
+        const std::filesystem::path& testcase_directory_path
     );
 }

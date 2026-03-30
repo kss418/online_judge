@@ -16,6 +16,6 @@ namespace checker{
     );
     std::expected<judge_result, error_code> check_all(
         const std::vector<std::vector<std::string>>& output,
-        std::int64_t problem_id
+        const path& testcase_directory_path
     );
 }
