@@ -16,46 +16,36 @@ static bool should_hide_submission_metrics(std::string_view status){
     return status == to_string(submission_status::runtime_error);
 }
 
-static submission_dto::detail sanitize_submission_detail_metrics(
-    submission_dto::detail detail_value
-){
-    if(should_hide_submission_metrics(detail_value.status)){
-        detail_value.elapsed_ms_opt = std::nullopt;
-        detail_value.max_rss_kb_opt = std::nullopt;
+template <typename submission_metrics_type>
+static void hide_submission_metrics_if_needed(submission_metrics_type& value){
+    if(should_hide_submission_metrics(value.status)){
+        value.elapsed_ms_opt = std::nullopt;
+        value.max_rss_kb_opt = std::nullopt;
     }
-
-    return detail_value;
 }
 
-static submission_dto::status_snapshot sanitize_submission_status_snapshot_metrics(
-    submission_dto::status_snapshot snapshot_value
-){
-    if(should_hide_submission_metrics(snapshot_value.status)){
-        snapshot_value.elapsed_ms_opt = std::nullopt;
-        snapshot_value.max_rss_kb_opt = std::nullopt;
-    }
-
-    return snapshot_value;
+template <typename submission_metrics_type>
+static submission_metrics_type sanitize_submission_metrics(submission_metrics_type value){
+    hide_submission_metrics_if_needed(value);
+    return value;
 }
 
-static std::vector<submission_dto::summary> sanitize_submission_summary_metrics(
-    std::vector<submission_dto::summary> summary_values
+template <typename submission_metrics_type>
+static std::vector<submission_metrics_type> sanitize_submission_metrics(
+    std::vector<submission_metrics_type> values
 ){
-    for(auto& summary_value : summary_values){
-        if(should_hide_submission_metrics(summary_value.status)){
-            summary_value.elapsed_ms_opt = std::nullopt;
-            summary_value.max_rss_kb_opt = std::nullopt;
-        }
+    for(auto& value : values){
+        hide_submission_metrics_if_needed(value);
     }
 
-    return summary_values;
+    return values;
 }
 
-static submission_dto::summary_page sanitize_submission_summary_page_metrics(
+static submission_dto::summary_page sanitize_submission_metrics(
     submission_dto::summary_page summary_page_value
 ){
     summary_page_value.submissions =
-        sanitize_submission_summary_metrics(std::move(summary_page_value.submissions));
+        sanitize_submission_metrics(std::move(summary_page_value.submissions));
     return summary_page_value;
 }
 
@@ -101,7 +91,7 @@ std::expected<submission_dto::detail, error_code> submission_service::get_submis
                 return std::unexpected(submission_detail_exp.error());
             }
 
-            return sanitize_submission_detail_metrics(*submission_detail_exp);
+            return sanitize_submission_metrics(*submission_detail_exp);
         }
     );
 }
@@ -124,15 +114,7 @@ submission_service::get_submission_status_snapshots(
                 return std::unexpected(snapshot_values_exp.error());
             }
 
-            std::vector<submission_dto::status_snapshot> sanitized_snapshot_values;
-            sanitized_snapshot_values.reserve(snapshot_values_exp->size());
-            for(auto snapshot_value : *snapshot_values_exp){
-                sanitized_snapshot_values.push_back(
-                    sanitize_submission_status_snapshot_metrics(std::move(snapshot_value))
-                );
-            }
-
-            return sanitized_snapshot_values;
+            return sanitize_submission_metrics(std::move(*snapshot_values_exp));
         }
     );
 }
@@ -424,7 +406,7 @@ submission_service::list_submissions(
                 return std::unexpected(summary_page_exp.error());
             }
 
-            return sanitize_submission_summary_page_metrics(std::move(*summary_page_exp));
+            return sanitize_submission_metrics(std::move(*summary_page_exp));
         }
     );
 }
