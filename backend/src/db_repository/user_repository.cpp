@@ -208,8 +208,7 @@ user_repository::get_active_submission_banned_until(
         "ELSE NULL "
         "END "
         "FROM user_info "
-        "WHERE user_id = $1 "
-        "FOR UPDATE",
+        "WHERE user_id = $1",
         pqxx::params{user_id}
     );
 
