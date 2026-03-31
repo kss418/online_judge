@@ -5,6 +5,7 @@
 
 #include <expected>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -18,6 +19,7 @@ namespace nsjail_util{
         temp_dir sandbox_dir_;
         std::filesystem::path rootfs_path_;
         std::filesystem::path seccomp_policy_path_;
+        std::vector<std::string> fixed_mount_args_;
     };
 
     std::expected<std::filesystem::path, error_code> require_nsjail_path();
@@ -28,9 +30,11 @@ namespace nsjail_util{
 
     std::expected<void, error_code> check_user_namespace_support();
 
-    std::expected<sandbox_artifacts, error_code> prepare_sandbox_artifacts(
+    std::expected<std::shared_ptr<const sandbox_artifacts>, error_code> acquire_sandbox_artifacts(
         sandbox_runner::policy_profile policy_profile_value
     );
+
+    void invalidate_all_sandbox_artifacts() noexcept;
 
     std::expected<std::vector<std::string>, error_code> make_command_args(
         const std::filesystem::path& nsjail_path,

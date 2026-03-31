@@ -55,14 +55,13 @@ namespace sandbox_runner{
 
     std::expected<void, error_code> startup_self_check();
 
+    void invalidate_cached_artifacts() noexcept;
+
     void exec_child(
-        const std::vector<std::string>& command_args,
+        const std::vector<std::string>& sandbox_command_args,
         int input_fd,
         int output_fd,
-        int error_fd,
-        const path& rootfs_path,
-        const path& seccomp_policy_path,
-        const run_options& run_options_value
+        int error_fd
     );
 
     std::expected <wait_result, error_code> wait_wall_clock(pid_t pid, std::chrono::milliseconds time_limit);

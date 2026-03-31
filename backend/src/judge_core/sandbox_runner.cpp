@@ -54,14 +54,15 @@ std::expected<void, error_code> sandbox_runner::startup_self_check(){
     return {};
 }
 
+void sandbox_runner::invalidate_cached_artifacts() noexcept{
+    nsjail_util::invalidate_all_sandbox_artifacts();
+}
+
 void sandbox_runner::exec_child(
-    const std::vector<std::string>& command_args,
+    const std::vector<std::string>& sandbox_command_args,
     int input_fd,
     int output_fd,
-    int error_fd,
-    const path& rootfs_path,
-    const path& seccomp_policy_path,
-    const run_options& run_options_value
+    int error_fd
 ){
     if(::setpgid(0, 0) < 0){
         _exit(127);
@@ -75,33 +76,18 @@ void sandbox_runner::exec_child(
     ::close(output_fd);
     ::close(error_fd);
 
-    const auto nsjail_path_exp = nsjail_util::require_nsjail_path();
-    if(!nsjail_path_exp){
-        _exit(127);
-    }
-
-    nsjail_util::sandbox_artifacts sandbox_artifacts_value;
-    sandbox_artifacts_value.rootfs_path_ = rootfs_path;
-    sandbox_artifacts_value.seccomp_policy_path_ = seccomp_policy_path;
-
-    const auto sandbox_command_args_exp = nsjail_util::make_command_args(
-        *nsjail_path_exp,
-        sandbox_artifacts_value,
-        command_args,
-        run_options_value
-    );
-    if(!sandbox_command_args_exp){
+    if(sandbox_command_args.empty()){
         _exit(127);
     }
 
     std::vector<char*> argv;
-    argv.reserve(sandbox_command_args_exp->size() + 1);
-    for(const auto& command_arg : *sandbox_command_args_exp){
+    argv.reserve(sandbox_command_args.size() + 1);
+    for(const auto& command_arg : sandbox_command_args){
         argv.push_back(const_cast<char*>(command_arg.c_str()));
     }
     argv.push_back(nullptr);
 
-    ::execv(nsjail_path_exp->c_str(), argv.data());
+    ::execv(sandbox_command_args.front().c_str(), argv.data());
     _exit(127);
 }
 
@@ -188,13 +174,22 @@ std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
         return std::unexpected(stderr_temp.error());
     }
 
-    auto sandbox_artifacts_exp = nsjail_util::prepare_sandbox_artifacts(
+    auto sandbox_artifacts_exp = nsjail_util::acquire_sandbox_artifacts(
         run_options_value.policy
     );
     if(!sandbox_artifacts_exp){
         return std::unexpected(sandbox_artifacts_exp.error());
     }
-    auto sandbox_artifacts_value = std::move(*sandbox_artifacts_exp);
+
+    const auto sandbox_command_args_exp = nsjail_util::make_command_args(
+        *nsjail_path_exp,
+        **sandbox_artifacts_exp,
+        command_args,
+        run_options_value
+    );
+    if(!sandbox_command_args_exp){
+        return std::unexpected(sandbox_command_args_exp.error());
+    }
 
     const char* input_path_string =
         run_options_value.input_path_opt
@@ -212,13 +207,10 @@ std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
 
     if(pid == 0){
         exec_child(
-            command_args,
+            *sandbox_command_args_exp,
             input_fd.get(),
             stdout_temp->get_fd(),
-            stderr_temp->get_fd(),
-            sandbox_artifacts_value.rootfs_path_,
-            sandbox_artifacts_value.seccomp_policy_path_,
-            run_options_value
+            stderr_temp->get_fd()
         );
     }
     else if(::setpgid(pid, pid) < 0 && errno != EACCES && errno != ESRCH){

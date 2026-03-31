@@ -103,6 +103,12 @@ void run_judge_worker_loop(
                 .field("action", "restart");
         }
 
+        sandbox_runner::invalidate_cached_artifacts();
+        logger::cerr()
+            .log("sandbox_artifact_cache_invalidated")
+            .field("scope", "all")
+            .field("reason", "worker_restart");
+
         std::this_thread::sleep_for(WORKER_RESTART_DELAY);
     }
 }

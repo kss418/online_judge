@@ -6,6 +6,7 @@
 #include "common/unique_fd.hpp"
 #include "judge_core/sandbox_runner.hpp"
 
+#include <array>
 #include <algorithm>
 #include <cctype>
 #include <cerrno>
@@ -17,6 +18,8 @@
 #include <unistd.h>
 
 #include <filesystem>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -28,6 +31,20 @@ namespace nsjail_util::detail{
     constexpr rlim_t default_run_nproc_limit = 64;
     constexpr rlim_t java_run_nproc_limit = 512;
     constexpr std::int64_t output_file_limit_mb = 8;
+    constexpr std::array<std::string_view, 6> readonly_mount_paths = {
+        "/usr",
+        "/bin",
+        "/sbin",
+        "/lib",
+        "/lib64",
+        "/etc"
+    };
+    constexpr std::array<std::string_view, 4> readonly_device_paths = {
+        "/dev/null",
+        "/dev/zero",
+        "/dev/random",
+        "/dev/urandom"
+    };
     std::string ascii_lowercase(std::string value){
         std::transform(
             value.begin(),
@@ -208,6 +225,44 @@ namespace nsjail_util::detail{
         return {};
     }
 
+    std::expected<void, error_code> prepare_fixed_mount_args(
+        std::vector<std::string>& fixed_mount_args,
+        const std::filesystem::path& rootfs_path
+    ){
+        fixed_mount_args.clear();
+        fixed_mount_args.reserve((readonly_mount_paths.size() + readonly_device_paths.size()) * 2);
+
+        for(const auto& ro_mount_text : readonly_mount_paths){
+            const std::filesystem::path ro_mount{ro_mount_text};
+            const auto append_mount_exp = append_mount_if_exists(
+                fixed_mount_args,
+                rootfs_path,
+                ro_mount,
+                ro_mount,
+                false
+            );
+            if(!append_mount_exp){
+                return std::unexpected(append_mount_exp.error());
+            }
+        }
+
+        for(const auto& device_path_text : readonly_device_paths){
+            const std::filesystem::path device_path{device_path_text};
+            const auto append_mount_exp = append_mount_if_exists(
+                fixed_mount_args,
+                rootfs_path,
+                device_path,
+                device_path,
+                false
+            );
+            if(!append_mount_exp){
+                return std::unexpected(append_mount_exp.error());
+            }
+        }
+
+        return {};
+    }
+
     std::expected<std::filesystem::path, error_code> prepare_rootfs_layout(
         const temp_dir& sandbox_dir
     ){
@@ -258,6 +313,112 @@ namespace nsjail_util::detail{
         }
 
         return default_run_nproc_limit;
+    }
+
+    std::expected<void, error_code> validate_sandbox_artifacts(
+        const nsjail_util::sandbox_artifacts& sandbox_artifacts_value
+    ){
+        std::error_code exists_ec;
+        const bool rootfs_exists = std::filesystem::is_directory(
+            sandbox_artifacts_value.rootfs_path_,
+            exists_ec
+        );
+        if(exists_ec){
+            return std::unexpected(error_code::create(error_code::map_errno(exists_ec.value())));
+        }
+        if(!rootfs_exists){
+            return std::unexpected(error_code::create(errno_error::file_not_found));
+        }
+
+        for(const std::filesystem::path& relative_dir : {
+                std::filesystem::path{"workspace"},
+                std::filesystem::path{"tmp"},
+                std::filesystem::path{"proc"},
+                std::filesystem::path{"dev"}
+            }){
+            const bool subdir_exists = std::filesystem::is_directory(
+                sandbox_artifacts_value.rootfs_path_ / relative_dir,
+                exists_ec
+            );
+            if(exists_ec){
+                return std::unexpected(
+                    error_code::create(error_code::map_errno(exists_ec.value()))
+                );
+            }
+            if(!subdir_exists){
+                return std::unexpected(error_code::create(errno_error::file_not_found));
+            }
+        }
+
+        const bool seccomp_exists = std::filesystem::exists(
+            sandbox_artifacts_value.seccomp_policy_path_,
+            exists_ec
+        );
+        if(exists_ec){
+            return std::unexpected(error_code::create(error_code::map_errno(exists_ec.value())));
+        }
+        if(!seccomp_exists){
+            return std::unexpected(error_code::create(errno_error::file_not_found));
+        }
+
+        return {};
+    }
+
+    struct sandbox_artifact_cache{
+        std::mutex mutex_;
+        std::shared_ptr<const nsjail_util::sandbox_artifacts> compile_artifacts_;
+        std::shared_ptr<const nsjail_util::sandbox_artifacts> run_artifacts_;
+    };
+
+    sandbox_artifact_cache& get_sandbox_artifact_cache(){
+        static sandbox_artifact_cache cache;
+        return cache;
+    }
+
+    std::shared_ptr<const nsjail_util::sandbox_artifacts>& get_cache_slot(
+        sandbox_artifact_cache& cache,
+        sandbox_runner::policy_profile policy_profile_value
+    ){
+        return policy_profile_value == sandbox_runner::policy_profile::compile
+            ? cache.compile_artifacts_
+            : cache.run_artifacts_;
+    }
+
+    std::expected<nsjail_util::sandbox_artifacts, error_code> build_sandbox_artifacts(
+        sandbox_runner::policy_profile policy_profile_value
+    ){
+        auto sandbox_dir_exp = temp_dir::create("/tmp/oj_nsjail_XXXXXX");
+        if(!sandbox_dir_exp){
+            return std::unexpected(sandbox_dir_exp.error());
+        }
+
+        const auto rootfs_path_exp = prepare_rootfs_layout(*sandbox_dir_exp);
+        if(!rootfs_path_exp){
+            return std::unexpected(rootfs_path_exp.error());
+        }
+
+        const auto seccomp_policy_path_exp = create_seccomp_policy_file(
+            *sandbox_dir_exp,
+            policy_profile_value
+        );
+        if(!seccomp_policy_path_exp){
+            return std::unexpected(seccomp_policy_path_exp.error());
+        }
+
+        nsjail_util::sandbox_artifacts sandbox_artifacts_value;
+        sandbox_artifacts_value.sandbox_dir_ = std::move(*sandbox_dir_exp);
+        sandbox_artifacts_value.rootfs_path_ = *rootfs_path_exp;
+        sandbox_artifacts_value.seccomp_policy_path_ = *seccomp_policy_path_exp;
+
+        const auto prepare_fixed_mount_args_exp = prepare_fixed_mount_args(
+            sandbox_artifacts_value.fixed_mount_args_,
+            sandbox_artifacts_value.rootfs_path_
+        );
+        if(!prepare_fixed_mount_args_exp){
+            return std::unexpected(prepare_fixed_mount_args_exp.error());
+        }
+
+        return sandbox_artifacts_value;
     }
 }
 
@@ -360,32 +521,39 @@ std::expected<void, error_code> nsjail_util::check_user_namespace_support(){
     return std::unexpected(error_code::create(errno_error::operation_not_supported));
 }
 
-std::expected<nsjail_util::sandbox_artifacts, error_code> nsjail_util::prepare_sandbox_artifacts(
+std::expected<std::shared_ptr<const nsjail_util::sandbox_artifacts>, error_code>
+nsjail_util::acquire_sandbox_artifacts(
     sandbox_runner::policy_profile policy_profile_value
 ){
-    auto sandbox_dir_exp = temp_dir::create("/tmp/oj_nsjail_XXXXXX");
-    if(!sandbox_dir_exp){
-        return std::unexpected(sandbox_dir_exp.error());
+    auto& cache = detail::get_sandbox_artifact_cache();
+    std::scoped_lock lock(cache.mutex_);
+
+    auto& cache_slot = detail::get_cache_slot(cache, policy_profile_value);
+    if(cache_slot){
+        const auto validate_sandbox_artifacts_exp = detail::validate_sandbox_artifacts(*cache_slot);
+        if(validate_sandbox_artifacts_exp){
+            return cache_slot;
+        }
+
+        cache_slot.reset();
     }
 
-    const auto rootfs_path_exp = detail::prepare_rootfs_layout(*sandbox_dir_exp);
-    if(!rootfs_path_exp){
-        return std::unexpected(rootfs_path_exp.error());
+    auto build_sandbox_artifacts_exp = detail::build_sandbox_artifacts(policy_profile_value);
+    if(!build_sandbox_artifacts_exp){
+        return std::unexpected(build_sandbox_artifacts_exp.error());
     }
 
-    const auto seccomp_policy_path_exp = detail::create_seccomp_policy_file(
-        *sandbox_dir_exp,
-        policy_profile_value
+    cache_slot = std::make_shared<const sandbox_artifacts>(
+        std::move(*build_sandbox_artifacts_exp)
     );
-    if(!seccomp_policy_path_exp){
-        return std::unexpected(seccomp_policy_path_exp.error());
-    }
+    return cache_slot;
+}
 
-    sandbox_artifacts sandbox_artifacts_value;
-    sandbox_artifacts_value.sandbox_dir_ = std::move(*sandbox_dir_exp);
-    sandbox_artifacts_value.rootfs_path_ = *rootfs_path_exp;
-    sandbox_artifacts_value.seccomp_policy_path_ = *seccomp_policy_path_exp;
-    return sandbox_artifacts_value;
+void nsjail_util::invalidate_all_sandbox_artifacts() noexcept{
+    auto& cache = detail::get_sandbox_artifact_cache();
+    std::scoped_lock lock(cache.mutex_);
+    cache.compile_artifacts_.reset();
+    cache.run_artifacts_.reset();
 }
 
 std::expected<std::vector<std::string>, error_code> nsjail_util::make_command_args(
@@ -400,7 +568,9 @@ std::expected<std::vector<std::string>, error_code> nsjail_util::make_command_ar
         std::max<std::int64_t>(1, (run_options_value.time_limit.count() + 999) / 1000);
 
     std::vector<std::string> sandbox_command_args;
-    sandbox_command_args.reserve(48 + command_args.size());
+    sandbox_command_args.reserve(
+        48 + sandbox_artifacts_value.fixed_mount_args_.size() + command_args.size()
+    );
     sandbox_command_args.push_back(nsjail_path.string());
     sandbox_command_args.push_back("-Me");
     sandbox_command_args.push_back("-Q");
@@ -434,44 +604,11 @@ std::expected<std::vector<std::string>, error_code> nsjail_util::make_command_ar
     sandbox_command_args.push_back(std::to_string(detail::make_process_limit(run_options_value)));
     sandbox_command_args.push_back("-P");
     sandbox_command_args.push_back(sandbox_artifacts_value.seccomp_policy_path_.string());
-
-    for(const std::filesystem::path& ro_mount : {
-            std::filesystem::path{"/usr"},
-            std::filesystem::path{"/bin"},
-            std::filesystem::path{"/sbin"},
-            std::filesystem::path{"/lib"},
-            std::filesystem::path{"/lib64"},
-            std::filesystem::path{"/etc"}
-        }){
-        const auto append_mount_exp = detail::append_mount_if_exists(
-            sandbox_command_args,
-            sandbox_artifacts_value.rootfs_path_,
-            ro_mount,
-            ro_mount,
-            false
-        );
-        if(!append_mount_exp){
-            return std::unexpected(append_mount_exp.error());
-        }
-    }
-
-    for(const std::filesystem::path& device_path : {
-            std::filesystem::path{"/dev/null"},
-            std::filesystem::path{"/dev/zero"},
-            std::filesystem::path{"/dev/random"},
-            std::filesystem::path{"/dev/urandom"}
-        }){
-        const auto append_mount_exp = detail::append_mount_if_exists(
-            sandbox_command_args,
-            sandbox_artifacts_value.rootfs_path_,
-            device_path,
-            device_path,
-            false
-        );
-        if(!append_mount_exp){
-            return std::unexpected(append_mount_exp.error());
-        }
-    }
+    sandbox_command_args.insert(
+        sandbox_command_args.end(),
+        sandbox_artifacts_value.fixed_mount_args_.begin(),
+        sandbox_artifacts_value.fixed_mount_args_.end()
+    );
 
     const auto append_workspace_mount_exp = detail::append_mount_if_exists(
         sandbox_command_args,
