@@ -656,9 +656,9 @@ printf '%s\n' "${summary_text}"
 append_summary_to_log "${summary_text}"
 
 metrics_log_path="$(
-    publish_log_file "${metrics_temp_file}" "test_judge_server_load_metrics.tsv"
+    publish_metric_file "${metrics_temp_file}" "test_judge_server_load_metrics.tsv"
 )"
-print_log_file_created "${metrics_log_path}"
+print_metric_file_created "${metrics_log_path}"
 publish_judge_server_failure_log
 
 failure_count="$(count_metric_failures "${metrics_temp_file}")"

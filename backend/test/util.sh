@@ -40,6 +40,36 @@ create_log_file(){
     printf '%s\n' "${log_file_path}"
 }
 
+create_metric_file(){
+    local metric_name="$1"
+    local metric_base_name=""
+    local metric_extension=""
+    local timestamp=""
+    local metric_file_path=""
+
+    if [[ -z "${metric_name}" ]]; then
+        echo "missing metric_name" >&2
+        return 1
+    fi
+
+    mkdir -p "${test_util_project_root}/metric"
+
+    timestamp="$(date +%y%m%d_%H%M%S)"
+
+    if [[ "${metric_name}" == *.* ]]; then
+        metric_base_name="${metric_name%.*}"
+        metric_extension=".${metric_name##*.}"
+    else
+        metric_base_name="${metric_name}"
+        metric_extension=""
+    fi
+
+    metric_file_path="${test_util_project_root}/metric/${metric_base_name}_${timestamp}${metric_extension}"
+    : > "${metric_file_path}"
+
+    printf '%s\n' "${metric_file_path}"
+}
+
 print_log_file_created(){
     local log_file_path="$1"
 
@@ -49,6 +79,17 @@ print_log_file_created(){
     fi
 
     printf 'created log file: %s\n' "${log_file_path}"
+}
+
+print_metric_file_created(){
+    local metric_file_path="$1"
+
+    if [[ -z "${metric_file_path}" ]]; then
+        echo "missing metric_file_path" >&2
+        return 1
+    fi
+
+    printf 'created metric file: %s\n' "${metric_file_path}"
 }
 
 append_log_line(){
@@ -103,4 +144,30 @@ publish_log_file(){
     cat "${source_log_file_path}" > "${published_log_file_path}"
 
     printf '%s\n' "${published_log_file_path}"
+}
+
+publish_metric_file(){
+    local source_metric_file_path="$1"
+    local metric_name="$2"
+    local published_metric_file_path=""
+
+    if [[ -z "${source_metric_file_path}" ]]; then
+        echo "missing source_metric_file_path" >&2
+        return 1
+    fi
+
+    if [[ -z "${metric_name}" ]]; then
+        echo "missing metric_name" >&2
+        return 1
+    fi
+
+    if [[ ! -f "${source_metric_file_path}" ]]; then
+        echo "source metric file does not exist: ${source_metric_file_path}" >&2
+        return 1
+    fi
+
+    published_metric_file_path="$(create_metric_file "${metric_name}")"
+    cat "${source_metric_file_path}" > "${published_metric_file_path}"
+
+    printf '%s\n' "${published_metric_file_path}"
 }

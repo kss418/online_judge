@@ -3,7 +3,7 @@ vcpkg_installed
 build
 .vscode
 .env
-log
+log/*
 runtime
 .codex
-metric
+metric/*

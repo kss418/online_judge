@@ -50,9 +50,9 @@ append_summary_to_log(){
 publish_db_failure_logs(){
     if [[ -n "${metrics_temp_file:-}" && -s "${metrics_temp_file}" ]]; then
         metrics_log_path="$(
-            publish_log_file "${metrics_temp_file}" "test_db_server_load_metrics.tsv"
+            publish_metric_file "${metrics_temp_file}" "test_db_server_load_metrics.tsv"
         )"
-        print_log_file_created "${metrics_log_path}"
+        print_metric_file_created "${metrics_log_path}"
     fi
 
     if [[ "$(type -t publish_failure_logs || true)" == "function" ]]; then
@@ -663,9 +663,9 @@ printf '%s\n' "${db_throughput_summary}"
 append_log_line "${test_log_temp_file}" "${db_throughput_summary}"
 
 metrics_log_path="$(
-    publish_log_file "${metrics_temp_file}" "test_db_server_load_metrics.tsv"
+    publish_metric_file "${metrics_temp_file}" "test_db_server_load_metrics.tsv"
 )"
-print_log_file_created "${metrics_log_path}"
+print_metric_file_created "${metrics_log_path}"
 
 failure_count="$(count_metric_failures "${metrics_temp_file}")"
 if [[ "${worker_wait_failed}" != "0" || "${failure_count}" != "0" ]]; then
