@@ -13,7 +13,62 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <optional>
 #include <utility>
+
+namespace{
+    struct scratch_files{
+        temp_file stdout_temp;
+        temp_file stderr_temp;
+    };
+
+    std::expected<void, error_code> reset_scratch_file(temp_file& scratch_file){
+        if(::ftruncate(scratch_file.get_fd(), 0) < 0){
+            return std::unexpected(error_code::create(error_code::map_errno(errno)));
+        }
+
+        if(::lseek(scratch_file.get_fd(), 0, SEEK_SET) < 0){
+            return std::unexpected(error_code::create(error_code::map_errno(errno)));
+        }
+
+        return {};
+    }
+
+    std::expected<scratch_files*, error_code> acquire_thread_local_scratch_files(){
+        thread_local std::optional<scratch_files> scratch_files_opt;
+
+        if(!scratch_files_opt.has_value()){
+            auto stdout_temp_exp = temp_file::create("/tmp/oj_stdout_XXXXXX");
+            if(!stdout_temp_exp){
+                return std::unexpected(stdout_temp_exp.error());
+            }
+
+            auto stderr_temp_exp = temp_file::create("/tmp/oj_stderr_XXXXXX");
+            if(!stderr_temp_exp){
+                return std::unexpected(stderr_temp_exp.error());
+            }
+
+            scratch_files_opt.emplace(
+                scratch_files{
+                    std::move(*stdout_temp_exp),
+                    std::move(*stderr_temp_exp)
+                }
+            );
+        }
+
+        const auto reset_stdout_exp = reset_scratch_file(scratch_files_opt->stdout_temp);
+        if(!reset_stdout_exp){
+            return std::unexpected(reset_stdout_exp.error());
+        }
+
+        const auto reset_stderr_exp = reset_scratch_file(scratch_files_opt->stderr_temp);
+        if(!reset_stderr_exp){
+            return std::unexpected(reset_stderr_exp.error());
+        }
+
+        return &*scratch_files_opt;
+    }
+}
 
 std::expected<void, error_code> sandbox_runner::startup_self_check(){
     const auto nsjail_path_exp = nsjail_util::require_nsjail_path();
@@ -164,15 +219,11 @@ std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
         return std::unexpected(error_code::create(limit_error::invalid_memory_limit));
     }
 
-    auto stdout_temp = temp_file::create("/tmp/oj_stdout_XXXXXX");
-    if(!stdout_temp){
-        return std::unexpected(stdout_temp.error());
+    auto scratch_files_exp = acquire_thread_local_scratch_files();
+    if(!scratch_files_exp){
+        return std::unexpected(scratch_files_exp.error());
     }
-
-    auto stderr_temp = temp_file::create("/tmp/oj_stderr_XXXXXX");
-    if(!stderr_temp){
-        return std::unexpected(stderr_temp.error());
-    }
+    scratch_files& scratch_files_value = **scratch_files_exp;
 
     auto sandbox_artifacts_exp = nsjail_util::acquire_sandbox_artifacts(
         run_options_value.policy
@@ -209,8 +260,8 @@ std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
         exec_child(
             *sandbox_command_args_exp,
             input_fd.get(),
-            stdout_temp->get_fd(),
-            stderr_temp->get_fd()
+            scratch_files_value.stdout_temp.get_fd(),
+            scratch_files_value.stderr_temp.get_fd()
         );
     }
     else if(::setpgid(pid, pid) < 0 && errno != EACCES && errno != ESRCH){
@@ -225,12 +276,16 @@ std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
     }
     auto wait_result = std::move(*wait_exp);
 
-    auto stdout_text_exp = blocking_io::read_all_from_start(stdout_temp->get_fd());
+    auto stdout_text_exp = blocking_io::read_all_from_start(
+        scratch_files_value.stdout_temp.get_fd()
+    );
     if(!stdout_text_exp){
         return std::unexpected(stdout_text_exp.error());
     }
 
-    auto stderr_text_exp = blocking_io::read_all_from_start(stderr_temp->get_fd());
+    auto stderr_text_exp = blocking_io::read_all_from_start(
+        scratch_files_value.stderr_temp.get_fd()
+    );
     if(!stderr_text_exp){
         return std::unexpected(stderr_text_exp.error());
     }
