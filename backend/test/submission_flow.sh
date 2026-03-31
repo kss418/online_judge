@@ -56,6 +56,7 @@ register_temp_file authenticated_list_submission_response_file
 register_temp_file solved_state_submission_response_file
 register_temp_file limited_submission_response_file
 register_temp_file paged_submission_response_file
+register_temp_file offset_submission_response_file
 register_temp_file language_filtered_submission_response_file
 register_temp_file invalid_limit_submission_response_file
 register_temp_file invalid_top_submission_response_file
@@ -818,7 +819,7 @@ print_success_log "submission list without filter success"
 list_submission_status_code="$(
     send_http_request \
         "GET" \
-        "${base_url}/api/submission?user_id=${sign_up_user_id}&problem_id=${problem_id}&status=queued" \
+        "${base_url}/api/submission?user_login_id=${user_login_id}&problem_id=${problem_id}&status=queued" \
         "${list_submission_response_file}"
 )"
 assert_status_code "${list_submission_status_code}" "200" "${list_submission_response_file}" "submission list"
@@ -827,7 +828,7 @@ print_success_log "submission list success"
 authenticated_list_submission_status_code="$(
     send_http_request \
         "GET" \
-        "${base_url}/api/submission?user_id=${sign_up_user_id}&problem_id=${problem_id}&status=queued" \
+        "${base_url}/api/submission?user_login_id=${user_login_id}&problem_id=${problem_id}&status=queued" \
         "${authenticated_list_submission_response_file}" \
         "${sign_up_token}"
 )"
@@ -841,7 +842,7 @@ print_success_log "authenticated submission list success"
 language_filtered_submission_status_code="$(
     send_http_request \
         "GET" \
-        "${base_url}/api/submission?user_id=${sign_up_user_id}&problem_id=${problem_id}&language=${second_submission_language}" \
+        "${base_url}/api/submission?user_login_id=${user_login_id}&problem_id=${problem_id}&language=${second_submission_language}" \
         "${language_filtered_submission_response_file}"
 )"
 assert_status_code \
@@ -854,7 +855,7 @@ print_success_log "language filtered submission list success"
 limited_submission_status_code="$(
     send_http_request \
         "GET" \
-        "${base_url}/api/submission?user_id=${sign_up_user_id}&problem_id=${problem_id}&limit=1" \
+        "${base_url}/api/submission?user_login_id=${user_login_id}&problem_id=${problem_id}&limit=1" \
         "${limited_submission_response_file}"
 )"
 assert_status_code "${limited_submission_status_code}" "200" "${limited_submission_response_file}" "submission limited list"
@@ -863,11 +864,20 @@ print_success_log "submission limited list success"
 paged_submission_status_code="$(
     send_http_request \
         "GET" \
-        "${base_url}/api/submission?user_id=${sign_up_user_id}&problem_id=${problem_id}&limit=1&page=2" \
+        "${base_url}/api/submission?user_login_id=${user_login_id}&problem_id=${problem_id}&limit=1&page=2" \
         "${paged_submission_response_file}"
 )"
 assert_status_code "${paged_submission_status_code}" "200" "${paged_submission_response_file}" "submission paged list"
 print_success_log "submission paged list success"
+
+offset_submission_status_code="$(
+    send_http_request \
+        "GET" \
+        "${base_url}/api/submission?user_login_id=${user_login_id}&problem_id=${problem_id}&limit=1&offset=1" \
+        "${offset_submission_response_file}"
+)"
+assert_status_code "${offset_submission_status_code}" "200" "${offset_submission_response_file}" "submission offset list"
+print_success_log "submission offset list success"
 
 invalid_limit_submission_status_code="$(
     send_http_request \
@@ -1515,6 +1525,53 @@ then
 fi
 
 if ! python3 \
+    - "${offset_submission_response_file}" \
+    "${submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "${submission_language}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    submission_list = json.load(response_file)
+
+expected_submission_id = int(sys.argv[2])
+expected_user_id = int(sys.argv[3])
+expected_problem_id = int(sys.argv[4])
+expected_language = sys.argv[5]
+
+if submission_list.get("submission_count") != 1:
+    raise SystemExit("expected submission_count to be 1 for offset submission list response")
+
+if submission_list.get("total_submission_count") != 2:
+    raise SystemExit("expected total_submission_count to be 2 for offset submission list response")
+
+submissions = submission_list.get("submissions")
+if not isinstance(submissions, list) or len(submissions) != 1:
+    raise SystemExit("expected one submission in offset submission list response")
+
+submission = submissions[0]
+
+if submission.get("submission_id") != expected_submission_id:
+    raise SystemExit("submission_id mismatch in offset submission list response")
+
+if submission.get("user_id") != expected_user_id:
+    raise SystemExit("user_id mismatch in offset submission list response")
+
+if submission.get("problem_id") != expected_problem_id:
+    raise SystemExit("problem_id mismatch in offset submission list response")
+
+if submission.get("language") != expected_language:
+    raise SystemExit("language mismatch in offset submission list response")
+PY
+then
+    append_log_line "${test_log_temp_file}" "submission offset list validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 \
     - "${invalid_top_submission_response_file}" <<'PY'
 import json
 import sys
@@ -1664,7 +1721,7 @@ fi
 solved_state_submission_status_code="$(
     send_http_request \
         "GET" \
-        "${base_url}/api/submission?user_id=${sign_up_user_id}&problem_id=${problem_id}" \
+        "${base_url}/api/submission?user_login_id=${user_login_id}&problem_id=${problem_id}" \
         "${solved_state_submission_response_file}" \
         "${sign_up_token}"
 )"

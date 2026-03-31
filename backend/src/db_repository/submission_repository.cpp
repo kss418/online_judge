@@ -19,6 +19,11 @@ namespace{
                 " AND submission_table.user_id = $" + std::to_string(query_param_index++);
             query_params.append(*filter_value.user_id_opt);
         }
+        if(filter_value.user_login_id_opt){
+            query +=
+                " AND user_table.user_login_id = $" + std::to_string(query_param_index++);
+            query_params.append(*filter_value.user_login_id_opt);
+        }
         if(filter_value.problem_id_opt){
             query +=
                 " AND submission_table.problem_id = $" + std::to_string(query_param_index++);
@@ -41,12 +46,14 @@ namespace{
         return
             (filter_value.page_opt && *filter_value.page_opt <= 0) ||
             (filter_value.user_id_opt && *filter_value.user_id_opt <= 0) ||
+            (filter_value.user_login_id_opt && filter_value.user_login_id_opt->empty()) ||
             (filter_value.problem_id_opt && *filter_value.problem_id_opt <= 0) ||
             (
                 filter_value.language_opt &&
                 !language_util::find_supported_language(*filter_value.language_opt)
             ) ||
             (filter_value.limit_opt && *filter_value.limit_opt <= 0) ||
+            (filter_value.offset_opt && *filter_value.offset_opt < 0) ||
             (filter_value.status_opt && !parse_submission_status(*filter_value.status_opt));
     }
 }
@@ -640,7 +647,9 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_repos
     const std::int32_t limit =
         filter_value.limit_opt.value_or(submission_dto::DEFAULT_LIST_LIMIT);
     const std::int64_t offset =
-        filter_value.page_opt
+        filter_value.offset_opt
+            ? *filter_value.offset_opt
+            : filter_value.page_opt
             ? static_cast<std::int64_t>(*filter_value.page_opt - 1) * static_cast<std::int64_t>(limit)
             : 0;
 
@@ -700,7 +709,7 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_repos
         " ORDER BY submission_table.submission_id DESC LIMIT $" + std::to_string(query_param_index++);
     query_params.append(limit);
 
-    if(filter_value.page_opt){
+    if(offset > 0){
         submission_list_query += " OFFSET $" + std::to_string(query_param_index++);
         query_params.append(offset);
     }
@@ -724,6 +733,8 @@ std::expected<std::int64_t, error_code> submission_repository::count_submissions
     std::string submission_count_query =
         "SELECT COUNT(*) "
         "FROM submissions submission_table "
+        "JOIN users user_table "
+        "ON user_table.user_id = submission_table.user_id "
         "WHERE 1 = 1";
     pqxx::params query_params;
     int query_param_index = 1;

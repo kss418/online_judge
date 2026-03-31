@@ -7,6 +7,16 @@
 
 #include <pqxx/pqxx>
 
+namespace{
+    std::optional<std::int64_t> parse_non_negative_int64(std::string_view raw_value){
+        if(raw_value == "0"){
+            return std::int64_t{0};
+        }
+
+        return string_util::parse_positive_int64(raw_value);
+    }
+}
+
 std::expected<submission_dto::source, dto_validation_error> submission_dto::make_source_from_json(
     const boost::json::object& json
 ){
@@ -77,6 +87,24 @@ submission_dto::make_list_filter_from_query_params(
             }
             continue;
         }
+        if(query_param.key == "user_login_id"){
+            const auto parse_user_login_id_exp = query_param_util::parse_unique_query_param(
+                filter_value.user_login_id_opt,
+                query_param.key,
+                query_param.value,
+                [](std::string_view raw_value) -> std::optional<std::string> {
+                    if(raw_value.empty()){
+                        return std::nullopt;
+                    }
+
+                    return std::string{raw_value};
+                }
+            );
+            if(!parse_user_login_id_exp){
+                return std::unexpected(parse_user_login_id_exp.error());
+            }
+            continue;
+        }
         if(query_param.key == "problem_id"){
             const auto parse_problem_id_exp = query_param_util::parse_unique_query_param(
                 filter_value.problem_id_opt,
@@ -136,6 +164,18 @@ submission_dto::make_list_filter_from_query_params(
             );
             if(!parse_limit_exp){
                 return std::unexpected(parse_limit_exp.error());
+            }
+            continue;
+        }
+        if(query_param.key == "offset"){
+            const auto parse_offset_exp = query_param_util::parse_unique_query_param(
+                filter_value.offset_opt,
+                query_param.key,
+                query_param.value,
+                parse_non_negative_int64
+            );
+            if(!parse_offset_exp){
+                return std::unexpected(parse_offset_exp.error());
             }
             continue;
         }

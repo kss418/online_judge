@@ -14,9 +14,11 @@
 
       <SubmissionsFilterBar
         v-model:problem-id-filter="selectedProblemIdFilter"
+        v-model:user-id-filter="selectedUserIdFilter"
         v-model:status-filter="selectedStatusFilter"
         v-model:language-filter="selectedLanguageFilter"
         :has-fixed-problem-id="hasFixedProblemId"
+        :show-user-id-filter="showUserIdFilter"
         :is-loading="isLoading"
         :is-loading-languages="isLoadingLanguages"
         :can-apply-filters="canApplyFilters"
@@ -126,11 +128,13 @@ const {
   activeSourceSubmissionId,
   copyButtonLabel,
   selectedProblemIdFilter,
+  selectedUserIdFilter,
   selectedStatusFilter,
   selectedLanguageFilter,
   submissionLanguageFilterOptions,
   canManageSubmissionRejudge,
   hasFixedProblemId,
+  showUserIdFilter,
   canApplyFilters,
   canResetFilters,
   totalPages,

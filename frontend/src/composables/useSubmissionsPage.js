@@ -76,6 +76,7 @@ export function useSubmissionsPage(){
   const rejudgingSubmissionIds = ref([])
   const isDocumentVisible = ref(typeof document === 'undefined' ? true : !document.hidden)
   const selectedProblemIdFilter = ref('')
+  const selectedUserIdFilter = ref('')
   const selectedStatusFilter = ref('')
   const selectedLanguageFilter = ref('')
   const supportedSubmissionLanguages = ref([])
@@ -121,6 +122,7 @@ export function useSubmissionsPage(){
       : null
   })
   const hasFixedProblemId = computed(() => fixedProblemId.value !== null)
+  const showUserIdFilter = computed(() => !isMineScope.value)
   const appliedProblemIdFilter = computed(() => {
     if (hasFixedProblemId.value) {
       return ''
@@ -133,6 +135,19 @@ export function useSubmissionsPage(){
 
     return Number.isInteger(parsedProblemId) && parsedProblemId > 0
       ? String(parsedProblemId)
+      : ''
+  })
+  const appliedUserIdFilter = computed(() => {
+    if (isMineScope.value) {
+      return ''
+    }
+
+    const userLoginIdQuery = Array.isArray(route.query.userLoginId)
+      ? route.query.userLoginId[0]
+      : route.query.userLoginId
+
+    return typeof userLoginIdQuery === 'string'
+      ? userLoginIdQuery.trim()
       : ''
   })
   const appliedStatusFilter = computed(() => {
@@ -173,14 +188,30 @@ export function useSubmissionsPage(){
       ? String(parsedProblemId)
       : null
   })
+  const normalizedSelectedUserIdFilter = computed(() => {
+    if (isMineScope.value) {
+      return ''
+    }
+
+    const trimmedUserLoginId = normalizeUserIdFilterInputValue(selectedUserIdFilter.value)
+    if (!trimmedUserLoginId) {
+      return ''
+    }
+
+    return trimmedUserLoginId
+  })
   const hasInvalidProblemIdFilter = computed(() =>
     !hasFixedProblemId.value && normalizedSelectedProblemIdFilter.value === null
   )
+  const hasInvalidUserIdFilter = computed(() => false)
   const canApplyFilters = computed(() =>
     !hasInvalidProblemIdFilter.value &&
+    !hasInvalidUserIdFilter.value &&
     (
       selectedStatusFilter.value !== appliedStatusFilter.value ||
       selectedLanguageFilter.value !== appliedLanguageFilter.value ||
+      (!isMineScope.value &&
+        normalizedSelectedUserIdFilter.value !== appliedUserIdFilter.value) ||
       (!hasFixedProblemId.value &&
         normalizedSelectedProblemIdFilter.value !== appliedProblemIdFilter.value)
     )
@@ -190,6 +221,10 @@ export function useSubmissionsPage(){
     Boolean(selectedLanguageFilter.value) ||
     hasAppliedStatusFilter.value ||
     Boolean(appliedLanguageFilter.value) ||
+    (!isMineScope.value && (
+      Boolean(normalizeUserIdFilterInputValue(selectedUserIdFilter.value)) ||
+      Boolean(appliedUserIdFilter.value)
+    )) ||
     (!hasFixedProblemId.value && (
       Boolean(normalizeProblemIdFilterInputValue(selectedProblemIdFilter.value)) ||
       Boolean(appliedProblemIdFilter.value)
@@ -256,16 +291,6 @@ export function useSubmissionsPage(){
 
     return scopeQuery === 'mine'
   })
-  const numericUserId = computed(() => {
-    const userIdQuery = Array.isArray(route.query.userId)
-      ? route.query.userId[0]
-      : route.query.userId
-
-    const parsedUserId = Number.parseInt(userIdQuery, 10)
-    return Number.isInteger(parsedUserId) && parsedUserId > 0
-      ? parsedUserId
-      : null
-  })
   const activeUserId = computed(() => {
     if (isMineScope.value) {
       const currentUserId = Number(authState.currentUser?.id)
@@ -274,7 +299,14 @@ export function useSubmissionsPage(){
         : null
     }
 
-    return numericUserId.value
+    return null
+  })
+  const activeUserLoginId = computed(() => {
+    if (isMineScope.value) {
+      return ''
+    }
+
+    return appliedUserIdFilter.value
   })
   const pageTitle = computed(() =>
     isMineScope.value && numericProblemId.value
@@ -321,6 +353,14 @@ export function useSubmissionsPage(){
   watch(appliedProblemIdFilter, (problemId) => {
     if (!hasFixedProblemId.value) {
       selectedProblemIdFilter.value = problemId
+    }
+  }, {
+    immediate: true
+  })
+
+  watch(appliedUserIdFilter, (userId) => {
+    if (!isMineScope.value) {
+      selectedUserIdFilter.value = userId
     }
   }, {
     immediate: true
@@ -380,7 +420,7 @@ export function useSubmissionsPage(){
     [
       () => route.name,
       numericProblemId,
-      numericUserId,
+      appliedUserIdFilter,
       isMineScope,
       appliedLanguageFilter,
       appliedStatusFilter
@@ -400,6 +440,14 @@ export function useSubmissionsPage(){
   }
 
   function normalizeProblemIdFilterInputValue(value){
+    if (value === null || typeof value === 'undefined') {
+      return ''
+    }
+
+    return String(value).trim()
+  }
+
+  function normalizeUserIdFilterInputValue(value){
     if (value === null || typeof value === 'undefined') {
       return ''
     }
@@ -439,7 +487,7 @@ export function useSubmissionsPage(){
     }
   }
 
-  function makeSubmissionFilterQuery(problemId, status, language){
+  function makeSubmissionFilterQuery(problemId, userId, status, language){
     const nextQuery = {
       ...route.query
     }
@@ -451,6 +499,18 @@ export function useSubmissionsPage(){
         delete nextQuery.problemId
       }
     }
+
+    if (!isMineScope.value) {
+      if (userId) {
+        nextQuery.userLoginId = userId
+      } else {
+        delete nextQuery.userLoginId
+      }
+    } else {
+      delete nextQuery.userLoginId
+    }
+
+    delete nextQuery.userId
 
     if (status) {
       nextQuery.status = status
@@ -477,6 +537,7 @@ export function useSubmissionsPage(){
       params: route.params,
       query: makeSubmissionFilterQuery(
         normalizedSelectedProblemIdFilter.value || '',
+        normalizedSelectedUserIdFilter.value || '',
         selectedStatusFilter.value,
         selectedLanguageFilter.value
       )
@@ -485,6 +546,7 @@ export function useSubmissionsPage(){
 
   async function resetSubmissionFilters(){
     selectedProblemIdFilter.value = ''
+    selectedUserIdFilter.value = ''
     selectedStatusFilter.value = ''
     selectedLanguageFilter.value = ''
 
@@ -495,7 +557,7 @@ export function useSubmissionsPage(){
     await router.replace({
       name: route.name,
       params: route.params,
-      query: makeSubmissionFilterQuery('', '', '')
+      query: makeSubmissionFilterQuery('', '', '', '')
     })
   }
 
@@ -1058,6 +1120,7 @@ export function useSubmissionsPage(){
     const targetPageNumber = Number.isInteger(options.pageNumber) && options.pageNumber > 0
       ? options.pageNumber
       : currentPage.value
+    const targetOffset = (targetPageNumber - 1) * listLimit
     const requestId = ++latestLoadRequestId
     isLoading.value = true
     errorMessage.value = ''
@@ -1076,9 +1139,10 @@ export function useSubmissionsPage(){
     try {
       const response = await getSubmissionList({
         limit: listLimit,
-        page: targetPageNumber,
+        offset: targetOffset,
         problemId: numericProblemId.value ?? undefined,
         userId: activeUserId.value ?? undefined,
+        userLoginId: activeUserLoginId.value || undefined,
         language: appliedLanguageFilter.value || undefined,
         status: appliedStatusFilter.value || undefined,
         bearerToken: authenticatedBearerToken.value
@@ -1108,7 +1172,6 @@ export function useSubmissionsPage(){
               max_rss_kb: typeof submission.max_rss_kb === 'number' ? submission.max_rss_kb : null
             }
           })
-          .sort((left, right) => right.submission_id - left.submission_id)
         : []
 
       const normalizedTotalSubmissionCount = Number(
@@ -1183,6 +1246,7 @@ export function useSubmissionsPage(){
     startRelativeTimeRefresh()
     handleDocumentVisibilityChange()
     selectedProblemIdFilter.value = appliedProblemIdFilter.value
+    selectedUserIdFilter.value = appliedUserIdFilter.value
     selectedStatusFilter.value = appliedStatusFilter.value
     selectedLanguageFilter.value = appliedLanguageFilter.value
 
@@ -1236,11 +1300,13 @@ export function useSubmissionsPage(){
     activeSourceSubmissionId,
     copyButtonLabel,
     selectedProblemIdFilter,
+    selectedUserIdFilter,
     selectedStatusFilter,
     selectedLanguageFilter,
     submissionLanguageFilterOptions,
     canManageSubmissionRejudge,
     hasFixedProblemId,
+    showUserIdFilter,
     canApplyFilters,
     canResetFilters,
     totalPages,

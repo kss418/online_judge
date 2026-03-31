@@ -94,10 +94,12 @@ namespace submission_dto{
     struct list_filter{
         std::optional<std::int32_t> page_opt = std::nullopt;
         std::optional<std::int64_t> user_id_opt = std::nullopt;
+        std::optional<std::string> user_login_id_opt = std::nullopt;
         std::optional<std::int64_t> problem_id_opt = std::nullopt;
         std::optional<std::string> language_opt = std::nullopt;
         std::optional<std::string> status_opt = std::nullopt;
         std::optional<std::int32_t> limit_opt = std::nullopt;
+        std::optional<std::int64_t> offset_opt = std::nullopt;
     };
 
     struct queued_submission{

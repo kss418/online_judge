@@ -19,6 +19,23 @@
         />
       </div>
 
+      <div
+        v-if="showUserIdFilter"
+        class="submission-filter-group"
+      >
+        <label class="submission-filter-label" for="submission-user-filter">로그인 ID</label>
+        <input
+          id="submission-user-filter"
+          :value="userIdFilter"
+          class="submission-filter-input"
+          type="text"
+          inputmode="text"
+          placeholder="예: root"
+          :disabled="isLoading"
+          @input="$emit('update:userIdFilter', $event.target.value)"
+        />
+      </div>
+
       <div class="submission-filter-group">
         <label class="submission-filter-label" for="submission-status-filter">상태 필터</label>
         <select
@@ -85,6 +102,10 @@ defineProps({
     type: String,
     default: ''
   },
+  userIdFilter: {
+    type: String,
+    default: ''
+  },
   statusFilter: {
     type: String,
     default: ''
@@ -94,6 +115,10 @@ defineProps({
     default: ''
   },
   hasFixedProblemId: {
+    type: Boolean,
+    required: true
+  },
+  showUserIdFilter: {
     type: Boolean,
     required: true
   },
@@ -125,6 +150,7 @@ defineProps({
 
 defineEmits([
   'update:problemIdFilter',
+  'update:userIdFilter',
   'update:statusFilter',
   'update:languageFilter',
   'apply',

@@ -9,6 +9,10 @@ export async function getSubmissionList(options = {}){
     searchParams.set('page', String(options.page))
   }
 
+  if (Number.isInteger(options.offset) && options.offset >= 0) {
+    searchParams.set('offset', String(options.offset))
+  }
+
   if (Number.isInteger(options.limit) && options.limit > 0) {
     searchParams.set('limit', String(options.limit))
   }
@@ -19,6 +23,10 @@ export async function getSubmissionList(options = {}){
 
   if (Number.isInteger(options.userId) && options.userId > 0) {
     searchParams.set('user_id', String(options.userId))
+  }
+
+  if (options.userLoginId?.trim()) {
+    searchParams.set('user_login_id', options.userLoginId.trim())
   }
 
   if (options.language?.trim()) {
