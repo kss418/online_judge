@@ -188,68 +188,20 @@ std::expected<submission_dto::list_filter, http_util::response_type>
 http_util::parse_submission_list_filter_or_400(
     const request_type& request
 ){
-    const std::string_view target{
-        request.target().data(),
-        request.target().size()
-    };
-    const auto query_opt = get_target_query(target);
-    const auto query_params_opt = parse_query_params(query_opt.value_or(""));
-    if(!query_params_opt){
-        return std::unexpected(http_response_util::create_error(
-            request,
-            boost::beast::http::status::bad_request,
-            "invalid_query_string",
-            "invalid query string"
-        ));
-    }
-
-    const auto filter_exp = submission_dto::make_list_filter_from_query_params(*query_params_opt);
-    if(!filter_exp){
-        const auto& validation_error = filter_exp.error();
-        return std::unexpected(http_response_util::create_error(
-            request,
-            boost::beast::http::status::bad_request,
-            validation_error.code,
-            validation_error.message,
-            validation_error.field_opt
-        ));
-    }
-
-    return *filter_exp;
+    return parse_query_dto_or_400<submission_dto::list_filter>(
+        request,
+        submission_dto::make_list_filter_from_query_params
+    );
 }
 
 std::expected<problem_dto::list_filter, http_util::response_type>
 http_util::parse_problem_list_filter_or_400(
     const request_type& request
 ){
-    const std::string_view target{
-        request.target().data(),
-        request.target().size()
-    };
-    const auto query_opt = get_target_query(target);
-    const auto query_params_opt = parse_query_params(query_opt.value_or(""));
-    if(!query_params_opt){
-        return std::unexpected(http_response_util::create_error(
-            request,
-            boost::beast::http::status::bad_request,
-            "invalid_query_string",
-            "invalid query string"
-        ));
-    }
-
-    const auto filter_exp = problem_dto::make_list_filter_from_query_params(*query_params_opt);
-    if(!filter_exp){
-        const auto& validation_error = filter_exp.error();
-        return std::unexpected(http_response_util::create_error(
-            request,
-            boost::beast::http::status::bad_request,
-            validation_error.code,
-            validation_error.message,
-            validation_error.field_opt
-        ));
-    }
-
-    return *filter_exp;
+    return parse_query_dto_or_400<problem_dto::list_filter>(
+        request,
+        problem_dto::make_list_filter_from_query_params
+    );
 }
 
 std::expected<auth_dto::token, http_util::response_type> http_util::parse_bearer_token_or_401(

@@ -25,6 +25,12 @@ namespace http_util{
     using request_type = http_response_util::request_type;
     using response_type = http_response_util::response_type;
 
+    std::string_view get_target_path(std::string_view target);
+    std::optional<std::string_view> get_target_query(std::string_view target);
+    std::optional<std::vector<query_param>> parse_query_params(
+        std::string_view query
+    );
+
     std::optional<boost::json::object> parse_json_object(
         const request_type& request
     );
@@ -62,6 +68,46 @@ namespace http_util{
 
         return std::move(*dto_exp);
     }
+    
+    template <typename dto_type, typename factory_type, typename... arg_types>
+    std::expected<dto_type, response_type> parse_query_dto_or_400(
+        const request_type& request,
+        factory_type&& factory,
+        arg_types&&... args
+    ){
+        const std::string_view target{
+            request.target().data(),
+            request.target().size()
+        };
+        const auto query_opt = get_target_query(target);
+        const auto query_params_opt = parse_query_params(query_opt.value_or(""));
+        if(!query_params_opt){
+            return std::unexpected(http_response_util::create_error(
+                request,
+                boost::beast::http::status::bad_request,
+                "invalid_query_string",
+                "invalid query string"
+            ));
+        }
+
+        auto dto_exp = std::invoke(
+            std::forward<factory_type>(factory),
+            *query_params_opt,
+            std::forward<arg_types>(args)...
+        );
+        if(!dto_exp){
+            const auto& validation_error = dto_exp.error();
+            return std::unexpected(http_response_util::create_error(
+                request,
+                boost::beast::http::status::bad_request,
+                validation_error.code,
+                validation_error.message,
+                validation_error.field_opt
+            ));
+        }
+
+        return std::move(*dto_exp);
+    }
     std::optional<std::string_view> get_string_field(
         const boost::json::object& object,
         std::string_view key
@@ -81,11 +127,6 @@ namespace http_util{
     std::optional<std::vector<std::string_view>> parse_path(
         std::string_view prefix,
         std::string_view path
-    );
-    std::string_view get_target_path(std::string_view target);
-    std::optional<std::string_view> get_target_query(std::string_view target);
-    std::optional<std::vector<query_param>> parse_query_params(
-        std::string_view query
     );
     std::expected<submission_dto::list_filter, response_type>
     parse_submission_list_filter_or_400(
