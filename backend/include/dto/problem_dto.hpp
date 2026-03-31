@@ -103,6 +103,12 @@ namespace problem_dto{
 
     struct list_filter{
         std::optional<std::string> title_opt = std::nullopt;
+        std::optional<std::int64_t> problem_id_opt = std::nullopt;
+        std::optional<std::string> state_opt = std::nullopt;
+        std::optional<std::string> sort_opt = std::nullopt;
+        std::optional<std::string> direction_opt = std::nullopt;
+        std::optional<std::int32_t> limit_opt = std::nullopt;
+        std::optional<std::int64_t> offset_opt = std::nullopt;
     };
 
     std::expected<create_request, dto_validation_error> make_create_request_from_json(

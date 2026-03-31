@@ -5,6 +5,65 @@
 #include <string>
 #include <utility>
 
+namespace{
+    std::string resolve_problem_list_sort_direction(const problem_dto::list_filter& filter_value){
+        if(filter_value.direction_opt){
+            return *filter_value.direction_opt;
+        }
+
+        if(!filter_value.sort_opt){
+            return "desc";
+        }
+
+        if(*filter_value.sort_opt == "problem_id"){
+            return "asc";
+        }
+
+        return "desc";
+    }
+
+    bool has_invalid_problem_list_filter(
+        const problem_dto::list_filter& filter_value,
+        std::optional<std::int64_t> viewer_user_id_opt
+    ){
+        return
+            (filter_value.title_opt && filter_value.title_opt->empty()) ||
+            (filter_value.problem_id_opt && *filter_value.problem_id_opt <= 0) ||
+            (filter_value.limit_opt && *filter_value.limit_opt <= 0) ||
+            (filter_value.offset_opt && *filter_value.offset_opt < 0) ||
+            (filter_value.state_opt && !viewer_user_id_opt) ||
+            (viewer_user_id_opt && *viewer_user_id_opt <= 0);
+    }
+
+    void append_problem_list_filter_clauses(
+        std::string& query,
+        pqxx::params& query_params,
+        int& query_param_index,
+        const problem_dto::list_filter& filter_value
+    ){
+        query += "WHERE 1 = 1";
+
+        if(filter_value.title_opt){
+            query += " AND p.title ILIKE $" + std::to_string(query_param_index++);
+            query_params.append("%" + *filter_value.title_opt + "%");
+        }
+
+        if(filter_value.problem_id_opt){
+            query += " AND p.problem_id = $" + std::to_string(query_param_index++);
+            query_params.append(*filter_value.problem_id_opt);
+        }
+
+        if(filter_value.state_opt){
+            if(*filter_value.state_opt == "solved"){
+                query += " AND COALESCE(ups.accepted_submission_count, 0) > 0";
+            }
+            else if(*filter_value.state_opt == "unsolved"){
+                query += " AND COALESCE(ups.accepted_submission_count, 0) = 0";
+            }
+        }
+    }
+}
+
 std::expected<problem_dto::existence, error_code> problem_core_repository::exists_problem(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
@@ -193,10 +252,7 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_reposi
     const problem_dto::list_filter& filter_value,
     std::optional<std::int64_t> viewer_user_id_opt
 ){
-    if(
-        (filter_value.title_opt && filter_value.title_opt->empty()) ||
-        (viewer_user_id_opt && *viewer_user_id_opt <= 0)
-    ){
+    if(has_invalid_problem_list_filter(filter_value, viewer_user_id_opt)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -239,16 +295,64 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_reposi
         query_params.append(*viewer_user_id_opt);
     }
 
-    problem_list_query +=
-        "WHERE 1 = 1";
+    append_problem_list_filter_clauses(
+        problem_list_query,
+        query_params,
+        query_param_index,
+        filter_value
+    );
 
-    if(filter_value.title_opt){
+    const std::string sort_direction = resolve_problem_list_sort_direction(filter_value);
+    if(!filter_value.sort_opt){
+        problem_list_query += " ORDER BY p.problem_id DESC";
+    }
+    else if(*filter_value.sort_opt == "problem_id"){
+        problem_list_query += " ORDER BY p.problem_id " + sort_direction;
+    }
+    else if(*filter_value.sort_opt == "accepted_count"){
         problem_list_query +=
-            " AND p.title ILIKE $" + std::to_string(query_param_index++);
-        query_params.append("%" + *filter_value.title_opt + "%");
+            " ORDER BY COALESCE(ps.accepted_count, 0) " + sort_direction +
+            ", p.problem_id ASC";
+    }
+    else if(*filter_value.sort_opt == "submission_count"){
+        problem_list_query +=
+            " ORDER BY COALESCE(ps.submission_count, 0) " + sort_direction +
+            ", p.problem_id ASC";
+    }
+    else if(*filter_value.sort_opt == "acceptance_rate"){
+        if(sort_direction == "asc"){
+            problem_list_query +=
+                " ORDER BY "
+                "CASE WHEN COALESCE(ps.submission_count, 0) > 0 THEN 1 ELSE 0 END ASC, "
+                "COALESCE("
+                "COALESCE(ps.accepted_count, 0)::DOUBLE PRECISION / "
+                "NULLIF(COALESCE(ps.submission_count, 0), 0), "
+                "0.0"
+                ") ASC, "
+                "p.problem_id ASC";
+        }
+        else{
+            problem_list_query +=
+                " ORDER BY "
+                "CASE WHEN COALESCE(ps.submission_count, 0) > 0 THEN 0 ELSE 1 END ASC, "
+                "COALESCE("
+                "COALESCE(ps.accepted_count, 0)::DOUBLE PRECISION / "
+                "NULLIF(COALESCE(ps.submission_count, 0), 0), "
+                "0.0"
+                ") DESC, "
+                "p.problem_id ASC";
+        }
     }
 
-    problem_list_query += " ORDER BY p.problem_id DESC";
+    if(filter_value.limit_opt){
+        problem_list_query += " LIMIT $" + std::to_string(query_param_index++);
+        query_params.append(*filter_value.limit_opt);
+    }
+
+    if(filter_value.offset_opt){
+        problem_list_query += " OFFSET $" + std::to_string(query_param_index++);
+        query_params.append(*filter_value.offset_opt);
+    }
 
     const auto problem_summary_query = transaction.exec(
         problem_list_query,
@@ -256,6 +360,47 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_reposi
     );
 
     return problem_dto::make_summary_list_from_result(problem_summary_query);
+}
+
+std::expected<std::int64_t, error_code> problem_core_repository::count_problems(
+    pqxx::transaction_base& transaction,
+    const problem_dto::list_filter& filter_value,
+    std::optional<std::int64_t> viewer_user_id_opt
+){
+    if(has_invalid_problem_list_filter(filter_value, viewer_user_id_opt)){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    std::string problem_count_query =
+        "SELECT COUNT(*) "
+        "FROM problems AS p ";
+    pqxx::params query_params;
+    int query_param_index = 1;
+
+    if(viewer_user_id_opt){
+        problem_count_query +=
+            "LEFT JOIN user_problem_attempt_summary AS ups "
+            "ON ups.problem_id = p.problem_id "
+            "AND ups.user_id = $" + std::to_string(query_param_index++) + " ";
+        query_params.append(*viewer_user_id_opt);
+    }
+
+    append_problem_list_filter_clauses(
+        problem_count_query,
+        query_params,
+        query_param_index,
+        filter_value
+    );
+
+    const auto problem_count_result = transaction.exec(
+        problem_count_query,
+        query_params
+    );
+    if(problem_count_result.empty()){
+        return std::unexpected(error_code::create(errno_error::unknown_error));
+    }
+
+    return problem_count_result[0][0].as<std::int64_t>();
 }
 
 std::expected<std::vector<problem_dto::summary>, error_code>

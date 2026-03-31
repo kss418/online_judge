@@ -43,6 +43,11 @@ register_temp_file list_problem_response_file
 register_temp_file authenticated_list_problem_response_file
 register_temp_file filtered_problem_response_file
 register_temp_file missing_problem_response_file
+register_temp_file filtered_problem_id_response_file
+register_temp_file solved_problem_response_file
+register_temp_file sorted_limited_problem_response_file
+register_temp_file offset_problem_response_file
+register_temp_file invalid_state_problem_response_file
 register_temp_file invalid_query_response_file
 register_temp_file invalid_token_response_file
 
@@ -159,12 +164,16 @@ with open(response_file_path, encoding="utf-8") as response_file:
 
 if response.get("problem_count") != 4:
     raise SystemExit("problem_count mismatch")
+if response.get("total_problem_count") != 4:
+    raise SystemExit("total_problem_count mismatch")
 
 expected_problems = [
     {
         "problem_id": fourth_problem_id,
         "title": "Queue Later",
         "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
         "submission_count": 0,
         "accepted_count": 0,
         "user_problem_state": None,
@@ -173,6 +182,8 @@ expected_problems = [
         "problem_id": third_problem_id,
         "title": "Multiply",
         "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
         "submission_count": 1,
         "accepted_count": 0,
         "user_problem_state": None,
@@ -181,6 +192,8 @@ expected_problems = [
         "problem_id": second_problem_id,
         "title": "plus one",
         "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
         "submission_count": 1,
         "accepted_count": 0,
         "user_problem_state": None,
@@ -189,6 +202,8 @@ expected_problems = [
         "problem_id": first_problem_id,
         "title": "A Plus B",
         "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
         "submission_count": 1,
         "accepted_count": 1,
         "user_problem_state": None,
@@ -231,6 +246,8 @@ expected_problems = [
         "problem_id": fourth_problem_id,
         "title": "Queue Later",
         "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
         "submission_count": 0,
         "accepted_count": 0,
         "user_problem_state": None,
@@ -239,6 +256,8 @@ expected_problems = [
         "problem_id": third_problem_id,
         "title": "Multiply",
         "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
         "submission_count": 1,
         "accepted_count": 0,
         "user_problem_state": None,
@@ -247,6 +266,8 @@ expected_problems = [
         "problem_id": second_problem_id,
         "title": "plus one",
         "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
         "submission_count": 1,
         "accepted_count": 0,
         "user_problem_state": "wrong",
@@ -255,6 +276,8 @@ expected_problems = [
         "problem_id": first_problem_id,
         "title": "A Plus B",
         "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
         "submission_count": 1,
         "accepted_count": 1,
         "user_problem_state": "solved",
@@ -263,6 +286,8 @@ expected_problems = [
 
 if response.get("problem_count") != 4:
     raise SystemExit("authenticated problem_count mismatch")
+if response.get("total_problem_count") != 4:
+    raise SystemExit("authenticated total_problem_count mismatch")
 if response.get("problems") != expected_problems:
     raise SystemExit("authenticated problem list mismatch")
 PY
@@ -294,12 +319,16 @@ with open(response_file_path, encoding="utf-8") as response_file:
 
 if response.get("problem_count") != 2:
     raise SystemExit("filtered problem_count mismatch")
+if response.get("total_problem_count") != 2:
+    raise SystemExit("filtered total_problem_count mismatch")
 
 expected_problems = [
     {
         "problem_id": second_problem_id,
         "title": "plus one",
         "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
         "submission_count": 1,
         "accepted_count": 0,
         "user_problem_state": None,
@@ -308,6 +337,8 @@ expected_problems = [
         "problem_id": first_problem_id,
         "title": "A Plus B",
         "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
         "submission_count": 1,
         "accepted_count": 1,
         "user_problem_state": None,
@@ -326,6 +357,228 @@ print_success_log "problem list title filter validated"
 
 send_http_request_and_assert_status \
     "GET" \
+    "${base_url}/api/problem?problem_id=${second_problem_id}" \
+    "${filtered_problem_id_response_file}" \
+    "200" \
+    "problem_id filtered problem list"
+
+if ! python3 - "${filtered_problem_id_response_file}" "${second_problem_id}" <<'PY'
+import json
+import sys
+
+response_file_path = sys.argv[1]
+second_problem_id = int(sys.argv[2])
+
+with open(response_file_path, encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("problem_count") != 1:
+    raise SystemExit("problem_id filtered problem_count mismatch")
+if response.get("total_problem_count") != 1:
+    raise SystemExit("problem_id filtered total_problem_count mismatch")
+
+expected_problems = [
+    {
+        "problem_id": second_problem_id,
+        "title": "plus one",
+        "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
+        "submission_count": 1,
+        "accepted_count": 0,
+        "user_problem_state": None,
+    },
+]
+if response.get("problems") != expected_problems:
+    raise SystemExit("problem_id filtered problem list mismatch")
+PY
+then
+    append_log_line "${test_log_temp_file}" "problem_id filtered problem list response validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+print_success_log "problem list problem_id filter validated"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem?state=solved" \
+    "${solved_problem_response_file}" \
+    "200" \
+    "solved problem list" \
+    "${sign_up_token}"
+
+if ! python3 - "${solved_problem_response_file}" "${first_problem_id}" <<'PY'
+import json
+import sys
+
+response_file_path = sys.argv[1]
+first_problem_id = int(sys.argv[2])
+
+with open(response_file_path, encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("problem_count") != 1:
+    raise SystemExit("solved problem_count mismatch")
+if response.get("total_problem_count") != 1:
+    raise SystemExit("solved total_problem_count mismatch")
+
+expected_problems = [
+    {
+        "problem_id": first_problem_id,
+        "title": "A Plus B",
+        "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
+        "submission_count": 1,
+        "accepted_count": 1,
+        "user_problem_state": "solved",
+    },
+]
+if response.get("problems") != expected_problems:
+    raise SystemExit("solved problem list mismatch")
+PY
+then
+    append_log_line "${test_log_temp_file}" "solved problem list response validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+print_success_log "problem list state filter validated"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem?sort=accepted_count&limit=2" \
+    "${sorted_limited_problem_response_file}" \
+    "200" \
+    "sorted limited problem list"
+
+if ! python3 - "${sorted_limited_problem_response_file}" "${first_problem_id}" "${second_problem_id}" <<'PY'
+import json
+import sys
+
+response_file_path = sys.argv[1]
+first_problem_id = int(sys.argv[2])
+second_problem_id = int(sys.argv[3])
+
+with open(response_file_path, encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("problem_count") != 2:
+    raise SystemExit("sorted limited problem_count mismatch")
+if response.get("total_problem_count") != 4:
+    raise SystemExit("sorted limited total_problem_count mismatch")
+
+expected_problems = [
+    {
+        "problem_id": first_problem_id,
+        "title": "A Plus B",
+        "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
+        "submission_count": 1,
+        "accepted_count": 1,
+        "user_problem_state": None,
+    },
+    {
+        "problem_id": second_problem_id,
+        "title": "plus one",
+        "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
+        "submission_count": 1,
+        "accepted_count": 0,
+        "user_problem_state": None,
+    },
+]
+if response.get("problems") != expected_problems:
+    raise SystemExit("sorted limited problem list mismatch")
+PY
+then
+    append_log_line "${test_log_temp_file}" "sorted limited problem list response validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+print_success_log "problem list sort and limit validated"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem?sort=problem_id&direction=asc&limit=2&offset=1" \
+    "${offset_problem_response_file}" \
+    "200" \
+    "offset problem list"
+
+if ! python3 - "${offset_problem_response_file}" "${second_problem_id}" "${third_problem_id}" <<'PY'
+import json
+import sys
+
+response_file_path = sys.argv[1]
+second_problem_id = int(sys.argv[2])
+third_problem_id = int(sys.argv[3])
+
+with open(response_file_path, encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("problem_count") != 2:
+    raise SystemExit("offset problem_count mismatch")
+if response.get("total_problem_count") != 4:
+    raise SystemExit("offset total_problem_count mismatch")
+
+expected_problems = [
+    {
+        "problem_id": second_problem_id,
+        "title": "plus one",
+        "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
+        "submission_count": 1,
+        "accepted_count": 0,
+        "user_problem_state": None,
+    },
+    {
+        "problem_id": third_problem_id,
+        "title": "Multiply",
+        "version": 1,
+        "time_limit_ms": 0,
+        "memory_limit_mb": 0,
+        "submission_count": 1,
+        "accepted_count": 0,
+        "user_problem_state": None,
+    },
+]
+if response.get("problems") != expected_problems:
+    raise SystemExit("offset problem list mismatch")
+PY
+then
+    append_log_line "${test_log_temp_file}" "offset problem list response validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+print_success_log "problem list offset validated"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem?state=solved" \
+    "${invalid_state_problem_response_file}" \
+    "400" \
+    "invalid anonymous state problem list"
+assert_json_error_code \
+    "${invalid_state_problem_response_file}" \
+    "invalid_query_parameter" \
+    "invalid anonymous state problem list"
+assert_json_error_message \
+    "${invalid_state_problem_response_file}" \
+    "invalid query parameter: state" \
+    "invalid anonymous state problem list"
+assert_json_error_field \
+    "${invalid_state_problem_response_file}" \
+    "state" \
+    "invalid anonymous state problem list"
+
+send_http_request_and_assert_status \
+    "GET" \
     "${base_url}/api/problem?title=divide" \
     "${missing_problem_response_file}" \
     "200" \
@@ -340,6 +593,8 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
 
 if response.get("problem_count") != 0:
     raise SystemExit("missing title problem_count mismatch")
+if response.get("total_problem_count") != 0:
+    raise SystemExit("missing title total_problem_count mismatch")
 if response.get("problems") != []:
     raise SystemExit("missing title problems mismatch")
 PY

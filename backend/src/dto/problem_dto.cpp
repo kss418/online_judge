@@ -1,9 +1,49 @@
 #include "dto/problem_dto.hpp"
 
+#include "common/string_util.hpp"
 #include "http_core/http_util.hpp"
 #include "http_core/query_param_util.hpp"
 
 #include <pqxx/pqxx>
+
+namespace{
+    std::optional<std::int64_t> parse_non_negative_int64(std::string_view raw_value){
+        if(raw_value == "0"){
+            return std::int64_t{0};
+        }
+
+        return string_util::parse_positive_int64(raw_value);
+    }
+
+    std::optional<std::string> parse_problem_list_state(std::string_view raw_value){
+        if(raw_value == "solved" || raw_value == "unsolved"){
+            return std::string{raw_value};
+        }
+
+        return std::nullopt;
+    }
+
+    std::optional<std::string> parse_problem_list_sort(std::string_view raw_value){
+        if(
+            raw_value == "problem_id" ||
+            raw_value == "accepted_count" ||
+            raw_value == "acceptance_rate" ||
+            raw_value == "submission_count"
+        ){
+            return std::string{raw_value};
+        }
+
+        return std::nullopt;
+    }
+
+    std::optional<std::string> parse_sort_direction(std::string_view raw_value){
+        if(raw_value == "asc" || raw_value == "desc"){
+            return std::string{raw_value};
+        }
+
+        return std::nullopt;
+    }
+}
 
 std::expected<problem_dto::create_request, dto_validation_error>
 problem_dto::make_create_request_from_json(const boost::json::object& json){
@@ -43,6 +83,18 @@ problem_dto::make_list_filter_from_query_params(
 ){
     list_filter filter_value;
     for(const auto& query_param : query_params){
+        if(query_param.key == "problem_id"){
+            const auto parse_problem_id_exp = query_param_util::parse_unique_query_param(
+                filter_value.problem_id_opt,
+                query_param.key,
+                query_param.value,
+                string_util::parse_positive_int64
+            );
+            if(!parse_problem_id_exp){
+                return std::unexpected(parse_problem_id_exp.error());
+            }
+            continue;
+        }
         if(query_param.key == "title"){
             const auto parse_title_exp = query_param_util::parse_unique_query_param(
                 filter_value.title_opt,
@@ -58,6 +110,66 @@ problem_dto::make_list_filter_from_query_params(
             );
             if(!parse_title_exp){
                 return std::unexpected(parse_title_exp.error());
+            }
+            continue;
+        }
+        if(query_param.key == "state"){
+            const auto parse_state_exp = query_param_util::parse_unique_query_param(
+                filter_value.state_opt,
+                query_param.key,
+                query_param.value,
+                parse_problem_list_state
+            );
+            if(!parse_state_exp){
+                return std::unexpected(parse_state_exp.error());
+            }
+            continue;
+        }
+        if(query_param.key == "sort"){
+            const auto parse_sort_exp = query_param_util::parse_unique_query_param(
+                filter_value.sort_opt,
+                query_param.key,
+                query_param.value,
+                parse_problem_list_sort
+            );
+            if(!parse_sort_exp){
+                return std::unexpected(parse_sort_exp.error());
+            }
+            continue;
+        }
+        if(query_param.key == "direction"){
+            const auto parse_direction_exp = query_param_util::parse_unique_query_param(
+                filter_value.direction_opt,
+                query_param.key,
+                query_param.value,
+                parse_sort_direction
+            );
+            if(!parse_direction_exp){
+                return std::unexpected(parse_direction_exp.error());
+            }
+            continue;
+        }
+        if(query_param.key == "limit"){
+            const auto parse_limit_exp = query_param_util::parse_unique_query_param(
+                filter_value.limit_opt,
+                query_param.key,
+                query_param.value,
+                string_util::parse_positive_int32
+            );
+            if(!parse_limit_exp){
+                return std::unexpected(parse_limit_exp.error());
+            }
+            continue;
+        }
+        if(query_param.key == "offset"){
+            const auto parse_offset_exp = query_param_util::parse_unique_query_param(
+                filter_value.offset_opt,
+                query_param.key,
+                query_param.value,
+                parse_non_negative_int64
+            );
+            if(!parse_offset_exp){
+                return std::unexpected(parse_offset_exp.error());
             }
             continue;
         }

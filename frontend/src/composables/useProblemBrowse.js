@@ -46,6 +46,7 @@ export function useProblemBrowse(){
   const isLoading = ref(true)
   const errorMessage = ref('')
   const problems = ref([])
+  const totalProblemCount = ref(0)
   const hasLoadedOnce = ref(false)
   const searchState = reactive({
     searchInput: '',
@@ -100,36 +101,18 @@ export function useProblemBrowse(){
 
     return normalizeProblemPage(routePage)
   })
-  const filteredProblems = computed(() => {
-    const visibleProblems = problems.value.filter((problem) => {
-      if (appliedStateFilter.value === 'solved') {
-        return problem.user_problem_state === 'solved'
-      }
-
-      if (appliedStateFilter.value === 'unsolved') {
-        return problem.user_problem_state !== 'solved'
-      }
-
-      return true
-    })
-
-    return [...visibleProblems].sort(compareProblems)
-  })
-  const problemCount = computed(() => filteredProblems.value.length)
+  const problemCount = computed(() => totalProblemCount.value)
   const totalPages = computed(() =>
     Math.max(1, Math.ceil(problemCount.value / pageSize))
   )
-  const pagedProblems = computed(() => {
-    const startIndex = (currentPage.value - 1) * pageSize
-    return filteredProblems.value.slice(startIndex, startIndex + pageSize)
-  })
+  const pagedProblems = computed(() => problems.value)
   const visibleRangeText = computed(() => {
-    if (!problemCount.value) {
+    if (!problemCount.value || !pagedProblems.value.length) {
       return ''
     }
 
     const start = (currentPage.value - 1) * pageSize + 1
-    const end = Math.min(currentPage.value * pageSize, problemCount.value)
+    const end = start + pagedProblems.value.length - 1
     return `${start}-${end} / ${problemCount.value}`
   })
   const emptyStateMessage = computed(() => {
@@ -164,13 +147,23 @@ export function useProblemBrowse(){
   })
 
   watch(
-    [appliedTitleFilter, authenticatedBearerToken],
-    ([nextTitle, nextToken], [previousTitle, previousToken]) => {
+    [
+      appliedTitleFilter,
+      appliedSortKey,
+      appliedSortDirection,
+      appliedStateFilter,
+      currentPage,
+      authenticatedBearerToken
+    ],
+    (nextValues, previousValues) => {
       if (!hasLoadedOnce.value) {
         return
       }
 
-      if (nextTitle === previousTitle && nextToken === previousToken) {
+      if (
+        previousValues &&
+        nextValues.every((value, index) => value === previousValues[index])
+      ) {
         return
       }
 
@@ -218,74 +211,6 @@ export function useProblemBrowse(){
     return Number.isInteger(parsedPage) && parsedPage > 0
       ? parsedPage
       : 1
-  }
-
-  function compareAcceptanceRate(left, right){
-    if (left.submission_count <= 0 && right.submission_count <= 0) {
-      return 0
-    }
-
-    if (left.submission_count <= 0) {
-      return -1
-    }
-
-    if (right.submission_count <= 0) {
-      return 1
-    }
-
-    const comparisonValue =
-      (left.accepted_count * right.submission_count) -
-      (right.accepted_count * left.submission_count)
-
-    if (comparisonValue > 0) {
-      return 1
-    }
-
-    if (comparisonValue < 0) {
-      return -1
-    }
-
-    return 0
-  }
-
-  function compareProblems(left, right){
-    if (appliedSortKey.value === 'problem_id') {
-      return appliedSortDirection.value === 'asc'
-        ? left.problem_id - right.problem_id
-        : right.problem_id - left.problem_id
-    }
-
-    if (appliedSortKey.value === 'acceptance_rate') {
-      const rateComparison = compareAcceptanceRate(left, right)
-
-      if (rateComparison !== 0) {
-        return appliedSortDirection.value === 'asc'
-          ? rateComparison
-          : -rateComparison
-      }
-
-      return left.problem_id - right.problem_id
-    }
-
-    if (appliedSortKey.value === 'accepted_count') {
-      const acceptedCountDifference = left.accepted_count - right.accepted_count
-      if (acceptedCountDifference !== 0) {
-        return appliedSortDirection.value === 'asc'
-          ? acceptedCountDifference
-          : -acceptedCountDifference
-      }
-
-      return left.problem_id - right.problem_id
-    }
-
-    const submissionCountDifference = left.submission_count - right.submission_count
-    if (submissionCountDifference !== 0) {
-      return appliedSortDirection.value === 'asc'
-        ? submissionCountDifference
-        : -submissionCountDifference
-    }
-
-    return left.problem_id - right.problem_id
   }
 
   function buildProblemBrowseQuery(options = {}){
@@ -362,12 +287,18 @@ export function useProblemBrowse(){
 
   async function loadProblems(){
     const requestId = ++latestLoadRequestId
+    const requestOffset = (currentPage.value - 1) * pageSize
     isLoading.value = true
     errorMessage.value = ''
 
     try {
       const response = await getProblemList({
         title: appliedTitleFilter.value,
+        state: appliedStateFilter.value,
+        sort: appliedSortKey.value,
+        direction: appliedSortDirection.value,
+        limit: pageSize,
+        offset: requestOffset,
         bearerToken: authenticatedBearerToken.value
       })
 
@@ -382,6 +313,9 @@ export function useProblemBrowse(){
           submission_count: Number(problem.submission_count ?? 0)
         }))
         : []
+      totalProblemCount.value = Number(
+        response.total_problem_count ?? response.problem_count ?? problems.value.length
+      )
       hasLoadedOnce.value = true
     } catch (error) {
       if (requestId !== latestLoadRequestId) {
@@ -392,6 +326,7 @@ export function useProblemBrowse(){
         ? error.message
         : '문제 목록을 불러오지 못했습니다.'
       problems.value = []
+      totalProblemCount.value = 0
       hasLoadedOnce.value = true
     } finally {
       if (requestId === latestLoadRequestId) {

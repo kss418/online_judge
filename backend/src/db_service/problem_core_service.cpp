@@ -291,6 +291,24 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_servic
     );
 }
 
+std::expected<std::int64_t, error_code> problem_core_service::count_problems(
+    db_connection& connection,
+    const problem_dto::list_filter& filter_value,
+    std::optional<std::int64_t> viewer_user_id_opt
+){
+    return db_service_util::with_retry_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<std::int64_t, error_code> {
+            return problem_core_repository::count_problems(
+                transaction,
+                filter_value,
+                viewer_user_id_opt
+            );
+        }
+    );
+}
+
 std::expected<std::vector<problem_dto::summary>, error_code>
 problem_core_service::list_user_solved_problems(
     db_connection& connection,

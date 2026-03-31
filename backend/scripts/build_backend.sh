@@ -7,7 +7,7 @@ backend_dir="$(cd "${script_dir}/.." && pwd)"
 
 build_dir="${BACKEND_BUILD_DIR:-${backend_dir}/build}"
 build_type="${BACKEND_BUILD_TYPE:-Release}"
-build_parallel="${BACKEND_BUILD_PARALLEL:-3}"
+build_parallel="${BACKEND_BUILD_PARALLEL:-4}"
 cmake_generator="${BACKEND_CMAKE_GENERATOR:-Unix Makefiles}"
 
 if [[ ! "${build_parallel}" =~ ^[1-9][0-9]*$ ]]; then

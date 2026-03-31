@@ -53,6 +53,11 @@ namespace problem_core_repository{
         const problem_dto::list_filter& filter_value,
         std::optional<std::int64_t> viewer_user_id_opt = std::nullopt
     );
+    std::expected<std::int64_t, error_code> count_problems(
+        pqxx::transaction_base& transaction,
+        const problem_dto::list_filter& filter_value,
+        std::optional<std::int64_t> viewer_user_id_opt = std::nullopt
+    );
     std::expected<std::vector<problem_dto::summary>, error_code> list_user_solved_problems(
         pqxx::transaction_base& transaction,
         std::int64_t user_id,

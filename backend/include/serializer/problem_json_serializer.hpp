@@ -15,7 +15,8 @@ namespace problem_json_serializer{
     );
 
     boost::json::object make_list_object(
-        const std::vector<problem_dto::summary>& summary_values
+        const std::vector<problem_dto::summary>& summary_values,
+        std::int64_t total_problem_count
     );
 
     boost::json::object make_detail_object(

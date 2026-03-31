@@ -29,6 +29,16 @@ problem_handler::response_type problem_handler::get_problems(
         viewer_user_id_opt = auth_identity_opt_exp->value().user_id;
     }
 
+    if(filter_exp->state_opt && !viewer_user_id_opt){
+        return http_response_util::create_error(
+            request,
+            boost::beast::http::status::bad_request,
+            "invalid_query_parameter",
+            "invalid query parameter: state",
+            "state"
+        );
+    }
+
     const auto summary_values_exp = problem_core_service::list_problems(
         db_connection_value,
         *filter_exp,
@@ -43,10 +53,27 @@ problem_handler::response_type problem_handler::get_problems(
         );
     }
 
+    const auto total_problem_count_exp = problem_core_service::count_problems(
+        db_connection_value,
+        *filter_exp,
+        viewer_user_id_opt
+    );
+    if(!total_problem_count_exp){
+        return http_response_util::create_error(
+            request,
+            boost::beast::http::status::internal_server_error,
+            "internal_server_error",
+            "failed to count problems: " + to_string(total_problem_count_exp.error())
+        );
+    }
+
     return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
-        problem_json_serializer::make_list_object(*summary_values_exp)
+        problem_json_serializer::make_list_object(
+            *summary_values_exp,
+            *total_problem_count_exp
+        )
     );
 }
 

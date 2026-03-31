@@ -5,11 +5,44 @@ import {
 } from '@/utils/problemState'
 
 export async function getProblemList(options = {}){
-  const { bearerToken = '', title = '' } = options
+  const {
+    bearerToken = '',
+    title = '',
+    problemId = null,
+    state = '',
+    sort = '',
+    direction = '',
+    limit = null,
+    offset = null
+  } = options
   const searchParams = new URLSearchParams()
 
   if (title?.trim()) {
     searchParams.set('title', title.trim())
+  }
+
+  if (Number.isInteger(problemId) && problemId > 0) {
+    searchParams.set('problem_id', String(problemId))
+  }
+
+  if (typeof state === 'string' && state) {
+    searchParams.set('state', state)
+  }
+
+  if (typeof sort === 'string' && sort) {
+    searchParams.set('sort', sort)
+  }
+
+  if (typeof direction === 'string' && direction) {
+    searchParams.set('direction', direction)
+  }
+
+  if (Number.isInteger(limit) && limit > 0) {
+    searchParams.set('limit', String(limit))
+  }
+
+  if (Number.isInteger(offset) && offset >= 0) {
+    searchParams.set('offset', String(offset))
   }
 
   const queryString = searchParams.toString()

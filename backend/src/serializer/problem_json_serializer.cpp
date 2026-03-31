@@ -125,10 +125,12 @@ boost::json::object problem_json_serializer::make_created_object(
 }
 
 boost::json::object problem_json_serializer::make_list_object(
-    const std::vector<problem_dto::summary>& summary_values
+    const std::vector<problem_dto::summary>& summary_values,
+    std::int64_t total_problem_count
 ){
     boost::json::object response_object;
     response_object["problem_count"] = static_cast<std::int64_t>(summary_values.size());
+    response_object["total_problem_count"] = total_problem_count;
     response_object["problems"] = make_summary_array(summary_values);
     return response_object;
 }
