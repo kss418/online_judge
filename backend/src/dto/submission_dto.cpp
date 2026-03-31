@@ -3,7 +3,7 @@
 #include "common/language_util.hpp"
 #include "common/row_util.hpp"
 #include "common/string_util.hpp"
-#include "http_core/http_util.hpp"
+#include "common/json_field_util.hpp"
 #include "http_core/query_param_util.hpp"
 
 #include <pqxx/pqxx>
@@ -157,7 +157,7 @@ namespace{
 std::expected<submission_dto::source, dto_validation_error> submission_dto::make_source_from_json(
     const boost::json::object& json
 ){
-    const auto language_opt = http_util::get_non_empty_string_field(
+    const auto language_opt = json_field_util::get_non_empty_string_field(
         json,
         "language"
     );
@@ -176,7 +176,7 @@ std::expected<submission_dto::source, dto_validation_error> submission_dto::make
         });
     }
 
-    const auto source_code_opt = http_util::get_non_empty_string_field(
+    const auto source_code_opt = json_field_util::get_non_empty_string_field(
         json,
         "source_code"
     );

@@ -18,4 +18,5 @@ target_sources(lib
         zip_util.cpp
         blocking_io.cpp
         language_util.cpp
+        json_field_util.cpp
 )

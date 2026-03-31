@@ -2,7 +2,7 @@
 
 #include "common/row_util.hpp"
 #include "common/string_util.hpp"
-#include "http_core/http_util.hpp"
+#include "common/json_field_util.hpp"
 #include "http_core/query_param_util.hpp"
 
 #include <pqxx/pqxx>
@@ -151,7 +151,7 @@ namespace{
 
 std::expected<problem_dto::create_request, dto_validation_error>
 problem_dto::make_create_request_from_json(const boost::json::object& json){
-    const auto title_opt = http_util::get_non_empty_string_field(json, "title");
+    const auto title_opt = json_field_util::get_non_empty_string_field(json, "title");
     if(!title_opt){
         return std::unexpected(dto_validation_error{
             .code = "missing_field",
@@ -167,7 +167,7 @@ problem_dto::make_create_request_from_json(const boost::json::object& json){
 
 std::expected<problem_dto::update_request, dto_validation_error>
 problem_dto::make_update_request_from_json(const boost::json::object& json){
-    const auto title_opt = http_util::get_non_empty_string_field(json, "title");
+    const auto title_opt = json_field_util::get_non_empty_string_field(json, "title");
     if(!title_opt){
         return std::unexpected(dto_validation_error{
             .code = "missing_field",
@@ -194,7 +194,7 @@ problem_dto::make_list_filter_from_query_params(
 std::expected<problem_dto::testcase, dto_validation_error> problem_dto::make_testcase_from_json(
     const boost::json::object& json
 ){
-    const auto input_opt = http_util::get_string_field(json, "testcase_input");
+    const auto input_opt = json_field_util::get_string_field(json, "testcase_input");
     if(!input_opt){
         return std::unexpected(dto_validation_error{
             .code = "missing_field",
@@ -203,7 +203,7 @@ std::expected<problem_dto::testcase, dto_validation_error> problem_dto::make_tes
         });
     }
 
-    const auto output_opt = http_util::get_string_field(json, "testcase_output");
+    const auto output_opt = json_field_util::get_string_field(json, "testcase_output");
     if(!output_opt){
         return std::unexpected(dto_validation_error{
             .code = "missing_field",
@@ -220,7 +220,7 @@ std::expected<problem_dto::testcase, dto_validation_error> problem_dto::make_tes
 
 std::expected<problem_dto::testcase_move_request, dto_validation_error>
 problem_dto::make_testcase_move_request_from_json(const boost::json::object& json){
-    const auto source_testcase_order_opt = http_util::get_positive_int32_field(
+    const auto source_testcase_order_opt = json_field_util::get_positive_int32_field(
         json,
         "source_testcase_order"
     );
@@ -232,7 +232,7 @@ problem_dto::make_testcase_move_request_from_json(const boost::json::object& jso
         });
     }
 
-    const auto target_testcase_order_opt = http_util::get_positive_int32_field(
+    const auto target_testcase_order_opt = json_field_util::get_positive_int32_field(
         json,
         "target_testcase_order"
     );

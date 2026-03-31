@@ -1,10 +1,10 @@
 #include "dto/problem_content_dto.hpp"
 
-#include "http_core/http_util.hpp"
+#include "common/json_field_util.hpp"
 
 std::expected<problem_content_dto::limits, dto_validation_error>
 problem_content_dto::make_limits_from_json(const boost::json::object& json){
-    const auto memory_limit_mb_opt = http_util::get_positive_int32_field(
+    const auto memory_limit_mb_opt = json_field_util::get_positive_int32_field(
         json,
         "memory_limit_mb"
     );
@@ -16,7 +16,7 @@ problem_content_dto::make_limits_from_json(const boost::json::object& json){
         });
     }
 
-    const auto time_limit_ms_opt = http_util::get_positive_int32_field(
+    const auto time_limit_ms_opt = json_field_util::get_positive_int32_field(
         json,
         "time_limit_ms"
     );
@@ -36,7 +36,7 @@ problem_content_dto::make_limits_from_json(const boost::json::object& json){
 
 std::expected<problem_content_dto::statement, dto_validation_error>
 problem_content_dto::make_statement_from_json(const boost::json::object& json){
-    const auto description_opt = http_util::get_non_empty_string_field(
+    const auto description_opt = json_field_util::get_non_empty_string_field(
         json,
         "description"
     );
@@ -48,7 +48,7 @@ problem_content_dto::make_statement_from_json(const boost::json::object& json){
         });
     }
 
-    const auto input_format_opt = http_util::get_non_empty_string_field(
+    const auto input_format_opt = json_field_util::get_non_empty_string_field(
         json,
         "input_format"
     );
@@ -60,7 +60,7 @@ problem_content_dto::make_statement_from_json(const boost::json::object& json){
         });
     }
 
-    const auto output_format_opt = http_util::get_non_empty_string_field(
+    const auto output_format_opt = json_field_util::get_non_empty_string_field(
         json,
         "output_format"
     );
@@ -100,7 +100,7 @@ problem_content_dto::make_statement_from_json(const boost::json::object& json){
 
 std::expected<problem_content_dto::sample, dto_validation_error>
 problem_content_dto::make_sample_from_json(const boost::json::object& json){
-    const auto input_opt = http_util::get_string_field(json, "sample_input");
+    const auto input_opt = json_field_util::get_string_field(json, "sample_input");
     if(!input_opt){
         return std::unexpected(dto_validation_error{
             .code = "missing_field",
@@ -109,7 +109,7 @@ problem_content_dto::make_sample_from_json(const boost::json::object& json){
         });
     }
 
-    const auto output_opt = http_util::get_string_field(json, "sample_output");
+    const auto output_opt = json_field_util::get_string_field(json, "sample_output");
     if(!output_opt){
         return std::unexpected(dto_validation_error{
             .code = "missing_field",

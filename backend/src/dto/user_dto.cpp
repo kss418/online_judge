@@ -1,7 +1,7 @@
 #include "dto/user_dto.hpp"
 
 #include "common/row_util.hpp"
-#include "http_core/http_util.hpp"
+#include "common/json_field_util.hpp"
 #include "http_core/query_param_util.hpp"
 
 #include <pqxx/pqxx>
@@ -35,7 +35,7 @@ namespace{
 
 std::expected<user_dto::submission_ban_request, dto_validation_error>
 user_dto::make_submission_ban_request_from_json(const boost::json::object& json){
-    const auto duration_minutes_opt = http_util::get_positive_int32_field(
+    const auto duration_minutes_opt = json_field_util::get_positive_int32_field(
         json,
         "duration_minutes"
     );

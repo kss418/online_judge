@@ -1,7 +1,7 @@
 #include "dto/auth_dto.hpp"
 
 #include "common/password_util.hpp"
-#include "http_core/http_util.hpp"
+#include "common/json_field_util.hpp"
 
 #include <optional>
 #include <string>
@@ -46,7 +46,7 @@ auth_dto::make_sign_up_request_from_json(const boost::json::object& json){
 std::expected<auth_dto::credentials, dto_validation_error> auth_dto::make_credentials_from_json(
     const boost::json::object& json
 ){
-    const auto user_login_id_opt = http_util::get_non_empty_string_field(
+    const auto user_login_id_opt = json_field_util::get_non_empty_string_field(
         json,
         "user_login_id"
     );
@@ -58,7 +58,7 @@ std::expected<auth_dto::credentials, dto_validation_error> auth_dto::make_creden
         });
     }
 
-    const auto raw_password_opt = http_util::get_non_empty_string_field(
+    const auto raw_password_opt = json_field_util::get_non_empty_string_field(
         json,
         "raw_password"
     );
