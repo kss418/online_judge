@@ -27,45 +27,12 @@ namespace{
             ));
         }
         if(!get_user_summary_exp->has_value()){
-            return std::unexpected(http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "user_not_found",
-                "user not found"
-            ));
+            return std::unexpected(http_response_util::create_user_not_found(request));
         }
 
         return get_user_summary_exp->value();
     }
 
-    std::expected<user_dto::summary, user_handler::response_type>
-    require_user_summary_by_login_id(
-        const user_handler::request_type& request,
-        db_connection& db_connection_value,
-        std::string_view user_login_id
-    ){
-        const auto get_user_summary_exp = user_service::get_summary_by_login_id(
-            db_connection_value,
-            user_login_id
-        );
-        if(!get_user_summary_exp){
-            return std::unexpected(http_response_util::create_4xx_or_500(
-                request,
-                "get user summary by login id",
-                get_user_summary_exp.error()
-            ));
-        }
-        if(!get_user_summary_exp->has_value()){
-            return std::unexpected(http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "user_not_found",
-                "user not found"
-            ));
-        }
-
-        return get_user_summary_exp->value();
-    }
 }
 
 user_handler::response_type user_handler::get_me(
@@ -124,28 +91,14 @@ user_handler::response_type user_handler::get_me_submission_ban(
                 db_connection_value,
                 auth_identity_value.user_id
             );
-            if(!get_submission_ban_status_exp){
-                return http_response_util::create_4xx_or_500(
-                    request,
-                    "get current user submission ban",
-                    get_submission_ban_status_exp.error()
-                );
-            }
-            if(!get_submission_ban_status_exp->has_value()){
-                return http_response_util::create_error(
-                    request,
-                    boost::beast::http::status::not_found,
-                    "user_not_found",
-                    "user not found"
-                );
-            }
-
-            return http_response_util::create_json(
+            return http_response_util::create_json_or_4xx_or_500(
                 request,
-                boost::beast::http::status::ok,
-                user_json_serializer::make_submission_ban_status_object(
-                    get_submission_ban_status_exp->value()
-                )
+                "get current user submission ban",
+                std::move(get_submission_ban_status_exp),
+                user_json_serializer::make_submission_ban_status_object,
+                [&]{
+                    return http_response_util::create_user_not_found(request);
+                }
             );
         };
 
@@ -258,19 +211,18 @@ user_handler::response_type user_handler::get_user_summary(
     db_connection& db_connection_value,
     std::int64_t user_id
 ){
-    const auto user_summary_exp = require_user_summary(
-        request,
+    const auto user_summary_exp = user_service::get_summary(
         db_connection_value,
         user_id
     );
-    if(!user_summary_exp){
-        return std::move(user_summary_exp.error());
-    }
-
-    return http_response_util::create_json(
+    return http_response_util::create_json_or_4xx_or_500(
         request,
-        boost::beast::http::status::ok,
-        user_json_serializer::make_summary_object(*user_summary_exp)
+        "get user summary",
+        std::move(user_summary_exp),
+        user_json_serializer::make_summary_object,
+        [&]{
+            return http_response_util::create_user_not_found(request);
+        }
     );
 }
 
@@ -279,19 +231,18 @@ user_handler::response_type user_handler::get_user_summary_by_login_id(
     db_connection& db_connection_value,
     std::string_view user_login_id
 ){
-    const auto user_summary_exp = require_user_summary_by_login_id(
-        request,
+    const auto user_summary_exp = user_service::get_summary_by_login_id(
         db_connection_value,
         user_login_id
     );
-    if(!user_summary_exp){
-        return std::move(user_summary_exp.error());
-    }
-
-    return http_response_util::create_json(
+    return http_response_util::create_json_or_4xx_or_500(
         request,
-        boost::beast::http::status::ok,
-        user_json_serializer::make_summary_object(*user_summary_exp)
+        "get user summary by login id",
+        std::move(user_summary_exp),
+        user_json_serializer::make_summary_object,
+        [&]{
+            return http_response_util::create_user_not_found(request);
+        }
     );
 }
 
@@ -409,26 +360,19 @@ user_handler::response_type user_handler::put_user_admin(
             user_id,
             permission_util::ADMIN
         );
-        if(!update_permission_level_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "update permission level",
-                update_permission_level_exp.error()
-            );
-        }
-        if(!update_permission_level_exp.value()){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "user_not_found",
-                "user not found"
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            user_json_serializer::make_permission_object(user_id, permission_util::ADMIN)
+            "update permission level",
+            std::move(update_permission_level_exp),
+            [&]{
+                return user_json_serializer::make_permission_object(
+                    user_id,
+                    permission_util::ADMIN
+                );
+            },
+            [&]{
+                return http_response_util::create_user_not_found(request);
+            }
         );
     };
 
@@ -450,26 +394,19 @@ user_handler::response_type user_handler::put_user_regular(
             user_id,
             permission_util::USER
         );
-        if(!update_permission_level_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "update permission level",
-                update_permission_level_exp.error()
-            );
-        }
-        if(!update_permission_level_exp.value()){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "user_not_found",
-                "user not found"
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            user_json_serializer::make_permission_object(user_id, permission_util::USER)
+            "update permission level",
+            std::move(update_permission_level_exp),
+            [&]{
+                return user_json_serializer::make_permission_object(
+                    user_id,
+                    permission_util::USER
+                );
+            },
+            [&]{
+                return http_response_util::create_user_not_found(request);
+            }
         );
     };
 
@@ -490,28 +427,14 @@ user_handler::response_type user_handler::get_user_submission_ban(
             db_connection_value,
             user_id
         );
-        if(!get_submission_ban_status_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "get user submission ban",
-                get_submission_ban_status_exp.error()
-            );
-        }
-        if(!get_submission_ban_status_exp->has_value()){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "user_not_found",
-                "user not found"
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            user_json_serializer::make_submission_ban_status_object(
-                get_submission_ban_status_exp->value()
-            )
+            "get user submission ban",
+            std::move(get_submission_ban_status_exp),
+            user_json_serializer::make_submission_ban_status_object,
+            [&]{
+                return http_response_util::create_user_not_found(request);
+            }
         );
     };
 
@@ -542,28 +465,15 @@ user_handler::response_type user_handler::post_user_submission_ban(
             user_id,
             submission_ban_request_exp->duration_minutes
         );
-        if(!create_submission_ban_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "create user submission ban",
-                create_submission_ban_exp.error()
-            );
-        }
-        if(!create_submission_ban_exp->has_value()){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "user_not_found",
-                "user not found"
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::created,
-            user_json_serializer::make_submission_ban_object(
-                create_submission_ban_exp->value()
-            )
+            "create user submission ban",
+            std::move(create_submission_ban_exp),
+            user_json_serializer::make_submission_ban_object,
+            [&]{
+                return http_response_util::create_user_not_found(request);
+            },
+            boost::beast::http::status::created
         );
     };
 
@@ -585,26 +495,18 @@ user_handler::response_type user_handler::delete_user_submission_ban(
                 db_connection_value,
                 user_id
             );
-        if(!clear_submission_banned_until_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "clear user submission ban",
-                clear_submission_banned_until_exp.error()
-            );
-        }
-        if(!clear_submission_banned_until_exp.value()){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "user_not_found",
-                "user not found"
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            common_json_serializer::make_message_object("user submission ban cleared")
+            "clear user submission ban",
+            std::move(clear_submission_banned_until_exp),
+            [&]{
+                return common_json_serializer::make_message_object(
+                    "user submission ban cleared"
+                );
+            },
+            [&]{
+                return http_response_util::create_user_not_found(request);
+            }
         );
     };
 

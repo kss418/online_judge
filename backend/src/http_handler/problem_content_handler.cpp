@@ -229,23 +229,21 @@ problem_content_handler::response_type problem_content_handler::put_sample(
             sample_reference_value,
             *sample_exp
         );
-        if(!set_sample_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "set problem sample",
-                set_sample_exp.error()
-            );
-        }
-
-        const auto updated_sample_exp = problem_content_service::get_sample(
-            db_connection_value,
-            sample_reference_value
-        );
-        return http_response_util::create_json_or_4xx_or_500(
+        return http_response_util::create_response_or_4xx_or_500(
             request,
-            "get problem sample",
-            std::move(updated_sample_exp),
-            problem_json_serializer::make_sample_object
+            "set problem sample",
+            std::move(set_sample_exp),
+            [&]() -> response_type {
+                return http_response_util::create_json_or_4xx_or_500(
+                    request,
+                    "get problem sample",
+                    problem_content_service::get_sample(
+                        db_connection_value,
+                        sample_reference_value
+                    ),
+                    problem_json_serializer::make_sample_object
+                );
+            }
         );
     };
 
@@ -267,33 +265,34 @@ problem_content_handler::response_type problem_content_handler::delete_sample(
             db_connection_value,
             problem_reference_value
         );
-        if(!sample_values_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "list problem samples",
-                sample_values_exp.error()
-            );
-        }
-        if(sample_values_exp->empty()){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::bad_request,
-                "invalid_sample_delete_request",
-                "failed to delete sample: invalid argument"
-            );
-        }
-
-        const auto delete_sample_exp = problem_content_service::delete_sample(
-            db_connection_value,
-            problem_reference_value
-        );
-        return http_response_util::create_json_or_4xx_or_500(
+        return http_response_util::create_response_or_4xx_or_500(
             request,
-            "delete problem sample",
-            std::move(delete_sample_exp),
-            []{
-                return common_json_serializer::make_message_object(
-                    "problem sample deleted"
+            "list problem samples",
+            std::move(sample_values_exp),
+            [&](
+                const std::vector<problem_content_dto::sample>& sample_values
+            ) -> response_type {
+                if(sample_values.empty()){
+                    return http_response_util::create_error(
+                        request,
+                        boost::beast::http::status::bad_request,
+                        "invalid_sample_delete_request",
+                        "failed to delete sample: invalid argument"
+                    );
+                }
+
+                return http_response_util::create_json_or_4xx_or_500(
+                    request,
+                    "delete problem sample",
+                    problem_content_service::delete_sample(
+                        db_connection_value,
+                        problem_reference_value
+                    ),
+                    []{
+                        return common_json_serializer::make_message_object(
+                            "problem sample deleted"
+                        );
+                    }
                 );
             }
         );

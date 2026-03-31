@@ -52,28 +52,34 @@ testcase_handler::response_type testcase_handler::get_testcase(
             db_connection_value,
             testcase_reference_value
         );
-        if(!testcase_exp){
-            if(testcase_exp.error() == errno_error::invalid_argument){
+        return http_response_util::create_response_or_error(
+            request,
+            "get testcase",
+            std::move(testcase_exp),
+            [&](const request_type& error_request, std::string_view action, const error_code& code) {
+                if(code == errno_error::invalid_argument){
+                    return http_response_util::create_error(
+                        error_request,
+                        boost::beast::http::status::not_found,
+                        "testcase_not_found",
+                        "testcase not found"
+                    );
+                }
+
                 return http_response_util::create_error(
+                    error_request,
+                    boost::beast::http::status::internal_server_error,
+                    "internal_server_error",
+                    "failed to " + std::string{action} + ": " + to_string(code)
+                );
+            },
+            [&](const problem_dto::testcase& testcase_value) {
+                return http_response_util::create_json(
                     request,
-                    boost::beast::http::status::not_found,
-                    "testcase_not_found",
-                    "testcase not found"
+                    boost::beast::http::status::ok,
+                    problem_json_serializer::make_testcase_object(testcase_value)
                 );
             }
-
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::internal_server_error,
-                "internal_server_error",
-                "failed to get testcase: " + to_string(testcase_exp.error())
-            );
-        }
-
-        return http_response_util::create_json(
-            request,
-            boost::beast::http::status::ok,
-            problem_json_serializer::make_testcase_object(*testcase_exp)
         );
     };
 
@@ -191,23 +197,21 @@ testcase_handler::response_type testcase_handler::put_testcase(
             testcase_reference_value,
             *testcase_exp
         );
-        if(!set_testcase_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "set testcase",
-                set_testcase_exp.error()
-            );
-        }
-
-        const auto updated_testcase_exp = testcase_service::get_testcase(
-            db_connection_value,
-            testcase_reference_value
-        );
-        return http_response_util::create_json_or_4xx_or_500(
+        return http_response_util::create_response_or_4xx_or_500(
             request,
-            "get testcase",
-            std::move(updated_testcase_exp),
-            problem_json_serializer::make_testcase_object
+            "set testcase",
+            std::move(set_testcase_exp),
+            [&]() -> response_type {
+                return http_response_util::create_json_or_4xx_or_500(
+                    request,
+                    "get testcase",
+                    testcase_service::get_testcase(
+                        db_connection_value,
+                        testcase_reference_value
+                    ),
+                    problem_json_serializer::make_testcase_object
+                );
+            }
         );
     };
 
@@ -390,22 +394,18 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
             problem_reference_value,
             *testcase_values_exp
         );
-        if(!replace_testcases_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "replace testcases",
-                replace_testcases_exp.error()
-            );
-        }
-
-        boost::json::object response_object = common_json_serializer::make_message_object(
-            "problem testcases uploaded"
-        );
-        response_object["testcase_count"] = replace_testcases_exp->testcase_count;
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            response_object
+            "replace testcases",
+            std::move(replace_testcases_exp),
+            [](const problem_dto::testcase_count& testcase_count) {
+                boost::json::object response_object =
+                    common_json_serializer::make_message_object(
+                        "problem testcases uploaded"
+                    );
+                response_object["testcase_count"] = testcase_count.testcase_count;
+                return response_object;
+            }
         );
     };
 

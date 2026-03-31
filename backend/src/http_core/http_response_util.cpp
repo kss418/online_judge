@@ -143,3 +143,14 @@ http_response_util::response_type http_response_util::create_not_found(
         "not found"
     );
 }
+
+http_response_util::response_type http_response_util::create_user_not_found(
+    const request_type& request
+){
+    return create_error(
+        request,
+        boost::beast::http::status::not_found,
+        "user_not_found",
+        "user not found"
+    );
+}

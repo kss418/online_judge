@@ -101,27 +101,33 @@ problem_handler::response_type problem_handler::get_problem(
         problem_reference_value,
         viewer_user_id_opt
     );
-    if(!problem_detail_exp){
-        if(problem_detail_exp.error() == errno_error::invalid_argument){
-            return http_response_util::create_error(
+    return http_response_util::create_response_or_error(
+        request,
+        "get problem detail",
+        std::move(problem_detail_exp),
+        [&](const request_type& error_request, std::string_view action, const error_code& code) {
+            if(code == errno_error::invalid_argument){
+                return http_response_util::create_error(
+                    error_request,
+                    boost::beast::http::status::not_found,
+                    "problem_not_found",
+                    "problem not found"
+                );
+            }
+
+            return http_response_util::create_404_or_500(
+                error_request,
+                action,
+                code
+            );
+        },
+        [&](const problem_dto::detail& problem_detail) {
+            return http_response_util::create_json(
                 request,
-                boost::beast::http::status::not_found,
-                "problem_not_found",
-                "problem not found"
+                boost::beast::http::status::ok,
+                problem_json_serializer::make_detail_object(problem_detail)
             );
         }
-
-        return http_response_util::create_404_or_500(
-            request,
-            "get problem detail",
-            problem_detail_exp.error()
-        );
-    }
-
-    return http_response_util::create_json(
-        request,
-        boost::beast::http::status::ok,
-        problem_json_serializer::make_detail_object(*problem_detail_exp)
     );
 }
 
@@ -143,19 +149,12 @@ problem_handler::response_type problem_handler::post_problem(
             db_connection_value,
             *create_request_exp
         );
-        if(!create_problem_exp){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::internal_server_error,
-                "internal_server_error",
-                "failed to create problem: " + to_string(create_problem_exp.error())
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::created,
-            problem_json_serializer::make_created_object(*create_problem_exp)
+            "create problem",
+            std::move(create_problem_exp),
+            problem_json_serializer::make_created_object,
+            boost::beast::http::status::created
         );
     };
 

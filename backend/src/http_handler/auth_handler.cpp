@@ -50,26 +50,19 @@ auth_handler::response_type auth_handler::post_login(
         db_connection_value,
         *credentials_exp
     );
-    if(!login_exp){
-        return http_response_util::create_4xx_or_500(
-            request,
-            "login",
-            login_exp.error()
-        );
-    }
-    if(!login_exp->has_value()){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::unauthorized,
-            "invalid_credentials",
-            "invalid credentials"
-        );
-    }
-
-    return http_response_util::create_json(
+    return http_response_util::create_json_or_4xx_or_500(
         request,
-        boost::beast::http::status::ok,
-        auth_json_serializer::make_session_object(login_exp->value())
+        "login",
+        std::move(login_exp),
+        auth_json_serializer::make_session_object,
+        [&]{
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::unauthorized,
+                "invalid_credentials",
+                "invalid credentials"
+            );
+        }
     );
 }
 
@@ -86,35 +79,20 @@ auth_handler::response_type auth_handler::post_token_renew(
         db_connection_value,
         *token_exp
     );
-    if(!renew_token_exp){
-        const auto code = renew_token_exp.error();
-        if(code == errno_error::invalid_argument){
+    return http_response_util::create_json_or_4xx_or_500(
+        request,
+        "renew token",
+        std::move(renew_token_exp),
+        [&]{
+            return common_json_serializer::make_message_object("token renewed");
+        },
+        [&]{
             return http_response_util::create_bearer_error(
                 request,
-                "missing_or_invalid_bearer_token",
-                "missing or invalid bearer token"
+                "invalid_or_expired_token",
+                "invalid, expired, or revoked token"
             );
         }
-
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to renew token: " + to_string(code)
-        );
-    }
-    if(!renew_token_exp.value()){
-        return http_response_util::create_bearer_error(
-            request,
-            "invalid_or_expired_token",
-            "invalid, expired, or revoked token"
-        );
-    }
-
-    return http_response_util::create_json(
-        request,
-        boost::beast::http::status::ok,
-        common_json_serializer::make_message_object("token renewed")
     );
 }
 
@@ -131,34 +109,19 @@ auth_handler::response_type auth_handler::post_logout(
         db_connection_value,
         *token_exp
     );
-    if(!revoke_token_exp){
-        const auto code = revoke_token_exp.error();
-        if(code == errno_error::invalid_argument){
+    return http_response_util::create_json_or_4xx_or_500(
+        request,
+        "logout",
+        std::move(revoke_token_exp),
+        [&]{
+            return common_json_serializer::make_message_object("logged out");
+        },
+        [&]{
             return http_response_util::create_bearer_error(
                 request,
-                "missing_or_invalid_bearer_token",
-                "missing or invalid bearer token"
+                "invalid_or_expired_token",
+                "invalid, expired, or revoked token"
             );
         }
-
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to logout: " + to_string(code)
-        );
-    }
-    if(!revoke_token_exp.value()){
-        return http_response_util::create_bearer_error(
-            request,
-            "invalid_or_expired_token",
-            "invalid, expired, or revoked token"
-        );
-    }
-
-    return http_response_util::create_json(
-        request,
-        boost::beast::http::status::ok,
-        common_json_serializer::make_message_object("logged out")
     );
 }

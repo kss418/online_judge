@@ -47,34 +47,32 @@ submission_handler::response_type submission_handler::get_submission_source(
 ){
     const auto handle_authenticated =
         [&](const auth_dto::identity& auth_identity_value) -> response_type {
-            const auto submission_source_exp = submission_service::get_submission_source(
-                db_connection_value,
-                submission_id
-            );
-            if(!submission_source_exp){
-                return http_response_util::create_404_or_500(
-                    request,
-                    "get submission source",
-                    submission_source_exp.error()
-                );
-            }
-
-            if(!http_util::is_owner_or_admin(
-                auth_identity_value,
-                submission_source_exp->user_id
-            )){
-                return http_response_util::create_error(
-                    request,
-                    boost::beast::http::status::forbidden,
-                    "forbidden",
-                    "submission source access denied"
-                );
-            }
-
-            return http_response_util::create_json(
+            return http_response_util::create_response_or_404_or_500(
                 request,
-                boost::beast::http::status::ok,
-                submission_json_serializer::make_source_object(*submission_source_exp)
+                "get submission source",
+                submission_service::get_submission_source(
+                    db_connection_value,
+                    submission_id
+                ),
+                [&](const submission_dto::source_detail& source_detail) -> response_type {
+                    if(!http_util::is_owner_or_admin(
+                        auth_identity_value,
+                        source_detail.user_id
+                    )){
+                        return http_response_util::create_error(
+                            request,
+                            boost::beast::http::status::forbidden,
+                            "forbidden",
+                            "submission source access denied"
+                        );
+                    }
+
+                    return http_response_util::create_json(
+                        request,
+                        boost::beast::http::status::ok,
+                        submission_json_serializer::make_source_object(source_detail)
+                    );
+                }
             );
         };
 
@@ -147,27 +145,33 @@ submission_handler::response_type submission_handler::post_submission(
                 db_connection_value,
                 *create_request_exp
             );
-            if(!create_submission_exp){
-                if(is_submission_banned_error(create_submission_exp.error())){
-                    return http_response_util::create_error(
+            return http_response_util::create_response_or_error(
+                request,
+                "create submission",
+                std::move(create_submission_exp),
+                [&](const request_type& error_request, std::string_view action, const error_code& code) {
+                    if(is_submission_banned_error(code)){
+                        return http_response_util::create_error(
+                            error_request,
+                            boost::beast::http::status::forbidden,
+                            "submission_banned",
+                            "submission is currently banned"
+                        );
+                    }
+
+                    return http_response_util::create_4xx_or_500(
+                        error_request,
+                        action,
+                        code
+                    );
+                },
+                [&](const submission_dto::created& created_value) {
+                    return http_response_util::create_json(
                         request,
-                        boost::beast::http::status::forbidden,
-                        "submission_banned",
-                        "submission is currently banned"
+                        boost::beast::http::status::created,
+                        submission_json_serializer::make_created_object(created_value)
                     );
                 }
-
-                return http_response_util::create_4xx_or_500(
-                    request,
-                    "create submission",
-                    create_submission_exp.error()
-                );
-            }
-
-            return http_response_util::create_json(
-                request,
-                boost::beast::http::status::created,
-                submission_json_serializer::make_created_object(*create_submission_exp)
             );
         };
 
@@ -184,25 +188,19 @@ submission_handler::response_type submission_handler::post_submission_rejudge(
     std::int64_t submission_id
 ){
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto rejudge_exp = submission_service::rejudge(
-            db_connection_value,
-            submission_id
-        );
-        if(!rejudge_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "rejudge submission",
-                rejudge_exp.error()
-            );
-        }
-
-        submission_dto::created created_value;
-        created_value.submission_id = submission_id;
-        created_value.status = to_string(submission_status::queued);
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            submission_json_serializer::make_created_object(created_value)
+            "rejudge submission",
+            submission_service::rejudge(
+                db_connection_value,
+                submission_id
+            ),
+            [&]{
+                submission_dto::created created_value;
+                created_value.submission_id = submission_id;
+                created_value.status = to_string(submission_status::queued);
+                return submission_json_serializer::make_created_object(created_value);
+            }
         );
     };
 
