@@ -978,6 +978,11 @@ onUnmounted(() => {
   border-top: 1px solid var(--line);
 }
 
+.admin-user-management-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 86px;
+}
+
 .admin-user-identity {
   display: grid;
   gap: 0.25rem;

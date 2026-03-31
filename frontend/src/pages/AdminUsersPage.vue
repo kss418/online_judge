@@ -691,6 +691,11 @@ onUnmounted(() => {
   border-top: 1px solid var(--line);
 }
 
+.admin-user-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 74px;
+}
+
 .admin-user-name {
   display: grid;
   gap: 0.2rem;

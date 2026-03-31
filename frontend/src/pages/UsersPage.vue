@@ -439,6 +439,11 @@ onUnmounted(() => {
   border-top: 1px solid var(--line);
 }
 
+.users-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 74px;
+}
+
 .users-link {
   min-width: 0;
   font-weight: 600;

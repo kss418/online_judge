@@ -285,6 +285,11 @@ function getSortButtonTitle(option){
   border-top: 1px solid rgba(20, 33, 61, 0.08);
 }
 
+.problem-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 88px;
+}
+
 .problem-row-link:hover {
   background: rgba(255, 247, 237, 0.7);
 }

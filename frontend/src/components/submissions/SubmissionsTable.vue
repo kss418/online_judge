@@ -212,6 +212,11 @@ defineEmits(['open-source', 'open-history', 'rejudge'])
   border-top: 1px solid rgba(20, 33, 61, 0.08);
 }
 
+.submission-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 72px;
+}
+
 .submission-row:hover {
   background: rgba(255, 255, 255, 0.94);
 }
