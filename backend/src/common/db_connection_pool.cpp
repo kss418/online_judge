@@ -1,6 +1,7 @@
 #include "common/db_connection_pool.hpp"
 
 #include <condition_variable>
+#include <deque>
 #include <mutex>
 #include <utility>
 #include <vector>
@@ -14,6 +15,47 @@ struct db_connection_pool::state{
     mutable std::mutex mutex_;
     std::condition_variable condition_variable_;
     std::vector<slot> slots_;
+    std::deque<std::size_t> free_slot_indices_;
+
+    std::expected<std::size_t, error_code> acquire_slot_index(
+        std::chrono::milliseconds timeout,
+        bool use_timeout
+    ){
+        std::unique_lock lock(mutex_);
+        const auto has_available_slot = [&]{
+            return !free_slot_indices_.empty();
+        };
+
+        if(use_timeout){
+            if(!condition_variable_.wait_for(lock, timeout, has_available_slot)){
+                return std::unexpected(error_code::create(boost_error::timed_out));
+            }
+        }
+        else{
+            condition_variable_.wait(lock, has_available_slot);
+        }
+
+        const std::size_t slot_index = free_slot_indices_.front();
+        free_slot_indices_.pop_front();
+        slots_[slot_index].in_use_ = true;
+        return slot_index;
+    }
+
+    void release_slot_index(std::size_t slot_index){
+        std::scoped_lock lock(mutex_);
+        if(slot_index >= slots_.size() || !slots_[slot_index].in_use_){
+            return;
+        }
+
+        slots_[slot_index].in_use_ = false;
+        free_slot_indices_.push_back(slot_index);
+        condition_variable_.notify_one();
+    }
+
+    std::size_t available_count() const{
+        std::scoped_lock lock(mutex_);
+        return free_slot_indices_.size();
+    }
 };
 
 db_connection_pool::lease::lease(
@@ -46,10 +88,7 @@ db_connection_pool::lease::~lease(){
 }
 
 db_connection_pool::lease::operator bool() const{
-    return
-        state_ &&
-        slot_index_ < state_->slots_.size() &&
-        state_->slots_[slot_index_].in_use_;
+    return state_ != nullptr;
 }
 
 db_connection& db_connection_pool::lease::connection(){
@@ -81,20 +120,7 @@ void db_connection_pool::lease::release(){
         return;
     }
 
-    const auto release_slot_locked = [&]{
-        if(slot_index_ >= state_->slots_.size()){
-            return;
-        }
-
-        state_->slots_[slot_index_].in_use_ = false;
-        state_->condition_variable_.notify_one();
-    };
-
-    {
-        std::scoped_lock lock(state_->mutex_);
-        release_slot_locked();
-    }
-
+    state_->release_slot_index(slot_index_);
     state_.reset();
     slot_index_ = 0;
 }
@@ -116,6 +142,7 @@ std::expected<db_connection_pool, error_code> db_connection_pool::create(std::si
         state::slot slot_value;
         slot_value.connection_ = std::move(*connection_exp);
         state_value->slots_.push_back(std::move(slot_value));
+        state_value->free_slot_indices_.push_back(index);
     }
 
     return db_connection_pool(std::move(state_value));
@@ -144,15 +171,7 @@ std::size_t db_connection_pool::available_count() const{
         return 0;
     }
 
-    std::scoped_lock lock(state_->mutex_);
-    std::size_t available_slot_count = 0;
-    for(const auto& slot_value : state_->slots_){
-        if(!slot_value.in_use_){
-            ++available_slot_count;
-        }
-    }
-
-    return available_slot_count;
+    return state_->available_count();
 }
 
 db_connection_pool::db_connection_pool(std::shared_ptr<state> state_value) :
@@ -166,49 +185,17 @@ std::expected<db_connection_pool::lease, error_code> db_connection_pool::acquire
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
 
-    std::size_t slot_index = 0;
-    {
-        std::unique_lock lock(state_->mutex_);
-        const auto find_available_slot_locked = [&]{
-            for(std::size_t index = 0; index < state_->slots_.size(); ++index){
-                if(!state_->slots_[index].in_use_){
-                    return index;
-                }
-            }
-
-            return state_->slots_.size();
-        };
-        const auto wait_predicate = [&]{
-            return find_available_slot_locked() < state_->slots_.size();
-        };
-
-        if(use_timeout){
-            const bool has_available_slot = state_->condition_variable_.wait_for(
-                lock,
-                timeout,
-                wait_predicate
-            );
-            if(!has_available_slot){
-                return std::unexpected(error_code::create(boost_error::timed_out));
-            }
-        }
-        else{
-            state_->condition_variable_.wait(lock, wait_predicate);
-        }
-
-        slot_index = find_available_slot_locked();
-        state_->slots_[slot_index].in_use_ = true;
+    const auto slot_index_exp = state_->acquire_slot_index(timeout, use_timeout);
+    if(!slot_index_exp){
+        return std::unexpected(slot_index_exp.error());
     }
+    const std::size_t slot_index = *slot_index_exp;
 
     db_connection& connection_value = state_->slots_[slot_index].connection_;
     if(!connection_value.is_connected()){
         const auto reconnect_exp = connection_value.reconnect();
         if(!reconnect_exp){
-            std::scoped_lock lock(state_->mutex_);
-            if(slot_index < state_->slots_.size()){
-                state_->slots_[slot_index].in_use_ = false;
-                state_->condition_variable_.notify_one();
-            }
+            state_->release_slot_index(slot_index);
             return std::unexpected(reconnect_exp.error());
         }
     }

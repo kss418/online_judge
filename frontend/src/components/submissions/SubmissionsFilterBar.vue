@@ -23,14 +23,14 @@
         v-if="showUserIdFilter"
         class="submission-filter-group"
       >
-        <label class="submission-filter-label" for="submission-user-filter">로그인 ID</label>
+        <label class="submission-filter-label" for="submission-user-filter">ID</label>
         <input
           id="submission-user-filter"
           :value="userIdFilter"
           class="submission-filter-input"
           type="text"
           inputmode="text"
-          placeholder="예: root"
+          placeholder="ID"
           :disabled="isLoading"
           @input="$emit('update:userIdFilter', $event.target.value)"
         />
