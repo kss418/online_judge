@@ -186,21 +186,21 @@
           </div>
         </form>
 
-        <div v-if="isLoadingTestcases" class="empty-state compact-state">
-          <p>테스트케이스를 불러오는 중입니다.</p>
-        </div>
-
-        <div v-else-if="testcaseErrorMessage" class="empty-state error-state compact-state">
-          <p>{{ testcaseErrorMessage }}</p>
-        </div>
-
-        <div v-else-if="!testcaseItems.length" class="empty-state compact-state">
-          <p>등록된 테스트케이스가 아직 없습니다.</p>
-        </div>
-
-        <div v-else class="admin-testcases-summary-layout">
+        <div class="admin-testcases-summary-layout">
           <div class="admin-testcases-summary-panel">
-            <div class="admin-testcases-summary-list">
+            <div v-if="isLoadingTestcases" class="empty-state compact-state">
+              <p>테스트케이스를 불러오는 중입니다.</p>
+            </div>
+
+            <div v-else-if="testcaseErrorMessage" class="empty-state error-state compact-state">
+              <p>{{ testcaseErrorMessage }}</p>
+            </div>
+
+            <div v-else-if="!testcaseItems.length" class="empty-state compact-state">
+              <p>등록된 테스트케이스가 아직 없습니다.</p>
+            </div>
+
+            <div v-else class="admin-testcases-summary-list">
               <button
                 v-for="testcase in testcaseItems"
                 :key="testcase.testcase_order"
@@ -230,17 +230,62 @@
                   </span>
                 </div>
                 <span class="admin-testcase-summary-copy">
-                  입력 {{ describeTestcaseContent(testcase.testcase_input) }}
+                  입력 {{ describeTestcaseContent(testcase.input_char_count, testcase.input_line_count) }}
                 </span>
                 <span class="admin-testcase-summary-copy">
-                  출력 {{ describeTestcaseContent(testcase.testcase_output) }}
+                  출력 {{ describeTestcaseContent(testcase.output_char_count, testcase.output_line_count) }}
                 </span>
               </button>
             </div>
           </div>
 
           <article
-            v-if="selectedTestcase"
+            v-if="isLoadingTestcases"
+            class="admin-testcase-card"
+          >
+            <div class="empty-state compact-state">
+              <p>테스트케이스 요약을 불러오는 중입니다.</p>
+            </div>
+          </article>
+
+          <article
+            v-else-if="testcaseErrorMessage && !testcaseItems.length"
+            class="admin-testcase-card"
+          >
+            <div class="empty-state error-state compact-state">
+              <p>{{ testcaseErrorMessage }}</p>
+            </div>
+          </article>
+
+          <article
+            v-else-if="!testcaseItems.length"
+            class="admin-testcase-card"
+          >
+            <div class="empty-state compact-state">
+              <p>테스트케이스를 추가하면 여기에서 바로 편집할 수 있습니다.</p>
+            </div>
+          </article>
+
+          <article
+            v-else-if="isLoadingSelectedTestcase"
+            class="admin-testcase-card"
+          >
+            <div class="empty-state compact-state">
+              <p>테스트케이스 본문을 불러오는 중입니다.</p>
+            </div>
+          </article>
+
+          <article
+            v-else-if="selectedTestcaseErrorMessage"
+            class="admin-testcase-card"
+          >
+            <div class="empty-state error-state compact-state">
+              <p>{{ selectedTestcaseErrorMessage }}</p>
+            </div>
+          </article>
+
+          <article
+            v-else-if="selectedTestcase"
             class="admin-testcase-card"
           >
             <div class="admin-testcase-card-header">
@@ -294,6 +339,15 @@
               >
                 {{ isSavingSelectedTestcase ? '저장 중...' : '저장' }}
               </button>
+            </div>
+          </article>
+
+          <article
+            v-else
+            class="admin-testcase-card"
+          >
+            <div class="empty-state compact-state">
+              <p>왼쪽 요약에서 테스트케이스를 선택하면 본문을 보여줍니다.</p>
             </div>
           </article>
         </div>
@@ -370,11 +424,19 @@ const props = defineProps({
     type: Boolean,
     required: true
   },
+  isLoadingSelectedTestcase: {
+    type: Boolean,
+    required: true
+  },
   testcaseItems: {
     type: Array,
     required: true
   },
   testcaseErrorMessage: {
+    type: String,
+    required: true
+  },
+  selectedTestcaseErrorMessage: {
     type: String,
     required: true
   },

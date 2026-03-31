@@ -5,7 +5,7 @@ import {
   createProblemTestcase,
   deleteProblemTestcase,
   getProblemDetail,
-  getProblemLimits,
+  getProblemTestcase,
   getProblemList,
   getProblemTestcases,
   moveProblemTestcase,
@@ -51,15 +51,18 @@ export function useAdminProblemTestcasesPage(){
   const isLoadingProblems = ref(true)
   const isLoadingProblem = ref(false)
   const isLoadingTestcases = ref(false)
+  const isLoadingSelectedTestcase = ref(false)
   const listErrorMessage = ref('')
   const problemErrorMessage = ref('')
   const testcaseErrorMessage = ref('')
+  const selectedTestcaseErrorMessage = ref('')
   const searchMode = ref('title')
   const titleSearchInput = ref('')
   const problemIdSearchInput = ref('')
   const problems = ref([])
   const problemDetail = ref(null)
   const testcaseItems = ref([])
+  const selectedTestcase = ref(null)
   const newTestcaseInput = ref('')
   const newTestcaseOutput = ref('')
   const testcaseZipFile = ref(null)
@@ -74,7 +77,7 @@ export function useAdminProblemTestcasesPage(){
   let latestProblemListRequestId = 0
   let latestProblemRequestId = 0
   let latestTestcaseRequestId = 0
-  let latestProblemLimitHydrationId = 0
+  let latestSelectedTestcaseRequestId = 0
 
   const canManageProblems = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 1)
   const problemCount = computed(() => problems.value.length)
@@ -132,7 +135,7 @@ export function useAdminProblemTestcasesPage(){
   const isMovingTestcase = computed(() => busySection.value === 'move')
   const isSavingSelectedTestcase = computed(() => busySection.value === 'save')
   const selectedTestcaseZipName = computed(() => testcaseZipFile.value?.name || '')
-  const selectedTestcase = computed(() =>
+  const selectedTestcaseSummary = computed(() =>
     testcaseItems.value.find((testcase) => testcase.testcase_order === selectedTestcaseOrder.value) || null
   )
   const canCreateTestcase = computed(() =>
@@ -149,7 +152,7 @@ export function useAdminProblemTestcasesPage(){
   const canDeleteSelectedTestcase = computed(() =>
     selectedProblemId.value > 0 &&
     Boolean(authState.token) &&
-    Boolean(selectedTestcase.value) &&
+    Boolean(selectedTestcaseSummary.value) &&
     !busySection.value
   )
   const canMoveTestcases = computed(() =>
@@ -197,6 +200,22 @@ export function useAdminProblemTestcasesPage(){
     selectedTestcaseOutputDraft.value = testcase?.testcase_output ?? ''
   }, {
     immediate: true
+  })
+
+  watch(selectedTestcaseSummary, (testcaseSummary) => {
+    if (!authState.initialized || !canManageProblems.value) {
+      return
+    }
+
+    if (!authState.token || selectedProblemId.value <= 0 || !testcaseSummary) {
+      latestSelectedTestcaseRequestId += 1
+      selectedTestcase.value = null
+      isLoadingSelectedTestcase.value = false
+      selectedTestcaseErrorMessage.value = ''
+      return
+    }
+
+    void loadSelectedTestcaseDetail(testcaseSummary.testcase_order)
   })
 
   watch(
@@ -254,9 +273,20 @@ export function useAdminProblemTestcasesPage(){
     return rawTestcases.map((testcase) => ({
       testcase_id: Number(testcase.testcase_id ?? 0),
       testcase_order: Number(testcase.testcase_order ?? 0),
-      testcase_input: typeof testcase.testcase_input === 'string' ? testcase.testcase_input : '',
-      testcase_output: typeof testcase.testcase_output === 'string' ? testcase.testcase_output : ''
+      input_char_count: Number(testcase.input_char_count ?? 0),
+      input_line_count: Number(testcase.input_line_count ?? 0),
+      output_char_count: Number(testcase.output_char_count ?? 0),
+      output_line_count: Number(testcase.output_line_count ?? 0)
     }))
+  }
+
+  function normalizeTestcaseDetail(response){
+    return {
+      testcase_id: Number(response?.testcase_id ?? 0),
+      testcase_order: Number(response?.testcase_order ?? 0),
+      testcase_input: typeof response?.testcase_input === 'string' ? response.testcase_input : '',
+      testcase_output: typeof response?.testcase_output === 'string' ? response.testcase_output : ''
+    }
   }
 
   function parsePositiveInteger(value){
@@ -273,12 +303,15 @@ export function useAdminProblemTestcasesPage(){
     return parsedValue
   }
 
-  function describeTestcaseContent(value){
-    if (!value) {
+  function describeTestcaseContent(charCount, lineCount){
+    const normalizedCharCount = Number(charCount ?? 0)
+    const normalizedLineCount = Number(lineCount ?? 0)
+
+    if (normalizedCharCount <= 0) {
       return '빈 값'
     }
 
-    return `${formatCount(value.length)}자 · ${formatCount(value.split('\n').length)}줄`
+    return `${formatCount(normalizedCharCount)}자 · ${formatCount(normalizedLineCount)}줄`
   }
 
   function isLastTestcase(testcaseOrder){
@@ -290,8 +323,10 @@ export function useAdminProblemTestcasesPage(){
   }
 
   function resetSelectedProblemState(){
+    latestSelectedTestcaseRequestId += 1
     problemDetail.value = null
     testcaseItems.value = []
+    selectedTestcase.value = null
     newTestcaseInput.value = ''
     newTestcaseOutput.value = ''
     testcaseZipFile.value = null
@@ -302,6 +337,8 @@ export function useAdminProblemTestcasesPage(){
     viewTestcaseOrderInput.value = ''
     problemErrorMessage.value = ''
     testcaseErrorMessage.value = ''
+    selectedTestcaseErrorMessage.value = ''
+    isLoadingSelectedTestcase.value = false
   }
 
   function syncSearchControlsFromRoute(){
@@ -568,8 +605,6 @@ export function useAdminProblemTestcasesPage(){
         return
       }
 
-      void hydrateProblemLimits(problems.value.map((problem) => problem.problem_id))
-
       const nextProblemId = problems.value.some((problem) => problem.problem_id === preferredProblemId)
         ? preferredProblemId
         : problems.value[0].problem_id
@@ -599,49 +634,6 @@ export function useAdminProblemTestcasesPage(){
         isLoadingProblems.value = false
       }
     }
-  }
-
-  async function hydrateProblemLimits(problemIds){
-    if (!problemIds.length) {
-      return
-    }
-
-    const hydrationId = ++latestProblemLimitHydrationId
-    const detailEntries = await Promise.all(problemIds.map(async (problemId) => {
-      try {
-        const response = await getProblemLimits(problemId, {
-          bearerToken: authState.token || ''
-        })
-        return [
-          problemId,
-          {
-            time_limit_ms: Number(response?.time_limit_ms ?? 0),
-            memory_limit_mb: Number(response?.memory_limit_mb ?? 0)
-          }
-        ]
-      } catch {
-        return null
-      }
-    }))
-
-    if (hydrationId !== latestProblemLimitHydrationId) {
-      return
-    }
-
-    const limitMap = new Map(detailEntries.filter(Boolean))
-    if (!limitMap.size) {
-      return
-    }
-
-    problems.value = problems.value.map((problem) => {
-      const limitPatch = limitMap.get(problem.problem_id)
-      return limitPatch
-        ? {
-          ...problem,
-          ...limitPatch
-        }
-        : problem
-    })
   }
 
   async function loadProblemDetail(){
@@ -681,13 +673,51 @@ export function useAdminProblemTestcasesPage(){
     }
   }
 
-  async function loadTestcases(){
+  async function loadSelectedTestcaseDetail(testcaseOrder){
+    const requestId = ++latestSelectedTestcaseRequestId
+    isLoadingSelectedTestcase.value = true
+    selectedTestcaseErrorMessage.value = ''
+    selectedTestcase.value = null
+
+    try {
+      const response = await getProblemTestcase(
+        selectedProblemId.value,
+        testcaseOrder,
+        {
+          bearerToken: authState.token || ''
+        }
+      )
+
+      if (requestId !== latestSelectedTestcaseRequestId) {
+        return
+      }
+
+      selectedTestcase.value = normalizeTestcaseDetail(response)
+    } catch (error) {
+      if (requestId !== latestSelectedTestcaseRequestId) {
+        return
+      }
+
+      selectedTestcase.value = null
+      selectedTestcaseErrorMessage.value = error instanceof Error
+        ? error.message
+        : '테스트케이스 본문을 불러오지 못했습니다.'
+    } finally {
+      if (requestId === latestSelectedTestcaseRequestId) {
+        isLoadingSelectedTestcase.value = false
+      }
+    }
+  }
+
+  async function loadTestcases(preferredOrder){
     const requestId = ++latestTestcaseRequestId
     isLoadingTestcases.value = true
     testcaseErrorMessage.value = ''
 
     if (!authState.token || selectedProblemId.value <= 0) {
       testcaseItems.value = []
+      selectedTestcase.value = null
+      selectedTestcaseErrorMessage.value = ''
       isLoadingTestcases.value = false
       return
     }
@@ -702,17 +732,19 @@ export function useAdminProblemTestcasesPage(){
       }
 
       testcaseItems.value = normalizeTestcaseList(response)
-      syncSelectedTestcase()
+      syncSelectedTestcase(preferredOrder)
     } catch (error) {
       if (requestId !== latestTestcaseRequestId) {
         return
       }
 
       testcaseItems.value = []
+      selectedTestcase.value = null
       selectedTestcaseOrder.value = 0
       selectedTestcaseInputDraft.value = ''
       selectedTestcaseOutputDraft.value = ''
       viewTestcaseOrderInput.value = ''
+      selectedTestcaseErrorMessage.value = ''
       testcaseErrorMessage.value = error instanceof Error
         ? error.message
         : '테스트케이스를 불러오지 못했습니다.'
@@ -770,16 +802,7 @@ export function useAdminProblemTestcasesPage(){
         authState.token
       )
 
-      testcaseItems.value = [
-        ...testcaseItems.value,
-        {
-          testcase_id: Number(response.testcase_id ?? 0),
-          testcase_order: Number(response.testcase_order ?? (testcaseItems.value.length + 1)),
-          testcase_input: nextTestcaseInput,
-          testcase_output: nextTestcaseOutput
-        }
-      ]
-      syncSelectedTestcase(Number(response.testcase_order ?? 0))
+      await loadTestcases(Number(response.testcase_order ?? 0))
       newTestcaseInput.value = ''
       newTestcaseOutput.value = ''
       showSuccessNotice('테스트케이스를 마지막에 추가했습니다.')
@@ -825,11 +848,11 @@ export function useAdminProblemTestcasesPage(){
   }
 
   async function handleDeleteSelectedTestcase(){
-    if (!canDeleteSelectedTestcase.value || !authState.token || !selectedTestcase.value) {
+    if (!canDeleteSelectedTestcase.value || !authState.token || !selectedTestcaseSummary.value) {
       return
     }
 
-    const deletedTestcaseOrder = selectedTestcase.value.testcase_order
+    const deletedTestcaseOrder = selectedTestcaseSummary.value.testcase_order
 
     busySection.value = 'delete-selected'
 
@@ -916,7 +939,7 @@ export function useAdminProblemTestcasesPage(){
       return
     }
 
-    const selectedTestcaseId = Number(selectedTestcase.value?.testcase_id ?? 0)
+    const selectedTestcaseId = Number(selectedTestcaseSummary.value?.testcase_id ?? 0)
     busySection.value = 'move'
 
     try {
@@ -967,23 +990,8 @@ export function useAdminProblemTestcasesPage(){
         authState.token
       )
 
-      testcaseItems.value = testcaseItems.value.map((testcase) => {
-        if (testcase.testcase_order !== testcaseOrder) {
-          return testcase
-        }
-
-        return {
-          ...testcase,
-          testcase_id: Number(response.testcase_id ?? testcase.testcase_id),
-          testcase_order: Number(response.testcase_order ?? testcase.testcase_order),
-          testcase_input: typeof response.testcase_input === 'string'
-            ? response.testcase_input
-            : nextTestcaseInput,
-          testcase_output: typeof response.testcase_output === 'string'
-            ? response.testcase_output
-            : nextTestcaseOutput
-        }
-      })
+      selectedTestcase.value = normalizeTestcaseDetail(response)
+      await loadTestcases(testcaseOrder)
       showSuccessNotice(`테스트케이스 ${testcaseOrder}번을 저장했습니다.`)
     } catch (error) {
       showErrorNotice(
@@ -1024,9 +1032,11 @@ export function useAdminProblemTestcasesPage(){
     isLoadingProblems,
     isLoadingProblem,
     isLoadingTestcases,
+    isLoadingSelectedTestcase,
     listErrorMessage,
     problemErrorMessage,
     testcaseErrorMessage,
+    selectedTestcaseErrorMessage,
     searchMode,
     titleSearchInput,
     problemIdSearchInput,

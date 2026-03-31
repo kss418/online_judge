@@ -42,6 +42,10 @@ namespace testcase_repository{
         pqxx::transaction_base& transaction,
         const problem_dto::reference& problem_reference_value
     );
+    std::expected<std::vector<problem_dto::testcase_summary>, error_code> list_testcase_summaries(
+        pqxx::transaction_base& transaction,
+        const problem_dto::reference& problem_reference_value
+    );
 
     std::expected<void, error_code> set_testcase(
         pqxx::transaction_base& transaction,

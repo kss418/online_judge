@@ -13,6 +13,12 @@ namespace testcase_handler{
     using request_type = boost::beast::http::request<boost::beast::http::string_body>;
     using response_type = boost::beast::http::response<boost::beast::http::string_body>;
 
+    response_type get_testcase(
+        const request_type& request,
+        db_connection& db_connection_value,
+        std::int64_t problem_id,
+        std::int32_t testcase_order
+    );
     response_type get_testcases(
         const request_type& request,
         db_connection& db_connection_value,

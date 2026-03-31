@@ -205,6 +205,8 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_reposi
         "p.problem_id, "
         "p.title, "
         "p.version, "
+        "COALESCE(pl.time_limit_ms, 0), "
+        "COALESCE(pl.memory_limit_mb, 0), "
         "COALESCE(ps.submission_count, 0), "
         "COALESCE(ps.accepted_count, 0), ";
     pqxx::params query_params;
@@ -224,6 +226,8 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_reposi
 
     problem_list_query +=
         "FROM problems AS p "
+        "LEFT JOIN problem_limits AS pl "
+        "ON pl.problem_id = p.problem_id "
         "LEFT JOIN problem_statistics AS ps "
         "ON ps.problem_id = p.problem_id ";
 
@@ -269,6 +273,8 @@ problem_core_repository::list_user_solved_problems(
         "p.problem_id, "
         "p.title, "
         "p.version, "
+        "COALESCE(pl.time_limit_ms, 0), "
+        "COALESCE(pl.memory_limit_mb, 0), "
         "COALESCE(ps.submission_count, 0), "
         "COALESCE(ps.accepted_count, 0), ";
     pqxx::params query_params;
@@ -290,6 +296,8 @@ problem_core_repository::list_user_solved_problems(
         "FROM user_problem_attempt_summary AS target_ups "
         "JOIN problems AS p "
         "ON p.problem_id = target_ups.problem_id "
+        "LEFT JOIN problem_limits AS pl "
+        "ON pl.problem_id = p.problem_id "
         "LEFT JOIN problem_statistics AS ps "
         "ON ps.problem_id = p.problem_id ";
 
@@ -330,6 +338,8 @@ problem_core_repository::list_user_wrong_problems(
         "p.problem_id, "
         "p.title, "
         "p.version, "
+        "COALESCE(pl.time_limit_ms, 0), "
+        "COALESCE(pl.memory_limit_mb, 0), "
         "COALESCE(ps.submission_count, 0), "
         "COALESCE(ps.accepted_count, 0), ";
     pqxx::params query_params;
@@ -351,6 +361,8 @@ problem_core_repository::list_user_wrong_problems(
         "FROM user_problem_attempt_summary AS target_ups "
         "JOIN problems AS p "
         "ON p.problem_id = target_ups.problem_id "
+        "LEFT JOIN problem_limits AS pl "
+        "ON pl.problem_id = p.problem_id "
         "LEFT JOIN problem_statistics AS ps "
         "ON ps.problem_id = p.problem_id ";
 

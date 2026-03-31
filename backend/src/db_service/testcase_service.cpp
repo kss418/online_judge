@@ -122,6 +122,27 @@ std::expected<std::vector<problem_dto::testcase>, error_code> testcase_service::
     );
 }
 
+std::expected<std::vector<problem_dto::testcase_summary>, error_code>
+testcase_service::list_testcase_summaries(
+    db_connection& connection,
+    const problem_dto::reference& problem_reference_value
+){
+    if(problem_reference_value.problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return db_service_util::with_retry_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<std::vector<problem_dto::testcase_summary>, error_code> {
+            return testcase_repository::list_testcase_summaries(
+                transaction,
+                problem_reference_value
+            );
+        }
+    );
+}
+
 std::expected<void, error_code> testcase_service::set_testcase(
     db_connection& connection,
     const problem_dto::testcase_ref& testcase_reference_value,

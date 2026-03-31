@@ -112,6 +112,10 @@ CREATE TABLE IF NOT EXISTS problem_testcases(
     testcase_order INTEGER NOT NULL,
     testcase_input TEXT NOT NULL,
     testcase_output TEXT NOT NULL,
+    input_char_count INTEGER NOT NULL DEFAULT 0,
+    input_line_count INTEGER NOT NULL DEFAULT 0,
+    output_char_count INTEGER NOT NULL DEFAULT 0,
+    output_line_count INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT problem_testcases_testcase_order_check CHECK(testcase_order > 0),
     CONSTRAINT problem_testcases_problem_id_testcase_order_unique
@@ -119,8 +123,27 @@ CREATE TABLE IF NOT EXISTS problem_testcases(
         DEFERRABLE INITIALLY IMMEDIATE
 );
 
+ALTER TABLE problem_testcases
+    ADD COLUMN IF NOT EXISTS input_char_count INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS input_line_count INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS output_char_count INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS output_line_count INTEGER NOT NULL DEFAULT 0;
+
 CREATE INDEX IF NOT EXISTS problem_testcases_problem_id_testcase_order_idx
     ON problem_testcases(problem_id, testcase_order ASC);
+
+UPDATE problem_testcases
+SET
+    input_char_count = char_length(testcase_input),
+    input_line_count = CASE
+        WHEN testcase_input = '' THEN 0
+        ELSE 1 + char_length(testcase_input) - char_length(replace(testcase_input, E'\n', ''))
+    END,
+    output_char_count = char_length(testcase_output),
+    output_line_count = CASE
+        WHEN testcase_output = '' THEN 0
+        ELSE 1 + char_length(testcase_output) - char_length(replace(testcase_output, E'\n', ''))
+    END;
 
 INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms, updated_at)
 SELECT p.problem_id, 256, 1000, NOW()
@@ -166,7 +189,7 @@ WHERE st.problem_id IS NULL
 ON CONFLICT(problem_id) DO NOTHING;
 
 INSERT INTO schema_migrations(version)
-VALUES('problem_schema_v13')
+VALUES('problem_schema_v14')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

@@ -58,7 +58,6 @@ export function useAdminProblemsPage(){
 
   let latestProblemListRequestId = 0
   let latestProblemDetailRequestId = 0
-  let latestProblemLimitHydrationId = 0
 
   const canManageProblems = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 1)
   const problemCount = computed(() => problems.value.length)
@@ -523,50 +522,6 @@ export function useAdminProblemsPage(){
     })
   }
 
-  async function hydrateProblemLimits(problemIds){
-    if (!problemIds.length) {
-      return
-    }
-
-    const hydrationId = ++latestProblemLimitHydrationId
-    const detailEntries = await Promise.all(problemIds.map(async (problemId) => {
-      try {
-        const response = await getProblemDetail(problemId, {
-          bearerToken: authState.token || ''
-        })
-        const detail = normalizeProblemDetail(response)
-        return [
-          problemId,
-          {
-            time_limit_ms: detail.limits.time_limit_ms,
-            memory_limit_mb: detail.limits.memory_limit_mb
-          }
-        ]
-      } catch {
-        return null
-      }
-    }))
-
-    if (hydrationId !== latestProblemLimitHydrationId) {
-      return
-    }
-
-    const limitMap = new Map(detailEntries.filter(Boolean))
-    if (!limitMap.size) {
-      return
-    }
-
-    problems.value = problems.value.map((problem) => {
-      const limitPatch = limitMap.get(problem.problem_id)
-      return limitPatch
-        ? {
-          ...problem,
-          ...limitPatch
-        }
-        : problem
-    })
-  }
-
   async function loadProblems(options = {}){
     if (!authState.token || !canManageProblems.value) {
       return
@@ -574,7 +529,6 @@ export function useAdminProblemsPage(){
 
     const requestId = ++latestProblemListRequestId
     const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
-
     isLoadingProblems.value = true
     listErrorMessage.value = ''
     actionErrorMessage.value = ''
@@ -604,8 +558,8 @@ export function useAdminProblemsPage(){
         problem_id: Number(problem.problem_id ?? 0),
         title: problem.title ?? '',
         version: Number(problem.version ?? 0),
-        time_limit_ms: null,
-        memory_limit_mb: null
+        time_limit_ms: Number(problem.time_limit_ms ?? 0),
+        memory_limit_mb: Number(problem.memory_limit_mb ?? 0)
       }))
 
       if (!problems.value.length) {
@@ -615,8 +569,6 @@ export function useAdminProblemsPage(){
         resetEditorDrafts()
         return
       }
-
-      void hydrateProblemLimits(problems.value.map((problem) => problem.problem_id))
 
       const nextProblemId = problems.value.some((problem) => problem.problem_id === preferredProblemId)
         ? preferredProblemId
@@ -670,9 +622,7 @@ export function useAdminProblemsPage(){
       selectedProblemDetail.value = normalizedDetail
       mergeProblemSummary(problemId, {
         title: normalizedDetail.title,
-        version: normalizedDetail.version,
-        time_limit_ms: normalizedDetail.limits.time_limit_ms,
-        memory_limit_mb: normalizedDetail.limits.memory_limit_mb
+        version: normalizedDetail.version
       })
       assignEditorDrafts(normalizedDetail)
     } catch (error) {

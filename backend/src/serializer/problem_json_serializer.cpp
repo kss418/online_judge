@@ -10,6 +10,8 @@ namespace{
         response_object["problem_id"] = summary_value.problem_id;
         response_object["title"] = summary_value.title;
         response_object["version"] = summary_value.version;
+        response_object["time_limit_ms"] = summary_value.time_limit_ms;
+        response_object["memory_limit_mb"] = summary_value.memory_limit_mb;
         response_object["submission_count"] = summary_value.submission_count;
         response_object["accepted_count"] = summary_value.accepted_count;
         if(summary_value.user_problem_state_opt){
@@ -39,6 +41,19 @@ namespace{
         response_array.reserve(testcase_values.size());
         for(const auto& testcase_value : testcase_values){
             response_array.push_back(problem_json_serializer::make_testcase_object(testcase_value));
+        }
+        return response_array;
+    }
+
+    boost::json::array make_testcase_summary_array(
+        const std::vector<problem_dto::testcase_summary>& testcase_summary_values
+    ){
+        boost::json::array response_array;
+        response_array.reserve(testcase_summary_values.size());
+        for(const auto& testcase_summary_value : testcase_summary_values){
+            response_array.push_back(
+                problem_json_serializer::make_testcase_summary_object(testcase_summary_value)
+            );
         }
         return response_array;
     }
@@ -178,12 +193,34 @@ boost::json::object problem_json_serializer::make_testcase_object(
     return response_object;
 }
 
+boost::json::object problem_json_serializer::make_testcase_summary_object(
+    const problem_dto::testcase_summary& testcase_summary_value
+){
+    boost::json::object response_object;
+    response_object["testcase_id"] = testcase_summary_value.id;
+    response_object["testcase_order"] = testcase_summary_value.order;
+    response_object["input_char_count"] = testcase_summary_value.input_char_count;
+    response_object["input_line_count"] = testcase_summary_value.input_line_count;
+    response_object["output_char_count"] = testcase_summary_value.output_char_count;
+    response_object["output_line_count"] = testcase_summary_value.output_line_count;
+    return response_object;
+}
+
 boost::json::object problem_json_serializer::make_testcase_list_object(
     const std::vector<problem_dto::testcase>& testcase_values
 ){
     boost::json::object response_object;
     response_object["testcase_count"] = static_cast<std::int64_t>(testcase_values.size());
     response_object["testcases"] = make_testcase_array(testcase_values);
+    return response_object;
+}
+
+boost::json::object problem_json_serializer::make_testcase_summary_list_object(
+    const std::vector<problem_dto::testcase_summary>& testcase_summary_values
+){
+    boost::json::object response_object;
+    response_object["testcase_count"] = static_cast<std::int64_t>(testcase_summary_values.size());
+    response_object["testcases"] = make_testcase_summary_array(testcase_summary_values);
     return response_object;
 }
 

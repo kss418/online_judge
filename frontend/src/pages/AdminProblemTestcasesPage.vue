@@ -68,8 +68,10 @@
             :is-creating-testcase="isCreatingTestcase"
             :can-view-specific-testcase="canViewSpecificTestcase"
             :is-loading-testcases="isLoadingTestcases"
+            :is-loading-selected-testcase="isLoadingSelectedTestcase"
             :testcase-items="testcaseItems"
             :testcase-error-message="testcaseErrorMessage"
+            :selected-testcase-error-message="selectedTestcaseErrorMessage"
             :selected-testcase-order="selectedTestcaseOrder"
             :selected-testcase="selectedTestcase"
             :can-delete-selected-testcase="canDeleteSelectedTestcase"
@@ -111,9 +113,11 @@ const {
   isLoadingProblems,
   isLoadingProblem,
   isLoadingTestcases,
+  isLoadingSelectedTestcase,
   listErrorMessage,
   problemErrorMessage,
   testcaseErrorMessage,
+  selectedTestcaseErrorMessage,
   searchMode,
   titleSearchInput,
   problemIdSearchInput,

@@ -27,6 +27,10 @@ namespace testcase_service{
         db_connection& connection,
         const problem_dto::reference& problem_reference_value
     );
+    std::expected<std::vector<problem_dto::testcase_summary>, error_code> list_testcase_summaries(
+        db_connection& connection,
+        const problem_dto::reference& problem_reference_value
+    );
     std::expected<void, error_code> set_testcase(
         db_connection& connection,
         const problem_dto::testcase_ref& testcase_reference_value,

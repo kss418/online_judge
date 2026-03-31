@@ -136,10 +136,12 @@ problem_dto::summary problem_dto::make_summary_from_row(
     summary_value.problem_id = problem_summary_row[0].as<std::int64_t>();
     summary_value.title = problem_summary_row[1].as<std::string>();
     summary_value.version = problem_summary_row[2].as<std::int32_t>();
-    summary_value.submission_count = problem_summary_row[3].as<std::int64_t>();
-    summary_value.accepted_count = problem_summary_row[4].as<std::int64_t>();
-    if(!problem_summary_row[5].is_null()){
-        summary_value.user_problem_state_opt = problem_summary_row[5].as<std::string>();
+    summary_value.time_limit_ms = problem_summary_row[3].as<std::int32_t>();
+    summary_value.memory_limit_mb = problem_summary_row[4].as<std::int32_t>();
+    summary_value.submission_count = problem_summary_row[5].as<std::int64_t>();
+    summary_value.accepted_count = problem_summary_row[6].as<std::int64_t>();
+    if(!problem_summary_row[7].is_null()){
+        summary_value.user_problem_state_opt = problem_summary_row[7].as<std::string>();
     }
     return summary_value;
 }

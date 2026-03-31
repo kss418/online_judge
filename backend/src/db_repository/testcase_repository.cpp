@@ -14,8 +14,19 @@ std::expected<problem_dto::testcase, error_code> testcase_repository::create_tes
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
     const auto create_testcase_result = transaction.exec(
-        "INSERT INTO problem_testcases(problem_id, testcase_order, testcase_input, testcase_output) "
-        "VALUES($1, $2, $3, $4) "
+        "INSERT INTO problem_testcases("
+        "problem_id, testcase_order, testcase_input, testcase_output, "
+        "input_char_count, input_line_count, output_char_count, output_line_count"
+        ") "
+        "VALUES("
+        "$1, $2, $3, $4, "
+        "char_length($3), "
+        "CASE WHEN $3 = '' THEN 0 "
+        "ELSE 1 + char_length($3) - char_length(replace($3, E'\\n', '')) END, "
+        "char_length($4), "
+        "CASE WHEN $4 = '' THEN 0 "
+        "ELSE 1 + char_length($4) - char_length(replace($4, E'\\n', '')) END"
+        ") "
         "RETURNING testcase_id",
         pqxx::params{
             problem_id,
@@ -167,6 +178,46 @@ std::expected<std::vector<problem_dto::testcase>, error_code> testcase_repositor
     return testcase_values;
 }
 
+std::expected<std::vector<problem_dto::testcase_summary>, error_code>
+testcase_repository::list_testcase_summaries(
+    pqxx::transaction_base& transaction,
+    const problem_dto::reference& problem_reference_value
+){
+    const std::int64_t problem_id = problem_reference_value.problem_id;
+    if(problem_id <= 0){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    const auto testcases_query_result = transaction.exec(
+        "SELECT "
+        "testcase_id, "
+        "testcase_order, "
+        "input_char_count, "
+        "input_line_count, "
+        "output_char_count, "
+        "output_line_count "
+        "FROM problem_testcases "
+        "WHERE problem_id = $1 "
+        "ORDER BY testcase_order ASC",
+        pqxx::params{problem_id}
+    );
+
+    std::vector<problem_dto::testcase_summary> testcase_summary_values;
+    testcase_summary_values.reserve(testcases_query_result.size());
+    for(const auto& row : testcases_query_result){
+        problem_dto::testcase_summary testcase_summary_value;
+        testcase_summary_value.id = row[0].as<std::int64_t>();
+        testcase_summary_value.order = row[1].as<std::int32_t>();
+        testcase_summary_value.input_char_count = row[2].as<std::int32_t>();
+        testcase_summary_value.input_line_count = row[3].as<std::int32_t>();
+        testcase_summary_value.output_char_count = row[4].as<std::int32_t>();
+        testcase_summary_value.output_line_count = row[5].as<std::int32_t>();
+        testcase_summary_values.push_back(std::move(testcase_summary_value));
+    }
+
+    return testcase_summary_values;
+}
+
 std::expected<void, error_code> testcase_repository::set_testcase(
     pqxx::transaction_base& transaction,
     const problem_dto::testcase_ref& testcase_reference_value,
@@ -182,7 +233,13 @@ std::expected<void, error_code> testcase_repository::set_testcase(
         "UPDATE problem_testcases "
         "SET "
         "testcase_input = $3, "
-        "testcase_output = $4 "
+        "testcase_output = $4, "
+        "input_char_count = char_length($3), "
+        "input_line_count = CASE WHEN $3 = '' THEN 0 "
+        "ELSE 1 + char_length($3) - char_length(replace($3, E'\\n', '')) END, "
+        "output_char_count = char_length($4), "
+        "output_line_count = CASE WHEN $4 = '' THEN 0 "
+        "ELSE 1 + char_length($4) - char_length(replace($4, E'\\n', '')) END "
         "WHERE problem_id = $1 AND testcase_order = $2",
         pqxx::params{
             problem_id,

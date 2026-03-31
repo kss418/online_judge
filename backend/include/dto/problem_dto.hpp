@@ -49,6 +49,8 @@ namespace problem_dto{
         std::int64_t problem_id = 0;
         std::string title;
         std::int32_t version = 0;
+        std::int32_t time_limit_ms = 0;
+        std::int32_t memory_limit_mb = 0;
         std::int64_t submission_count = 0;
         std::int64_t accepted_count = 0;
         std::optional<std::string> user_problem_state_opt = std::nullopt;
@@ -88,6 +90,15 @@ namespace problem_dto{
         std::int32_t order = 0;
         std::string input;
         std::string output;
+    };
+
+    struct testcase_summary{
+        std::int64_t id = 0;
+        std::int32_t order = 0;
+        std::int32_t input_char_count = 0;
+        std::int32_t input_line_count = 0;
+        std::int32_t output_char_count = 0;
+        std::int32_t output_line_count = 0;
     };
 
     struct list_filter{

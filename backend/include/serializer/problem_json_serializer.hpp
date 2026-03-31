@@ -37,8 +37,16 @@ namespace problem_json_serializer{
         const problem_dto::testcase& testcase_value
     );
 
+    boost::json::object make_testcase_summary_object(
+        const problem_dto::testcase_summary& testcase_summary_value
+    );
+
     boost::json::object make_testcase_list_object(
         const std::vector<problem_dto::testcase>& testcase_values
+    );
+
+    boost::json::object make_testcase_summary_list_object(
+        const std::vector<problem_dto::testcase_summary>& testcase_summary_values
     );
 
     boost::json::object make_testcase_created_object(

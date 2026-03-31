@@ -39,6 +39,7 @@ create_problem_response_file="$(mktemp)"
 create_testcase_response_file="$(mktemp)"
 create_empty_testcase_response_file="$(mktemp)"
 list_testcases_response_file="$(mktemp)"
+testcase_detail_response_file="$(mktemp)"
 update_testcase_response_file="$(mktemp)"
 updated_testcases_response_file="$(mktemp)"
 move_testcase_response_file="$(mktemp)"
@@ -80,6 +81,7 @@ cleanup(){
         "${create_testcase_response_file}" \
         "${create_empty_testcase_response_file}" \
         "${list_testcases_response_file}" \
+        "${testcase_detail_response_file}" \
         "${update_testcase_response_file}" \
         "${updated_testcases_response_file}" \
         "${move_testcase_response_file}" \
@@ -150,6 +152,47 @@ send_zip_request_and_assert_status(){
         "${expected_status_code}" \
         "${response_file_path}" \
         "${failure_context}"
+}
+
+fetch_testcase_detail_and_assert(){
+    local problem_id="$1"
+    local testcase_order="$2"
+    local expected_input="$3"
+    local expected_output="$4"
+    local auth_token="$5"
+
+    send_http_request_and_assert_status \
+        "GET" \
+        "${base_url}/api/problem/${problem_id}/testcase/${testcase_order}" \
+        "${testcase_detail_response_file}" \
+        "200" \
+        "get testcase detail ${testcase_order}" \
+        "${auth_token}"
+
+    EXPECTED_TESTCASE_INPUT="${expected_input}" \
+    EXPECTED_TESTCASE_OUTPUT="${expected_output}" \
+    python3 - "${testcase_detail_response_file}" "${testcase_order}" <<'PY'
+import json
+import os
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+testcase_order = int(sys.argv[2])
+expected_input = os.environ["EXPECTED_TESTCASE_INPUT"]
+expected_output = os.environ["EXPECTED_TESTCASE_OUTPUT"]
+
+if response.get("testcase_order") != testcase_order:
+    raise SystemExit("unexpected testcase_order after testcase detail get")
+if response.get("testcase_input") != expected_input:
+    raise SystemExit("unexpected testcase_input after testcase detail get")
+if response.get("testcase_output") != expected_output:
+    raise SystemExit("unexpected testcase_output after testcase detail get")
+testcase_id = response.get("testcase_id")
+if not isinstance(testcase_id, int) or testcase_id <= 0:
+    raise SystemExit("invalid testcase_id after testcase detail get")
+PY
 }
 
 trap cleanup EXIT
@@ -292,20 +335,31 @@ second_testcase = testcases[1]
 
 if first_testcase.get("testcase_order") != 1:
     raise SystemExit("unexpected first testcase_order after list")
-if first_testcase.get("testcase_input") != "1 2\n":
-    raise SystemExit("unexpected first testcase_input after list")
-if first_testcase.get("testcase_output") != "3\n":
-    raise SystemExit("unexpected first testcase_output after list")
+if first_testcase.get("input_char_count") != 4:
+    raise SystemExit("unexpected first input_char_count after list")
+if first_testcase.get("input_line_count") != 2:
+    raise SystemExit("unexpected first input_line_count after list")
+if first_testcase.get("output_char_count") != 2:
+    raise SystemExit("unexpected first output_char_count after list")
+if first_testcase.get("output_line_count") != 2:
+    raise SystemExit("unexpected first output_line_count after list")
 
 if second_testcase.get("testcase_order") != 2:
     raise SystemExit("unexpected second testcase_order after list")
-if second_testcase.get("testcase_input") != "":
-    raise SystemExit("unexpected second testcase_input after list")
-if second_testcase.get("testcase_output") != "":
-    raise SystemExit("unexpected second testcase_output after list")
+if second_testcase.get("input_char_count") != 0:
+    raise SystemExit("unexpected second input_char_count after list")
+if second_testcase.get("input_line_count") != 0:
+    raise SystemExit("unexpected second input_line_count after list")
+if second_testcase.get("output_char_count") != 0:
+    raise SystemExit("unexpected second output_char_count after list")
+if second_testcase.get("output_line_count") != 0:
+    raise SystemExit("unexpected second output_line_count after list")
 PY
 
 print_success_log "problem testcase list success"
+
+fetch_testcase_detail_and_assert "${problem_id}" "1" $'1 2\n' $'3\n' "${sign_up_token}"
+fetch_testcase_detail_and_assert "${problem_id}" "2" "" "" "${sign_up_token}"
 
 send_http_request_and_assert_status \
     "GET" \
@@ -412,11 +466,17 @@ if not isinstance(testcases, list) or len(testcases) != 2:
 first_testcase = testcases[0]
 if first_testcase.get("testcase_order") != 1:
     raise SystemExit("unexpected first testcase_order after update")
-if first_testcase.get("testcase_input") != "10 20\n":
-    raise SystemExit("unexpected first testcase_input after update")
-if first_testcase.get("testcase_output") != "30\n":
-    raise SystemExit("unexpected first testcase_output after update")
+if first_testcase.get("input_char_count") != 6:
+    raise SystemExit("unexpected first input_char_count after update")
+if first_testcase.get("input_line_count") != 2:
+    raise SystemExit("unexpected first input_line_count after update")
+if first_testcase.get("output_char_count") != 3:
+    raise SystemExit("unexpected first output_char_count after update")
+if first_testcase.get("output_line_count") != 2:
+    raise SystemExit("unexpected first output_line_count after update")
 PY
+
+fetch_testcase_detail_and_assert "${problem_id}" "1" $'10 20\n' $'30\n' "${sign_up_token}"
 
 send_http_request_and_assert_status \
     "GET" \
@@ -494,18 +554,29 @@ second_testcase = testcases[1]
 
 if first_testcase.get("testcase_order") != 1:
     raise SystemExit("unexpected first testcase_order after move")
-if first_testcase.get("testcase_input") != "":
-    raise SystemExit("unexpected first testcase_input after move")
-if first_testcase.get("testcase_output") != "":
-    raise SystemExit("unexpected first testcase_output after move")
+if first_testcase.get("input_char_count") != 0:
+    raise SystemExit("unexpected first input_char_count after move")
+if first_testcase.get("input_line_count") != 0:
+    raise SystemExit("unexpected first input_line_count after move")
+if first_testcase.get("output_char_count") != 0:
+    raise SystemExit("unexpected first output_char_count after move")
+if first_testcase.get("output_line_count") != 0:
+    raise SystemExit("unexpected first output_line_count after move")
 
 if second_testcase.get("testcase_order") != 2:
     raise SystemExit("unexpected second testcase_order after move")
-if second_testcase.get("testcase_input") != "10 20\n":
-    raise SystemExit("unexpected second testcase_input after move")
-if second_testcase.get("testcase_output") != "30\n":
-    raise SystemExit("unexpected second testcase_output after move")
+if second_testcase.get("input_char_count") != 6:
+    raise SystemExit("unexpected second input_char_count after move")
+if second_testcase.get("input_line_count") != 2:
+    raise SystemExit("unexpected second input_line_count after move")
+if second_testcase.get("output_char_count") != 3:
+    raise SystemExit("unexpected second output_char_count after move")
+if second_testcase.get("output_line_count") != 2:
+    raise SystemExit("unexpected second output_line_count after move")
 PY
+
+fetch_testcase_detail_and_assert "${problem_id}" "1" "" "" "${sign_up_token}"
+fetch_testcase_detail_and_assert "${problem_id}" "2" $'10 20\n' $'30\n' "${sign_up_token}"
 
 send_http_request_and_assert_status \
     "GET" \
@@ -567,11 +638,17 @@ if not isinstance(testcases, list) or len(testcases) != 1:
 first_testcase = testcases[0]
 if first_testcase.get("testcase_order") != 1:
     raise SystemExit("unexpected remaining testcase_order after delete")
-if first_testcase.get("testcase_input") != "10 20\n":
-    raise SystemExit("unexpected remaining testcase_input after delete")
-if first_testcase.get("testcase_output") != "30\n":
-    raise SystemExit("unexpected remaining testcase_output after delete")
+if first_testcase.get("input_char_count") != 6:
+    raise SystemExit("unexpected remaining input_char_count after delete")
+if first_testcase.get("input_line_count") != 2:
+    raise SystemExit("unexpected remaining input_line_count after delete")
+if first_testcase.get("output_char_count") != 3:
+    raise SystemExit("unexpected remaining output_char_count after delete")
+if first_testcase.get("output_line_count") != 2:
+    raise SystemExit("unexpected remaining output_line_count after delete")
 PY
+
+fetch_testcase_detail_and_assert "${problem_id}" "1" $'10 20\n' $'30\n' "${sign_up_token}"
 
 send_http_request_and_assert_status \
     "GET" \
@@ -739,18 +816,29 @@ second_testcase = testcases[1]
 
 if first_testcase.get("testcase_order") != 1:
     raise SystemExit("unexpected first testcase_order after testcase zip upload")
-if first_testcase.get("testcase_input") != "4 5\n":
-    raise SystemExit("unexpected first testcase_input after testcase zip upload")
-if first_testcase.get("testcase_output") != "9\n":
-    raise SystemExit("unexpected first testcase_output after testcase zip upload")
+if first_testcase.get("input_char_count") != 4:
+    raise SystemExit("unexpected first input_char_count after testcase zip upload")
+if first_testcase.get("input_line_count") != 2:
+    raise SystemExit("unexpected first input_line_count after testcase zip upload")
+if first_testcase.get("output_char_count") != 2:
+    raise SystemExit("unexpected first output_char_count after testcase zip upload")
+if first_testcase.get("output_line_count") != 2:
+    raise SystemExit("unexpected first output_line_count after testcase zip upload")
 
 if second_testcase.get("testcase_order") != 2:
     raise SystemExit("unexpected second testcase_order after testcase zip upload")
-if second_testcase.get("testcase_input") != "":
-    raise SystemExit("unexpected second testcase_input after testcase zip upload")
-if second_testcase.get("testcase_output") != "":
-    raise SystemExit("unexpected second testcase_output after testcase zip upload")
+if second_testcase.get("input_char_count") != 0:
+    raise SystemExit("unexpected second input_char_count after testcase zip upload")
+if second_testcase.get("input_line_count") != 0:
+    raise SystemExit("unexpected second input_line_count after testcase zip upload")
+if second_testcase.get("output_char_count") != 0:
+    raise SystemExit("unexpected second output_char_count after testcase zip upload")
+if second_testcase.get("output_line_count") != 0:
+    raise SystemExit("unexpected second output_line_count after testcase zip upload")
 PY
+
+fetch_testcase_detail_and_assert "${problem_id}" "1" $'4 5\n' $'9\n' "${sign_up_token}"
+fetch_testcase_detail_and_assert "${problem_id}" "2" "" "" "${sign_up_token}"
 
 send_http_request_and_assert_status \
     "GET" \
@@ -825,11 +913,17 @@ if not isinstance(testcases, list) or len(testcases) != 1:
 first_testcase = testcases[0]
 if first_testcase.get("testcase_order") != 1:
     raise SystemExit("unexpected testcase_order after testcase zip replace")
-if first_testcase.get("testcase_input") != "7 8\n":
-    raise SystemExit("unexpected testcase_input after testcase zip replace")
-if first_testcase.get("testcase_output") != "15\n":
-    raise SystemExit("unexpected testcase_output after testcase zip replace")
+if first_testcase.get("input_char_count") != 4:
+    raise SystemExit("unexpected input_char_count after testcase zip replace")
+if first_testcase.get("input_line_count") != 2:
+    raise SystemExit("unexpected input_line_count after testcase zip replace")
+if first_testcase.get("output_char_count") != 3:
+    raise SystemExit("unexpected output_char_count after testcase zip replace")
+if first_testcase.get("output_line_count") != 2:
+    raise SystemExit("unexpected output_line_count after testcase zip replace")
 PY
+
+fetch_testcase_detail_and_assert "${problem_id}" "1" $'7 8\n' $'15\n' "${sign_up_token}"
 
 send_http_request_and_assert_status \
     "GET" \

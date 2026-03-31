@@ -15,6 +15,75 @@
 
 #include <utility>
 
+testcase_handler::response_type testcase_handler::get_testcase(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t problem_id,
+    std::int32_t testcase_order
+){
+    problem_dto::reference problem_reference_value{problem_id};
+    problem_dto::testcase_ref testcase_reference_value{
+        .problem_id = problem_id,
+        .testcase_order = testcase_order
+    };
+    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
+        const auto exists_problem_exp = problem_core_service::exists_problem(
+            db_connection_value,
+            problem_reference_value
+        );
+        if(!exists_problem_exp){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::internal_server_error,
+                "internal_server_error",
+                "failed to check problem: " + to_string(exists_problem_exp.error())
+            );
+        }
+        if(!exists_problem_exp->exists){
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::not_found,
+                "problem_not_found",
+                "problem not found"
+            );
+        }
+
+        const auto testcase_exp = testcase_service::get_testcase(
+            db_connection_value,
+            testcase_reference_value
+        );
+        if(!testcase_exp){
+            if(testcase_exp.error() == errno_error::invalid_argument){
+                return http_response_util::create_error(
+                    request,
+                    boost::beast::http::status::not_found,
+                    "testcase_not_found",
+                    "testcase not found"
+                );
+            }
+
+            return http_response_util::create_error(
+                request,
+                boost::beast::http::status::internal_server_error,
+                "internal_server_error",
+                "failed to get testcase: " + to_string(testcase_exp.error())
+            );
+        }
+
+        return http_response_util::create_json(
+            request,
+            boost::beast::http::status::ok,
+            problem_json_serializer::make_testcase_object(*testcase_exp)
+        );
+    };
+
+    return http_util::with_admin_auth_bearer(
+        request,
+        db_connection_value,
+        handle_authenticated
+    );
+}
+
 testcase_handler::response_type testcase_handler::get_testcases(
     const request_type& request,
     db_connection& db_connection_value,
@@ -43,23 +112,25 @@ testcase_handler::response_type testcase_handler::get_testcases(
             );
         }
 
-        const auto testcase_values_exp = testcase_service::list_testcases(
+        const auto testcase_summary_values_exp = testcase_service::list_testcase_summaries(
             db_connection_value,
             problem_reference_value
         );
-        if(!testcase_values_exp){
+        if(!testcase_summary_values_exp){
             return http_response_util::create_error(
                 request,
                 boost::beast::http::status::internal_server_error,
                 "internal_server_error",
-                "failed to list testcases: " + to_string(testcase_values_exp.error())
+                "failed to list testcases: " + to_string(testcase_summary_values_exp.error())
             );
         }
 
         return http_response_util::create_json(
             request,
             boost::beast::http::status::ok,
-            problem_json_serializer::make_testcase_list_object(*testcase_values_exp)
+            problem_json_serializer::make_testcase_summary_list_object(
+                *testcase_summary_values_exp
+            )
         );
     };
 

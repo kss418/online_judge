@@ -299,6 +299,15 @@ problem_router::response_type problem_router::handle_testcase(
     std::int64_t problem_id,
     std::int32_t testcase_order
 ){
+    if(request.method() == boost::beast::http::verb::get){
+        return testcase_handler::get_testcase(
+            request,
+            db_connection_,
+            problem_id,
+            testcase_order
+        );
+    }
+
     if(request.method() == boost::beast::http::verb::put){
         return testcase_handler::put_testcase(
             request,

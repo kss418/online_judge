@@ -124,6 +124,14 @@ export function getProblemTestcases(problemId, options = {}){
   })
 }
 
+export function getProblemTestcase(problemId, testcaseOrder, options = {}){
+  const { bearerToken = '' } = options
+
+  return requestJson(`/problem/${problemId}/testcase/${testcaseOrder}`, {
+    bearerToken
+  })
+}
+
 export function createProblemTestcase(problemId, payload, token){
   return requestJson(`/problem/${problemId}/testcase`, {
     method: 'POST',
