@@ -891,11 +891,11 @@ print_success_log "submission limited list success"
 paged_submission_status_code="$(
     send_http_request \
         "GET" \
-        "${base_url}/api/submission?user_login_id=${user_login_id}&problem_id=${problem_id}&limit=1&page=2" \
+        "${base_url}/api/submission?user_login_id=${user_login_id}&problem_id=${problem_id}&limit=1&before_submission_id=${second_submission_id}" \
         "${paged_submission_response_file}"
 )"
-assert_status_code "${paged_submission_status_code}" "200" "${paged_submission_response_file}" "submission paged list"
-print_success_log "submission paged list success"
+assert_status_code "${paged_submission_status_code}" "200" "${paged_submission_response_file}" "submission cursor list"
+print_success_log "submission cursor list success"
 
 offset_submission_status_code="$(
     send_http_request \
@@ -903,8 +903,8 @@ offset_submission_status_code="$(
         "${base_url}/api/submission?user_login_id=${user_login_id}&problem_id=${problem_id}&limit=1&offset=1" \
         "${offset_submission_response_file}"
 )"
-assert_status_code "${offset_submission_status_code}" "200" "${offset_submission_response_file}" "submission offset list"
-print_success_log "submission offset list success"
+assert_status_code "${offset_submission_status_code}" "400" "${offset_submission_response_file}" "submission offset list"
+print_success_log "submission offset list invalid query success"
 
 invalid_limit_submission_status_code="$(
     send_http_request \
@@ -1135,8 +1135,11 @@ submission_count = submission_list.get("submission_count")
 if not isinstance(submission_count, int) or submission_count < 2:
     raise SystemExit("expected submission_count to be at least 2")
 
-if submission_list.get("total_submission_count") != 2:
-    raise SystemExit("expected total_submission_count to be 2")
+if submission_list.get("has_more") is not False:
+    raise SystemExit("expected has_more to be false in unfiltered submission list response")
+
+if submission_list.get("next_before_submission_id", "missing") is not None:
+    raise SystemExit("expected next_before_submission_id to be null in unfiltered submission list response")
 
 submissions = submission_list.get("submissions")
 if not isinstance(submissions, list) or len(submissions) < 2:
@@ -1328,8 +1331,11 @@ expected_latest_language = sys.argv[7]
 if submission_list.get("submission_count") != 2:
     raise SystemExit("expected submission_count to be 2")
 
-if submission_list.get("total_submission_count") != 2:
-    raise SystemExit("expected total_submission_count to be 2")
+if submission_list.get("has_more") is not False:
+    raise SystemExit("expected has_more to be false in submission list response")
+
+if submission_list.get("next_before_submission_id", "missing") is not None:
+    raise SystemExit("expected next_before_submission_id to be null in submission list response")
 
 submissions = submission_list.get("submissions")
 if not isinstance(submissions, list) or len(submissions) != 2:
@@ -1414,8 +1420,11 @@ expected_latest_language = sys.argv[7]
 if submission_list.get("submission_count") != 2:
     raise SystemExit("expected authenticated submission_count to be 2")
 
-if submission_list.get("total_submission_count") != 2:
-    raise SystemExit("expected authenticated total_submission_count to be 2")
+if submission_list.get("has_more") is not False:
+    raise SystemExit("expected has_more to be false in authenticated submission list response")
+
+if submission_list.get("next_before_submission_id", "missing") is not None:
+    raise SystemExit("expected next_before_submission_id to be null in authenticated submission list response")
 
 submissions = submission_list.get("submissions")
 if not isinstance(submissions, list) or len(submissions) != 2:
@@ -1478,8 +1487,11 @@ expected_language = sys.argv[5]
 if submission_list.get("submission_count") != 1:
     raise SystemExit("expected submission_count to be 1 for language filtered submission list response")
 
-if submission_list.get("total_submission_count") != 1:
-    raise SystemExit("expected total_submission_count to be 1 for language filtered submission list response")
+if submission_list.get("has_more") is not False:
+    raise SystemExit("expected has_more to be false for language filtered submission list response")
+
+if submission_list.get("next_before_submission_id", "missing") is not None:
+    raise SystemExit("expected next_before_submission_id to be null for language filtered submission list response")
 
 submissions = submission_list.get("submissions")
 if not isinstance(submissions, list) or len(submissions) != 1:
@@ -1510,7 +1522,8 @@ if ! python3 \
     "${second_submission_id}" \
     "${sign_up_user_id}" \
     "${problem_id}" \
-    "${second_submission_language}" <<'PY'
+    "${second_submission_language}" \
+    "${second_submission_id}" <<'PY'
 import json
 import sys
 
@@ -1521,12 +1534,16 @@ expected_submission_id = int(sys.argv[2])
 expected_user_id = int(sys.argv[3])
 expected_problem_id = int(sys.argv[4])
 expected_language = sys.argv[5]
+expected_next_before_submission_id = int(sys.argv[6])
 
 if submission_list.get("submission_count") != 1:
     raise SystemExit("expected submission_count to be 1 for limited submission list response")
 
-if submission_list.get("total_submission_count") != 2:
-    raise SystemExit("expected total_submission_count to be 2 for limited submission list response")
+if submission_list.get("has_more") is not True:
+    raise SystemExit("expected has_more to be true for limited submission list response")
+
+if submission_list.get("next_before_submission_id") != expected_next_before_submission_id:
+    raise SystemExit("expected next_before_submission_id to match the newest returned submission")
 
 submissions = submission_list.get("submissions")
 if not isinstance(submissions, list) or len(submissions) != 1:
@@ -1570,78 +1587,59 @@ expected_problem_id = int(sys.argv[4])
 expected_language = sys.argv[5]
 
 if submission_list.get("submission_count") != 1:
-    raise SystemExit("expected submission_count to be 1 for paged submission list response")
+    raise SystemExit("expected submission_count to be 1 for cursor submission list response")
 
-if submission_list.get("total_submission_count") != 2:
-    raise SystemExit("expected total_submission_count to be 2 for paged submission list response")
+if submission_list.get("has_more") is not False:
+    raise SystemExit("expected has_more to be false for cursor submission list response")
+
+if submission_list.get("next_before_submission_id", "missing") is not None:
+    raise SystemExit("expected next_before_submission_id to be null for cursor submission list response")
 
 submissions = submission_list.get("submissions")
 if not isinstance(submissions, list) or len(submissions) != 1:
-    raise SystemExit("expected one submission in paged submission list response")
+    raise SystemExit("expected one submission in cursor submission list response")
 
 submission = submissions[0]
 
 if submission.get("submission_id") != expected_submission_id:
-    raise SystemExit("submission_id mismatch in paged submission list response")
+    raise SystemExit("submission_id mismatch in cursor submission list response")
 
 if submission.get("user_id") != expected_user_id:
-    raise SystemExit("user_id mismatch in paged submission list response")
+    raise SystemExit("user_id mismatch in cursor submission list response")
 
 if submission.get("problem_id") != expected_problem_id:
-    raise SystemExit("problem_id mismatch in paged submission list response")
+    raise SystemExit("problem_id mismatch in cursor submission list response")
 
 if submission.get("language") != expected_language:
-    raise SystemExit("language mismatch in paged submission list response")
+    raise SystemExit("language mismatch in cursor submission list response")
 PY
 then
-    append_log_line "${test_log_temp_file}" "submission paged list validation failed"
+    append_log_line "${test_log_temp_file}" "submission cursor list validation failed"
     publish_failure_logs
     exit 1
 fi
 
 if ! python3 \
-    - "${offset_submission_response_file}" \
-    "${submission_id}" \
-    "${sign_up_user_id}" \
-    "${problem_id}" \
-    "${submission_language}" <<'PY'
+    - "${offset_submission_response_file}" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as response_file:
-    submission_list = json.load(response_file)
+    response = json.load(response_file)
 
-expected_submission_id = int(sys.argv[2])
-expected_user_id = int(sys.argv[3])
-expected_problem_id = int(sys.argv[4])
-expected_language = sys.argv[5]
+error = response.get("error", {})
 
-if submission_list.get("submission_count") != 1:
-    raise SystemExit("expected submission_count to be 1 for offset submission list response")
+if error.get("code") != "unsupported_query_parameter":
+    raise SystemExit("unexpected error code for offset submission list response")
 
-if submission_list.get("total_submission_count") != 2:
-    raise SystemExit("expected total_submission_count to be 2 for offset submission list response")
+if error.get("message") != "unsupported query parameter: offset":
+    raise SystemExit("unexpected error message for offset submission list response")
 
-submissions = submission_list.get("submissions")
-if not isinstance(submissions, list) or len(submissions) != 1:
-    raise SystemExit("expected one submission in offset submission list response")
-
-submission = submissions[0]
-
-if submission.get("submission_id") != expected_submission_id:
-    raise SystemExit("submission_id mismatch in offset submission list response")
-
-if submission.get("user_id") != expected_user_id:
-    raise SystemExit("user_id mismatch in offset submission list response")
-
-if submission.get("problem_id") != expected_problem_id:
-    raise SystemExit("problem_id mismatch in offset submission list response")
-
-if submission.get("language") != expected_language:
-    raise SystemExit("language mismatch in offset submission list response")
+if error.get("field") != "offset":
+    raise SystemExit("unexpected error field for offset submission list response")
 PY
 then
-    append_log_line "${test_log_temp_file}" "submission offset list validation failed"
+    append_log_line "${test_log_temp_file}" "submission offset list invalid query validation failed"
     publish_failure_logs
     exit 1
 fi

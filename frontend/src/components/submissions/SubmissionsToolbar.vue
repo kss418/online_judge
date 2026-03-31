@@ -8,11 +8,11 @@
     <div class="submissions-toolbar-actions">
       <div class="submission-summary-group">
         <StatusBadge
-          :label="isLoading ? 'Loading' : `${formatCount(totalSubmissionCount)} submissions`"
+          :label="isLoading ? 'Loading' : `${formatCount(currentSubmissionCount)} submissions`"
           :tone="errorMessage ? 'danger' : 'success'"
         />
         <span
-          v-if="!isLoading && totalSubmissionCount"
+          v-if="!isLoading && currentSubmissionCount"
           class="submission-summary-text"
         >
           {{ visibleRangeText }}
@@ -55,7 +55,7 @@ defineProps({
     type: String,
     required: true
   },
-  totalSubmissionCount: {
+  currentSubmissionCount: {
     type: Number,
     required: true
   },

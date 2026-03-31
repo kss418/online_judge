@@ -5,7 +5,7 @@
         :page-title="pageTitle"
         :is-loading="isLoading"
         :error-message="errorMessage"
-        :total-submission-count="totalSubmissionCount"
+        :current-submission-count="submissionCount"
         :visible-range-text="visibleRangeText"
         :numeric-problem-id="numericProblemId"
         :format-count="formatCount"
@@ -37,7 +37,7 @@
         <p>{{ errorMessage }}</p>
       </div>
 
-      <div v-else-if="!totalSubmissionCount" class="empty-state">
+      <div v-else-if="!submissionCount" class="empty-state">
         <p>등록된 제출이 아직 없습니다.</p>
       </div>
 
@@ -57,18 +57,30 @@
         @rejudge="handleRejudgeSubmission"
       />
 
-      <PaginationBar
-        v-if="!isLoading && !errorMessage && totalSubmissionCount > listLimit"
-        v-model:jump-input="pageJumpInput"
-        :current-page="currentPage"
-        :total-pages="totalPages"
-        :is-loading="isLoading"
-        :items="paginationItems"
-        jump-input-id="submission-page-jump"
-        :jump-placeholder="`1-${totalPages}`"
-        @page-change="goToPage"
-        @jump-submit="submitPageJump"
-      />
+      <div
+        v-if="!isLoading && !errorMessage && (hasPreviousPage || hasMoreSubmissions)"
+        class="submission-navigation"
+      >
+        <button
+          type="button"
+          class="ghost-button submission-navigation-button"
+          :disabled="!hasPreviousPage"
+          @click="goToPreviousPage"
+        >
+          이전
+        </button>
+        <span class="submission-navigation-label">
+          {{ currentPage }} 페이지
+        </span>
+        <button
+          type="button"
+          class="ghost-button submission-navigation-button"
+          :disabled="!hasMoreSubmissions"
+          @click="goToNextPage"
+        >
+          다음
+        </button>
+      </div>
     </article>
   </section>
 
@@ -98,7 +110,6 @@
 </template>
 
 <script setup>
-import PaginationBar from '@/components/PaginationBar.vue'
 import SubmissionHistoryDialog from '@/components/submissions/SubmissionHistoryDialog.vue'
 import SubmissionSourceDialog from '@/components/submissions/SubmissionSourceDialog.vue'
 import SubmissionsFilterBar from '@/components/submissions/SubmissionsFilterBar.vue'
@@ -107,15 +118,15 @@ import SubmissionsToolbar from '@/components/submissions/SubmissionsToolbar.vue'
 import { useSubmissionsPage } from '@/composables/useSubmissionsPage'
 
 const {
-  listLimit,
   submissionStatusOptions,
   isLoading,
   isLoadingLanguages,
   errorMessage,
   submissions,
   currentPage,
-  pageJumpInput,
-  totalSubmissionCount,
+  submissionCount,
+  hasPreviousPage,
+  hasMoreSubmissions,
   historyDialogOpen,
   isLoadingHistory,
   historyErrorMessage,
@@ -137,9 +148,7 @@ const {
   showUserIdFilter,
   canApplyFilters,
   canResetFilters,
-  totalPages,
   visibleRangeText,
-  paginationItems,
   numericProblemId,
   shouldPollSubmissionHistory,
   pageTitle,
@@ -160,8 +169,8 @@ const {
   copySourceCode,
   handleRejudgeSubmission,
   refreshSubmissions,
-  goToPage,
-  submitPageJump
+  goToPreviousPage,
+  goToNextPage
 } = useSubmissionsPage()
 </script>
 
@@ -169,5 +178,23 @@ const {
 .submissions-panel {
   display: grid;
   gap: 1.25rem;
+}
+
+.submission-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.submission-navigation-button {
+  min-width: 88px;
+}
+
+.submission-navigation-label {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  font-weight: 700;
 }
 </style>

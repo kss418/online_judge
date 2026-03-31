@@ -257,37 +257,22 @@ submission_handler::response_type submission_handler::get_submissions(
         viewer_user_id_opt = auth_identity_opt_exp->value().user_id;
     }
 
-    const auto submission_summary_values_exp = submission_service::list_submissions(
+    const auto submission_summary_page_exp = submission_service::list_submissions(
         db_connection_value,
         *filter_exp,
         viewer_user_id_opt
     );
-    if(!submission_summary_values_exp){
+    if(!submission_summary_page_exp){
         return http_response_util::create_4xx_or_500(
             request,
             "list submissions",
-            submission_summary_values_exp.error()
-        );
-    }
-
-    const auto total_submission_count_exp = submission_service::count_submissions(
-        db_connection_value,
-        *filter_exp
-    );
-    if(!total_submission_count_exp){
-        return http_response_util::create_4xx_or_500(
-            request,
-            "count submissions",
-            total_submission_count_exp.error()
+            submission_summary_page_exp.error()
         );
     }
 
     return http_response_util::create_json(
         request,
         boost::beast::http::status::ok,
-        submission_json_serializer::make_list_object(
-            *submission_summary_values_exp,
-            *total_submission_count_exp
-        )
+        submission_json_serializer::make_list_object(*submission_summary_page_exp)
     );
 }

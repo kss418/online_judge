@@ -51,6 +51,14 @@ static std::vector<submission_dto::summary> sanitize_submission_summary_metrics(
     return summary_values;
 }
 
+static submission_dto::summary_page sanitize_submission_summary_page_metrics(
+    submission_dto::summary_page summary_page_value
+){
+    summary_page_value.submissions =
+        sanitize_submission_summary_metrics(std::move(summary_page_value.submissions));
+    return summary_page_value;
+}
+
 std::expected<submission_dto::history_list, error_code> submission_service::get_submission_history(
     db_connection& connection,
     std::int64_t submission_id
@@ -397,7 +405,7 @@ std::expected<void, error_code> submission_service::finalize_submission(
     );
 }
 
-std::expected<std::vector<submission_dto::summary>, error_code>
+std::expected<submission_dto::summary_page, error_code>
 submission_service::list_submissions(
     db_connection& connection,
     const submission_dto::list_filter& filter_value,
@@ -406,30 +414,17 @@ submission_service::list_submissions(
     return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<std::vector<submission_dto::summary>, error_code> {
-            const auto summary_values_exp = submission_repository::list_submissions(
+            -> std::expected<submission_dto::summary_page, error_code> {
+            const auto summary_page_exp = submission_repository::list_submissions(
                 transaction,
                 filter_value,
                 viewer_user_id_opt
             );
-            if(!summary_values_exp){
-                return std::unexpected(summary_values_exp.error());
+            if(!summary_page_exp){
+                return std::unexpected(summary_page_exp.error());
             }
 
-            return sanitize_submission_summary_metrics(std::move(*summary_values_exp));
-        }
-    );
-}
-
-std::expected<std::int64_t, error_code> submission_service::count_submissions(
-    db_connection& connection,
-    const submission_dto::list_filter& filter_value
-){
-    return db_service_util::with_retry_read_transaction(
-        connection,
-        [&](pqxx::read_transaction& transaction)
-            -> std::expected<std::int64_t, error_code> {
-            return submission_repository::count_submissions(transaction, filter_value);
+            return sanitize_submission_summary_page_metrics(std::move(*summary_page_exp));
         }
     );
 }

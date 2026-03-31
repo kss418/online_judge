@@ -6,6 +6,7 @@
 #include <pqxx/pqxx>
 
 #include <string>
+#include <utility>
 
 namespace{
     void append_submission_list_filters(
@@ -44,7 +45,6 @@ namespace{
 
     bool has_invalid_submission_list_filter(const submission_dto::list_filter& filter_value){
         return
-            (filter_value.page_opt && *filter_value.page_opt <= 0) ||
             (filter_value.user_id_opt && *filter_value.user_id_opt <= 0) ||
             (filter_value.user_login_id_opt && filter_value.user_login_id_opt->empty()) ||
             (filter_value.problem_id_opt && *filter_value.problem_id_opt <= 0) ||
@@ -53,7 +53,10 @@ namespace{
                 !language_util::find_supported_language(*filter_value.language_opt)
             ) ||
             (filter_value.limit_opt && *filter_value.limit_opt <= 0) ||
-            (filter_value.offset_opt && *filter_value.offset_opt < 0) ||
+            (
+                filter_value.before_submission_id_opt &&
+                *filter_value.before_submission_id_opt <= 0
+            ) ||
             (filter_value.status_opt && !parse_submission_status(*filter_value.status_opt));
     }
 }
@@ -674,7 +677,7 @@ std::expected<submission_dto::finalize_result, error_code> submission_repository
     );
 }
 
-std::expected<std::vector<submission_dto::summary>, error_code> submission_repository::list_submissions(
+std::expected<submission_dto::summary_page, error_code> submission_repository::list_submissions(
     pqxx::transaction_base& transaction,
     const submission_dto::list_filter& filter_value,
     std::optional<std::int64_t> viewer_user_id_opt
@@ -688,12 +691,6 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_repos
 
     const std::int32_t limit =
         filter_value.limit_opt.value_or(submission_dto::DEFAULT_LIST_LIMIT);
-    const std::int64_t offset =
-        filter_value.offset_opt
-            ? *filter_value.offset_opt
-            : filter_value.page_opt
-            ? static_cast<std::int64_t>(*filter_value.page_opt - 1) * static_cast<std::int64_t>(limit)
-            : 0;
 
     std::string submission_list_query =
         "SELECT "
@@ -747,54 +744,31 @@ std::expected<std::vector<submission_dto::summary>, error_code> submission_repos
         filter_value
     );
 
+    if(filter_value.before_submission_id_opt){
+        submission_list_query +=
+            " AND submission_table.submission_id < $" + std::to_string(query_param_index++);
+        query_params.append(*filter_value.before_submission_id_opt);
+    }
+
     submission_list_query +=
         " ORDER BY submission_table.submission_id DESC LIMIT $" + std::to_string(query_param_index++);
-    query_params.append(limit);
-
-    if(offset > 0){
-        submission_list_query += " OFFSET $" + std::to_string(query_param_index++);
-        query_params.append(offset);
-    }
+    query_params.append(static_cast<std::int64_t>(limit) + 1);
 
     const auto submission_summary_query = transaction.exec(
         submission_list_query,
         query_params
     );
 
-    return submission_dto::make_summary_list_from_result(submission_summary_query);
-}
-
-std::expected<std::int64_t, error_code> submission_repository::count_submissions(
-    pqxx::transaction_base& transaction,
-    const submission_dto::list_filter& filter_value
-){
-    if(has_invalid_submission_list_filter(filter_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    auto summary_values = submission_dto::make_summary_list_from_result(submission_summary_query);
+    submission_dto::summary_page summary_page_value;
+    summary_page_value.has_more = summary_values.size() > static_cast<std::size_t>(limit);
+    if(summary_page_value.has_more){
+        summary_values.resize(static_cast<std::size_t>(limit));
+        if(!summary_values.empty()){
+            summary_page_value.next_before_submission_id_opt =
+                summary_values.back().submission_id;
+        }
     }
-
-    std::string submission_count_query =
-        "SELECT COUNT(*) "
-        "FROM submissions submission_table "
-        "JOIN users user_table "
-        "ON user_table.user_id = submission_table.user_id "
-        "WHERE 1 = 1";
-    pqxx::params query_params;
-    int query_param_index = 1;
-
-    append_submission_list_filters(
-        submission_count_query,
-        query_params,
-        query_param_index,
-        filter_value
-    );
-
-    const auto submission_count_result = transaction.exec(
-        submission_count_query,
-        query_params
-    );
-    if(submission_count_result.empty()){
-        return std::unexpected(error_code::create(errno_error::unknown_error));
-    }
-
-    return submission_count_result[0][0].as<std::int64_t>();
+    summary_page_value.submissions = std::move(summary_values);
+    return summary_page_value;
 }

@@ -103,15 +103,20 @@ namespace submission_dto{
         std::vector<std::int64_t> submission_ids;
     };
 
+    struct summary_page{
+        std::vector<summary> submissions;
+        bool has_more = false;
+        std::optional<std::int64_t> next_before_submission_id_opt = std::nullopt;
+    };
+
     struct list_filter{
-        std::optional<std::int32_t> page_opt = std::nullopt;
         std::optional<std::int64_t> user_id_opt = std::nullopt;
         std::optional<std::string> user_login_id_opt = std::nullopt;
         std::optional<std::int64_t> problem_id_opt = std::nullopt;
         std::optional<std::string> language_opt = std::nullopt;
         std::optional<std::string> status_opt = std::nullopt;
         std::optional<std::int32_t> limit_opt = std::nullopt;
-        std::optional<std::int64_t> offset_opt = std::nullopt;
+        std::optional<std::int64_t> before_submission_id_opt = std::nullopt;
     };
 
     struct queued_submission{

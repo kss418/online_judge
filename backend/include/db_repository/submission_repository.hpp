@@ -103,13 +103,9 @@ namespace submission_repository{
         const submission_dto::finalize_request& finalize_request_value
     );
 
-    std::expected<std::vector<submission_dto::summary>, error_code> list_submissions(
+    std::expected<submission_dto::summary_page, error_code> list_submissions(
         pqxx::transaction_base& transaction,
         const submission_dto::list_filter& filter_value,
         std::optional<std::int64_t> viewer_user_id_opt = std::nullopt
-    );
-    std::expected<std::int64_t, error_code> count_submissions(
-        pqxx::transaction_base& transaction,
-        const submission_dto::list_filter& filter_value
     );
 }

@@ -29,8 +29,5 @@ namespace submission_json_serializer{
         const std::vector<submission_dto::status_snapshot>& snapshot_values
     );
 
-    boost::json::object make_list_object(
-        const std::vector<submission_dto::summary>& summary_values,
-        std::int64_t total_submission_count
-    );
+    boost::json::object make_list_object(const submission_dto::summary_page& summary_page_value);
 }

@@ -10,14 +10,6 @@
 #include <limits>
 
 namespace{
-    std::optional<std::int64_t> parse_non_negative_int64(std::string_view raw_value){
-        if(raw_value == "0"){
-            return std::int64_t{0};
-        }
-
-        return string_util::parse_positive_int64(raw_value);
-    }
-
     std::optional<std::int64_t> parse_positive_json_int64(const boost::json::value& value){
         if(value.is_int64()){
             const std::int64_t int64_value = value.as_int64();
@@ -90,18 +82,6 @@ submission_dto::make_list_filter_from_query_params(
 ){
     list_filter filter_value;
     for(const auto& query_param : query_params){
-        if(query_param.key == "page"){
-            const auto parse_page_exp = query_param_util::parse_unique_query_param(
-                filter_value.page_opt,
-                query_param.key,
-                query_param.value,
-                string_util::parse_positive_int32
-            );
-            if(!parse_page_exp){
-                return std::unexpected(parse_page_exp.error());
-            }
-            continue;
-        }
         if(query_param.key == "user_id"){
             const auto parse_user_id_exp = query_param_util::parse_unique_query_param(
                 filter_value.user_id_opt,
@@ -194,15 +174,15 @@ submission_dto::make_list_filter_from_query_params(
             }
             continue;
         }
-        if(query_param.key == "offset"){
-            const auto parse_offset_exp = query_param_util::parse_unique_query_param(
-                filter_value.offset_opt,
+        if(query_param.key == "before_submission_id"){
+            const auto parse_before_submission_id_exp = query_param_util::parse_unique_query_param(
+                filter_value.before_submission_id_opt,
                 query_param.key,
                 query_param.value,
-                parse_non_negative_int64
+                string_util::parse_positive_int64
             );
-            if(!parse_offset_exp){
-                return std::unexpected(parse_offset_exp.error());
+            if(!parse_before_submission_id_exp){
+                return std::unexpected(parse_before_submission_id_exp.error());
             }
             continue;
         }

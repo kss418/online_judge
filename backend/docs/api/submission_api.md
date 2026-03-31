@@ -422,16 +422,16 @@ List submissions using optional filters. This endpoint is public, and authentica
 | `language` | `string` | no | one of the supported submission languages such as `cpp` or `python` |
 | `status` | `string` | no | one of `queued`, `judging`, `accepted`, `wrong_answer`, `time_limit_exceeded`, `memory_limit_exceeded`, `runtime_error`, `compile_error`, `output_exceeded` |
 | `limit` | `int32` | no | page size; must be positive; defaults to 50 |
+| `before_submission_id` | `int64` | no | keyset cursor; return submissions with `submission_id` strictly less than this value |
 
 All query parameters are optional. If omitted, the endpoint returns the first page using the default `limit`. Parameters can be combined.
 The response returns submissions ordered by `submission_id` descending.
-When `page` is used, the server applies page-based pagination with the given `limit`.
-If `page` is omitted, the first page is returned.
+Use `before_submission_id` from the previous response to fetch the next page.
 
 Example:
 
 ```text
-GET /api/submission?page=2&limit=50&user_id=7&problem_id=3
+GET /api/submission?limit=50&before_submission_id=120&user_id=7&problem_id=3
 ```
 
 ```text
@@ -451,7 +451,8 @@ GET /api/submission
 | field | type | note |
 |---|---|---|
 | `submission_count` | `int64` | number of returned submissions on the current page |
-| `total_submission_count` | `int64` | total number of submissions matching the filters, ignoring `page` |
+| `has_more` | `bool` | whether there is another page after this one |
+| `next_before_submission_id` | `int64 \| null` | cursor for the next page; `null` when there is no next page |
 | `submissions` | `array` | newest-first submission summaries |
 
 Each submission summary contains:
@@ -475,7 +476,8 @@ Example:
 ```json
 {
   "submission_count": 2,
-  "total_submission_count": 12,
+  "has_more": true,
+  "next_before_submission_id": 9,
   "submissions": [
     {
       "submission_id": 12,

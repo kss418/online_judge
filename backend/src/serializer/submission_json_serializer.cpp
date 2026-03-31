@@ -237,12 +237,19 @@ boost::json::object submission_json_serializer::make_status_snapshot_batch_objec
 }
 
 boost::json::object submission_json_serializer::make_list_object(
-    const std::vector<submission_dto::summary>& summary_values,
-    std::int64_t total_submission_count
+    const submission_dto::summary_page& summary_page_value
 ){
     boost::json::object response_object;
-    response_object["submission_count"] = static_cast<std::int64_t>(summary_values.size());
-    response_object["total_submission_count"] = total_submission_count;
-    response_object["submissions"] = make_summary_array(summary_values);
+    response_object["submission_count"] =
+        static_cast<std::int64_t>(summary_page_value.submissions.size());
+    response_object["has_more"] = summary_page_value.has_more;
+    if(summary_page_value.next_before_submission_id_opt){
+        response_object["next_before_submission_id"] =
+            *summary_page_value.next_before_submission_id_opt;
+    }
+    else{
+        response_object["next_before_submission_id"] = nullptr;
+    }
+    response_object["submissions"] = make_summary_array(summary_page_value.submissions);
     return response_object;
 }

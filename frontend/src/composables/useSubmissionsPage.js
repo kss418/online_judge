@@ -11,7 +11,6 @@ import {
 } from '@/api/submission'
 import { useAuth } from '@/composables/useAuth'
 import { useNotice } from '@/composables/useNotice'
-import { buildPaginationItems } from '@/utils/pagination'
 import { getSubmissionStatusLabel } from '@/utils/submissionStatus'
 
 const listLimit = 50
@@ -59,8 +58,10 @@ export function useSubmissionsPage(){
   const submissions = ref([])
   const hasLoadedOnce = ref(false)
   const currentPage = ref(1)
-  const pageJumpInput = ref('')
-  const totalSubmissionCount = ref(0)
+  const hasMoreSubmissions = ref(false)
+  const nextBeforeSubmissionId = ref(null)
+  const currentBeforeSubmissionId = ref(null)
+  const previousBeforeSubmissionIds = ref([])
   const historyDialogOpen = ref(false)
   const isLoadingHistory = ref(false)
   const historyErrorMessage = ref('')
@@ -111,6 +112,7 @@ export function useSubmissionsPage(){
     return options
   })
   const submissionCount = computed(() => submissions.value.length)
+  const hasPreviousPage = computed(() => previousBeforeSubmissionIds.value.length > 0)
   const fixedProblemId = computed(() => {
     const problemIdParam = Array.isArray(route.params.problemId)
       ? route.params.problemId[0]
@@ -235,21 +237,15 @@ export function useSubmissionsPage(){
       .filter((submission) => pollingSubmissionStatuses.has(submission.status))
       .map((submission) => submission.submission_id)
   )
-  const totalPages = computed(() =>
-    Math.max(1, Math.ceil(totalSubmissionCount.value / listLimit))
-  )
   const visibleRangeText = computed(() => {
-    if (!totalSubmissionCount.value || !submissionCount.value) {
+    if (!submissionCount.value) {
       return ''
     }
 
     const start = (currentPage.value - 1) * listLimit + 1
-    const end = Math.min(currentPage.value * listLimit, totalSubmissionCount.value)
-    return `${formatCount(start)}-${formatCount(end)} / ${formatCount(totalSubmissionCount.value)}`
+    const end = start + submissionCount.value - 1
+    return `${formatCount(start)}-${formatCount(end)} 표시`
   })
-  const paginationItems = computed(() =>
-    buildPaginationItems(currentPage.value, totalPages.value)
-  )
   const numericProblemId = computed(() => {
     if (fixedProblemId.value !== null) {
       return fixedProblemId.value
@@ -390,12 +386,6 @@ export function useSubmissionsPage(){
     void loadSubmissions()
   })
 
-  watch(totalPages, (pageCount) => {
-    if (currentPage.value > pageCount) {
-      currentPage.value = pageCount
-    }
-  })
-
   watch(
     [pollingSubmissionIds, isDocumentVisible, isLoading, errorMessage],
     () => {
@@ -466,8 +456,10 @@ export function useSubmissionsPage(){
 
   function resetPagination(){
     currentPage.value = 1
-    pageJumpInput.value = ''
-    totalSubmissionCount.value = 0
+    hasMoreSubmissions.value = false
+    nextBeforeSubmissionId.value = null
+    currentBeforeSubmissionId.value = null
+    previousBeforeSubmissionIds.value = []
   }
 
   async function loadSupportedSubmissionLanguages(){
@@ -1132,7 +1124,13 @@ export function useSubmissionsPage(){
     const targetPageNumber = Number.isInteger(options.pageNumber) && options.pageNumber > 0
       ? options.pageNumber
       : currentPage.value
-    const targetOffset = (targetPageNumber - 1) * listLimit
+    const targetBeforeSubmissionId =
+      Number.isInteger(options.beforeSubmissionId) && options.beforeSubmissionId > 0
+        ? options.beforeSubmissionId
+        : null
+    const targetPreviousBeforeSubmissionIds = Array.isArray(options.previousBeforeSubmissionIds)
+      ? [...options.previousBeforeSubmissionIds]
+      : [...previousBeforeSubmissionIds.value]
     const requestId = ++latestLoadRequestId
     isLoading.value = true
     errorMessage.value = ''
@@ -1140,6 +1138,8 @@ export function useSubmissionsPage(){
 
     if (isMineScope.value && !isAuthenticated.value) {
       submissions.value = []
+      hasMoreSubmissions.value = false
+      nextBeforeSubmissionId.value = null
       errorMessage.value = '내 제출을 보려면 로그인하세요.'
       if (requestId === latestLoadRequestId) {
         isLoading.value = false
@@ -1151,7 +1151,7 @@ export function useSubmissionsPage(){
     try {
       const response = await getSubmissionList({
         limit: listLimit,
-        offset: targetOffset,
+        beforeSubmissionId: targetBeforeSubmissionId ?? undefined,
         problemId: numericProblemId.value ?? undefined,
         userId: activeUserId.value ?? undefined,
         userLoginId: activeUserLoginId.value || undefined,
@@ -1185,26 +1185,22 @@ export function useSubmissionsPage(){
             }
           })
         : []
-
-      const normalizedTotalSubmissionCount = Number(
-        response.total_submission_count ?? response.submission_count ?? normalizedSubmissions.length
-      )
-      const nextTotalPages =
-        normalizedTotalSubmissionCount > 0
-          ? Math.max(1, Math.ceil(normalizedTotalSubmissionCount / listLimit))
-          : 1
-
-      if (normalizedTotalSubmissionCount > 0 && targetPageNumber > nextTotalPages) {
-        currentPage.value = nextTotalPages
-        void loadSubmissions({
-          pageNumber: nextTotalPages
-        })
-        return
-      }
+      const normalizedHasMore = Boolean(response.has_more)
+      const normalizedNextBeforeSubmissionId =
+        Number.isInteger(response.next_before_submission_id) &&
+        response.next_before_submission_id > 0
+          ? response.next_before_submission_id
+          : null
 
       submissions.value = normalizedSubmissions
-      totalSubmissionCount.value = normalizedTotalSubmissionCount
-      currentPage.value = normalizedTotalSubmissionCount > 0 ? targetPageNumber : 1
+      hasMoreSubmissions.value = normalizedHasMore
+      nextBeforeSubmissionId.value =
+        normalizedHasMore && normalizedNextBeforeSubmissionId
+          ? normalizedNextBeforeSubmissionId
+          : null
+      currentBeforeSubmissionId.value = targetBeforeSubmissionId
+      previousBeforeSubmissionIds.value = targetPreviousBeforeSubmissionIds
+      currentPage.value = targetPageNumber
       hasLoadedOnce.value = true
     } catch (error) {
       if (requestId !== latestLoadRequestId) {
@@ -1215,7 +1211,8 @@ export function useSubmissionsPage(){
         ? error.message
         : '제출 목록을 불러오지 못했습니다.'
       submissions.value = []
-      totalSubmissionCount.value = 0
+      hasMoreSubmissions.value = false
+      nextBeforeSubmissionId.value = null
       hasLoadedOnce.value = true
     } finally {
       if (requestId === latestLoadRequestId) {
@@ -1224,34 +1221,45 @@ export function useSubmissionsPage(){
     }
   }
 
-  function goToPage(pageNumber){
-    if (isLoading.value) {
+  async function refreshSubmissions(){
+    await loadSubmissions({
+      pageNumber: currentPage.value,
+      beforeSubmissionId: currentBeforeSubmissionId.value,
+      previousBeforeSubmissionIds: previousBeforeSubmissionIds.value
+    })
+  }
+
+  function goToPreviousPage(){
+    if (isLoading.value || !hasPreviousPage.value) {
       return
     }
 
-    const clampedPageNumber = Math.min(Math.max(pageNumber, 1), totalPages.value)
-    if (clampedPageNumber === currentPage.value) {
+    const nextPreviousBeforeSubmissionIds = [...previousBeforeSubmissionIds.value]
+    const previousBeforeSubmissionId = nextPreviousBeforeSubmissionIds.pop() ?? null
+    void loadSubmissions({
+      pageNumber: Math.max(1, currentPage.value - 1),
+      beforeSubmissionId: previousBeforeSubmissionId,
+      previousBeforeSubmissionIds: nextPreviousBeforeSubmissionIds
+    })
+  }
+
+  function goToNextPage(){
+    if (
+      isLoading.value ||
+      !hasMoreSubmissions.value ||
+      !Number.isInteger(nextBeforeSubmissionId.value)
+    ) {
       return
     }
 
     void loadSubmissions({
-      pageNumber: clampedPageNumber
+      pageNumber: currentPage.value + 1,
+      beforeSubmissionId: nextBeforeSubmissionId.value,
+      previousBeforeSubmissionIds: [
+        ...previousBeforeSubmissionIds.value,
+        currentBeforeSubmissionId.value
+      ]
     })
-  }
-
-  async function refreshSubmissions(){
-    await loadSubmissions()
-  }
-
-  function submitPageJump(){
-    const parsedPage = Number.parseInt(pageJumpInput.value, 10)
-
-    if (Number.isNaN(parsedPage)) {
-      return
-    }
-
-    goToPage(parsedPage)
-    pageJumpInput.value = ''
   }
 
   onMounted(async () => {
@@ -1298,8 +1306,9 @@ export function useSubmissionsPage(){
     errorMessage,
     submissions,
     currentPage,
-    pageJumpInput,
-    totalSubmissionCount,
+    submissionCount,
+    hasPreviousPage,
+    hasMoreSubmissions,
     historyDialogOpen,
     isLoadingHistory,
     historyErrorMessage,
@@ -1321,9 +1330,7 @@ export function useSubmissionsPage(){
     showUserIdFilter,
     canApplyFilters,
     canResetFilters,
-    totalPages,
     visibleRangeText,
-    paginationItems,
     numericProblemId,
     shouldPollSubmissionHistory,
     pageTitle,
@@ -1344,7 +1351,7 @@ export function useSubmissionsPage(){
     copySourceCode,
     handleRejudgeSubmission,
     refreshSubmissions,
-    goToPage,
-    submitPageJump
+    goToPreviousPage,
+    goToNextPage
   }
 }

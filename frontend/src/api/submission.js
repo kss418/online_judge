@@ -5,12 +5,8 @@ export async function getSubmissionList(options = {}){
   const { bearerToken = '' } = options
   const searchParams = new URLSearchParams()
 
-  if (Number.isInteger(options.page) && options.page > 0) {
-    searchParams.set('page', String(options.page))
-  }
-
-  if (Number.isInteger(options.offset) && options.offset >= 0) {
-    searchParams.set('offset', String(options.offset))
+  if (Number.isInteger(options.beforeSubmissionId) && options.beforeSubmissionId > 0) {
+    searchParams.set('before_submission_id', String(options.beforeSubmissionId))
   }
 
   if (Number.isInteger(options.limit) && options.limit > 0) {
@@ -47,9 +43,11 @@ export async function getSubmissionList(options = {}){
   return {
     ...response,
     submission_count: Number(response.submission_count ?? 0),
-    total_submission_count: Number(
-      response.total_submission_count ?? response.submission_count ?? 0
-    ),
+    has_more: Boolean(response.has_more),
+    next_before_submission_id: Number.isInteger(Number(response.next_before_submission_id))
+      && Number(response.next_before_submission_id) > 0
+      ? Number(response.next_before_submission_id)
+      : null,
     submissions: normalizeProblemStateRecords(response.submissions)
   }
 }
