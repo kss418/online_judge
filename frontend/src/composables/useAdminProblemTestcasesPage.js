@@ -5,6 +5,7 @@ import {
   createProblemTestcase,
   deleteProblemTestcase,
   getProblemDetail,
+  getProblemLimits,
   getProblemList,
   getProblemTestcases,
   moveProblemTestcase,
@@ -608,15 +609,14 @@ export function useAdminProblemTestcasesPage(){
     const hydrationId = ++latestProblemLimitHydrationId
     const detailEntries = await Promise.all(problemIds.map(async (problemId) => {
       try {
-        const response = await getProblemDetail(problemId, {
+        const response = await getProblemLimits(problemId, {
           bearerToken: authState.token || ''
         })
-        const detail = normalizeProblemDetail(response)
         return [
           problemId,
           {
-            time_limit_ms: detail.limits?.time_limit_ms ?? 0,
-            memory_limit_mb: detail.limits?.memory_limit_mb ?? 0
+            time_limit_ms: Number(response?.time_limit_ms ?? 0),
+            memory_limit_mb: Number(response?.memory_limit_mb ?? 0)
           }
         ]
       } catch {

@@ -11,6 +11,55 @@
 
 #include <utility>
 
+problem_content_handler::response_type problem_content_handler::get_limits(
+    const request_type& request,
+    db_connection& db_connection_value,
+    std::int64_t problem_id
+){
+    problem_dto::reference problem_reference_value{problem_id};
+    const auto exists_problem_exp = problem_core_service::exists_problem(
+        db_connection_value,
+        problem_reference_value
+    );
+    if(!exists_problem_exp){
+        return http_response_util::create_error(
+            request,
+            boost::beast::http::status::internal_server_error,
+            "internal_server_error",
+            "failed to check problem: " + to_string(exists_problem_exp.error())
+        );
+    }
+    if(!exists_problem_exp->exists){
+        return http_response_util::create_error(
+            request,
+            boost::beast::http::status::not_found,
+            "problem_not_found",
+            "problem not found"
+        );
+    }
+
+    const auto limits_exp = problem_content_service::get_limits(
+        db_connection_value,
+        problem_reference_value
+    );
+    if(!limits_exp){
+        return http_response_util::create_4xx_or_500(
+            request,
+            "get problem limits",
+            limits_exp.error()
+        );
+    }
+
+    boost::json::object response_object;
+    response_object["memory_limit_mb"] = limits_exp->memory_mb;
+    response_object["time_limit_ms"] = limits_exp->time_ms;
+    return http_response_util::create_json(
+        request,
+        boost::beast::http::status::ok,
+        std::move(response_object)
+    );
+}
+
 problem_content_handler::response_type problem_content_handler::put_limits(
     const request_type& request,
     db_connection& db_connection_value,

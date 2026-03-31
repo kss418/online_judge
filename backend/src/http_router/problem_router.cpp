@@ -189,6 +189,14 @@ problem_router::response_type problem_router::handle_set_limits(
     const request_type& request,
     std::int64_t problem_id
 ){
+    if(request.method() == boost::beast::http::verb::get){
+        return problem_content_handler::get_limits(
+            request,
+            db_connection_,
+            problem_id
+        );
+    }
+
     if(request.method() == boost::beast::http::verb::put){
         return problem_content_handler::put_limits(
             request,

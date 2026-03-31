@@ -59,6 +59,14 @@ export function updateProblemLimits(problemId, payload, token){
   })
 }
 
+export function getProblemLimits(problemId, options = {}){
+  const { bearerToken = '' } = options
+
+  return requestJson(`/problem/${problemId}/limits`, {
+    bearerToken
+  })
+}
+
 export function updateProblemStatement(problemId, payload, token){
   return requestJson(`/problem/${problemId}/statement`, {
     method: 'PUT',
