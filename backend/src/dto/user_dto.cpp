@@ -1,5 +1,6 @@
 #include "dto/user_dto.hpp"
 
+#include "common/row_util.hpp"
 #include "http_core/http_util.hpp"
 #include "http_core/query_param_util.hpp"
 
@@ -63,20 +64,20 @@ user_dto::make_list_filter_from_query_params(
 
 user_dto::summary user_dto::make_summary_from_row(const pqxx::row& user_summary_row){
     user_dto::summary summary_value;
-    summary_value.user_id = user_summary_row[0].as<std::int64_t>();
-    summary_value.user_login_id = user_summary_row[1].as<std::string>();
-    summary_value.created_at = user_summary_row[2].as<std::string>();
+    summary_value.user_id = row_util::get_required<std::int64_t>(user_summary_row, 0);
+    summary_value.user_login_id = row_util::get_required<std::string>(user_summary_row, 1);
+    summary_value.created_at = row_util::get_required<std::string>(user_summary_row, 2);
     return summary_value;
 }
 
 user_dto::list_item user_dto::make_list_item_from_row(const pqxx::row& user_list_row){
     user_dto::list_item item_value;
-    item_value.user_id = user_list_row[0].as<std::int64_t>();
-    item_value.user_login_id = user_list_row[1].as<std::string>();
-    item_value.solved_problem_count = user_list_row[2].as<std::int64_t>();
-    item_value.accepted_submission_count = user_list_row[3].as<std::int64_t>();
-    item_value.submission_count = user_list_row[4].as<std::int64_t>();
-    item_value.created_at = user_list_row[5].as<std::string>();
+    item_value.user_id = row_util::get_required<std::int64_t>(user_list_row, 0);
+    item_value.user_login_id = row_util::get_required<std::string>(user_list_row, 1);
+    item_value.solved_problem_count = row_util::get_required<std::int64_t>(user_list_row, 2);
+    item_value.accepted_submission_count = row_util::get_required<std::int64_t>(user_list_row, 3);
+    item_value.submission_count = row_util::get_required<std::int64_t>(user_list_row, 4);
+    item_value.created_at = row_util::get_required<std::string>(user_list_row, 5);
     return item_value;
 }
 

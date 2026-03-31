@@ -1,6 +1,7 @@
 #include "dto/submission_dto.hpp"
 
 #include "common/language_util.hpp"
+#include "common/row_util.hpp"
 #include "common/string_util.hpp"
 #include "http_core/http_util.hpp"
 #include "http_core/query_param_util.hpp"
@@ -279,15 +280,11 @@ submission_dto::history submission_dto::make_history_from_row(
     const pqxx::row& submission_history_row
 ){
     history history_value;
-    history_value.history_id = submission_history_row[0].as<std::int64_t>();
-    if(!submission_history_row[1].is_null()){
-        history_value.from_status_opt = submission_history_row[1].as<std::string>();
-    }
-    history_value.to_status = submission_history_row[2].as<std::string>();
-    if(!submission_history_row[3].is_null()){
-        history_value.reason_opt = submission_history_row[3].as<std::string>();
-    }
-    history_value.created_at = submission_history_row[4].as<std::string>();
+    history_value.history_id = row_util::get_required<std::int64_t>(submission_history_row, 0);
+    history_value.from_status_opt = row_util::get_optional<std::string>(submission_history_row, 1);
+    history_value.to_status = row_util::get_required<std::string>(submission_history_row, 2);
+    history_value.reason_opt = row_util::get_optional<std::string>(submission_history_row, 3);
+    history_value.created_at = row_util::get_required<std::string>(submission_history_row, 4);
     return history_value;
 }
 
@@ -306,17 +303,13 @@ submission_dto::source_detail submission_dto::make_source_detail_from_row(
     const pqxx::row& submission_source_row
 ){
     source_detail source_detail_value;
-    source_detail_value.submission_id = submission_source_row[0].as<std::int64_t>();
-    source_detail_value.user_id = submission_source_row[1].as<std::int64_t>();
-    source_detail_value.problem_id = submission_source_row[2].as<std::int64_t>();
-    source_detail_value.language = submission_source_row[3].as<std::string>();
-    source_detail_value.source_code = submission_source_row[4].as<std::string>();
-    if(!submission_source_row[5].is_null()){
-        source_detail_value.compile_output_opt = submission_source_row[5].as<std::string>();
-    }
-    if(!submission_source_row[6].is_null()){
-        source_detail_value.judge_output_opt = submission_source_row[6].as<std::string>();
-    }
+    source_detail_value.submission_id = row_util::get_required<std::int64_t>(submission_source_row, 0);
+    source_detail_value.user_id = row_util::get_required<std::int64_t>(submission_source_row, 1);
+    source_detail_value.problem_id = row_util::get_required<std::int64_t>(submission_source_row, 2);
+    source_detail_value.language = row_util::get_required<std::string>(submission_source_row, 3);
+    source_detail_value.source_code = row_util::get_required<std::string>(submission_source_row, 4);
+    source_detail_value.compile_output_opt = row_util::get_optional<std::string>(submission_source_row, 5);
+    source_detail_value.judge_output_opt = row_util::get_optional<std::string>(submission_source_row, 6);
     return source_detail_value;
 }
 
@@ -324,28 +317,18 @@ submission_dto::detail submission_dto::make_detail_from_row(
     const pqxx::row& submission_detail_row
 ){
     detail detail_value;
-    detail_value.submission_id = submission_detail_row[0].as<std::int64_t>();
-    detail_value.user_id = submission_detail_row[1].as<std::int64_t>();
-    detail_value.problem_id = submission_detail_row[2].as<std::int64_t>();
-    detail_value.language = submission_detail_row[3].as<std::string>();
-    detail_value.status = submission_detail_row[4].as<std::string>();
-    if(!submission_detail_row[5].is_null()){
-        detail_value.score_opt = submission_detail_row[5].as<std::int16_t>();
-    }
-    if(!submission_detail_row[6].is_null()){
-        detail_value.compile_output_opt = submission_detail_row[6].as<std::string>();
-    }
-    if(!submission_detail_row[7].is_null()){
-        detail_value.judge_output_opt = submission_detail_row[7].as<std::string>();
-    }
-    if(!submission_detail_row[8].is_null()){
-        detail_value.elapsed_ms_opt = submission_detail_row[8].as<std::int64_t>();
-    }
-    if(!submission_detail_row[9].is_null()){
-        detail_value.max_rss_kb_opt = submission_detail_row[9].as<std::int64_t>();
-    }
-    detail_value.created_at = submission_detail_row[10].as<std::string>();
-    detail_value.updated_at = submission_detail_row[11].as<std::string>();
+    detail_value.submission_id = row_util::get_required<std::int64_t>(submission_detail_row, 0);
+    detail_value.user_id = row_util::get_required<std::int64_t>(submission_detail_row, 1);
+    detail_value.problem_id = row_util::get_required<std::int64_t>(submission_detail_row, 2);
+    detail_value.language = row_util::get_required<std::string>(submission_detail_row, 3);
+    detail_value.status = row_util::get_required<std::string>(submission_detail_row, 4);
+    detail_value.score_opt = row_util::get_optional<std::int16_t>(submission_detail_row, 5);
+    detail_value.compile_output_opt = row_util::get_optional<std::string>(submission_detail_row, 6);
+    detail_value.judge_output_opt = row_util::get_optional<std::string>(submission_detail_row, 7);
+    detail_value.elapsed_ms_opt = row_util::get_optional<std::int64_t>(submission_detail_row, 8);
+    detail_value.max_rss_kb_opt = row_util::get_optional<std::int64_t>(submission_detail_row, 9);
+    detail_value.created_at = row_util::get_required<std::string>(submission_detail_row, 10);
+    detail_value.updated_at = row_util::get_required<std::string>(submission_detail_row, 11);
     return detail_value;
 }
 
@@ -353,17 +336,11 @@ submission_dto::status_snapshot submission_dto::make_status_snapshot_from_row(
     const pqxx::row& submission_status_row
 ){
     status_snapshot snapshot_value;
-    snapshot_value.submission_id = submission_status_row[0].as<std::int64_t>();
-    snapshot_value.status = submission_status_row[1].as<std::string>();
-    if(!submission_status_row[2].is_null()){
-        snapshot_value.score_opt = submission_status_row[2].as<std::int16_t>();
-    }
-    if(!submission_status_row[3].is_null()){
-        snapshot_value.elapsed_ms_opt = submission_status_row[3].as<std::int64_t>();
-    }
-    if(!submission_status_row[4].is_null()){
-        snapshot_value.max_rss_kb_opt = submission_status_row[4].as<std::int64_t>();
-    }
+    snapshot_value.submission_id = row_util::get_required<std::int64_t>(submission_status_row, 0);
+    snapshot_value.status = row_util::get_required<std::string>(submission_status_row, 1);
+    snapshot_value.score_opt = row_util::get_optional<std::int16_t>(submission_status_row, 2);
+    snapshot_value.elapsed_ms_opt = row_util::get_optional<std::int64_t>(submission_status_row, 3);
+    snapshot_value.max_rss_kb_opt = row_util::get_optional<std::int64_t>(submission_status_row, 4);
     return snapshot_value;
 }
 
@@ -404,43 +381,36 @@ std::expected<submission_status, error_code> submission_dto::make_submission_sta
     const pqxx::row& submission_row,
     std::size_t status_column_index
 ){
-    if(
-        status_column_index >= submission_row.size() ||
-        submission_row[status_column_index].is_null()
-    ){
+    if(status_column_index >= submission_row.size()){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
-    const std::string submission_status_string =
-        submission_row[status_column_index].as<std::string>();
-    return make_submission_status(submission_status_string);
+    const auto submission_status_string_opt =
+        row_util::get_optional<std::string>(submission_row, status_column_index);
+    if(!submission_status_string_opt){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
+    return make_submission_status(*submission_status_string_opt);
 }
 
 submission_dto::summary submission_dto::make_summary_from_row(
     const pqxx::row& submission_summary_row
 ){
     summary summary_value;
-    summary_value.submission_id = submission_summary_row[0].as<std::int64_t>();
-    summary_value.user_id = submission_summary_row[1].as<std::int64_t>();
-    summary_value.user_login_id = submission_summary_row[2].as<std::string>();
-    summary_value.problem_id = submission_summary_row[3].as<std::int64_t>();
-    summary_value.problem_title = submission_summary_row[4].as<std::string>();
-    summary_value.language = submission_summary_row[5].as<std::string>();
-    summary_value.status = submission_summary_row[6].as<std::string>();
-    if(!submission_summary_row[7].is_null()){
-        summary_value.score_opt = submission_summary_row[7].as<std::int16_t>();
-    }
-    if(!submission_summary_row[8].is_null()){
-        summary_value.elapsed_ms_opt = submission_summary_row[8].as<std::int64_t>();
-    }
-    if(!submission_summary_row[9].is_null()){
-        summary_value.max_rss_kb_opt = submission_summary_row[9].as<std::int64_t>();
-    }
-    if(!submission_summary_row[10].is_null()){
-        summary_value.user_problem_state_opt = submission_summary_row[10].as<std::string>();
-    }
-    summary_value.created_at = submission_summary_row[11].as<std::string>();
-    summary_value.updated_at = submission_summary_row[12].as<std::string>();
+    summary_value.submission_id = row_util::get_required<std::int64_t>(submission_summary_row, 0);
+    summary_value.user_id = row_util::get_required<std::int64_t>(submission_summary_row, 1);
+    summary_value.user_login_id = row_util::get_required<std::string>(submission_summary_row, 2);
+    summary_value.problem_id = row_util::get_required<std::int64_t>(submission_summary_row, 3);
+    summary_value.problem_title = row_util::get_required<std::string>(submission_summary_row, 4);
+    summary_value.language = row_util::get_required<std::string>(submission_summary_row, 5);
+    summary_value.status = row_util::get_required<std::string>(submission_summary_row, 6);
+    summary_value.score_opt = row_util::get_optional<std::int16_t>(submission_summary_row, 7);
+    summary_value.elapsed_ms_opt = row_util::get_optional<std::int64_t>(submission_summary_row, 8);
+    summary_value.max_rss_kb_opt = row_util::get_optional<std::int64_t>(submission_summary_row, 9);
+    summary_value.user_problem_state_opt = row_util::get_optional<std::string>(submission_summary_row, 10);
+    summary_value.created_at = row_util::get_required<std::string>(submission_summary_row, 11);
+    summary_value.updated_at = row_util::get_required<std::string>(submission_summary_row, 12);
     return summary_value;
 }
 
@@ -459,11 +429,11 @@ submission_dto::queued_submission submission_dto::make_queued_submission_from_ro
     const pqxx::row& submission_queue_row
 ){
     queued_submission queued_submission_value;
-    queued_submission_value.submission_id = submission_queue_row[0].as<std::int64_t>();
-    queued_submission_value.problem_id = submission_queue_row[1].as<std::int64_t>();
-    queued_submission_value.queue_wait_ms = submission_queue_row[2].as<std::int64_t>();
-    queued_submission_value.language = submission_queue_row[3].as<std::string>();
-    queued_submission_value.source_code = submission_queue_row[4].as<std::string>();
+    queued_submission_value.submission_id = row_util::get_required<std::int64_t>(submission_queue_row, 0);
+    queued_submission_value.problem_id = row_util::get_required<std::int64_t>(submission_queue_row, 1);
+    queued_submission_value.queue_wait_ms = row_util::get_required<std::int64_t>(submission_queue_row, 2);
+    queued_submission_value.language = row_util::get_required<std::string>(submission_queue_row, 3);
+    queued_submission_value.source_code = row_util::get_required<std::string>(submission_queue_row, 4);
     return queued_submission_value;
 }
 

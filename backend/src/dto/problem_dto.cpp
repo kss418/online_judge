@@ -1,5 +1,6 @@
 #include "dto/problem_dto.hpp"
 
+#include "common/row_util.hpp"
 #include "common/string_util.hpp"
 #include "http_core/http_util.hpp"
 #include "http_core/query_param_util.hpp"
@@ -253,16 +254,14 @@ problem_dto::summary problem_dto::make_summary_from_row(
     const pqxx::row& problem_summary_row
 ){
     summary summary_value;
-    summary_value.problem_id = problem_summary_row[0].as<std::int64_t>();
-    summary_value.title = problem_summary_row[1].as<std::string>();
-    summary_value.version = problem_summary_row[2].as<std::int32_t>();
-    summary_value.time_limit_ms = problem_summary_row[3].as<std::int32_t>();
-    summary_value.memory_limit_mb = problem_summary_row[4].as<std::int32_t>();
-    summary_value.submission_count = problem_summary_row[5].as<std::int64_t>();
-    summary_value.accepted_count = problem_summary_row[6].as<std::int64_t>();
-    if(!problem_summary_row[7].is_null()){
-        summary_value.user_problem_state_opt = problem_summary_row[7].as<std::string>();
-    }
+    summary_value.problem_id = row_util::get_required<std::int64_t>(problem_summary_row, 0);
+    summary_value.title = row_util::get_required<std::string>(problem_summary_row, 1);
+    summary_value.version = row_util::get_required<std::int32_t>(problem_summary_row, 2);
+    summary_value.time_limit_ms = row_util::get_required<std::int32_t>(problem_summary_row, 3);
+    summary_value.memory_limit_mb = row_util::get_required<std::int32_t>(problem_summary_row, 4);
+    summary_value.submission_count = row_util::get_required<std::int64_t>(problem_summary_row, 5);
+    summary_value.accepted_count = row_util::get_required<std::int64_t>(problem_summary_row, 6);
+    summary_value.user_problem_state_opt = row_util::get_optional<std::string>(problem_summary_row, 7);
     return summary_value;
 }
 
