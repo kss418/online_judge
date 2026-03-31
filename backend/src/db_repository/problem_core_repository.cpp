@@ -194,7 +194,7 @@ namespace{
             context_value.predicates.append_param(*context_value.viewer_user_id_opt) + " ";
     }
 
-    void append_user_problem_list_base_where_clauses(
+    void append_user_problem_list_where_clauses(
         std::string& query,
         user_problem_list_query_context& context_value
     ){
@@ -522,11 +522,9 @@ problem_core_repository::list_user_solved_problems(
         "ON ps.problem_id = p.problem_id ";
 
     append_user_problem_list_viewer_join(problem_list_query, context_value);
-    append_user_problem_list_base_where_clauses(problem_list_query, context_value);
-
-    problem_list_query +=
-        " AND target_ups.accepted_submission_count > 0 "
-        "ORDER BY p.problem_id DESC";
+    context_value.predicates.where("target_ups.accepted_submission_count > 0");
+    append_user_problem_list_where_clauses(problem_list_query, context_value);
+    problem_list_query += " ORDER BY p.problem_id DESC";
 
     const auto problem_summary_query = transaction.exec(
         problem_list_query,
@@ -569,12 +567,10 @@ problem_core_repository::list_user_wrong_problems(
         "ON ps.problem_id = p.problem_id ";
 
     append_user_problem_list_viewer_join(problem_list_query, context_value);
-    append_user_problem_list_base_where_clauses(problem_list_query, context_value);
-
-    problem_list_query +=
-        " AND COALESCE(target_ups.accepted_submission_count, 0) = 0 "
-        "AND COALESCE(target_ups.failed_submission_count, 0) > 0 "
-        "ORDER BY p.problem_id DESC";
+    context_value.predicates.where("COALESCE(target_ups.accepted_submission_count, 0) = 0");
+    context_value.predicates.where("COALESCE(target_ups.failed_submission_count, 0) > 0");
+    append_user_problem_list_where_clauses(problem_list_query, context_value);
+    problem_list_query += " ORDER BY p.problem_id DESC";
 
     const auto problem_summary_query = transaction.exec(
         problem_list_query,
