@@ -6,7 +6,6 @@
 
 #include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"
-#include "serializer/common_json_serializer.hpp"
 #include "serializer/problem_json_serializer.hpp"
 
 #include <utility>
@@ -76,15 +75,11 @@ problem_content_handler::response_type problem_content_handler::put_limits(
             problem_reference_value,
             *limits_exp
         );
-        return http_response_util::create_json_or_4xx_or_500(
+        return http_response_util::create_message_or_4xx_or_500(
             request,
             "set problem limits",
             std::move(set_limits_exp),
-            []{
-                return common_json_serializer::make_message_object(
-                    "problem limits updated"
-                );
-            }
+            "problem limits updated"
         );
     };
 
@@ -116,15 +111,11 @@ problem_content_handler::response_type problem_content_handler::put_statement(
             problem_reference_value,
             *statement_exp
         );
-        return http_response_util::create_json_or_4xx_or_500(
+        return http_response_util::create_message_or_4xx_or_500(
             request,
             "set problem statement",
             std::move(set_statement_exp),
-            []{
-                return common_json_serializer::make_message_object(
-                    "problem statement updated"
-                );
-            }
+            "problem statement updated"
         );
     };
 
@@ -281,18 +272,14 @@ problem_content_handler::response_type problem_content_handler::delete_sample(
                     );
                 }
 
-                return http_response_util::create_json_or_4xx_or_500(
+                return http_response_util::create_message_or_4xx_or_500(
                     request,
                     "delete problem sample",
                     problem_content_service::delete_sample(
                         db_connection_value,
                         problem_reference_value
                     ),
-                    []{
-                        return common_json_serializer::make_message_object(
-                            "problem sample deleted"
-                        );
-                    }
+                    "problem sample deleted"
                 );
             }
         );

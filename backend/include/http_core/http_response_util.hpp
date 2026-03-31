@@ -68,6 +68,11 @@ namespace http_response_util{
         boost::beast::http::status status,
         const boost::json::value& response_value
     );
+    response_type create_message(
+        const request_type& request,
+        boost::beast::http::status status,
+        std::string_view message
+    );
     response_type create_error(
         const request_type& request,
         boost::beast::http::status status,
@@ -178,6 +183,25 @@ namespace http_response_util{
         );
     }
 
+    template <typename T>
+    response_type create_message_or_4xx_or_500(
+        const request_type& request,
+        std::string_view action,
+        std::expected<T, error_code> value_exp,
+        std::string_view message,
+        boost::beast::http::status success_status = boost::beast::http::status::ok
+    ){
+        return detail::create_or_error(
+            request,
+            action,
+            std::move(value_exp),
+            create_4xx_or_500,
+            [&](auto&&...) -> response_type {
+                return create_message(request, success_status, message);
+            }
+        );
+    }
+
     template <typename T, typename Serializer, typename NulloptHandler>
     response_type create_json_or_4xx_or_500(
         const request_type& request,
@@ -202,6 +226,30 @@ namespace http_response_util{
                     success_status,
                     std::forward<Serializer>(serializer)(std::move(*value_opt))
                 );
+            }
+        );
+    }
+
+    template <typename FalseHandler>
+    response_type create_message_or_4xx_or_500(
+        const request_type& request,
+        std::string_view action,
+        std::expected<bool, error_code> value_exp,
+        std::string_view message,
+        FalseHandler&& false_handler,
+        boost::beast::http::status success_status = boost::beast::http::status::ok
+    ){
+        return detail::create_or_error(
+            request,
+            action,
+            std::move(value_exp),
+            create_4xx_or_500,
+            [&](bool value) -> response_type {
+                if(!value){
+                    return std::forward<FalseHandler>(false_handler)();
+                }
+
+                return create_message(request, success_status, message);
             }
         );
     }

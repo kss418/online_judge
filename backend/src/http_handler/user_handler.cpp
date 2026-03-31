@@ -6,7 +6,6 @@
 #include "db_service/user_statistics_service.hpp"
 #include "common/permission_util.hpp"
 #include "http_core/http_util.hpp"
-#include "serializer/common_json_serializer.hpp"
 #include "serializer/user_json_serializer.hpp"
 
 namespace{
@@ -476,15 +475,11 @@ user_handler::response_type user_handler::delete_user_submission_ban(
                 db_connection_value,
                 user_id
             );
-        return http_response_util::create_json_or_4xx_or_500(
+        return http_response_util::create_message_or_4xx_or_500(
             request,
             "clear user submission ban",
             std::move(clear_submission_banned_until_exp),
-            [&]{
-                return common_json_serializer::make_message_object(
-                    "user submission ban cleared"
-                );
-            },
+            "user submission ban cleared",
             [&]{
                 return http_response_util::create_user_not_found(request);
             }

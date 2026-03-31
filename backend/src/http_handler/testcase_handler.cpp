@@ -462,15 +462,11 @@ testcase_handler::response_type testcase_handler::move_testcase(
             testcase_reference_value,
             testcase_move_request_exp->target_testcase_order
         );
-        return http_response_util::create_json_or_4xx_or_500(
+        return http_response_util::create_message_or_4xx_or_500(
             request,
             "move testcase",
             std::move(move_testcase_exp),
-            []{
-                return common_json_serializer::make_message_object(
-                    "problem testcase moved"
-                );
-            }
+            "problem testcase moved"
         );
     };
 
@@ -496,15 +492,11 @@ testcase_handler::response_type testcase_handler::delete_testcase(
             db_connection_value,
             testcase_reference_value
         );
-        return http_response_util::create_json_or_4xx_or_500(
+        return http_response_util::create_message_or_4xx_or_500(
             request,
             "delete testcase",
             std::move(delete_testcase_exp),
-            []{
-                return common_json_serializer::make_message_object(
-                    "problem testcase deleted"
-                );
-            }
+            "problem testcase deleted"
         );
     };
 
@@ -547,15 +539,11 @@ testcase_handler::response_type testcase_handler::delete_all_testcases(
             db_connection_value,
             problem_reference_value
         );
-        return http_response_util::create_json_or_4xx_or_500(
+        return http_response_util::create_message_or_4xx_or_500(
             request,
             "delete all testcases",
             std::move(delete_all_testcases_exp),
-            []{
-                return common_json_serializer::make_message_object(
-                    "problem testcases deleted"
-                );
-            }
+            "problem testcases deleted"
         );
     };
 

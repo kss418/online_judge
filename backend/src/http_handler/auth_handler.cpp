@@ -4,7 +4,6 @@
 #include "dto/auth_dto.hpp"
 #include "http_core/http_util.hpp"
 #include "serializer/auth_json_serializer.hpp"
-#include "serializer/common_json_serializer.hpp"
 
 #include <string>
 
@@ -79,13 +78,11 @@ auth_handler::response_type auth_handler::post_token_renew(
         db_connection_value,
         *token_exp
     );
-    return http_response_util::create_json_or_4xx_or_500(
+    return http_response_util::create_message_or_4xx_or_500(
         request,
         "renew token",
         std::move(renew_token_exp),
-        [&]{
-            return common_json_serializer::make_message_object("token renewed");
-        },
+        "token renewed",
         [&]{
             return http_response_util::create_bearer_error(
                 request,
@@ -109,13 +106,11 @@ auth_handler::response_type auth_handler::post_logout(
         db_connection_value,
         *token_exp
     );
-    return http_response_util::create_json_or_4xx_or_500(
+    return http_response_util::create_message_or_4xx_or_500(
         request,
         "logout",
         std::move(revoke_token_exp),
-        [&]{
-            return common_json_serializer::make_message_object("logged out");
-        },
+        "logged out",
         [&]{
             return http_response_util::create_bearer_error(
                 request,

@@ -36,6 +36,18 @@ http_response_util::response_type http_response_util::create_json(
     return response;
 }
 
+http_response_util::response_type http_response_util::create_message(
+    const request_type& request,
+    boost::beast::http::status status,
+    std::string_view message
+){
+    return create_json(
+        request,
+        status,
+        common_json_serializer::make_message_object(message)
+    );
+}
+
 http_response_util::response_type http_response_util::create_error(
     const request_type& request,
     boost::beast::http::status status,
