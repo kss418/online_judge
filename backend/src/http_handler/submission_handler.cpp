@@ -17,25 +17,19 @@ submission_handler::response_type submission_handler::get_submission_history(
     std::int64_t submission_id
 ){
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto submission_history_exp = submission_service::get_submission_history(
-            db_connection_value,
-            submission_id
-        );
-        if(!submission_history_exp){
-            return http_response_util::create_404_or_500(
-                request,
-                "get submission history",
-                submission_history_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_404_or_500(
             request,
-            boost::beast::http::status::ok,
-            submission_json_serializer::make_history_list_object(
-                submission_id,
-                *submission_history_exp
-            )
+            "get submission history",
+            submission_service::get_submission_history(
+                db_connection_value,
+                submission_id
+            ),
+            [&](const submission_dto::history_list& history_values){
+                return submission_json_serializer::make_history_list_object(
+                    submission_id,
+                    history_values
+                );
+            }
         );
     };
 
@@ -96,22 +90,14 @@ submission_handler::response_type submission_handler::get_submission(
     db_connection& db_connection_value,
     std::int64_t submission_id
 ){
-    const auto submission_detail_exp = submission_service::get_submission_detail(
-        db_connection_value,
-        submission_id
-    );
-    if(!submission_detail_exp){
-        return http_response_util::create_404_or_500(
-            request,
-            "get submission detail",
-            submission_detail_exp.error()
-        );
-    }
-
-    return http_response_util::create_json(
+    return http_response_util::create_json_or_404_or_500(
         request,
-        boost::beast::http::status::ok,
-        submission_json_serializer::make_detail_object(*submission_detail_exp)
+        "get submission detail",
+        submission_service::get_submission_detail(
+            db_connection_value,
+            submission_id
+        ),
+        submission_json_serializer::make_detail_object
     );
 }
 
@@ -128,22 +114,14 @@ submission_handler::response_type submission_handler::post_submission_status_bat
         return std::move(batch_request_exp.error());
     }
 
-    const auto snapshot_values_exp = submission_service::get_submission_status_snapshots(
-        db_connection_value,
-        batch_request_exp->submission_ids
-    );
-    if(!snapshot_values_exp){
-        return http_response_util::create_4xx_or_500(
-            request,
-            "get submission status batch",
-            snapshot_values_exp.error()
-        );
-    }
-
-    return http_response_util::create_json(
+    return http_response_util::create_json_or_4xx_or_500(
         request,
-        boost::beast::http::status::ok,
-        submission_json_serializer::make_status_snapshot_batch_object(*snapshot_values_exp)
+        "get submission status batch",
+        submission_service::get_submission_status_snapshots(
+            db_connection_value,
+            batch_request_exp->submission_ids
+        ),
+        submission_json_serializer::make_status_snapshot_batch_object
     );
 }
 
@@ -257,22 +235,14 @@ submission_handler::response_type submission_handler::get_submissions(
         viewer_user_id_opt = auth_identity_opt_exp->value().user_id;
     }
 
-    const auto submission_summary_page_exp = submission_service::list_submissions(
-        db_connection_value,
-        *filter_exp,
-        viewer_user_id_opt
-    );
-    if(!submission_summary_page_exp){
-        return http_response_util::create_4xx_or_500(
-            request,
-            "list submissions",
-            submission_summary_page_exp.error()
-        );
-    }
-
-    return http_response_util::create_json(
+    return http_response_util::create_json_or_4xx_or_500(
         request,
-        boost::beast::http::status::ok,
-        submission_json_serializer::make_list_object(*submission_summary_page_exp)
+        "list submissions",
+        submission_service::list_submissions(
+            db_connection_value,
+            *filter_exp,
+            viewer_user_id_opt
+        ),
+        submission_json_serializer::make_list_object
     );
 }

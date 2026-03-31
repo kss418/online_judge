@@ -208,18 +208,13 @@ problem_handler::response_type problem_handler::put_problem(
             problem_reference_value,
             *update_request_exp
         );
-        if(!update_problem_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "update problem",
-                update_problem_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            common_json_serializer::make_message_object("problem updated")
+            "update problem",
+            std::move(update_problem_exp),
+            []{
+                return common_json_serializer::make_message_object("problem updated");
+            }
         );
     };
 
@@ -262,18 +257,13 @@ problem_handler::response_type problem_handler::delete_problem(
             db_connection_value,
             problem_reference_value
         );
-        if(!delete_problem_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "delete problem",
-                delete_problem_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            common_json_serializer::make_message_object("problem deleted")
+            "delete problem",
+            std::move(delete_problem_exp),
+            []{
+                return common_json_serializer::make_message_object("problem deleted");
+            }
         );
     };
 
@@ -316,18 +306,15 @@ problem_handler::response_type problem_handler::post_problem_rejudge(
             db_connection_value,
             problem_id
         );
-        if(!rejudge_problem_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "rejudge problem",
-                rejudge_problem_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            common_json_serializer::make_message_object("problem submissions requeued")
+            "rejudge problem",
+            std::move(rejudge_problem_exp),
+            []{
+                return common_json_serializer::make_message_object(
+                    "problem submissions requeued"
+                );
+            }
         );
     };
 

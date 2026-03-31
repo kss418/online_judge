@@ -116,21 +116,11 @@ testcase_handler::response_type testcase_handler::get_testcases(
             db_connection_value,
             problem_reference_value
         );
-        if(!testcase_summary_values_exp){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::internal_server_error,
-                "internal_server_error",
-                "failed to list testcases: " + to_string(testcase_summary_values_exp.error())
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            problem_json_serializer::make_testcase_summary_list_object(
-                *testcase_summary_values_exp
-            )
+            "list testcases",
+            std::move(testcase_summary_values_exp),
+            problem_json_serializer::make_testcase_summary_list_object
         );
     };
 
@@ -161,18 +151,12 @@ testcase_handler::response_type testcase_handler::post_testcase(
             problem_reference_value,
             *testcase_exp
         );
-        if(!create_testcase_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "create testcase",
-                create_testcase_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::created,
-            problem_json_serializer::make_testcase_created_object(*create_testcase_exp)
+            "create testcase",
+            std::move(create_testcase_exp),
+            problem_json_serializer::make_testcase_created_object,
+            boost::beast::http::status::created
         );
     };
 
@@ -219,18 +203,11 @@ testcase_handler::response_type testcase_handler::put_testcase(
             db_connection_value,
             testcase_reference_value
         );
-        if(!updated_testcase_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "get testcase",
-                updated_testcase_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            problem_json_serializer::make_testcase_object(*updated_testcase_exp)
+            "get testcase",
+            std::move(updated_testcase_exp),
+            problem_json_serializer::make_testcase_object
         );
     };
 
@@ -485,18 +462,15 @@ testcase_handler::response_type testcase_handler::move_testcase(
             testcase_reference_value,
             testcase_move_request_exp->target_testcase_order
         );
-        if(!move_testcase_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "move testcase",
-                move_testcase_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            common_json_serializer::make_message_object("problem testcase moved")
+            "move testcase",
+            std::move(move_testcase_exp),
+            []{
+                return common_json_serializer::make_message_object(
+                    "problem testcase moved"
+                );
+            }
         );
     };
 
@@ -522,18 +496,15 @@ testcase_handler::response_type testcase_handler::delete_testcase(
             db_connection_value,
             testcase_reference_value
         );
-        if(!delete_testcase_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "delete testcase",
-                delete_testcase_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            common_json_serializer::make_message_object("problem testcase deleted")
+            "delete testcase",
+            std::move(delete_testcase_exp),
+            []{
+                return common_json_serializer::make_message_object(
+                    "problem testcase deleted"
+                );
+            }
         );
     };
 
@@ -576,18 +547,15 @@ testcase_handler::response_type testcase_handler::delete_all_testcases(
             db_connection_value,
             problem_reference_value
         );
-        if(!delete_all_testcases_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "delete all testcases",
-                delete_all_testcases_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            common_json_serializer::make_message_object("problem testcases deleted")
+            "delete all testcases",
+            std::move(delete_all_testcases_exp),
+            []{
+                return common_json_serializer::make_message_object(
+                    "problem testcases deleted"
+                );
+            }
         );
     };
 

@@ -99,20 +99,11 @@ user_handler::response_type user_handler::get_me_submission_statistics(
                     db_connection_value,
                     auth_identity_value.user_id
                 );
-            if(!get_submission_statistics_exp){
-                return http_response_util::create_4xx_or_500(
-                    request,
-                    "get user submission statistics",
-                    get_submission_statistics_exp.error()
-                );
-            }
-
-            return http_response_util::create_json(
+            return http_response_util::create_json_or_4xx_or_500(
                 request,
-                boost::beast::http::status::ok,
-                user_json_serializer::make_submission_statistics_object(
-                    *get_submission_statistics_exp
-                )
+                "get user submission statistics",
+                std::move(get_submission_statistics_exp),
+                user_json_serializer::make_submission_statistics_object
             );
         };
 
@@ -177,20 +168,11 @@ user_handler::response_type user_handler::get_me_solved_problems(
                     auth_identity_value.user_id,
                     auth_identity_value.user_id
                 );
-            if(!list_user_solved_problems_exp){
-                return http_response_util::create_4xx_or_500(
-                    request,
-                    "get current user solved problems",
-                    list_user_solved_problems_exp.error()
-                );
-            }
-
-            return http_response_util::create_json(
+            return http_response_util::create_json_or_4xx_or_500(
                 request,
-                boost::beast::http::status::ok,
-                user_json_serializer::make_solved_problem_list_object(
-                    *list_user_solved_problems_exp
-                )
+                "get current user solved problems",
+                std::move(list_user_solved_problems_exp),
+                user_json_serializer::make_solved_problem_list_object
             );
         };
 
@@ -213,20 +195,11 @@ user_handler::response_type user_handler::get_me_wrong_problems(
                     auth_identity_value.user_id,
                     auth_identity_value.user_id
                 );
-            if(!list_user_wrong_problems_exp){
-                return http_response_util::create_4xx_or_500(
-                    request,
-                    "get current user wrong problems",
-                    list_user_wrong_problems_exp.error()
-                );
-            }
-
-            return http_response_util::create_json(
+            return http_response_util::create_json_or_4xx_or_500(
                 request,
-                boost::beast::http::status::ok,
-                user_json_serializer::make_wrong_problem_list_object(
-                    *list_user_wrong_problems_exp
-                )
+                "get current user wrong problems",
+                std::move(list_user_wrong_problems_exp),
+                user_json_serializer::make_wrong_problem_list_object
             );
         };
 
@@ -272,18 +245,11 @@ user_handler::response_type user_handler::get_public_user_list(
         db_connection_value,
         *filter_exp
     );
-    if(!get_public_list_exp){
-        return http_response_util::create_4xx_or_500(
-            request,
-            "get public user list",
-            get_public_list_exp.error()
-        );
-    }
-
-    return http_response_util::create_json(
+    return http_response_util::create_json_or_4xx_or_500(
         request,
-        boost::beast::http::status::ok,
-        user_json_serializer::make_public_list_object(*get_public_list_exp)
+        "get public user list",
+        std::move(get_public_list_exp),
+        user_json_serializer::make_public_list_object
     );
 }
 
@@ -348,20 +314,11 @@ user_handler::response_type user_handler::get_user_submission_statistics(
             db_connection_value,
             user_id
         );
-    if(!get_submission_statistics_exp){
-        return http_response_util::create_4xx_or_500(
-            request,
-            "get user submission statistics",
-            get_submission_statistics_exp.error()
-        );
-    }
-
-    return http_response_util::create_json(
+    return http_response_util::create_json_or_4xx_or_500(
         request,
-        boost::beast::http::status::ok,
-        user_json_serializer::make_submission_statistics_object(
-            *get_submission_statistics_exp
-        )
+        "get user submission statistics",
+        std::move(get_submission_statistics_exp),
+        user_json_serializer::make_submission_statistics_object
     );
 }
 
@@ -395,20 +352,11 @@ user_handler::response_type user_handler::get_user_solved_problems(
                 ? std::optional<std::int64_t>{auth_identity_opt_exp->value().user_id}
                 : std::nullopt
         );
-    if(!list_user_solved_problems_exp){
-        return http_response_util::create_4xx_or_500(
-            request,
-            "get user solved problems",
-            list_user_solved_problems_exp.error()
-        );
-    }
-
-    return http_response_util::create_json(
+    return http_response_util::create_json_or_4xx_or_500(
         request,
-        boost::beast::http::status::ok,
-        user_json_serializer::make_solved_problem_list_object(
-            *list_user_solved_problems_exp
-        )
+        "get user solved problems",
+        std::move(list_user_solved_problems_exp),
+        user_json_serializer::make_solved_problem_list_object
     );
 }
 
@@ -442,20 +390,11 @@ user_handler::response_type user_handler::get_user_wrong_problems(
                 ? std::optional<std::int64_t>{auth_identity_opt_exp->value().user_id}
                 : std::nullopt
         );
-    if(!list_user_wrong_problems_exp){
-        return http_response_util::create_4xx_or_500(
-            request,
-            "get user wrong problems",
-            list_user_wrong_problems_exp.error()
-        );
-    }
-
-    return http_response_util::create_json(
+    return http_response_util::create_json_or_4xx_or_500(
         request,
-        boost::beast::http::status::ok,
-        user_json_serializer::make_wrong_problem_list_object(
-            *list_user_wrong_problems_exp
-        )
+        "get user wrong problems",
+        std::move(list_user_wrong_problems_exp),
+        user_json_serializer::make_wrong_problem_list_object
     );
 }
 
@@ -682,18 +621,11 @@ user_handler::response_type user_handler::get_user_list(
 ){
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
         const auto user_list_exp = auth_service::get_user_list(db_connection_value);
-        if(!user_list_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "get user list",
-                user_list_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            user_json_serializer::make_list_object(*user_list_exp)
+            "get user list",
+            std::move(user_list_exp),
+            user_json_serializer::make_list_object
         );
     };
 

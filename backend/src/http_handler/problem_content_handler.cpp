@@ -42,21 +42,16 @@ problem_content_handler::response_type problem_content_handler::get_limits(
         db_connection_value,
         problem_reference_value
     );
-    if(!limits_exp){
-        return http_response_util::create_4xx_or_500(
-            request,
-            "get problem limits",
-            limits_exp.error()
-        );
-    }
-
-    boost::json::object response_object;
-    response_object["memory_limit_mb"] = limits_exp->memory_mb;
-    response_object["time_limit_ms"] = limits_exp->time_ms;
-    return http_response_util::create_json(
+    return http_response_util::create_json_or_4xx_or_500(
         request,
-        boost::beast::http::status::ok,
-        std::move(response_object)
+        "get problem limits",
+        std::move(limits_exp),
+        [](const auto& limits_value){
+            boost::json::object response_object;
+            response_object["memory_limit_mb"] = limits_value.memory_mb;
+            response_object["time_limit_ms"] = limits_value.time_ms;
+            return response_object;
+        }
     );
 }
 
@@ -81,18 +76,15 @@ problem_content_handler::response_type problem_content_handler::put_limits(
             problem_reference_value,
             *limits_exp
         );
-        if(!set_limits_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "set problem limits",
-                set_limits_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            common_json_serializer::make_message_object("problem limits updated")
+            "set problem limits",
+            std::move(set_limits_exp),
+            []{
+                return common_json_serializer::make_message_object(
+                    "problem limits updated"
+                );
+            }
         );
     };
 
@@ -124,18 +116,15 @@ problem_content_handler::response_type problem_content_handler::put_statement(
             problem_reference_value,
             *statement_exp
         );
-        if(!set_statement_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "set problem statement",
-                set_statement_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            common_json_serializer::make_message_object("problem statement updated")
+            "set problem statement",
+            std::move(set_statement_exp),
+            []{
+                return common_json_serializer::make_message_object(
+                    "problem statement updated"
+                );
+            }
         );
     };
 
@@ -177,19 +166,11 @@ problem_content_handler::response_type problem_content_handler::get_samples(
         db_connection_value,
         problem_reference_value
     );
-    if(!sample_values_exp){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to list samples: " + to_string(sample_values_exp.error())
-        );
-    }
-
-    return http_response_util::create_json(
+    return http_response_util::create_json_or_4xx_or_500(
         request,
-        boost::beast::http::status::ok,
-        problem_json_serializer::make_sample_list_object(*sample_values_exp)
+        "list problem samples",
+        std::move(sample_values_exp),
+        problem_json_serializer::make_sample_list_object
     );
 }
 
@@ -207,18 +188,12 @@ problem_content_handler::response_type problem_content_handler::post_sample(
             problem_reference_value,
             sample_value
         );
-        if(!create_sample_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "create problem sample",
-                create_sample_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::created,
-            problem_json_serializer::make_sample_created_object(*create_sample_exp)
+            "create problem sample",
+            std::move(create_sample_exp),
+            problem_json_serializer::make_sample_created_object,
+            boost::beast::http::status::created
         );
     };
 
@@ -266,18 +241,11 @@ problem_content_handler::response_type problem_content_handler::put_sample(
             db_connection_value,
             sample_reference_value
         );
-        if(!updated_sample_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "get problem sample",
-                updated_sample_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            problem_json_serializer::make_sample_object(*updated_sample_exp)
+            "get problem sample",
+            std::move(updated_sample_exp),
+            problem_json_serializer::make_sample_object
         );
     };
 
@@ -319,18 +287,15 @@ problem_content_handler::response_type problem_content_handler::delete_sample(
             db_connection_value,
             problem_reference_value
         );
-        if(!delete_sample_exp){
-            return http_response_util::create_4xx_or_500(
-                request,
-                "delete problem sample",
-                delete_sample_exp.error()
-            );
-        }
-
-        return http_response_util::create_json(
+        return http_response_util::create_json_or_4xx_or_500(
             request,
-            boost::beast::http::status::ok,
-            common_json_serializer::make_message_object("problem sample deleted")
+            "delete problem sample",
+            std::move(delete_sample_exp),
+            []{
+                return common_json_serializer::make_message_object(
+                    "problem sample deleted"
+                );
+            }
         );
     };
 

@@ -25,18 +25,12 @@ auth_handler::response_type auth_handler::post_sign_up(
         db_connection_value,
         *sign_up_request_exp
     );
-    if(!sign_up_exp){
-        return http_response_util::create_4xx_or_500(
-            request,
-            "sign up",
-            sign_up_exp.error()
-        );
-    }
-
-    return http_response_util::create_json(
+    return http_response_util::create_json_or_4xx_or_500(
         request,
-        boost::beast::http::status::created,
-        auth_json_serializer::make_session_object(*sign_up_exp)
+        "sign up",
+        std::move(sign_up_exp),
+        auth_json_serializer::make_session_object,
+        boost::beast::http::status::created
     );
 }
 
