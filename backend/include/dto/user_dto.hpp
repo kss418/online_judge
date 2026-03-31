@@ -11,7 +11,7 @@
 #include <string_view>
 #include <vector>
 
-namespace http_util{
+namespace request_parser{
     struct query_param;
 }
 
@@ -60,7 +60,7 @@ namespace user_dto{
     std::expected<submission_ban_request, dto_validation_error>
     make_submission_ban_request_from_json(const boost::json::object& json);
     std::expected<list_filter, dto_validation_error> make_list_filter_from_query_params(
-        const std::vector<http_util::query_param>& query_params
+        const std::vector<request_parser::query_param>& query_params
     );
     summary make_summary_from_row(const pqxx::row& user_summary_row);
     list_item make_list_item_from_row(const pqxx::row& user_list_row);

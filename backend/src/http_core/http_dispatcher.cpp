@@ -1,5 +1,6 @@
 #include "http_core/http_dispatcher.hpp"
-#include "http_core/http_util.hpp"
+#include "http_core/request_parser.hpp"
+#include "http_core/http_response_util.hpp"
 
 #include <chrono>
 #include <string_view>
@@ -85,7 +86,7 @@ http_dispatcher::response_type http_dispatcher::handle(const request_type& reque
         request.target().data(),
         request.target().size()
     };
-    const auto path = http_util::get_target_path(target);
+    const auto path = request_parser::get_target_path(target);
 
     const auto system_response_opt = try_handle_system_route(request, path);
     if(system_response_opt.has_value()){

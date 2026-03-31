@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dto/dto_validation_error.hpp"
+#include "http_core/query_param.hpp"
 
 #include <algorithm>
 #include <array>
@@ -13,12 +14,6 @@
 #include <utility>
 #include <vector>
 
-namespace http_util{
-    struct query_param{
-        std::string_view key;
-        std::string_view value;
-    };
-}
 
 namespace query_param_util{
     dto_validation_error make_duplicate_query_parameter_error(
@@ -66,7 +61,7 @@ namespace query_param_util{
 
     template <typename filter_type, std::size_t binding_count>
     std::expected<filter_type, dto_validation_error> make_filter_from_query_params(
-        const std::vector<http_util::query_param>& query_params,
+        const std::vector<request_parser::query_param>& query_params,
         const std::array<query_param_binding<filter_type>, binding_count>& bindings
     ){
         filter_type filter_value;

@@ -3,7 +3,8 @@
 #include "common/string_util.hpp"
 #include "http_handler/problem_content_handler.hpp"
 #include "http_handler/testcase_handler.hpp"
-#include "http_core/http_util.hpp"
+#include "http_core/request_parser.hpp"
+#include "http_core/http_response_util.hpp"
 
 problem_router::problem_router(db_connection& db_connection) :
     db_connection_(db_connection){}
@@ -12,7 +13,7 @@ problem_router::response_type problem_router::route(
     const request_type& request,
     std::string_view path
 ){
-    const auto path_segments_opt = http_util::parse_path("", path);
+    const auto path_segments_opt = request_parser::parse_path("", path);
     if(!path_segments_opt){
         return http_response_util::create_not_found(request);
     }

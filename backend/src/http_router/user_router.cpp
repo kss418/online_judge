@@ -1,7 +1,8 @@
 #include "http_router/user_router.hpp"
 
 #include "common/string_util.hpp"
-#include "http_core/http_util.hpp"
+#include "http_core/request_parser.hpp"
+#include "http_core/http_response_util.hpp"
 
 user_router::user_router(db_connection& db_connection) :
     db_connection_(db_connection){}
@@ -10,7 +11,7 @@ user_router::response_type user_router::route(
     const request_type& request,
     std::string_view path
 ){
-    const auto path_segments_opt = http_util::parse_path("", path);
+    const auto path_segments_opt = request_parser::parse_path("", path);
     if(!path_segments_opt){
         return http_response_util::create_not_found(request);
     }

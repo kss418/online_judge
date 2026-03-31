@@ -1,7 +1,7 @@
 #pragma once
 
 #include "http_core/http_response_util.hpp"
-#include "http_core/query_param_util.hpp"
+#include "http_core/request_parser.hpp"
 
 #include "db_service/auth_service.hpp"
 #include "common/db_connection.hpp"
@@ -25,22 +25,13 @@ namespace http_util{
     using request_type = http_response_util::request_type;
     using response_type = http_response_util::response_type;
 
-    std::string_view get_target_path(std::string_view target);
-    std::optional<std::string_view> get_target_query(std::string_view target);
-    std::optional<std::vector<query_param>> parse_query_params(
-        std::string_view query
-    );
-
-    std::optional<boost::json::object> parse_json_object(
-        const request_type& request
-    );
     template <typename dto_type, typename factory_type, typename... arg_types>
     std::expected<dto_type, response_type> parse_json_dto_or_400(
         const request_type& request,
         factory_type&& factory,
         arg_types&&... args
     ){
-        const auto request_object_opt = parse_json_object(request);
+        const auto request_object_opt = request_parser::parse_json_object(request);
         if(!request_object_opt){
             return std::unexpected(http_response_util::create_error(
                 request,
@@ -79,8 +70,8 @@ namespace http_util{
             request.target().data(),
             request.target().size()
         };
-        const auto query_opt = get_target_query(target);
-        const auto query_params_opt = parse_query_params(query_opt.value_or(""));
+        const auto query_opt = request_parser::get_target_query(target);
+        const auto query_params_opt = request_parser::parse_query_params(query_opt.value_or(""));
         if(!query_params_opt){
             return std::unexpected(http_response_util::create_error(
                 request,
@@ -108,10 +99,6 @@ namespace http_util{
 
         return std::move(*dto_exp);
     }
-    std::optional<std::vector<std::string_view>> parse_path(
-        std::string_view prefix,
-        std::string_view path
-    );
     std::expected<submission_dto::list_filter, response_type>
     parse_submission_list_filter_or_400(
         const request_type& request
