@@ -5,6 +5,33 @@
 
 #include <pqxx/pqxx>
 
+namespace{
+    const std::array<
+        query_param_util::query_param_binding<user_dto::list_filter>,
+        1
+    > user_list_filter_bindings{{
+        {
+            "q",
+            [](user_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.query_opt,
+                    key,
+                    raw_value,
+                    [](std::string_view value) -> std::optional<std::string> {
+                        if(value.empty()){
+                            return std::nullopt;
+                        }
+
+                        return std::string{value};
+                    }
+                );
+            }
+        }
+    }};
+}
+
 std::expected<user_dto::submission_ban_request, dto_validation_error>
 user_dto::make_submission_ban_request_from_json(const boost::json::object& json){
     const auto duration_minutes_opt = http_util::get_positive_int32_field(
@@ -28,33 +55,10 @@ std::expected<user_dto::list_filter, dto_validation_error>
 user_dto::make_list_filter_from_query_params(
     const std::vector<http_util::query_param>& query_params
 ){
-    list_filter filter_value;
-    for(const auto& query_param : query_params){
-        if(query_param.key == "q"){
-            const auto parse_query_exp = query_param_util::parse_unique_query_param(
-                filter_value.query_opt,
-                query_param.key,
-                query_param.value,
-                [](std::string_view raw_value) -> std::optional<std::string> {
-                    if(raw_value.empty()){
-                        return std::nullopt;
-                    }
-
-                    return std::string{raw_value};
-                }
-            );
-            if(!parse_query_exp){
-                return std::unexpected(parse_query_exp.error());
-            }
-            continue;
-        }
-
-        return std::unexpected(
-            query_param_util::make_unsupported_query_parameter_error(query_param.key)
-        );
-    }
-
-    return filter_value;
+    return query_param_util::make_filter_from_query_params(
+        query_params,
+        user_list_filter_bindings
+    );
 }
 
 user_dto::summary user_dto::make_summary_from_row(const pqxx::row& user_summary_row){

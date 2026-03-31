@@ -1,5 +1,6 @@
 #include "db_repository/submission_repository.hpp"
 #include "db_repository/problem_statistics_repository.hpp"
+#include "db_repository/sql_filter_builder.hpp"
 #include "db_repository/user_problem_summary_repository.hpp"
 #include "common/language_util.hpp"
 
@@ -9,42 +10,17 @@
 #include <utility>
 
 namespace{
-    void append_submission_list_filters(
-        std::string& query,
-        pqxx::params& query_params,
-        int& query_param_index,
-        const submission_dto::list_filter& filter_value
-    ){
-        if(filter_value.user_id_opt){
-            query +=
-                " AND submission_table.user_id = $" + std::to_string(query_param_index++);
-            query_params.append(*filter_value.user_id_opt);
-        }
-        if(filter_value.user_login_id_opt){
-            query +=
-                " AND user_table.user_login_id = $" + std::to_string(query_param_index++);
-            query_params.append(*filter_value.user_login_id_opt);
-        }
-        if(filter_value.problem_id_opt){
-            query +=
-                " AND submission_table.problem_id = $" + std::to_string(query_param_index++);
-            query_params.append(*filter_value.problem_id_opt);
-        }
-        if(filter_value.language_opt){
-            query +=
-                " AND submission_table.language = $" + std::to_string(query_param_index++);
-            query_params.append(*filter_value.language_opt);
-        }
-        if(filter_value.status_opt){
-            query +=
-                " AND submission_table.status = $" + std::to_string(query_param_index++) +
-                "::submission_status";
-            query_params.append(*filter_value.status_opt);
-        }
-    }
+    struct submission_list_query_context{
+        const submission_dto::list_filter& filter_value;
+        std::optional<std::int64_t> viewer_user_id_opt;
+        sql_filter_builder predicates;
+    };
 
-    bool has_invalid_submission_list_filter(const submission_dto::list_filter& filter_value){
-        return
+    std::expected<submission_list_query_context, error_code> make_submission_list_query_context(
+        const submission_dto::list_filter& filter_value,
+        std::optional<std::int64_t> viewer_user_id_opt
+    ){
+        const bool is_invalid =
             (filter_value.user_id_opt && *filter_value.user_id_opt <= 0) ||
             (filter_value.user_login_id_opt && filter_value.user_login_id_opt->empty()) ||
             (filter_value.problem_id_opt && *filter_value.problem_id_opt <= 0) ||
@@ -57,7 +33,81 @@ namespace{
                 filter_value.before_submission_id_opt &&
                 *filter_value.before_submission_id_opt <= 0
             ) ||
-            (filter_value.status_opt && !parse_submission_status(*filter_value.status_opt));
+            (filter_value.status_opt && !parse_submission_status(*filter_value.status_opt)) ||
+            (viewer_user_id_opt && *viewer_user_id_opt <= 0);
+        if(is_invalid){
+            return std::unexpected(error_code::create(errno_error::invalid_argument));
+        }
+
+        return submission_list_query_context{
+            .filter_value = filter_value,
+            .viewer_user_id_opt = viewer_user_id_opt
+        };
+    }
+
+    std::int32_t resolve_submission_list_limit(
+        const submission_dto::list_filter& filter_value
+    ){
+        return filter_value.limit_opt.value_or(submission_dto::DEFAULT_LIST_LIMIT);
+    }
+
+    void append_submission_list_viewer_join(
+        std::string& query,
+        submission_list_query_context& context_value
+    ){
+        if(!context_value.viewer_user_id_opt){
+            return;
+        }
+
+        query +=
+            "LEFT JOIN user_problem_attempt_summary viewer_problem_state "
+            "ON viewer_problem_state.problem_id = submission_table.problem_id "
+            "AND viewer_problem_state.user_id = " +
+            context_value.predicates.append_param(*context_value.viewer_user_id_opt) + " ";
+    }
+
+    void append_submission_list_where_clauses(
+        std::string& query,
+        submission_list_query_context& context_value
+    ){
+        context_value.predicates.where_optional_param(
+            "submission_table.user_id = ",
+            context_value.filter_value.user_id_opt
+        );
+        context_value.predicates.where_optional_param(
+            "user_table.user_login_id = ",
+            context_value.filter_value.user_login_id_opt
+        );
+        context_value.predicates.where_optional_param(
+            "submission_table.problem_id = ",
+            context_value.filter_value.problem_id_opt
+        );
+        context_value.predicates.where_optional_param(
+            "submission_table.language = ",
+            context_value.filter_value.language_opt
+        );
+        context_value.predicates.where_optional_param_with_suffix(
+            "submission_table.status = ",
+            context_value.filter_value.status_opt,
+            "::submission_status"
+        );
+        context_value.predicates.where_optional_param(
+            "submission_table.submission_id < ",
+            context_value.filter_value.before_submission_id_opt
+        );
+
+        query += context_value.predicates.sql();
+    }
+
+    void append_submission_list_order_by_and_limit(
+        std::string& query,
+        submission_list_query_context& context_value
+    ){
+        query +=
+            " ORDER BY submission_table.submission_id DESC LIMIT " +
+            context_value.predicates.append_param(
+                static_cast<std::int64_t>(resolve_submission_list_limit(context_value.filter_value)) + 1
+            );
     }
 }
 
@@ -682,15 +732,14 @@ std::expected<submission_dto::summary_page, error_code> submission_repository::l
     const submission_dto::list_filter& filter_value,
     std::optional<std::int64_t> viewer_user_id_opt
 ){
-    if(
-        has_invalid_submission_list_filter(filter_value) ||
-        (viewer_user_id_opt && *viewer_user_id_opt <= 0)
-    ){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    auto context_exp = make_submission_list_query_context(
+        filter_value,
+        viewer_user_id_opt
+    );
+    if(!context_exp){
+        return std::unexpected(context_exp.error());
     }
-
-    const std::int32_t limit =
-        filter_value.limit_opt.value_or(submission_dto::DEFAULT_LIST_LIMIT);
+    auto context_value = std::move(*context_exp);
 
     std::string submission_list_query =
         "SELECT "
@@ -725,45 +774,24 @@ std::expected<submission_dto::summary_page, error_code> submission_repository::l
         "ON problem_table.problem_id = submission_table.problem_id "
         "JOIN users user_table "
         "ON user_table.user_id = submission_table.user_id ";
-    pqxx::params query_params;
-    int query_param_index = 1;
-
-    if(viewer_user_id_opt){
-        submission_list_query +=
-            "LEFT JOIN user_problem_attempt_summary viewer_problem_state "
-            "ON viewer_problem_state.problem_id = submission_table.problem_id "
-            "AND viewer_problem_state.user_id = $" + std::to_string(query_param_index++) + " ";
-        query_params.append(*viewer_user_id_opt);
-    }
-
-    submission_list_query += "WHERE 1 = 1";
-    append_submission_list_filters(
-        submission_list_query,
-        query_params,
-        query_param_index,
-        filter_value
-    );
-
-    if(filter_value.before_submission_id_opt){
-        submission_list_query +=
-            " AND submission_table.submission_id < $" + std::to_string(query_param_index++);
-        query_params.append(*filter_value.before_submission_id_opt);
-    }
-
-    submission_list_query +=
-        " ORDER BY submission_table.submission_id DESC LIMIT $" + std::to_string(query_param_index++);
-    query_params.append(static_cast<std::int64_t>(limit) + 1);
+    append_submission_list_viewer_join(submission_list_query, context_value);
+    append_submission_list_where_clauses(submission_list_query, context_value);
+    append_submission_list_order_by_and_limit(submission_list_query, context_value);
 
     const auto submission_summary_query = transaction.exec(
         submission_list_query,
-        query_params
+        context_value.predicates.take_params()
     );
 
     auto summary_values = submission_dto::make_summary_list_from_result(submission_summary_query);
     submission_dto::summary_page summary_page_value;
-    summary_page_value.has_more = summary_values.size() > static_cast<std::size_t>(limit);
+    summary_page_value.has_more =
+        summary_values.size() >
+        static_cast<std::size_t>(resolve_submission_list_limit(context_value.filter_value));
     if(summary_page_value.has_more){
-        summary_values.resize(static_cast<std::size_t>(limit));
+        summary_values.resize(
+            static_cast<std::size_t>(resolve_submission_list_limit(context_value.filter_value))
+        );
         if(!summary_values.empty()){
             summary_page_value.next_before_submission_id_opt =
                 summary_values.back().submission_id;

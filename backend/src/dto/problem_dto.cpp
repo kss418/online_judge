@@ -43,6 +43,109 @@ namespace{
 
         return std::nullopt;
     }
+
+    const std::array<
+        query_param_util::query_param_binding<problem_dto::list_filter>,
+        7
+    > problem_list_filter_bindings{{
+        {
+            "problem_id",
+            [](problem_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.problem_id_opt,
+                    key,
+                    raw_value,
+                    string_util::parse_positive_int64
+                );
+            }
+        },
+        {
+            "title",
+            [](problem_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.title_opt,
+                    key,
+                    raw_value,
+                    [](std::string_view value) -> std::optional<std::string> {
+                        if(value.empty()){
+                            return std::nullopt;
+                        }
+
+                        return std::string{value};
+                    }
+                );
+            }
+        },
+        {
+            "state",
+            [](problem_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.state_opt,
+                    key,
+                    raw_value,
+                    parse_problem_list_state
+                );
+            }
+        },
+        {
+            "sort",
+            [](problem_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.sort_opt,
+                    key,
+                    raw_value,
+                    parse_problem_list_sort
+                );
+            }
+        },
+        {
+            "direction",
+            [](problem_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.direction_opt,
+                    key,
+                    raw_value,
+                    parse_sort_direction
+                );
+            }
+        },
+        {
+            "limit",
+            [](problem_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.limit_opt,
+                    key,
+                    raw_value,
+                    string_util::parse_positive_int32
+                );
+            }
+        },
+        {
+            "offset",
+            [](problem_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.offset_opt,
+                    key,
+                    raw_value,
+                    parse_non_negative_int64
+                );
+            }
+        }
+    }};
 }
 
 std::expected<problem_dto::create_request, dto_validation_error>
@@ -81,105 +184,10 @@ std::expected<problem_dto::list_filter, dto_validation_error>
 problem_dto::make_list_filter_from_query_params(
     const std::vector<http_util::query_param>& query_params
 ){
-    list_filter filter_value;
-    for(const auto& query_param : query_params){
-        if(query_param.key == "problem_id"){
-            const auto parse_problem_id_exp = query_param_util::parse_unique_query_param(
-                filter_value.problem_id_opt,
-                query_param.key,
-                query_param.value,
-                string_util::parse_positive_int64
-            );
-            if(!parse_problem_id_exp){
-                return std::unexpected(parse_problem_id_exp.error());
-            }
-            continue;
-        }
-        if(query_param.key == "title"){
-            const auto parse_title_exp = query_param_util::parse_unique_query_param(
-                filter_value.title_opt,
-                query_param.key,
-                query_param.value,
-                [](std::string_view raw_value) -> std::optional<std::string> {
-                    if(raw_value.empty()){
-                        return std::nullopt;
-                    }
-
-                    return std::string{raw_value};
-                }
-            );
-            if(!parse_title_exp){
-                return std::unexpected(parse_title_exp.error());
-            }
-            continue;
-        }
-        if(query_param.key == "state"){
-            const auto parse_state_exp = query_param_util::parse_unique_query_param(
-                filter_value.state_opt,
-                query_param.key,
-                query_param.value,
-                parse_problem_list_state
-            );
-            if(!parse_state_exp){
-                return std::unexpected(parse_state_exp.error());
-            }
-            continue;
-        }
-        if(query_param.key == "sort"){
-            const auto parse_sort_exp = query_param_util::parse_unique_query_param(
-                filter_value.sort_opt,
-                query_param.key,
-                query_param.value,
-                parse_problem_list_sort
-            );
-            if(!parse_sort_exp){
-                return std::unexpected(parse_sort_exp.error());
-            }
-            continue;
-        }
-        if(query_param.key == "direction"){
-            const auto parse_direction_exp = query_param_util::parse_unique_query_param(
-                filter_value.direction_opt,
-                query_param.key,
-                query_param.value,
-                parse_sort_direction
-            );
-            if(!parse_direction_exp){
-                return std::unexpected(parse_direction_exp.error());
-            }
-            continue;
-        }
-        if(query_param.key == "limit"){
-            const auto parse_limit_exp = query_param_util::parse_unique_query_param(
-                filter_value.limit_opt,
-                query_param.key,
-                query_param.value,
-                string_util::parse_positive_int32
-            );
-            if(!parse_limit_exp){
-                return std::unexpected(parse_limit_exp.error());
-            }
-            continue;
-        }
-        if(query_param.key == "offset"){
-            const auto parse_offset_exp = query_param_util::parse_unique_query_param(
-                filter_value.offset_opt,
-                query_param.key,
-                query_param.value,
-                parse_non_negative_int64
-            );
-            if(!parse_offset_exp){
-                return std::unexpected(parse_offset_exp.error());
-            }
-            continue;
-        }
-
-        return std::unexpected(
-            query_param_util::make_unsupported_query_parameter_error(query_param.key)
-        );
-    }
-
-    return filter_value;
+    return query_param_util::make_filter_from_query_params(
+        query_params,
+        problem_list_filter_bindings
+    );
 }
 
 std::expected<problem_dto::testcase, dto_validation_error> problem_dto::make_testcase_from_json(

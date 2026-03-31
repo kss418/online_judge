@@ -1,6 +1,7 @@
 #pragma once
 
 #include "http_core/http_response_util.hpp"
+#include "http_core/query_param_util.hpp"
 
 #include "db_service/auth_service.hpp"
 #include "common/db_connection.hpp"
@@ -23,11 +24,6 @@
 namespace http_util{
     using request_type = http_response_util::request_type;
     using response_type = http_response_util::response_type;
-
-    struct query_param{
-        std::string_view key;
-        std::string_view value;
-    };
 
     std::optional<boost::json::object> parse_json_object(
         const request_type& request

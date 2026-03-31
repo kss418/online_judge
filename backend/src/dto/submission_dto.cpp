@@ -34,6 +34,123 @@ namespace{
 
         return std::nullopt;
     }
+
+    const std::array<
+        query_param_util::query_param_binding<submission_dto::list_filter>,
+        7
+    > submission_list_filter_bindings{{
+        {
+            "user_id",
+            [](submission_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.user_id_opt,
+                    key,
+                    raw_value,
+                    string_util::parse_positive_int64
+                );
+            }
+        },
+        {
+            "user_login_id",
+            [](submission_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.user_login_id_opt,
+                    key,
+                    raw_value,
+                    [](std::string_view value) -> std::optional<std::string> {
+                        if(value.empty()){
+                            return std::nullopt;
+                        }
+
+                        return std::string{value};
+                    }
+                );
+            }
+        },
+        {
+            "problem_id",
+            [](submission_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.problem_id_opt,
+                    key,
+                    raw_value,
+                    string_util::parse_positive_int64
+                );
+            }
+        },
+        {
+            "language",
+            [](submission_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.language_opt,
+                    key,
+                    raw_value,
+                    [](std::string_view value) -> std::optional<std::string> {
+                        const auto language_opt = language_util::find_supported_language(value);
+                        if(!language_opt){
+                            return std::nullopt;
+                        }
+
+                        return std::string{language_opt->language};
+                    }
+                );
+            }
+        },
+        {
+            "status",
+            [](submission_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.status_opt,
+                    key,
+                    raw_value,
+                    [](std::string_view value) -> std::optional<std::string> {
+                        const auto status_opt = parse_submission_status(value);
+                        if(!status_opt){
+                            return std::nullopt;
+                        }
+
+                        return to_string(*status_opt);
+                    }
+                );
+            }
+        },
+        {
+            "limit",
+            [](submission_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.limit_opt,
+                    key,
+                    raw_value,
+                    string_util::parse_positive_int32
+                );
+            }
+        },
+        {
+            "before_submission_id",
+            [](submission_dto::list_filter& filter_value,
+               std::string_view key,
+               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+                return query_param_util::parse_unique_query_param(
+                    filter_value.before_submission_id_opt,
+                    key,
+                    raw_value,
+                    string_util::parse_positive_int64
+                );
+            }
+        }
+    }};
 }
 
 std::expected<submission_dto::source, dto_validation_error> submission_dto::make_source_from_json(
@@ -80,119 +197,10 @@ std::expected<submission_dto::list_filter, dto_validation_error>
 submission_dto::make_list_filter_from_query_params(
     const std::vector<http_util::query_param>& query_params
 ){
-    list_filter filter_value;
-    for(const auto& query_param : query_params){
-        if(query_param.key == "user_id"){
-            const auto parse_user_id_exp = query_param_util::parse_unique_query_param(
-                filter_value.user_id_opt,
-                query_param.key,
-                query_param.value,
-                string_util::parse_positive_int64
-            );
-            if(!parse_user_id_exp){
-                return std::unexpected(parse_user_id_exp.error());
-            }
-            continue;
-        }
-        if(query_param.key == "user_login_id"){
-            const auto parse_user_login_id_exp = query_param_util::parse_unique_query_param(
-                filter_value.user_login_id_opt,
-                query_param.key,
-                query_param.value,
-                [](std::string_view raw_value) -> std::optional<std::string> {
-                    if(raw_value.empty()){
-                        return std::nullopt;
-                    }
-
-                    return std::string{raw_value};
-                }
-            );
-            if(!parse_user_login_id_exp){
-                return std::unexpected(parse_user_login_id_exp.error());
-            }
-            continue;
-        }
-        if(query_param.key == "problem_id"){
-            const auto parse_problem_id_exp = query_param_util::parse_unique_query_param(
-                filter_value.problem_id_opt,
-                query_param.key,
-                query_param.value,
-                string_util::parse_positive_int64
-            );
-            if(!parse_problem_id_exp){
-                return std::unexpected(parse_problem_id_exp.error());
-            }
-            continue;
-        }
-        if(query_param.key == "language"){
-            const auto parse_language_exp = query_param_util::parse_unique_query_param(
-                filter_value.language_opt,
-                query_param.key,
-                query_param.value,
-                [](std::string_view raw_value) -> std::optional<std::string> {
-                    const auto language_opt = language_util::find_supported_language(raw_value);
-                    if(!language_opt){
-                        return std::nullopt;
-                    }
-
-                    return std::string{language_opt->language};
-                }
-            );
-            if(!parse_language_exp){
-                return std::unexpected(parse_language_exp.error());
-            }
-            continue;
-        }
-        if(query_param.key == "status"){
-            const auto parse_status_exp = query_param_util::parse_unique_query_param(
-                filter_value.status_opt,
-                query_param.key,
-                query_param.value,
-                [](std::string_view raw_value) -> std::optional<std::string> {
-                    const auto status_opt = parse_submission_status(raw_value);
-                    if(!status_opt){
-                        return std::nullopt;
-                    }
-
-                    return to_string(*status_opt);
-                }
-            );
-            if(!parse_status_exp){
-                return std::unexpected(parse_status_exp.error());
-            }
-            continue;
-        }
-        if(query_param.key == "limit"){
-            const auto parse_limit_exp = query_param_util::parse_unique_query_param(
-                filter_value.limit_opt,
-                query_param.key,
-                query_param.value,
-                string_util::parse_positive_int32
-            );
-            if(!parse_limit_exp){
-                return std::unexpected(parse_limit_exp.error());
-            }
-            continue;
-        }
-        if(query_param.key == "before_submission_id"){
-            const auto parse_before_submission_id_exp = query_param_util::parse_unique_query_param(
-                filter_value.before_submission_id_opt,
-                query_param.key,
-                query_param.value,
-                string_util::parse_positive_int64
-            );
-            if(!parse_before_submission_id_exp){
-                return std::unexpected(parse_before_submission_id_exp.error());
-            }
-            continue;
-        }
-
-        return std::unexpected(
-            query_param_util::make_unsupported_query_parameter_error(query_param.key)
-        );
-    }
-
-    return filter_value;
+    return query_param_util::make_filter_from_query_params(
+        query_params,
+        submission_list_filter_bindings
+    );
 }
 
 std::expected<submission_dto::status_batch_request, dto_validation_error>
