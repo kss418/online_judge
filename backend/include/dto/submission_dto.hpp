@@ -91,6 +91,18 @@ namespace submission_dto{
         std::string updated_at;
     };
 
+    struct status_snapshot{
+        std::int64_t submission_id = 0;
+        std::string status;
+        std::optional<std::int16_t> score_opt = std::nullopt;
+        std::optional<std::int64_t> elapsed_ms_opt = std::nullopt;
+        std::optional<std::int64_t> max_rss_kb_opt = std::nullopt;
+    };
+
+    struct status_batch_request{
+        std::vector<std::int64_t> submission_ids;
+    };
+
     struct list_filter{
         std::optional<std::int32_t> page_opt = std::nullopt;
         std::optional<std::int64_t> user_id_opt = std::nullopt;
@@ -141,6 +153,9 @@ namespace submission_dto{
     std::expected<source, dto_validation_error> make_source_from_json(
         const boost::json::object& json
     );
+    std::expected<status_batch_request, dto_validation_error> make_status_batch_request_from_json(
+        const boost::json::object& json
+    );
     std::expected<list_filter, dto_validation_error> make_list_filter_from_query_params(
         const std::vector<http_util::query_param>& query_params
     );
@@ -153,6 +168,10 @@ namespace submission_dto{
     history_list make_history_list_from_result(const pqxx::result& submission_history_result);
     source_detail make_source_detail_from_row(const pqxx::row& submission_source_row);
     detail make_detail_from_row(const pqxx::row& submission_detail_row);
+    status_snapshot make_status_snapshot_from_row(const pqxx::row& submission_status_row);
+    std::vector<status_snapshot> make_status_snapshot_list_from_result(
+        const pqxx::result& submission_status_result
+    );
     created make_created(
         std::int64_t submission_id,
         submission_status submission_status_value

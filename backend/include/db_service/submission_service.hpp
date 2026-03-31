@@ -25,6 +25,11 @@ namespace submission_service{
         db_connection& connection,
         std::int64_t submission_id
     );
+    std::expected<std::vector<submission_dto::status_snapshot>, error_code>
+    get_submission_status_snapshots(
+        db_connection& connection,
+        const std::vector<std::int64_t>& submission_ids
+    );
     std::expected<std::vector<submission_dto::summary>, error_code> get_wa_or_ac_submissions(
         db_connection& connection,
         std::int64_t problem_id

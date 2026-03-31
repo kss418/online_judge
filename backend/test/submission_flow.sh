@@ -50,6 +50,7 @@ server_log_name="test_submission_flow_server.log"
 init_flow_test
 register_temp_file all_submission_response_file
 register_temp_file submission_detail_response_file
+register_temp_file submission_status_batch_response_file
 register_temp_file missing_submission_response_file
 register_temp_file list_submission_response_file
 register_temp_file authenticated_list_submission_response_file
@@ -508,6 +509,32 @@ submission_detail_status_code="$(
 )"
 assert_status_code "${submission_detail_status_code}" "200" "${submission_detail_response_file}" "submission detail get"
 print_success_log "submission detail get success"
+
+submission_status_batch_request_body="$(
+    python3 - "${submission_id}" "${second_submission_id}" <<'PY'
+import json
+import sys
+
+print(json.dumps({
+    "submission_ids": [int(sys.argv[1]), int(sys.argv[2])]
+}))
+PY
+)"
+
+submission_status_batch_status_code="$(
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/status/batch" \
+        "${submission_status_batch_response_file}" \
+        "" \
+        "${submission_status_batch_request_body}"
+)"
+assert_status_code \
+    "${submission_status_batch_status_code}" \
+    "200" \
+    "${submission_status_batch_response_file}" \
+    "submission status batch get"
+print_success_log "submission status batch get success"
 
 missing_submission_status_code="$(
     send_http_request \
@@ -1225,6 +1252,54 @@ if "source_code" in submission_detail:
 PY
 then
     append_log_line "${test_log_temp_file}" "submission detail validation failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 \
+    - "${submission_status_batch_response_file}" \
+    "${submission_id}" \
+    "${second_submission_id}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    submission_status_batch = json.load(response_file)
+
+expected_submission_ids = {int(sys.argv[2]), int(sys.argv[3])}
+
+if submission_status_batch.get("submission_count") != 2:
+    raise SystemExit("expected submission_count to be 2 in submission status batch response")
+
+submissions = submission_status_batch.get("submissions")
+if not isinstance(submissions, list) or len(submissions) != 2:
+    raise SystemExit("expected two submissions in submission status batch response")
+
+actual_submission_ids = {submission.get("submission_id") for submission in submissions}
+if actual_submission_ids != expected_submission_ids:
+    raise SystemExit("submission ids mismatch in submission status batch response")
+
+for submission in submissions:
+    if submission.get("status") != "queued":
+        raise SystemExit("expected queued status in submission status batch response")
+
+    if submission.get("score", "missing") is not None:
+        raise SystemExit("expected null score in submission status batch response")
+
+    if submission.get("elapsed_ms", "missing") is not None:
+        raise SystemExit("expected null elapsed_ms in submission status batch response")
+
+    if submission.get("max_rss_kb", "missing") is not None:
+        raise SystemExit("expected null max_rss_kb in submission status batch response")
+
+    if "compile_output" in submission:
+        raise SystemExit("submission status batch response must not expose compile_output")
+
+    if "judge_output" in submission:
+        raise SystemExit("submission status batch response must not expose judge_output")
+PY
+then
+    append_log_line "${test_log_temp_file}" "submission status batch validation failed"
     publish_failure_logs
     exit 1
 fi

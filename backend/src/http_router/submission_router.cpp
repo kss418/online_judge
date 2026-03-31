@@ -20,6 +20,10 @@ submission_router::response_type submission_router::route(
         return handle_submissions(request);
     }
 
+    if(path_segments.size() == 2 && path_segments[0] == "status" && path_segments[1] == "batch"){
+        return handle_submission_status_batch(request);
+    }
+
     if(path_segments.size() == 1){
         const auto resource_id_opt = string_util::parse_positive_int64(path_segments[0]);
         if(!resource_id_opt){
@@ -64,6 +68,19 @@ submission_router::response_type submission_router::handle_submissions(
 ){
     if(request.method() == boost::beast::http::verb::get){
         return submission_handler::get_submissions(
+            request,
+            db_connection_
+        );
+    }
+
+    return http_response_util::create_method_not_allowed(request);
+}
+
+submission_router::response_type submission_router::handle_submission_status_batch(
+    const request_type& request
+){
+    if(request.method() == boost::beast::http::verb::post){
+        return submission_handler::post_submission_status_batch(
             request,
             db_connection_
         );

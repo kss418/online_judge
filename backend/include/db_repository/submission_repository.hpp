@@ -37,6 +37,11 @@ namespace submission_repository{
         pqxx::transaction_base& transaction,
         std::int64_t submission_id
     );
+    std::expected<std::vector<submission_dto::status_snapshot>, error_code>
+    get_submission_status_snapshots(
+        pqxx::transaction_base& transaction,
+        const std::vector<std::int64_t>& submission_ids
+    );
     std::expected<std::vector<submission_dto::summary>, error_code> get_wa_or_ac_submissions(
         pqxx::transaction_base& transaction,
         std::int64_t problem_id

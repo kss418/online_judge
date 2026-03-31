@@ -115,6 +115,38 @@ submission_handler::response_type submission_handler::get_submission(
     );
 }
 
+submission_handler::response_type submission_handler::post_submission_status_batch(
+    const request_type& request,
+    db_connection& db_connection_value
+){
+    const auto batch_request_exp =
+        http_util::parse_json_dto_or_400<submission_dto::status_batch_request>(
+            request,
+            submission_dto::make_status_batch_request_from_json
+        );
+    if(!batch_request_exp){
+        return std::move(batch_request_exp.error());
+    }
+
+    const auto snapshot_values_exp = submission_service::get_submission_status_snapshots(
+        db_connection_value,
+        batch_request_exp->submission_ids
+    );
+    if(!snapshot_values_exp){
+        return http_response_util::create_4xx_or_500(
+            request,
+            "get submission status batch",
+            snapshot_values_exp.error()
+        );
+    }
+
+    return http_response_util::create_json(
+        request,
+        boost::beast::http::status::ok,
+        submission_json_serializer::make_status_snapshot_batch_object(*snapshot_values_exp)
+    );
+}
+
 submission_handler::response_type submission_handler::post_submission(
     const request_type& request,
     db_connection& db_connection_value,

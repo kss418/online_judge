@@ -213,6 +213,48 @@ std::expected<submission_dto::detail, error_code> submission_repository::get_sub
     return submission_dto::make_detail_from_row(submission_detail_result[0]);
 }
 
+std::expected<std::vector<submission_dto::status_snapshot>, error_code>
+submission_repository::get_submission_status_snapshots(
+    pqxx::transaction_base& transaction,
+    const std::vector<std::int64_t>& submission_ids
+){
+    if(submission_ids.empty()){
+        return std::vector<submission_dto::status_snapshot>{};
+    }
+
+    std::string submission_status_query =
+        "SELECT "
+        "submission_id, "
+        "status::text, "
+        "score, "
+        "elapsed_ms, "
+        "max_rss_kb "
+        "FROM submissions "
+        "WHERE submission_id IN (";
+    pqxx::params query_params;
+
+    for(std::size_t index = 0; index < submission_ids.size(); ++index){
+        if(submission_ids[index] <= 0){
+            return std::unexpected(error_code::create(errno_error::invalid_argument));
+        }
+
+        if(index > 0){
+            submission_status_query += ", ";
+        }
+
+        submission_status_query += "$" + std::to_string(index + 1);
+        query_params.append(submission_ids[index]);
+    }
+
+    submission_status_query += ") ORDER BY submission_id ASC";
+
+    const auto submission_status_result = transaction.exec(
+        submission_status_query,
+        query_params
+    );
+    return submission_dto::make_status_snapshot_list_from_result(submission_status_result);
+}
+
 std::expected<std::vector<submission_dto::summary>, error_code>
 submission_repository::get_wa_or_ac_submissions(
     pqxx::transaction_base& transaction,

@@ -21,6 +21,7 @@ public:
 
 private:
     response_type handle_submissions(const request_type& request);
+    response_type handle_submission_status_batch(const request_type& request);
     response_type handle_submission(
         const request_type& request,
         std::int64_t resource_id

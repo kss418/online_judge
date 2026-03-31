@@ -3,9 +3,9 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { getSupportedLanguages } from '@/api/http'
 import {
-  getSubmissionDetail,
   getSubmissionHistory,
   getSubmissionList,
+  getSubmissionStatusBatch,
   getSubmissionSource,
   rejudgeSubmission
 } from '@/api/submission'
@@ -793,25 +793,43 @@ export function useSubmissionsPage(){
     startSubmissionPolling()
   }
 
-  function updateSubmissionFromDetail(detail){
-    const submissionId = Number(detail?.submission_id)
+  function mergeSubmissionStatusBatch(statusSnapshots){
+    const patchBySubmissionId = new Map()
 
-    if (!Number.isInteger(submissionId) || submissionId <= 0) {
+    statusSnapshots.forEach((statusSnapshot) => {
+      const submissionId = Number(statusSnapshot?.submission_id)
+      if (!Number.isInteger(submissionId) || submissionId <= 0) {
+        return
+      }
+
+      patchBySubmissionId.set(submissionId, {
+        status: typeof statusSnapshot.status === 'string' && statusSnapshot.status
+          ? statusSnapshot.status
+          : undefined,
+        score: statusSnapshot.score ?? null,
+        elapsed_ms: normalizeSubmissionMetric(statusSnapshot.elapsed_ms),
+        max_rss_kb: normalizeSubmissionMetric(statusSnapshot.max_rss_kb)
+      })
+    })
+
+    if (patchBySubmissionId.size === 0) {
       return
     }
 
-    submissions.value = submissions.value.map((submission) =>
-      submission.submission_id === submissionId
-        ? {
-          ...submission,
-          status: typeof detail.status === 'string' && detail.status
-            ? detail.status
-            : submission.status,
-          elapsed_ms: normalizeSubmissionMetric(detail.elapsed_ms),
-          max_rss_kb: normalizeSubmissionMetric(detail.max_rss_kb)
-        }
-        : submission
-    )
+    submissions.value = submissions.value.map((submission) => {
+      const patch = patchBySubmissionId.get(submission.submission_id)
+      if (!patch) {
+        return submission
+      }
+
+      return {
+        ...submission,
+        status: patch.status ?? submission.status,
+        score: patch.score,
+        elapsed_ms: patch.elapsed_ms,
+        max_rss_kb: patch.max_rss_kb
+      }
+    })
   }
 
   async function pollActiveSubmissions(){
@@ -823,19 +841,13 @@ export function useSubmissionsPage(){
     const activeSubmissionIds = [...new Set(pollingSubmissionIds.value)]
 
     try {
-      const results = await Promise.allSettled(
-        activeSubmissionIds.map((submissionId) =>
-          getSubmissionDetail(submissionId, {
-            bearerToken: authenticatedBearerToken.value
-          })
-        )
-      )
-
-      results.forEach((result) => {
-        if (result.status === 'fulfilled') {
-          updateSubmissionFromDetail(result.value)
-        }
+      const response = await getSubmissionStatusBatch(activeSubmissionIds, {
+        bearerToken: authenticatedBearerToken.value
       })
+      mergeSubmissionStatusBatch(
+        Array.isArray(response.submissions) ? response.submissions : []
+      )
+    } catch {
     } finally {
       isPollingSubmissionDetails = false
       syncSubmissionPolling()

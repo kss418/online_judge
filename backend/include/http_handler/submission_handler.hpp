@@ -26,6 +26,10 @@ namespace submission_handler{
         db_connection& db_connection_value,
         std::int64_t submission_id
     );
+    response_type post_submission_status_batch(
+        const request_type& request,
+        db_connection& db_connection_value
+    );
     response_type post_submission(
         const request_type& request,
         db_connection& db_connection_value,

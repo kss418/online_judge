@@ -7,6 +7,8 @@
 
 #include <pqxx/pqxx>
 
+#include <limits>
+
 namespace{
     std::optional<std::int64_t> parse_non_negative_int64(std::string_view raw_value){
         if(raw_value == "0"){
@@ -14,6 +16,31 @@ namespace{
         }
 
         return string_util::parse_positive_int64(raw_value);
+    }
+
+    std::optional<std::int64_t> parse_positive_json_int64(const boost::json::value& value){
+        if(value.is_int64()){
+            const std::int64_t int64_value = value.as_int64();
+            if(int64_value <= 0){
+                return std::nullopt;
+            }
+
+            return int64_value;
+        }
+
+        if(value.is_uint64()){
+            const std::uint64_t uint64_value = value.as_uint64();
+            if(
+                uint64_value == 0 ||
+                uint64_value > static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max())
+            ){
+                return std::nullopt;
+            }
+
+            return static_cast<std::int64_t>(uint64_value);
+        }
+
+        return std::nullopt;
     }
 }
 
@@ -188,6 +215,45 @@ submission_dto::make_list_filter_from_query_params(
     return filter_value;
 }
 
+std::expected<submission_dto::status_batch_request, dto_validation_error>
+submission_dto::make_status_batch_request_from_json(
+    const boost::json::object& json
+){
+    const auto* submission_ids_value = json.if_contains("submission_ids");
+    if(submission_ids_value == nullptr){
+        return std::unexpected(dto_validation_error{
+            .code = "missing_field",
+            .message = "required field: submission_ids",
+            .field_opt = "submission_ids"
+        });
+    }
+    if(!submission_ids_value->is_array()){
+        return std::unexpected(dto_validation_error{
+            .code = "invalid_field",
+            .message = "submission_ids must be an array of positive integers",
+            .field_opt = "submission_ids"
+        });
+    }
+
+    status_batch_request request_value;
+    const auto& submission_ids = submission_ids_value->as_array();
+    request_value.submission_ids.reserve(submission_ids.size());
+    for(const auto& submission_id_value : submission_ids){
+        const auto submission_id_opt = parse_positive_json_int64(submission_id_value);
+        if(!submission_id_opt){
+            return std::unexpected(dto_validation_error{
+                .code = "invalid_field",
+                .message = "submission_ids must be an array of positive integers",
+                .field_opt = "submission_ids"
+            });
+        }
+
+        request_value.submission_ids.push_back(*submission_id_opt);
+    }
+
+    return request_value;
+}
+
 std::expected<submission_dto::create_request, dto_validation_error>
 submission_dto::make_create_request_from_json(
     const boost::json::object& json,
@@ -293,6 +359,36 @@ submission_dto::detail submission_dto::make_detail_from_row(
     detail_value.created_at = submission_detail_row[10].as<std::string>();
     detail_value.updated_at = submission_detail_row[11].as<std::string>();
     return detail_value;
+}
+
+submission_dto::status_snapshot submission_dto::make_status_snapshot_from_row(
+    const pqxx::row& submission_status_row
+){
+    status_snapshot snapshot_value;
+    snapshot_value.submission_id = submission_status_row[0].as<std::int64_t>();
+    snapshot_value.status = submission_status_row[1].as<std::string>();
+    if(!submission_status_row[2].is_null()){
+        snapshot_value.score_opt = submission_status_row[2].as<std::int16_t>();
+    }
+    if(!submission_status_row[3].is_null()){
+        snapshot_value.elapsed_ms_opt = submission_status_row[3].as<std::int64_t>();
+    }
+    if(!submission_status_row[4].is_null()){
+        snapshot_value.max_rss_kb_opt = submission_status_row[4].as<std::int64_t>();
+    }
+    return snapshot_value;
+}
+
+std::vector<submission_dto::status_snapshot>
+submission_dto::make_status_snapshot_list_from_result(
+    const pqxx::result& submission_status_result
+){
+    std::vector<status_snapshot> snapshot_values;
+    snapshot_values.reserve(submission_status_result.size());
+    for(const auto& submission_status_row : submission_status_result){
+        snapshot_values.push_back(make_status_snapshot_from_row(submission_status_row));
+    }
+    return snapshot_values;
 }
 
 submission_dto::created submission_dto::make_created(

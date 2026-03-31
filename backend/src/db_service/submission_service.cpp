@@ -27,6 +27,17 @@ static submission_dto::detail sanitize_submission_detail_metrics(
     return detail_value;
 }
 
+static submission_dto::status_snapshot sanitize_submission_status_snapshot_metrics(
+    submission_dto::status_snapshot snapshot_value
+){
+    if(should_hide_submission_metrics(snapshot_value.status)){
+        snapshot_value.elapsed_ms_opt = std::nullopt;
+        snapshot_value.max_rss_kb_opt = std::nullopt;
+    }
+
+    return snapshot_value;
+}
+
 static std::vector<submission_dto::summary> sanitize_submission_summary_metrics(
     std::vector<submission_dto::summary> summary_values
 ){
@@ -83,6 +94,37 @@ std::expected<submission_dto::detail, error_code> submission_service::get_submis
             }
 
             return sanitize_submission_detail_metrics(*submission_detail_exp);
+        }
+    );
+}
+
+std::expected<std::vector<submission_dto::status_snapshot>, error_code>
+submission_service::get_submission_status_snapshots(
+    db_connection& connection,
+    const std::vector<std::int64_t>& submission_ids
+){
+    return db_service_util::with_retry_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<std::vector<submission_dto::status_snapshot>, error_code> {
+            const auto snapshot_values_exp =
+                submission_repository::get_submission_status_snapshots(
+                    transaction,
+                    submission_ids
+                );
+            if(!snapshot_values_exp){
+                return std::unexpected(snapshot_values_exp.error());
+            }
+
+            std::vector<submission_dto::status_snapshot> sanitized_snapshot_values;
+            sanitized_snapshot_values.reserve(snapshot_values_exp->size());
+            for(auto snapshot_value : *snapshot_values_exp){
+                sanitized_snapshot_values.push_back(
+                    sanitize_submission_status_snapshot_metrics(std::move(snapshot_value))
+                );
+            }
+
+            return sanitized_snapshot_values;
         }
     );
 }

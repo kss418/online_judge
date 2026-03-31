@@ -89,6 +89,48 @@ namespace{
         }
         return response_array;
     }
+
+    boost::json::object make_status_snapshot_object(
+        const submission_dto::status_snapshot& snapshot_value
+    ){
+        boost::json::object response_object;
+        response_object["submission_id"] = snapshot_value.submission_id;
+        response_object["status"] = snapshot_value.status;
+
+        if(snapshot_value.score_opt){
+            response_object["score"] = *snapshot_value.score_opt;
+        }
+        else{
+            response_object["score"] = nullptr;
+        }
+
+        if(snapshot_value.elapsed_ms_opt){
+            response_object["elapsed_ms"] = *snapshot_value.elapsed_ms_opt;
+        }
+        else{
+            response_object["elapsed_ms"] = nullptr;
+        }
+
+        if(snapshot_value.max_rss_kb_opt){
+            response_object["max_rss_kb"] = *snapshot_value.max_rss_kb_opt;
+        }
+        else{
+            response_object["max_rss_kb"] = nullptr;
+        }
+
+        return response_object;
+    }
+
+    boost::json::array make_status_snapshot_array(
+        const std::vector<submission_dto::status_snapshot>& snapshot_values
+    ){
+        boost::json::array response_array;
+        response_array.reserve(snapshot_values.size());
+        for(const auto& snapshot_value : snapshot_values){
+            response_array.push_back(make_status_snapshot_object(snapshot_value));
+        }
+        return response_array;
+    }
 }
 
 boost::json::object submission_json_serializer::make_created_object(
@@ -182,6 +224,15 @@ boost::json::object submission_json_serializer::make_detail_object(
         response_object["max_rss_kb"] = nullptr;
     }
 
+    return response_object;
+}
+
+boost::json::object submission_json_serializer::make_status_snapshot_batch_object(
+    const std::vector<submission_dto::status_snapshot>& snapshot_values
+){
+    boost::json::object response_object;
+    response_object["submission_count"] = static_cast<std::int64_t>(snapshot_values.size());
+    response_object["submissions"] = make_status_snapshot_array(snapshot_values);
     return response_object;
 }
 

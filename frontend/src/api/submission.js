@@ -74,6 +74,35 @@ export function getSubmissionDetail(submissionId, options = {}){
   })
 }
 
+export async function getSubmissionStatusBatch(submissionIds, options = {}){
+  const { bearerToken = '' } = options
+  const normalizedSubmissionIds = Array.isArray(submissionIds)
+    ? submissionIds
+      .map((submissionId) => Number(submissionId))
+      .filter((submissionId) => Number.isInteger(submissionId) && submissionId > 0)
+    : []
+
+  if (normalizedSubmissionIds.length === 0) {
+    return {
+      submission_count: 0,
+      submissions: []
+    }
+  }
+
+  const response = await requestJson('/submission/status/batch', {
+    method: 'POST',
+    body: {
+      submission_ids: normalizedSubmissionIds
+    },
+    bearerToken
+  })
+
+  return {
+    submission_count: Number(response.submission_count ?? 0),
+    submissions: Array.isArray(response.submissions) ? response.submissions : []
+  }
+}
+
 export function rejudgeSubmission(submissionId, token){
   return requestJson(`/submission/${submissionId}/rejudge`, {
     method: 'POST',
