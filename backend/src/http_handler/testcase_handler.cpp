@@ -8,7 +8,6 @@
 #include "http_core/testcase_uploader.hpp"
 #include "http_core/http_util.hpp"
 
-#include "db_service/problem_core_service.hpp"
 #include "db_service/testcase_service.hpp"
 #include "serializer/common_json_serializer.hpp"
 #include "serializer/problem_json_serializer.hpp"
@@ -27,27 +26,6 @@ testcase_handler::response_type testcase_handler::get_testcase(
         .testcase_order = testcase_order
     };
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto exists_problem_exp = problem_core_service::exists_problem(
-            db_connection_value,
-            problem_reference_value
-        );
-        if(!exists_problem_exp){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::internal_server_error,
-                "internal_server_error",
-                "failed to check problem: " + to_string(exists_problem_exp.error())
-            );
-        }
-        if(!exists_problem_exp->exists){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "problem_not_found",
-                "problem not found"
-            );
-        }
-
         const auto testcase_exp = testcase_service::get_testcase(
             db_connection_value,
             testcase_reference_value
@@ -83,9 +61,10 @@ testcase_handler::response_type testcase_handler::get_testcase(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return http_util::with_existing_problem_admin(
         request,
         db_connection_value,
+        problem_reference_value,
         handle_authenticated
     );
 }
@@ -97,27 +76,6 @@ testcase_handler::response_type testcase_handler::get_testcases(
 ){
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto exists_problem_exp = problem_core_service::exists_problem(
-            db_connection_value,
-            problem_reference_value
-        );
-        if(!exists_problem_exp){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::internal_server_error,
-                "internal_server_error",
-                "failed to check problem: " + to_string(exists_problem_exp.error())
-            );
-        }
-        if(!exists_problem_exp->exists){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "problem_not_found",
-                "problem not found"
-            );
-        }
-
         const auto testcase_summary_values_exp = testcase_service::list_testcase_summaries(
             db_connection_value,
             problem_reference_value
@@ -130,9 +88,10 @@ testcase_handler::response_type testcase_handler::get_testcases(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return http_util::with_existing_problem_admin(
         request,
         db_connection_value,
+        problem_reference_value,
         handle_authenticated
     );
 }
@@ -229,27 +188,6 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
 ){
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto exists_problem_exp = problem_core_service::exists_problem(
-            db_connection_value,
-            problem_reference_value
-        );
-        if(!exists_problem_exp){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::internal_server_error,
-                "internal_server_error",
-                "failed to check problem: " + to_string(exists_problem_exp.error())
-            );
-        }
-        if(!exists_problem_exp->exists){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "problem_not_found",
-                "problem not found"
-            );
-        }
-
         if(request.body().empty()){
             return http_response_util::create_error(
                 request,
@@ -409,9 +347,10 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return http_util::with_existing_problem_admin(
         request,
         db_connection_value,
+        problem_reference_value,
         handle_authenticated
     );
 }
@@ -432,27 +371,6 @@ testcase_handler::response_type testcase_handler::move_testcase(
             return std::move(testcase_move_request_exp.error());
         }
 
-        const auto exists_problem_exp = problem_core_service::exists_problem(
-            db_connection_value,
-            problem_reference_value
-        );
-        if(!exists_problem_exp){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::internal_server_error,
-                "internal_server_error",
-                "failed to check problem: " + to_string(exists_problem_exp.error())
-            );
-        }
-        if(!exists_problem_exp->exists){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "problem_not_found",
-                "problem not found"
-            );
-        }
-
         problem_dto::testcase_ref testcase_reference_value{
             .problem_id = problem_id,
             .testcase_order = testcase_move_request_exp->source_testcase_order
@@ -470,9 +388,10 @@ testcase_handler::response_type testcase_handler::move_testcase(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return http_util::with_existing_problem_admin(
         request,
         db_connection_value,
+        problem_reference_value,
         handle_authenticated
     );
 }
@@ -514,27 +433,6 @@ testcase_handler::response_type testcase_handler::delete_all_testcases(
 ){
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto exists_problem_exp = problem_core_service::exists_problem(
-            db_connection_value,
-            problem_reference_value
-        );
-        if(!exists_problem_exp){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::internal_server_error,
-                "internal_server_error",
-                "failed to check problem: " + to_string(exists_problem_exp.error())
-            );
-        }
-        if(!exists_problem_exp->exists){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "problem_not_found",
-                "problem not found"
-            );
-        }
-
         const auto delete_all_testcases_exp = testcase_service::delete_all_testcases(
             db_connection_value,
             problem_reference_value
@@ -547,9 +445,10 @@ testcase_handler::response_type testcase_handler::delete_all_testcases(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return http_util::with_existing_problem_admin(
         request,
         db_connection_value,
+        problem_reference_value,
         handle_authenticated
     );
 }

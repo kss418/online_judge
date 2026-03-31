@@ -5,7 +5,6 @@
 #include "http_core/http_util.hpp"
 
 #include "db_service/problem_content_service.hpp"
-#include "db_service/problem_core_service.hpp"
 #include "serializer/problem_json_serializer.hpp"
 
 #include <utility>
@@ -16,40 +15,26 @@ problem_content_handler::response_type problem_content_handler::get_limits(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto exists_problem_exp = problem_core_service::exists_problem(
-        db_connection_value,
-        problem_reference_value
-    );
-    if(!exists_problem_exp){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to check problem: " + to_string(exists_problem_exp.error())
-        );
-    }
-    if(!exists_problem_exp->exists){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::not_found,
-            "problem_not_found",
-            "problem not found"
-        );
-    }
-
-    const auto limits_exp = problem_content_service::get_limits(
-        db_connection_value,
-        problem_reference_value
-    );
-    return http_response_util::create_json_or_4xx_or_500(
+    return http_util::with_existing_problem(
         request,
-        "get problem limits",
-        std::move(limits_exp),
-        [](const auto& limits_value){
-            boost::json::object response_object;
-            response_object["memory_limit_mb"] = limits_value.memory_mb;
-            response_object["time_limit_ms"] = limits_value.time_ms;
-            return response_object;
+        db_connection_value,
+        problem_reference_value,
+        [&]() -> response_type {
+            const auto limits_exp = problem_content_service::get_limits(
+                db_connection_value,
+                problem_reference_value
+            );
+            return http_response_util::create_json_or_4xx_or_500(
+                request,
+                "get problem limits",
+                std::move(limits_exp),
+                [](const auto& limits_value){
+                    boost::json::object response_object;
+                    response_object["memory_limit_mb"] = limits_value.memory_mb;
+                    response_object["time_limit_ms"] = limits_value.time_ms;
+                    return response_object;
+                }
+            );
         }
     );
 }
@@ -132,36 +117,22 @@ problem_content_handler::response_type problem_content_handler::get_samples(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto exists_problem_exp = problem_core_service::exists_problem(
-        db_connection_value,
-        problem_reference_value
-    );
-    if(!exists_problem_exp){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to check problem: " + to_string(exists_problem_exp.error())
-        );
-    }
-    if(!exists_problem_exp->exists){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::not_found,
-            "problem_not_found",
-            "problem not found"
-        );
-    }
-
-    const auto sample_values_exp = problem_content_service::list_samples(
-        db_connection_value,
-        problem_reference_value
-    );
-    return http_response_util::create_json_or_4xx_or_500(
+    return http_util::with_existing_problem(
         request,
-        "list problem samples",
-        std::move(sample_values_exp),
-        problem_json_serializer::make_sample_list_object
+        db_connection_value,
+        problem_reference_value,
+        [&]() -> response_type {
+            const auto sample_values_exp = problem_content_service::list_samples(
+                db_connection_value,
+                problem_reference_value
+            );
+            return http_response_util::create_json_or_4xx_or_500(
+                request,
+                "list problem samples",
+                std::move(sample_values_exp),
+                problem_json_serializer::make_sample_list_object
+            );
+        }
     );
 }
 

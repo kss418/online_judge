@@ -106,12 +106,7 @@ problem_handler::response_type problem_handler::get_problem(
         std::move(problem_detail_exp),
         [&](const request_type& error_request, std::string_view action, const error_code& code) {
             if(code == errno_error::invalid_argument){
-                return http_response_util::create_error(
-                    error_request,
-                    boost::beast::http::status::not_found,
-                    "problem_not_found",
-                    "problem not found"
-                );
+                return http_response_util::create_problem_not_found(error_request);
             }
 
             return http_response_util::create_404_or_500(
@@ -171,27 +166,6 @@ problem_handler::response_type problem_handler::put_problem(
 ){
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto exists_problem_exp = problem_core_service::exists_problem(
-            db_connection_value,
-            problem_reference_value
-        );
-        if(!exists_problem_exp){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::internal_server_error,
-                "internal_server_error",
-                "failed to check problem: " + to_string(exists_problem_exp.error())
-            );
-        }
-        if(!exists_problem_exp->exists){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "problem_not_found",
-                "problem not found"
-            );
-        }
-
         const auto update_request_exp =
             http_util::parse_json_dto_or_400<problem_dto::update_request>(
                 request,
@@ -214,9 +188,10 @@ problem_handler::response_type problem_handler::put_problem(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return http_util::with_existing_problem_admin(
         request,
         db_connection_value,
+        problem_reference_value,
         handle_authenticated
     );
 }
@@ -228,27 +203,6 @@ problem_handler::response_type problem_handler::delete_problem(
 ){
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto exists_problem_exp = problem_core_service::exists_problem(
-            db_connection_value,
-            problem_reference_value
-        );
-        if(!exists_problem_exp){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::internal_server_error,
-                "internal_server_error",
-                "failed to check problem: " + to_string(exists_problem_exp.error())
-            );
-        }
-        if(!exists_problem_exp->exists){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "problem_not_found",
-                "problem not found"
-            );
-        }
-
         const auto delete_problem_exp = problem_core_service::delete_problem(
             db_connection_value,
             problem_reference_value
@@ -261,9 +215,10 @@ problem_handler::response_type problem_handler::delete_problem(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return http_util::with_existing_problem_admin(
         request,
         db_connection_value,
+        problem_reference_value,
         handle_authenticated
     );
 }
@@ -275,27 +230,6 @@ problem_handler::response_type problem_handler::post_problem_rejudge(
 ){
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto exists_problem_exp = problem_core_service::exists_problem(
-            db_connection_value,
-            problem_reference_value
-        );
-        if(!exists_problem_exp){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::internal_server_error,
-                "internal_server_error",
-                "failed to check problem: " + to_string(exists_problem_exp.error())
-            );
-        }
-        if(!exists_problem_exp->exists){
-            return http_response_util::create_error(
-                request,
-                boost::beast::http::status::not_found,
-                "problem_not_found",
-                "problem not found"
-            );
-        }
-
         const auto rejudge_problem_exp = submission_service::rejudge_problem(
             db_connection_value,
             problem_id
@@ -308,9 +242,10 @@ problem_handler::response_type problem_handler::post_problem_rejudge(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return http_util::with_existing_problem_admin(
         request,
         db_connection_value,
+        problem_reference_value,
         handle_authenticated
     );
 }

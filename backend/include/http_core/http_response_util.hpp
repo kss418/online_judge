@@ -105,6 +105,9 @@ namespace http_response_util{
     response_type create_not_found(
         const request_type& request
     );
+    response_type create_problem_not_found(
+        const request_type& request
+    );
     response_type create_user_not_found(
         const request_type& request
     );

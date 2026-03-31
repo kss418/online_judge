@@ -136,9 +136,32 @@ namespace http_util{
     parse_problem_list_filter_or_400(
         const request_type& request
     );
+    std::expected<void, response_type> require_existing_problem_or_response(
+        const request_type& request,
+        db_connection& db_connection,
+        const problem_dto::reference& problem_reference_value
+    );
     std::expected<auth_dto::token, response_type> parse_bearer_token_or_401(
         const request_type& request
     );
+    template <typename callback_type>
+    response_type with_existing_problem(
+        const request_type& request,
+        db_connection& db_connection,
+        const problem_dto::reference& problem_reference_value,
+        callback_type&& callback
+    ){
+        const auto require_problem_exp = require_existing_problem_or_response(
+            request,
+            db_connection,
+            problem_reference_value
+        );
+        if(!require_problem_exp){
+            return std::move(require_problem_exp.error());
+        }
+
+        return std::invoke(std::forward<callback_type>(callback));
+    }
     std::expected<auth_dto::identity, response_type> try_auth_bearer(
         const request_type& request,
         db_connection& db_connection
@@ -189,6 +212,31 @@ namespace http_util{
         return std::invoke(
             std::forward<callback_type>(callback),
             *auth_identity_exp
+        );
+    }
+    template <typename callback_type>
+    response_type with_existing_problem_admin(
+        const request_type& request,
+        db_connection& db_connection,
+        const problem_dto::reference& problem_reference_value,
+        callback_type&& callback
+    ){
+        auto&& callback_ref = callback;
+        return with_admin_auth_bearer(
+            request,
+            db_connection,
+            [&](const auth_dto::identity& auth_identity) -> response_type {
+                const auto require_problem_exp = require_existing_problem_or_response(
+                    request,
+                    db_connection,
+                    problem_reference_value
+                );
+                if(!require_problem_exp){
+                    return std::move(require_problem_exp.error());
+                }
+
+                return std::invoke(callback_ref, auth_identity);
+            }
         );
     }
     template <typename callback_type>
