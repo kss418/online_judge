@@ -182,10 +182,9 @@ submission_handler::response_type submission_handler::get_submissions(
         db_connection_value,
         [&](const std::optional<auth_dto::identity>& auth_identity_opt,
             const submission_dto::list_filter& filter_value) -> response_type {
-            std::optional<std::int64_t> viewer_user_id_opt = std::nullopt;
-            if(auth_identity_opt.has_value()){
-                viewer_user_id_opt = auth_identity_opt->user_id;
-            }
+            const auto viewer_user_id_opt = auth_guard::get_viewer_user_id(
+                auth_identity_opt
+            );
 
             return http_response_util::create_json_or_4xx_or_500(
                 request,

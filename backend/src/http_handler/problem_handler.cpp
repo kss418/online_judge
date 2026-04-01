@@ -17,10 +17,9 @@ problem_handler::response_type problem_handler::get_problems(
         db_connection_value,
         [&](const std::optional<auth_dto::identity>& auth_identity_opt,
             const problem_dto::list_filter& filter_value) -> response_type {
-            std::optional<std::int64_t> viewer_user_id_opt = std::nullopt;
-            if(auth_identity_opt.has_value()){
-                viewer_user_id_opt = auth_identity_opt->user_id;
-            }
+            const auto viewer_user_id_opt = auth_guard::get_viewer_user_id(
+                auth_identity_opt
+            );
 
             if(filter_value.state_opt && !viewer_user_id_opt){
                 return http_response_util::create_error(

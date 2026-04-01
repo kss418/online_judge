@@ -36,6 +36,16 @@ namespace auth_guard{
         db_connection& db_connection
     );
 
+    inline std::optional<std::int64_t> get_viewer_user_id(
+        const std::optional<auth_dto::identity>& auth_identity_opt
+    ){
+        if(!auth_identity_opt){
+            return std::nullopt;
+        }
+
+        return auth_identity_opt->user_id;
+    }
+
     inline auto make_auth_guard(){
         return [](const http_guard::guard_context& context){
             return require_auth(
