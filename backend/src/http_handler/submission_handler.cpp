@@ -46,25 +46,14 @@ submission_handler::response_type submission_handler::get_submission_source(
     return http_guard::run_or_respond(
         request,
         db_connection_value,
-        [&](const auth_dto::identity& auth_identity_value,
-            const submission_dto::source_detail& source_detail_value) -> response_type {
-            const auto source_access_exp = submission_guard::require_source_access(
-                request,
-                auth_identity_value,
-                source_detail_value
-            );
-            if(!source_access_exp){
-                return std::move(source_access_exp.error());
-            }
-
+        [&](const submission_dto::source_detail& source_detail_value) -> response_type {
             return http_response_util::create_json(
                 request,
                 boost::beast::http::status::ok,
                 submission_json_serializer::make_source_object(source_detail_value)
             );
         },
-        auth_guard::make_auth_guard(),
-        submission_guard::make_source_detail_guard(submission_id)
+        submission_guard::make_readable_source_guard(submission_id)
     );
 }
 

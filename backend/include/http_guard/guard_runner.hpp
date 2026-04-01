@@ -72,6 +72,24 @@ namespace http_guard{
         template <typename... guard_types>
         using combined_guard_tuple_type = typename combined_guard_tuple<guard_types...>::type;
 
+        template <typename success_type, typename guard_tuple_type>
+        struct composite_guard_result;
+
+        template <typename success_type, typename... value_types>
+        struct composite_guard_result<success_type, std::tuple<value_types...>>{
+            using type = std::invoke_result_t<
+                success_type,
+                const guard_context&,
+                value_types...
+            >;
+        };
+
+        template <typename success_type, typename... guard_types>
+        using composite_guard_result_type = typename composite_guard_result<
+            success_type,
+            combined_guard_tuple_type<guard_types...>
+        >::type;
+
         template <typename guard_type>
         guard_tuple_type<guard_type> make_guard_tuple(
             guard_result_type<guard_type>&& guard_result
@@ -142,6 +160,52 @@ namespace http_guard{
         );
     }
 
+    template <typename success_type, typename... guard_types>
+    auto run_composite_guard(
+        const guard_context& context,
+        success_type&& success,
+        guard_types&&... guards
+    ) -> detail::composite_guard_result_type<
+        std::decay_t<success_type>&,
+        std::remove_cvref_t<guard_types>...
+    >{
+        using composite_result_type = detail::composite_guard_result_type<
+            std::decay_t<success_type>&,
+            std::remove_cvref_t<guard_types>...
+        >;
+
+        static_assert(
+            detail::is_expected<composite_result_type>::value,
+            "http_guard::run_composite_guard expects the combiner to return std::expected"
+        );
+        static_assert(
+            std::is_same_v<
+                typename detail::expected_traits<composite_result_type>::error,
+                response_type
+            >,
+            "http_guard::run_composite_guard expects the combiner to use http response_type as the error type"
+        );
+
+        auto guard_values_exp = run(
+            context,
+            std::forward<guard_types>(guards)...
+        );
+        if(!guard_values_exp){
+            return std::unexpected(std::move(guard_values_exp.error()));
+        }
+
+        return std::apply(
+            [&](auto&&... values) -> composite_result_type {
+                return std::invoke(
+                    success,
+                    context,
+                    std::forward<decltype(values)>(values)...
+                );
+            },
+            std::move(*guard_values_exp)
+        );
+    }
+
     template <typename guard_type, typename... remaining_guard_types>
     std::expected<
         detail::combined_guard_tuple_type<guard_type, remaining_guard_types...>,
@@ -159,6 +223,26 @@ namespace http_guard{
             },
             std::forward<guard_type>(guard),
             std::forward<remaining_guard_types>(remaining_guards)...
+        );
+    }
+
+    template <typename success_type, typename... guard_types>
+    auto run_composite_guard(
+        const request_type& request,
+        db_connection& db_connection_value,
+        success_type&& success,
+        guard_types&&... guards
+    ) -> detail::composite_guard_result_type<
+        std::decay_t<success_type>&,
+        std::remove_cvref_t<guard_types>...
+    >{
+        return run_composite_guard(
+            guard_context{
+                .request = request,
+                .db_connection_value = db_connection_value
+            },
+            std::forward<success_type>(success),
+            std::forward<guard_types>(guards)...
         );
     }
 
