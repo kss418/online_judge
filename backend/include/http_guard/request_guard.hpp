@@ -1,9 +1,12 @@
 #pragma once
 
+#include "dto/submission_dto.hpp"
+#include "http_guard/auth_guard.hpp"
 #include "http_core/request_dto.hpp"
 #include "http_core/request_list_filter_dto.hpp"
 #include "http_guard/guard_runner.hpp"
 
+#include <cstdint>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -63,5 +66,21 @@ namespace request_guard{
         return [](const http_guard::guard_context& context){
             return request_dto::parse_submission_list_filter_or_400(context.request);
         };
+    }
+
+    inline auto make_submission_create_request_guard(std::int64_t problem_id){
+        return http_guard::make_composite_guard(
+            [problem_id](const http_guard::guard_context& composite_context,
+                const auth_dto::identity& auth_identity_value)
+                -> std::expected<submission_dto::create_request, http_guard::response_type> {
+                return request_dto::parse_json_or_400<submission_dto::create_request>(
+                    composite_context.request,
+                    submission_dto::make_create_request_from_json,
+                    auth_identity_value.user_id,
+                    problem_id
+                );
+            },
+            auth_guard::make_auth_guard()
+        );
     }
 }

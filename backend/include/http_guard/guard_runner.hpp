@@ -247,6 +247,32 @@ namespace http_guard{
     }
 
     template <typename success_type, typename... guard_types>
+    auto make_composite_guard(success_type&& success, guard_types&&... guards){
+        using success_storage_type = std::decay_t<success_type>;
+        using guard_storage_tuple_type = std::tuple<std::decay_t<guard_types>...>;
+        using composite_result_type = detail::composite_guard_result_type<
+            success_storage_type&,
+            std::decay_t<guard_types>...
+        >;
+
+        return [
+            success_value = success_storage_type(std::forward<success_type>(success)),
+            guard_values = guard_storage_tuple_type(std::forward<guard_types>(guards)...)
+        ](const guard_context& context) mutable -> composite_result_type {
+            return std::apply(
+                [&](auto&... captured_guards) -> composite_result_type {
+                    return run_composite_guard(
+                        context,
+                        success_value,
+                        captured_guards...
+                    );
+                },
+                guard_values
+            );
+        };
+    }
+
+    template <typename success_type, typename... guard_types>
     response_type run_or_respond(
         const guard_context& context,
         success_type&& success,

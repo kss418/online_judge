@@ -141,7 +141,7 @@ submission_handler::response_type submission_handler::post_submission(
                 }
             );
         },
-        submission_guard::make_create_request_guard(problem_id)
+        request_guard::make_submission_create_request_guard(problem_id)
     );
 }
 

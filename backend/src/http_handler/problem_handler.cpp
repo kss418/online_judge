@@ -90,7 +90,7 @@ problem_handler::response_type problem_handler::get_problem(
                 problem_json_serializer::make_detail_object(problem_detail)
             );
         },
-        problem_guard::make_detail_guard(problem_reference_value)
+        problem_guard::make_readable_detail_guard(problem_reference_value)
     );
 }
 

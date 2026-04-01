@@ -28,7 +28,7 @@ std::expected<void, problem_guard::response_type> problem_guard::require_exists(
 }
 
 std::expected<problem_dto::detail, problem_guard::response_type>
-problem_guard::require_detail(
+problem_guard::require_readable_detail(
     const request_type& request,
     db_connection& db_connection,
     const problem_dto::reference& problem_reference_value
