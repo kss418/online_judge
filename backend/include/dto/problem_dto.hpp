@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/query_param.hpp"
 #include "dto/problem_content_dto.hpp"
 #include "dto/dto_validation_error.hpp"
 
@@ -10,10 +11,6 @@
 #include <optional>
 #include <string>
 #include <vector>
-
-namespace request_parser{
-    struct query_param;
-}
 
 namespace pqxx{
     class result;
@@ -118,7 +115,7 @@ namespace problem_dto{
         const boost::json::object& json
     );
     std::expected<list_filter, dto_validation_error> make_list_filter_from_query_params(
-        const std::vector<request_parser::query_param>& query_params
+        const std::vector<query_param>& query_params
     );
     std::expected<testcase, dto_validation_error> make_testcase_from_json(
         const boost::json::object& json

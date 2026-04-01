@@ -61,7 +61,7 @@ std::optional<std::string_view> request_parser::get_target_query(std::string_vie
     return target.substr(query_position + 1);
 }
 
-std::optional<std::vector<request_parser::query_param>> request_parser::parse_query_params(
+std::optional<std::vector<query_param>> request_parser::parse_query_params(
     std::string_view query
 ){
     std::vector<query_param> query_params;

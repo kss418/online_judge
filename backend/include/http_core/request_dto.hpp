@@ -51,6 +51,19 @@ namespace request_dto{
     }
 
     template <typename dto_type, typename factory_type, typename... arg_types>
+    std::expected<dto_type, response_type> parse_json_or_400(
+        const request_type& request,
+        factory_type&& factory,
+        arg_types&&... args
+    ){
+        return parse_json_dto_or_400<dto_type>(
+            request,
+            std::forward<factory_type>(factory),
+            std::forward<arg_types>(args)...
+        );
+    }
+
+    template <typename dto_type, typename factory_type, typename... arg_types>
     std::expected<dto_type, response_type> parse_query_dto_or_400(
         const request_type& request,
         factory_type&& factory,
@@ -88,6 +101,19 @@ namespace request_dto{
         }
 
         return std::move(*dto_exp);
+    }
+
+    template <typename dto_type, typename factory_type, typename... arg_types>
+    std::expected<dto_type, response_type> parse_query_or_400(
+        const request_type& request,
+        factory_type&& factory,
+        arg_types&&... args
+    ){
+        return parse_query_dto_or_400<dto_type>(
+            request,
+            std::forward<factory_type>(factory),
+            std::forward<arg_types>(args)...
+        );
     }
 
     std::expected<submission_dto::list_filter, response_type>

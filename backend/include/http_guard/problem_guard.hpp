@@ -13,6 +13,11 @@ namespace problem_guard{
     using request_type = http_response_util::request_type;
     using response_type = http_response_util::response_type;
 
+    std::expected<void, response_type> require_exists(
+        const request_type& request,
+        db_connection& db_connection,
+        const problem_dto::reference& problem_reference_value
+    );
     std::expected<void, response_type> require_existing_problem_or_response(
         const request_type& request,
         db_connection& db_connection,
@@ -26,7 +31,7 @@ namespace problem_guard{
         const problem_dto::reference& problem_reference_value,
         callback_type&& callback
     ){
-        const auto require_problem_exp = require_existing_problem_or_response(
+        const auto require_problem_exp = require_exists(
             request,
             db_connection,
             problem_reference_value
@@ -50,7 +55,7 @@ namespace problem_guard{
             request,
             db_connection,
             [&](const auth_dto::identity& auth_identity) -> response_type {
-                const auto require_problem_exp = require_existing_problem_or_response(
+                const auto require_problem_exp = require_exists(
                     request,
                     db_connection,
                     problem_reference_value

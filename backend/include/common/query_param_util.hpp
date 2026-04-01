@@ -1,7 +1,7 @@
 #pragma once
 
+#include "common/query_param.hpp"
 #include "dto/dto_validation_error.hpp"
-#include "http_core/query_param.hpp"
 
 #include <algorithm>
 #include <array>
@@ -13,7 +13,6 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-
 
 namespace query_param_util{
     dto_validation_error make_duplicate_query_parameter_error(
@@ -61,29 +60,29 @@ namespace query_param_util{
 
     template <typename filter_type, std::size_t binding_count>
     std::expected<filter_type, dto_validation_error> make_filter_from_query_params(
-        const std::vector<request_parser::query_param>& query_params,
+        const std::vector<query_param>& query_params,
         const std::array<query_param_binding<filter_type>, binding_count>& bindings
     ){
         filter_type filter_value;
 
-        for(const auto& query_param : query_params){
+        for(const auto& current_query_param : query_params){
             const auto binding_it = std::find_if(
                 bindings.begin(),
                 bindings.end(),
                 [&](const auto& binding){
-                    return binding.key == query_param.key;
+                    return binding.key == current_query_param.key;
                 }
             );
             if(binding_it == bindings.end()){
                 return std::unexpected(
-                    make_unsupported_query_parameter_error(query_param.key)
+                    make_unsupported_query_parameter_error(current_query_param.key)
                 );
             }
 
             const auto apply_exp = binding_it->apply(
                 filter_value,
-                query_param.key,
-                query_param.value
+                current_query_param.key,
+                current_query_param.value
             );
             if(!apply_exp){
                 return std::unexpected(apply_exp.error());

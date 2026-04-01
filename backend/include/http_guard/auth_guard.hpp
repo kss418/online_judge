@@ -20,19 +20,19 @@ namespace auth_guard{
     std::expected<auth_dto::token, response_type> parse_bearer_token_or_401(
         const request_type& request
     );
-    std::expected<auth_dto::identity, response_type> try_auth_bearer(
+    std::expected<auth_dto::identity, response_type> require_auth(
         const request_type& request,
         db_connection& db_connection
     );
-    std::expected<std::optional<auth_dto::identity>, response_type> try_optional_auth_bearer(
+    std::expected<std::optional<auth_dto::identity>, response_type> require_optional_auth(
         const request_type& request,
         db_connection& db_connection
     );
-    std::expected<auth_dto::identity, response_type> try_admin_auth_bearer(
+    std::expected<auth_dto::identity, response_type> require_admin(
         const request_type& request,
         db_connection& db_connection
     );
-    std::expected<auth_dto::identity, response_type> try_superadmin_auth_bearer(
+    std::expected<auth_dto::identity, response_type> require_superadmin(
         const request_type& request,
         db_connection& db_connection
     );
@@ -43,7 +43,7 @@ namespace auth_guard{
         db_connection& db_connection,
         callback_type&& callback
     ){
-        const auto auth_identity_exp = try_auth_bearer(request, db_connection);
+        const auto auth_identity_exp = require_auth(request, db_connection);
         if(!auth_identity_exp){
             return std::move(auth_identity_exp.error());
         }
@@ -60,7 +60,7 @@ namespace auth_guard{
         db_connection& db_connection,
         callback_type&& callback
     ){
-        const auto auth_identity_exp = try_admin_auth_bearer(request, db_connection);
+        const auto auth_identity_exp = require_admin(request, db_connection);
         if(!auth_identity_exp){
             return std::move(auth_identity_exp.error());
         }
@@ -77,7 +77,7 @@ namespace auth_guard{
         db_connection& db_connection,
         callback_type&& callback
     ){
-        const auto auth_identity_exp = try_superadmin_auth_bearer(request, db_connection);
+        const auto auth_identity_exp = require_superadmin(request, db_connection);
         if(!auth_identity_exp){
             return std::move(auth_identity_exp.error());
         }

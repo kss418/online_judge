@@ -27,7 +27,7 @@ std::expected<auth_dto::token, auth_guard::response_type> auth_guard::parse_bear
     return token_value;
 }
 
-std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::try_auth_bearer(
+std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require_auth(
     const request_type& request,
     db_connection& db_connection
 ){
@@ -66,7 +66,7 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::try_aut
 }
 
 std::expected<std::optional<auth_dto::identity>, auth_guard::response_type>
-auth_guard::try_optional_auth_bearer(
+auth_guard::require_optional_auth(
     const request_type& request,
     db_connection& db_connection
 ){
@@ -75,7 +75,7 @@ auth_guard::try_optional_auth_bearer(
         return std::optional<auth_dto::identity>{};
     }
 
-    const auto auth_identity_exp = try_auth_bearer(request, db_connection);
+    const auto auth_identity_exp = require_auth(request, db_connection);
     if(!auth_identity_exp){
         return std::unexpected(std::move(auth_identity_exp.error()));
     }
@@ -83,11 +83,11 @@ auth_guard::try_optional_auth_bearer(
     return std::optional<auth_dto::identity>{*auth_identity_exp};
 }
 
-std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::try_admin_auth_bearer(
+std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require_admin(
     const request_type& request,
     db_connection& db_connection
 ){
-    const auto auth_identity_exp = try_auth_bearer(request, db_connection);
+    const auto auth_identity_exp = require_auth(request, db_connection);
     if(!auth_identity_exp){
         return std::unexpected(std::move(auth_identity_exp.error()));
     }
@@ -103,11 +103,11 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::try_adm
 }
 
 std::expected<auth_dto::identity, auth_guard::response_type>
-auth_guard::try_superadmin_auth_bearer(
+auth_guard::require_superadmin(
     const request_type& request,
     db_connection& db_connection
 ){
-    const auto auth_identity_exp = try_auth_bearer(request, db_connection);
+    const auto auth_identity_exp = require_auth(request, db_connection);
     if(!auth_identity_exp){
         return std::unexpected(std::move(auth_identity_exp.error()));
     }

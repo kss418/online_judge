@@ -18,27 +18,24 @@ submission_handler::response_type submission_handler::get_submission_history(
     db_connection& db_connection_value,
     std::int64_t submission_id
 ){
-    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        return http_response_util::create_json_or_404_or_500(
-            request,
-            "get submission history",
-            submission_service::get_submission_history(
-                db_connection_value,
-                submission_id
-            ),
-            [&](const submission_dto::history_list& history_values){
-                return submission_json_serializer::make_history_list_object(
-                    submission_id,
-                    history_values
-                );
-            }
-        );
-    };
+    const auto auth_identity_exp = auth_guard::require_admin(request, db_connection_value);
+    if(!auth_identity_exp){
+        return std::move(auth_identity_exp.error());
+    }
 
-    return auth_guard::with_admin_auth_bearer(
+    return http_response_util::create_json_or_404_or_500(
         request,
-        db_connection_value,
-        handle_authenticated
+        "get submission history",
+        submission_service::get_submission_history(
+            db_connection_value,
+            submission_id
+        ),
+        [&](const submission_dto::history_list& history_values){
+            return submission_json_serializer::make_history_list_object(
+                submission_id,
+                history_values
+            );
+        }
     );
 }
 
@@ -47,41 +44,37 @@ submission_handler::response_type submission_handler::get_submission_source(
     db_connection& db_connection_value,
     std::int64_t submission_id
 ){
-    const auto handle_authenticated =
-        [&](const auth_dto::identity& auth_identity_value) -> response_type {
-            return http_response_util::create_response_or_404_or_500(
-                request,
-                "get submission source",
-                submission_service::get_submission_source(
-                    db_connection_value,
-                    submission_id
-                ),
-                [&](const submission_dto::source_detail& source_detail) -> response_type {
-                    if(!http_util::is_owner_or_admin(
-                        auth_identity_value,
-                        source_detail.user_id
-                    )){
-                        return http_response_util::create_error(
-                            request,
-                            boost::beast::http::status::forbidden,
-                            "forbidden",
-                            "submission source access denied"
-                        );
-                    }
+    const auto auth_identity_exp = auth_guard::require_auth(request, db_connection_value);
+    if(!auth_identity_exp){
+        return std::move(auth_identity_exp.error());
+    }
 
-                    return http_response_util::create_json(
-                        request,
-                        boost::beast::http::status::ok,
-                        submission_json_serializer::make_source_object(source_detail)
-                    );
-                }
-            );
-        };
-
-    return auth_guard::with_auth_bearer(
+    return http_response_util::create_response_or_404_or_500(
         request,
-        db_connection_value,
-        handle_authenticated
+        "get submission source",
+        submission_service::get_submission_source(
+            db_connection_value,
+            submission_id
+        ),
+        [&](const submission_dto::source_detail& source_detail) -> response_type {
+            if(!http_util::is_owner_or_admin(
+                *auth_identity_exp,
+                source_detail.user_id
+            )){
+                return http_response_util::create_error(
+                    request,
+                    boost::beast::http::status::forbidden,
+                    "forbidden",
+                    "submission source access denied"
+                );
+            }
+
+            return http_response_util::create_json(
+                request,
+                boost::beast::http::status::ok,
+                submission_json_serializer::make_source_object(source_detail)
+            );
+        }
     );
 }
 
@@ -106,7 +99,7 @@ submission_handler::response_type submission_handler::post_submission_status_bat
     db_connection& db_connection_value
 ){
     const auto batch_request_exp =
-        request_dto::parse_json_dto_or_400<submission_dto::status_batch_request>(
+        request_dto::parse_json_or_400<submission_dto::status_batch_request>(
             request,
             submission_dto::make_status_batch_request_from_json
         );
@@ -130,57 +123,52 @@ submission_handler::response_type submission_handler::post_submission(
     db_connection& db_connection_value,
     std::int64_t problem_id
 ){
-    const auto handle_authenticated =
-        [&](const auth_dto::identity& auth_identity_value) -> response_type {
-            const auto create_request_exp =
-                request_dto::parse_json_dto_or_400<submission_dto::create_request>(
-                    request,
-                    submission_dto::make_create_request_from_json,
-                    auth_identity_value.user_id,
-                    problem_id
+    const auto auth_identity_exp = auth_guard::require_auth(request, db_connection_value);
+    if(!auth_identity_exp){
+        return std::move(auth_identity_exp.error());
+    }
+
+    const auto create_request_exp = request_dto::parse_json_or_400<submission_dto::create_request>(
+        request,
+        submission_dto::make_create_request_from_json,
+        auth_identity_exp->user_id,
+        problem_id
+    );
+    if(!create_request_exp){
+        return std::move(create_request_exp.error());
+    }
+
+    const auto create_submission_exp = submission_service::create_submission(
+        db_connection_value,
+        *create_request_exp
+    );
+    return http_response_util::create_response_or_error(
+        request,
+        "create submission",
+        std::move(create_submission_exp),
+        [&](const request_type& error_request, std::string_view action, const error_code& code) {
+            if(is_submission_banned_error(code)){
+                return http_response_util::create_error(
+                    error_request,
+                    boost::beast::http::status::forbidden,
+                    "submission_banned",
+                    "submission is currently banned"
                 );
-            if(!create_request_exp){
-                return std::move(create_request_exp.error());
             }
 
-            const auto create_submission_exp = submission_service::create_submission(
-                db_connection_value,
-                *create_request_exp
+            return http_response_util::create_4xx_or_500(
+                error_request,
+                action,
+                code
             );
-            return http_response_util::create_response_or_error(
+        },
+        [&](const submission_dto::created& created_value) {
+            return http_response_util::create_json(
                 request,
-                "create submission",
-                std::move(create_submission_exp),
-                [&](const request_type& error_request, std::string_view action, const error_code& code) {
-                    if(is_submission_banned_error(code)){
-                        return http_response_util::create_error(
-                            error_request,
-                            boost::beast::http::status::forbidden,
-                            "submission_banned",
-                            "submission is currently banned"
-                        );
-                    }
-
-                    return http_response_util::create_4xx_or_500(
-                        error_request,
-                        action,
-                        code
-                    );
-                },
-                [&](const submission_dto::created& created_value) {
-                    return http_response_util::create_json(
-                        request,
-                        boost::beast::http::status::created,
-                        submission_json_serializer::make_created_object(created_value)
-                    );
-                }
+                boost::beast::http::status::created,
+                submission_json_serializer::make_created_object(created_value)
             );
-        };
-
-    return auth_guard::with_auth_bearer(
-        request,
-        db_connection_value,
-        handle_authenticated
+        }
     );
 }
 
@@ -189,27 +177,24 @@ submission_handler::response_type submission_handler::post_submission_rejudge(
     db_connection& db_connection_value,
     std::int64_t submission_id
 ){
-    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        return http_response_util::create_json_or_4xx_or_500(
-            request,
-            "rejudge submission",
-            submission_service::rejudge(
-                db_connection_value,
-                submission_id
-            ),
-            [&]{
-                submission_dto::created created_value;
-                created_value.submission_id = submission_id;
-                created_value.status = to_string(submission_status::queued);
-                return submission_json_serializer::make_created_object(created_value);
-            }
-        );
-    };
+    const auto auth_identity_exp = auth_guard::require_admin(request, db_connection_value);
+    if(!auth_identity_exp){
+        return std::move(auth_identity_exp.error());
+    }
 
-    return auth_guard::with_admin_auth_bearer(
+    return http_response_util::create_json_or_4xx_or_500(
         request,
-        db_connection_value,
-        handle_authenticated
+        "rejudge submission",
+        submission_service::rejudge(
+            db_connection_value,
+            submission_id
+        ),
+        [&]{
+            submission_dto::created created_value;
+            created_value.submission_id = submission_id;
+            created_value.status = to_string(submission_status::queued);
+            return submission_json_serializer::make_created_object(created_value);
+        }
     );
 }
 
@@ -217,7 +202,7 @@ submission_handler::response_type submission_handler::get_submissions(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto auth_identity_opt_exp = auth_guard::try_optional_auth_bearer(
+    const auto auth_identity_opt_exp = auth_guard::require_optional_auth(
         request,
         db_connection_value
     );

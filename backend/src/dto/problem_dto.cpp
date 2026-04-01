@@ -3,7 +3,7 @@
 #include "common/row_util.hpp"
 #include "common/string_util.hpp"
 #include "common/json_field_util.hpp"
-#include "http_core/query_param_util.hpp"
+#include "common/query_param_util.hpp"
 
 #include <pqxx/pqxx>
 
@@ -183,7 +183,7 @@ problem_dto::make_update_request_from_json(const boost::json::object& json){
 
 std::expected<problem_dto::list_filter, dto_validation_error>
 problem_dto::make_list_filter_from_query_params(
-    const std::vector<request_parser::query_param>& query_params
+    const std::vector<query_param>& query_params
 ){
     return query_param_util::make_filter_from_query_params(
         query_params,

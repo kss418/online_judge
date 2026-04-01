@@ -12,7 +12,7 @@ problem_handler::response_type problem_handler::get_problems(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto auth_identity_opt_exp = auth_guard::try_optional_auth_bearer(
+    const auto auth_identity_opt_exp = auth_guard::require_optional_auth(
         request,
         db_connection_value
     );
@@ -83,7 +83,7 @@ problem_handler::response_type problem_handler::get_problem(
     db_connection& db_connection_value,
     std::int64_t problem_id
 ){
-    const auto auth_identity_opt_exp = auth_guard::try_optional_auth_bearer(
+    const auto auth_identity_opt_exp = auth_guard::require_optional_auth(
         request,
         db_connection_value
     );
@@ -131,33 +131,29 @@ problem_handler::response_type problem_handler::post_problem(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto create_request_exp =
-            request_dto::parse_json_dto_or_400<problem_dto::create_request>(
-                request,
-                problem_dto::make_create_request_from_json
-            );
-        if(!create_request_exp){
-            return std::move(create_request_exp.error());
-        }
+    const auto auth_identity_exp = auth_guard::require_admin(request, db_connection_value);
+    if(!auth_identity_exp){
+        return std::move(auth_identity_exp.error());
+    }
 
-        const auto create_problem_exp = problem_core_service::create_problem(
-            db_connection_value,
-            *create_request_exp
-        );
-        return http_response_util::create_json_or_4xx_or_500(
-            request,
-            "create problem",
-            std::move(create_problem_exp),
-            problem_json_serializer::make_created_object,
-            boost::beast::http::status::created
-        );
-    };
-
-    return auth_guard::with_admin_auth_bearer(
+    const auto create_request_exp = request_dto::parse_json_or_400<problem_dto::create_request>(
         request,
+        problem_dto::make_create_request_from_json
+    );
+    if(!create_request_exp){
+        return std::move(create_request_exp.error());
+    }
+
+    const auto create_problem_exp = problem_core_service::create_problem(
         db_connection_value,
-        handle_authenticated
+        *create_request_exp
+    );
+    return http_response_util::create_json_or_4xx_or_500(
+        request,
+        "create problem",
+        std::move(create_problem_exp),
+        problem_json_serializer::make_created_object,
+        boost::beast::http::status::created
     );
 }
 
@@ -167,34 +163,37 @@ problem_handler::response_type problem_handler::put_problem(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto update_request_exp =
-            request_dto::parse_json_dto_or_400<problem_dto::update_request>(
-                request,
-                problem_dto::make_update_request_from_json
-            );
-        if(!update_request_exp){
-            return std::move(update_request_exp.error());
-        }
-
-        const auto update_problem_exp = problem_core_service::update_problem(
-            db_connection_value,
-            problem_reference_value,
-            *update_request_exp
-        );
-        return http_response_util::create_message_or_4xx_or_500(
-            request,
-            "update problem",
-            std::move(update_problem_exp),
-            "problem updated"
-        );
-    };
-
-    return problem_guard::with_existing_problem_admin(
+    const auto auth_identity_exp = auth_guard::require_admin(request, db_connection_value);
+    if(!auth_identity_exp){
+        return std::move(auth_identity_exp.error());
+    }
+    const auto exists_exp = problem_guard::require_exists(
         request,
         db_connection_value,
+        problem_reference_value
+    );
+    if(!exists_exp){
+        return std::move(exists_exp.error());
+    }
+
+    const auto update_request_exp = request_dto::parse_json_or_400<problem_dto::update_request>(
+        request,
+        problem_dto::make_update_request_from_json
+    );
+    if(!update_request_exp){
+        return std::move(update_request_exp.error());
+    }
+
+    const auto update_problem_exp = problem_core_service::update_problem(
+        db_connection_value,
         problem_reference_value,
-        handle_authenticated
+        *update_request_exp
+    );
+    return http_response_util::create_message_or_4xx_or_500(
+        request,
+        "update problem",
+        std::move(update_problem_exp),
+        "problem updated"
     );
 }
 
@@ -204,24 +203,28 @@ problem_handler::response_type problem_handler::delete_problem(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto delete_problem_exp = problem_core_service::delete_problem(
-            db_connection_value,
-            problem_reference_value
-        );
-        return http_response_util::create_message_or_4xx_or_500(
-            request,
-            "delete problem",
-            std::move(delete_problem_exp),
-            "problem deleted"
-        );
-    };
-
-    return problem_guard::with_existing_problem_admin(
+    const auto auth_identity_exp = auth_guard::require_admin(request, db_connection_value);
+    if(!auth_identity_exp){
+        return std::move(auth_identity_exp.error());
+    }
+    const auto exists_exp = problem_guard::require_exists(
         request,
         db_connection_value,
-        problem_reference_value,
-        handle_authenticated
+        problem_reference_value
+    );
+    if(!exists_exp){
+        return std::move(exists_exp.error());
+    }
+
+    const auto delete_problem_exp = problem_core_service::delete_problem(
+        db_connection_value,
+        problem_reference_value
+    );
+    return http_response_util::create_message_or_4xx_or_500(
+        request,
+        "delete problem",
+        std::move(delete_problem_exp),
+        "problem deleted"
     );
 }
 
@@ -231,23 +234,27 @@ problem_handler::response_type problem_handler::post_problem_rejudge(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto rejudge_problem_exp = submission_service::rejudge_problem(
-            db_connection_value,
-            problem_id
-        );
-        return http_response_util::create_message_or_4xx_or_500(
-            request,
-            "rejudge problem",
-            std::move(rejudge_problem_exp),
-            "problem submissions requeued"
-        );
-    };
-
-    return problem_guard::with_existing_problem_admin(
+    const auto auth_identity_exp = auth_guard::require_admin(request, db_connection_value);
+    if(!auth_identity_exp){
+        return std::move(auth_identity_exp.error());
+    }
+    const auto exists_exp = problem_guard::require_exists(
         request,
         db_connection_value,
-        problem_reference_value,
-        handle_authenticated
+        problem_reference_value
+    );
+    if(!exists_exp){
+        return std::move(exists_exp.error());
+    }
+
+    const auto rejudge_problem_exp = submission_service::rejudge_problem(
+        db_connection_value,
+        problem_id
+    );
+    return http_response_util::create_message_or_4xx_or_500(
+        request,
+        "rejudge problem",
+        std::move(rejudge_problem_exp),
+        "problem submissions requeued"
     );
 }

@@ -1,4 +1,4 @@
-#include "http_core/query_param_util.hpp"
+#include "common/query_param_util.hpp"
 
 dto_validation_error query_param_util::make_duplicate_query_parameter_error(
     std::string_view key

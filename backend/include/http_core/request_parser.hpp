@@ -1,6 +1,6 @@
 #pragma once
 
-#include "http_core/query_param.hpp"
+#include "common/query_param.hpp"
 
 #include <boost/json.hpp>
 #include <boost/beast/http/message.hpp>

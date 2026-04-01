@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/error_code.hpp"
+#include "common/query_param.hpp"
 #include "common/submission_status.hpp"
 #include "dto/dto_validation_error.hpp"
 
@@ -13,10 +14,6 @@
 #include <optional>
 #include <string>
 #include <vector>
-
-namespace request_parser{
-    struct query_param;
-}
 
 namespace pqxx{
     class result;
@@ -162,7 +159,7 @@ namespace submission_dto{
         const boost::json::object& json
     );
     std::expected<list_filter, dto_validation_error> make_list_filter_from_query_params(
-        const std::vector<request_parser::query_param>& query_params
+        const std::vector<query_param>& query_params
     );
     std::expected<create_request, dto_validation_error> make_create_request_from_json(
         const boost::json::object& json,
