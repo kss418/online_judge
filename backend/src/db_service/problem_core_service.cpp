@@ -97,7 +97,7 @@ std::expected<problem_dto::detail, error_code> problem_core_service::get_problem
                 problem_reference_value
             );
             if(!title_exp){
-                if(title_exp.error() == errno_error::invalid_argument){
+                if(title_exp.error() == repository_error::not_found){
                     return std::unexpected(error_code::create(http_error::not_found));
                 }
                 return std::unexpected(title_exp.error());
@@ -109,7 +109,7 @@ std::expected<problem_dto::detail, error_code> problem_core_service::get_problem
                 problem_reference_value
             );
             if(!version_exp){
-                if(version_exp.error() == errno_error::invalid_argument){
+                if(version_exp.error() == repository_error::not_found){
                     return std::unexpected(error_code::create(http_error::not_found));
                 }
                 return std::unexpected(version_exp.error());
@@ -121,7 +121,7 @@ std::expected<problem_dto::detail, error_code> problem_core_service::get_problem
                 problem_reference_value
             );
             if(!limits_exp){
-                if(limits_exp.error() == errno_error::invalid_argument){
+                if(limits_exp.error() == repository_error::not_found){
                     return std::unexpected(error_code::create(http_error::not_found));
                 }
                 return std::unexpected(limits_exp.error());
@@ -135,7 +135,7 @@ std::expected<problem_dto::detail, error_code> problem_core_service::get_problem
             if(statement_exp){
                 detail_value.statement_opt = *statement_exp;
             }
-            else if(statement_exp.error() != errno_error::invalid_argument){
+            else if(statement_exp.error() != repository_error::not_found){
                 return std::unexpected(statement_exp.error());
             }
 
@@ -153,7 +153,7 @@ std::expected<problem_dto::detail, error_code> problem_core_service::get_problem
                 problem_reference_value
             );
             if(!statistics_exp){
-                if(statistics_exp.error() == errno_error::invalid_argument){
+                if(statistics_exp.error() == repository_error::not_found){
                     return std::unexpected(error_code::create(http_error::not_found));
                 }
                 return std::unexpected(statistics_exp.error());

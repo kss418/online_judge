@@ -24,7 +24,7 @@ std::expected<std::optional<user_dto::summary>, error_code> user_service::get_su
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_read_transaction(
@@ -45,7 +45,7 @@ user_service::get_summary_by_login_id(
     std::string_view user_login_id
 ){
     if(user_login_id.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_read_transaction(
@@ -67,7 +67,7 @@ user_service::create_submission_ban(
     std::int32_t duration_minutes
 ){
     if(user_id <= 0 || duration_minutes <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(
@@ -102,7 +102,7 @@ user_service::get_submission_ban_status(
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_read_transaction(
@@ -123,7 +123,7 @@ std::expected<bool, error_code> user_service::update_submission_banned_until(
     std::string_view submission_banned_until
 ){
     if(user_id <= 0 || submission_banned_until.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(
@@ -149,7 +149,7 @@ std::expected<bool, error_code> user_service::clear_submission_banned_until(
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(

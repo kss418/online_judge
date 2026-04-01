@@ -1,4 +1,5 @@
 #include "db_repository/problem_content_repository.hpp"
+#include "db_repository/db_repository.hpp"
 
 #include <pqxx/pqxx>
 
@@ -11,7 +12,7 @@ std::expected<void, error_code> problem_content_repository::ensure_statement_row
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     transaction.exec(
@@ -31,7 +32,7 @@ std::expected<problem_content_dto::statement, error_code> problem_content_reposi
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto statement_query_result = transaction.exec(
@@ -42,7 +43,7 @@ std::expected<problem_content_dto::statement, error_code> problem_content_reposi
     );
 
     if(statement_query_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     problem_content_dto::statement statement_value;
@@ -59,7 +60,7 @@ std::expected<problem_content_dto::statement, error_code> problem_content_reposi
         statement_value.output_format.empty() &&
         !statement_value.note
     ){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return statement_value;
@@ -72,7 +73,7 @@ std::expected<void, error_code> problem_content_repository::set_statement(
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const std::string note_value = statement_value.note.value_or("");
@@ -106,7 +107,7 @@ problem_content_repository::list_samples(
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto samples_query_result = transaction.exec(
@@ -138,7 +139,7 @@ std::expected<problem_content_dto::sample, error_code> problem_content_repositor
     const std::int64_t problem_id = sample_reference_value.problem_id;
     const std::int32_t sample_order = sample_reference_value.sample_order;
     if(!problem_content_dto::is_valid(sample_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto sample_query_result = transaction.exec(
@@ -149,7 +150,7 @@ std::expected<problem_content_dto::sample, error_code> problem_content_repositor
     );
 
     if(sample_query_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     problem_content_dto::sample sample_value;
@@ -179,7 +180,7 @@ problem_content_repository::increase_sample_count(
     );
 
     if(increase_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     problem_content_dto::sample_count sample_count_value;
@@ -193,7 +194,7 @@ problem_content_repository::decrease_sample_count(
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto decrease_result = transaction.exec(
@@ -205,7 +206,7 @@ problem_content_repository::decrease_sample_count(
     );
 
     if(decrease_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::conflict_error());
     }
 
     problem_content_dto::sample_count sample_count_value;
@@ -220,7 +221,7 @@ std::expected<problem_content_dto::sample, error_code> problem_content_repositor
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto sample_order_exp = increase_sample_count(transaction, problem_reference_value);
@@ -259,7 +260,7 @@ std::expected<void, error_code> problem_content_repository::set_sample(
     const std::int64_t problem_id = sample_reference_value.problem_id;
     const std::int32_t sample_order = sample_reference_value.sample_order;
     if(!problem_content_dto::is_valid(sample_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto update_result = transaction.exec(
@@ -277,7 +278,7 @@ std::expected<void, error_code> problem_content_repository::set_sample(
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return {};
@@ -290,7 +291,7 @@ std::expected<void, error_code> problem_content_repository::delete_sample(
     const std::int64_t problem_id = sample_reference_value.problem_id;
     const std::int32_t sample_order = sample_reference_value.sample_order;
     if(!problem_content_dto::is_valid(sample_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto delete_result = transaction.exec(
@@ -307,7 +308,7 @@ std::expected<void, error_code> problem_content_repository::delete_sample(
     );
 
     if(delete_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::conflict_error());
     }
 
     problem_dto::reference problem_reference_value{problem_id};

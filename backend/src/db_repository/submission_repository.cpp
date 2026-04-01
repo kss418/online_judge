@@ -1,4 +1,5 @@
 #include "db_repository/submission_repository.hpp"
+#include "db_repository/db_repository.hpp"
 #include "db_repository/problem_statistics_repository.hpp"
 #include "query_builder/submission_query_builder.hpp"
 #include "db_repository/user_problem_summary_repository.hpp"
@@ -21,7 +22,7 @@ submission_repository::get_locked_submission_context(
     std::int64_t submission_id
 ){
     if(submission_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto submission_result = transaction.exec(
@@ -32,7 +33,7 @@ submission_repository::get_locked_submission_context(
         pqxx::params{submission_id}
     );
     if(submission_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     const auto submission_status_exp = submission_dto::make_submission_status_from_row(
@@ -58,7 +59,7 @@ std::expected<void, error_code> submission_repository::persist_submission_status
     const std::optional<std::string>& reason_opt
 ){
     if(submission_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     transaction.exec(
@@ -87,7 +88,7 @@ std::expected<submission_dto::history_list, error_code> submission_repository::g
     std::int64_t submission_id
 ){
     if(submission_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto submission_history_query = transaction.exec(
@@ -103,7 +104,7 @@ std::expected<submission_dto::history_list, error_code> submission_repository::g
         pqxx::params{submission_id}
     );
     if(submission_history_query.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return submission_dto::make_history_list_from_result(submission_history_query);
@@ -114,7 +115,7 @@ std::expected<submission_dto::source_detail, error_code> submission_repository::
     std::int64_t submission_id
 ){
     if(submission_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto submission_source_query = transaction.exec(
@@ -131,7 +132,7 @@ std::expected<submission_dto::source_detail, error_code> submission_repository::
         pqxx::params{submission_id}
     );
     if(submission_source_query.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return submission_dto::make_source_detail_from_row(submission_source_query[0]);
@@ -142,7 +143,7 @@ std::expected<submission_dto::detail, error_code> submission_repository::get_sub
     std::int64_t submission_id
 ){
     if(submission_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto submission_detail_result = transaction.exec(
@@ -164,7 +165,7 @@ std::expected<submission_dto::detail, error_code> submission_repository::get_sub
         pqxx::params{submission_id}
     );
     if(submission_detail_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return submission_dto::make_detail_from_row(submission_detail_result[0]);
@@ -199,7 +200,7 @@ submission_repository::get_wa_or_ac_submissions(
     std::int64_t problem_id
 ){
     if(problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto submission_summary_query = transaction.exec(
@@ -244,7 +245,7 @@ std::expected<submission_status, error_code> submission_repository::get_submissi
     std::int64_t submission_id
 ){
     if(submission_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto submission_status_result = transaction.exec(
@@ -254,7 +255,7 @@ std::expected<submission_status, error_code> submission_repository::get_submissi
         pqxx::params{submission_id}
     );
     if(submission_status_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return submission_dto::make_submission_status_from_row(
@@ -273,7 +274,7 @@ std::expected<submission_dto::created, error_code> submission_repository::create
         create_request_value.source_value.language.empty() ||
         create_request_value.source_value.source_code.empty()
     ){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_input_error());
     }
 
     const auto create_submission_result = transaction.exec(
@@ -311,7 +312,7 @@ std::expected<void, error_code> submission_repository::enqueue_submission(
     std::int16_t priority
 ){
     if(submission_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     transaction.exec(
@@ -365,7 +366,7 @@ std::expected<void, error_code> submission_repository::clear_submission_result(
     std::int64_t submission_id
 ){
     if(submission_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto update_result = transaction.exec(
@@ -382,7 +383,7 @@ std::expected<void, error_code> submission_repository::clear_submission_result(
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return {};
@@ -404,7 +405,7 @@ std::expected<void, error_code> submission_repository::rejudge_submission(
         locked_submission_exp->status == submission_status::queued ||
         locked_submission_exp->status == submission_status::judging
     ){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::conflict_error());
     }
 
     if(locked_submission_exp->status == submission_status::accepted){
@@ -475,7 +476,7 @@ std::expected<submission_dto::queued_submission, error_code> submission_reposito
 ){
     const std::chrono::seconds lease_duration = lease_request_value.lease_duration;
     if(lease_duration <= std::chrono::seconds::zero()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_input_error());
     }
 
     const auto lease_candidate_result = transaction.exec(
@@ -522,7 +523,7 @@ std::expected<void, error_code> submission_repository::release_submission_lease(
     std::int64_t submission_id
 ){
     if(submission_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto update_result = transaction.exec(
@@ -534,7 +535,7 @@ std::expected<void, error_code> submission_repository::release_submission_lease(
         pqxx::params{submission_id}
     );
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return {};

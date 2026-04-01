@@ -78,7 +78,7 @@ std::expected<problem_dto::testcase, error_code> testcase_service::get_testcase(
                 transaction,
                 testcase_reference_value
             );
-            if(!testcase_exp && testcase_exp.error() == errno_error::invalid_argument){
+            if(!testcase_exp && testcase_exp.error() == repository_error::not_found){
                 return std::unexpected(error_code::create(http_error::not_found));
             }
 

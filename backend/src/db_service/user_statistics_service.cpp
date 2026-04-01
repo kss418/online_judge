@@ -57,7 +57,7 @@ std::expected<void, error_code> user_statistics_service::record_submission_creat
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(
@@ -107,7 +107,7 @@ std::expected<void, error_code> user_statistics_service::record_submission_statu
     submission_status to_status
 ){
     if(user_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(

@@ -15,31 +15,36 @@ namespace{
     };
 
     std::optional<mapped_http_error> map_http_error(const error_code& code){
-        if(code == http_error::validation_error){
+        const auto http_error_opt = map_error_to_http_error(code);
+        if(!http_error_opt){
+            return std::nullopt;
+        }
+
+        if(*http_error_opt == http_error::validation_error){
             return mapped_http_error{
                 .status = boost::beast::http::status::bad_request,
                 .code = "validation_error"
             };
         }
-        if(code == http_error::unauthorized){
+        if(*http_error_opt == http_error::unauthorized){
             return mapped_http_error{
                 .status = boost::beast::http::status::unauthorized,
                 .code = "unauthorized"
             };
         }
-        if(code == http_error::forbidden){
+        if(*http_error_opt == http_error::forbidden){
             return mapped_http_error{
                 .status = boost::beast::http::status::forbidden,
                 .code = "forbidden"
             };
         }
-        if(code == http_error::not_found){
+        if(*http_error_opt == http_error::not_found){
             return mapped_http_error{
                 .status = boost::beast::http::status::not_found,
                 .code = "not_found"
             };
         }
-        if(code == http_error::conflict || code == psql_error::unique_violation){
+        if(*http_error_opt == http_error::conflict){
             return mapped_http_error{
                 .status = boost::beast::http::status::conflict,
                 .code = "conflict"

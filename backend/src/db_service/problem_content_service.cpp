@@ -103,7 +103,7 @@ std::expected<problem_content_dto::sample, error_code> problem_content_service::
     const problem_content_dto::sample& sample_value
 ){
     if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(
@@ -129,7 +129,7 @@ std::expected<problem_content_dto::sample, error_code> problem_content_service::
     const problem_content_dto::sample_ref& sample_reference_value
 ){
     if(sample_reference_value.problem_id <= 0 || sample_reference_value.sample_order <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_read_transaction(
@@ -150,7 +150,7 @@ problem_content_service::list_samples(
     const problem_dto::reference& problem_reference_value
 ){
     if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_read_transaction(
@@ -171,7 +171,7 @@ std::expected<void, error_code> problem_content_service::set_sample(
     const problem_content_dto::sample& sample_value
 ){
     if(sample_reference_value.problem_id <= 0 || sample_reference_value.sample_order <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(
@@ -207,7 +207,7 @@ std::expected<void, error_code> problem_content_service::delete_sample(
     const problem_dto::reference& problem_reference_value
 ){
     if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(
@@ -221,7 +221,7 @@ std::expected<void, error_code> problem_content_service::delete_sample(
                 return std::unexpected(sample_values_exp.error());
             }
             if(sample_values_exp->empty()){
-                return std::unexpected(error_code::create(errno_error::invalid_argument));
+                return std::unexpected(error_code::create(http_error::not_found));
             }
 
             problem_content_dto::sample_ref sample_reference_value{

@@ -1,4 +1,5 @@
 #include "db_repository/user_statistics_repository.hpp"
+#include "db_repository/db_repository.hpp"
 
 #include <pqxx/pqxx>
 
@@ -28,7 +29,7 @@ namespace{
                 return "output_exceeded_submission_count";
         }
 
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_input_error());
     }
 }
 
@@ -38,7 +39,7 @@ user_statistics_repository::get_submission_statistics(
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto statistics_query_result = transaction.exec(
@@ -63,7 +64,7 @@ user_statistics_repository::get_submission_statistics(
     );
 
     if(statistics_query_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return user_statistics_dto::make_submission_statistics_from_row(
@@ -77,7 +78,7 @@ std::expected<void, error_code> user_statistics_repository::touch_timestamp_colu
     std::string_view column_name
 ){
     if(user_id <= 0 || column_name.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_input_error());
     }
 
     const std::string update_query =
@@ -91,7 +92,7 @@ std::expected<void, error_code> user_statistics_repository::touch_timestamp_colu
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return {};
@@ -102,7 +103,7 @@ std::expected<void, error_code> user_statistics_repository::create_user_submissi
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto create_result = transaction.exec(
@@ -123,7 +124,7 @@ std::expected<void, error_code> user_statistics_repository::ensure_user_submissi
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     transaction.exec(
@@ -141,7 +142,7 @@ std::expected<void, error_code> user_statistics_repository::increase_submission_
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto update_result = transaction.exec(
@@ -154,7 +155,7 @@ std::expected<void, error_code> user_statistics_repository::increase_submission_
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return {};
@@ -166,7 +167,7 @@ std::expected<void, error_code> user_statistics_repository::increase_status_coun
     submission_status status
 ){
     if(user_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto column_name_exp = get_status_count_column(status);
@@ -186,7 +187,7 @@ std::expected<void, error_code> user_statistics_repository::increase_status_coun
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return {};
@@ -198,7 +199,7 @@ std::expected<void, error_code> user_statistics_repository::decrease_status_coun
     submission_status status
 ){
     if(user_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const auto column_name_exp = get_status_count_column(status);
@@ -218,7 +219,7 @@ std::expected<void, error_code> user_statistics_repository::decrease_status_coun
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::conflict_error());
     }
 
     return {};

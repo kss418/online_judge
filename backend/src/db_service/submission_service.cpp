@@ -13,11 +13,13 @@ static bool is_queue_empty_error(const error_code& code){
 }
 
 template <typename value_type>
-static std::expected<value_type, error_code> map_invalid_argument_to_not_found(
+static std::expected<value_type, error_code> map_repository_error_to_http_error(
     std::expected<value_type, error_code> value_exp
 ){
-    if(!value_exp && value_exp.error() == errno_error::invalid_argument){
-        return std::unexpected(error_code::create(http_error::not_found));
+    if(!value_exp){
+        if(const auto http_error_opt = map_error_to_http_error(value_exp.error())){
+            return std::unexpected(error_code::create(*http_error_opt));
+        }
     }
 
     return value_exp;
@@ -72,7 +74,7 @@ std::expected<submission_dto::history_list, error_code> submission_service::get_
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::history_list, error_code> {
-            return map_invalid_argument_to_not_found(
+            return map_repository_error_to_http_error(
                 submission_repository::get_submission_history(transaction, submission_id)
             );
         }
@@ -91,7 +93,7 @@ std::expected<submission_dto::source_detail, error_code> submission_service::get
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::source_detail, error_code> {
-            return map_invalid_argument_to_not_found(
+            return map_repository_error_to_http_error(
                 submission_repository::get_submission_source(transaction, submission_id)
             );
         }
@@ -110,7 +112,7 @@ std::expected<submission_dto::detail, error_code> submission_service::get_submis
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::detail, error_code> {
-            auto submission_detail_exp = map_invalid_argument_to_not_found(
+            auto submission_detail_exp = map_repository_error_to_http_error(
                 submission_repository::get_submission_detail(
                     transaction,
                     submission_id

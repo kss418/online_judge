@@ -1,4 +1,5 @@
 #include "db_repository/user_problem_summary_repository.hpp"
+#include "db_repository/db_repository.hpp"
 
 #include <pqxx/pqxx>
 
@@ -28,7 +29,7 @@ namespace{
             failed_submission_count < 0 ||
             accepted_submission_count + failed_submission_count > submission_count
         ){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(db_repository::invalid_input_error());
         }
 
         return {};
@@ -39,7 +40,7 @@ namespace{
         std::int64_t problem_id
     ){
         if(user_id <= 0 || problem_id <= 0){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(db_repository::invalid_reference_error());
         }
 
         return {};
@@ -145,7 +146,7 @@ std::expected<void, error_code> user_problem_summary_repository::increase_accept
         pqxx::params{user_id, problem_id}
     );
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::conflict_error());
     }
 
     return {};
@@ -173,7 +174,7 @@ std::expected<void, error_code> user_problem_summary_repository::decrease_accept
         pqxx::params{user_id, problem_id}
     );
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::conflict_error());
     }
 
     return {};
@@ -201,7 +202,7 @@ std::expected<void, error_code> user_problem_summary_repository::increase_failed
         pqxx::params{user_id, problem_id}
     );
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::conflict_error());
     }
 
     return {};
@@ -229,7 +230,7 @@ std::expected<void, error_code> user_problem_summary_repository::decrease_failed
         pqxx::params{user_id, problem_id}
     );
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::conflict_error());
     }
 
     return {};

@@ -12,6 +12,10 @@
 namespace db_repository{
     bool should_retry_db_error(const error_code& error_code_value);
     bool should_reconnect_db_error(const error_code& error_code_value);
+    error_code invalid_reference_error();
+    error_code invalid_input_error();
+    error_code not_found_error();
+    error_code conflict_error();
 
     template <typename result_type>
     concept expected_error_result = requires{

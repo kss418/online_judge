@@ -1,4 +1,5 @@
 #include "db_repository/problem_statistics_repository.hpp"
+#include "db_repository/db_repository.hpp"
 
 #include <pqxx/pqxx>
 
@@ -8,7 +9,7 @@ problem_statistics_repository::get_statistics(
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -20,7 +21,7 @@ problem_statistics_repository::get_statistics(
     );
 
     if(statistics_query_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     problem_content_dto::statistics statistics_value;
@@ -34,7 +35,7 @@ std::expected<void, error_code> problem_statistics_repository::create_problem_st
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -55,7 +56,7 @@ std::expected<void, error_code> problem_statistics_repository::increase_submissi
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -69,7 +70,7 @@ std::expected<void, error_code> problem_statistics_repository::increase_submissi
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return {};
@@ -80,7 +81,7 @@ std::expected<void, error_code> problem_statistics_repository::increase_accepted
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -94,7 +95,7 @@ std::expected<void, error_code> problem_statistics_repository::increase_accepted
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return {};
@@ -105,7 +106,7 @@ std::expected<void, error_code> problem_statistics_repository::decrease_accepted
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -119,7 +120,7 @@ std::expected<void, error_code> problem_statistics_repository::decrease_accepted
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::conflict_error());
     }
 
     return {};

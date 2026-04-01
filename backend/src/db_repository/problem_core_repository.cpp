@@ -1,4 +1,5 @@
 #include "db_repository/problem_core_repository.hpp"
+#include "db_repository/db_repository.hpp"
 #include "query_builder/problem_core_query_builder.hpp"
 
 #include <pqxx/pqxx>
@@ -28,7 +29,7 @@ std::expected<problem_dto::existence, error_code> problem_core_repository::exist
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -55,7 +56,7 @@ std::expected<problem_dto::title, error_code> problem_core_repository::get_title
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -67,7 +68,7 @@ std::expected<problem_dto::title, error_code> problem_core_repository::get_title
     );
 
     if(title_query_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     problem_dto::title title_value;
@@ -80,7 +81,7 @@ std::expected<problem_dto::version, error_code> problem_core_repository::get_ver
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -92,7 +93,7 @@ std::expected<problem_dto::version, error_code> problem_core_repository::get_ver
     );
 
     if(version_query_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     problem_dto::version version_value;
@@ -106,7 +107,7 @@ std::expected<std::optional<std::string>, error_code> problem_core_repository::g
     std::int64_t user_id
 ){
     if(!problem_dto::is_valid(problem_reference_value) || user_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_input_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -162,7 +163,7 @@ std::expected<void, error_code> problem_core_repository::set_title(
     const problem_dto::title& title_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -174,7 +175,7 @@ std::expected<void, error_code> problem_core_repository::set_title(
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return {};
@@ -185,7 +186,7 @@ std::expected<void, error_code> problem_core_repository::delete_problem(
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -196,7 +197,7 @@ std::expected<void, error_code> problem_core_repository::delete_problem(
     );
 
     if(delete_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return {};
@@ -288,7 +289,7 @@ std::expected<problem_content_dto::limits, error_code> problem_core_repository::
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -300,7 +301,7 @@ std::expected<problem_content_dto::limits, error_code> problem_core_repository::
     );
 
     if(limits_query_result.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     problem_content_dto::limits limits_value;
@@ -315,7 +316,7 @@ std::expected<void, error_code> problem_core_repository::set_limits(
     const problem_content_dto::limits& limits_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -342,7 +343,7 @@ std::expected<void, error_code> problem_core_repository::increase_version(
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::invalid_reference_error());
     }
 
     const std::int64_t problem_id = problem_reference_value.problem_id;
@@ -354,7 +355,7 @@ std::expected<void, error_code> problem_core_repository::increase_version(
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_repository::not_found_error());
     }
 
     return {};

@@ -3,6 +3,7 @@
 
 #include <exception>
 #include <expected>
+#include <optional>
 #include <string>
 
 enum class syscall_error{
@@ -101,6 +102,13 @@ enum class psql_error{
     unknown_psql_error
 };
 
+enum class repository_error{
+    invalid_reference,
+    invalid_input,
+    not_found,
+    conflict
+};
+
 enum class http_error{
     validation_error,
     unauthorized,
@@ -116,6 +124,7 @@ enum class error_type{
     limit_type,
     boost_type,
     psql_type,
+    repository_type,
     http_type
 };
 
@@ -144,12 +153,17 @@ struct error_code{
         return type_ == error_type::http_type;
     }
 
+    constexpr bool is_repository_error() const{
+        return type_ == error_type::repository_type;
+    }
+
     static error_code create(syscall_error code);
     static error_code create(errno_error code);
     static error_code create(signal_error code);
     static error_code create(limit_error code);
     static error_code create(boost_error code);
     static error_code create(psql_error code);
+    static error_code create(repository_error code);
     static error_code create(http_error code);
 
     static errno_error map_errno(int code);
@@ -219,6 +233,16 @@ struct error_code{
         return right == left;
     }
 
+    friend constexpr bool operator==(const error_code& left, repository_error right){
+        return
+            left.type_ == error_type::repository_type &&
+            left.code_ == static_cast<int>(right);
+    }
+
+    friend constexpr bool operator==(repository_error left, const error_code& right){
+        return right == left;
+    }
+
     friend constexpr bool operator==(const error_code& left, http_error right){
         return
             left.type_ == error_type::http_type &&
@@ -233,4 +257,6 @@ struct error_code{
 std::string to_string(error_code ec);
 std::string to_string(boost_error ec);
 std::string to_string(psql_error ec);
+std::string to_string(repository_error ec);
 std::string to_string(http_error ec);
+std::optional<http_error> map_error_to_http_error(const error_code& ec);

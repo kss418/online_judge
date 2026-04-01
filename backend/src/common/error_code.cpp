@@ -199,6 +199,20 @@ std::string to_string(psql_error ec){
     return "unknown psql error";
 }
 
+std::string to_string(repository_error ec){
+    switch(ec){
+        case repository_error::invalid_reference:
+            return "invalid reference";
+        case repository_error::invalid_input:
+            return "invalid input";
+        case repository_error::not_found:
+            return "repository not found";
+        case repository_error::conflict:
+            return "repository conflict";
+    }
+    return "unknown repository error";
+}
+
 std::string to_string(http_error ec){
     switch(ec){
         case http_error::validation_error:
@@ -222,6 +236,7 @@ std::string to_string(error_code ec){
     else if(ec.type_ == error_type::limit_type) return to_string(static_cast<limit_error>(ec.code_));
     else if(ec.type_ == error_type::boost_type) return to_string(static_cast<boost_error>(ec.code_));
     else if(ec.type_ == error_type::psql_type) return to_string(static_cast<psql_error>(ec.code_));
+    else if(ec.type_ == error_type::repository_type) return to_string(static_cast<repository_error>(ec.code_));
     else if(ec.type_ == error_type::http_type) return to_string(static_cast<http_error>(ec.code_));
     return "unknown error code";
 }
@@ -250,8 +265,44 @@ error_code error_code::create(psql_error code){
     return error_code{error_type::psql_type, static_cast<int>(code)};
 }
 
+error_code error_code::create(repository_error code){
+    return error_code{error_type::repository_type, static_cast<int>(code)};
+}
+
 error_code error_code::create(http_error code){
     return error_code{error_type::http_type, static_cast<int>(code)};
+}
+
+std::optional<http_error> map_error_to_http_error(const error_code& ec){
+    if(ec == http_error::validation_error){
+        return http_error::validation_error;
+    }
+    if(ec == http_error::unauthorized){
+        return http_error::unauthorized;
+    }
+    if(ec == http_error::forbidden){
+        return http_error::forbidden;
+    }
+    if(ec == http_error::not_found){
+        return http_error::not_found;
+    }
+    if(ec == http_error::conflict){
+        return http_error::conflict;
+    }
+    if(
+        ec == repository_error::invalid_reference ||
+        ec == repository_error::invalid_input
+    ){
+        return http_error::validation_error;
+    }
+    if(ec == repository_error::not_found){
+        return http_error::not_found;
+    }
+    if(ec == repository_error::conflict || ec == psql_error::unique_violation){
+        return http_error::conflict;
+    }
+
+    return std::nullopt;
 }
 
 errno_error error_code::map_errno(int code){
