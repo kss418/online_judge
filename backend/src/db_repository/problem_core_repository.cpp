@@ -1,220 +1,25 @@
 #include "db_repository/problem_core_repository.hpp"
-#include "db_repository/sql_filter_builder.hpp"
+#include "query_builder/problem_core_query_builder.hpp"
 
 #include <pqxx/pqxx>
 
-#include <string>
 #include <utility>
 
 namespace{
-    struct problem_list_query_context{
-        const problem_dto::list_filter& filter_value;
-        std::optional<std::int64_t> viewer_user_id_opt;
-        sql_filter_builder predicates;
-    };
-
-    std::expected<problem_list_query_context, error_code> make_problem_list_query_context(
-        const problem_dto::list_filter& filter_value,
-        std::optional<std::int64_t> viewer_user_id_opt
+    std::expected<std::vector<problem_dto::summary>, error_code> map_problem_summary_rows(
+        const pqxx::result& query_result
     ){
-        const bool is_invalid =
-            (filter_value.title_opt && filter_value.title_opt->empty()) ||
-            (filter_value.problem_id_opt && *filter_value.problem_id_opt <= 0) ||
-            (filter_value.limit_opt && *filter_value.limit_opt <= 0) ||
-            (filter_value.offset_opt && *filter_value.offset_opt < 0) ||
-            (filter_value.state_opt && !viewer_user_id_opt) ||
-            (viewer_user_id_opt && *viewer_user_id_opt <= 0);
-        if(is_invalid){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
-        }
-
-        return problem_list_query_context{
-            .filter_value = filter_value,
-            .viewer_user_id_opt = viewer_user_id_opt
-        };
+        return problem_dto::make_summary_list_from_result(query_result);
     }
 
-    std::string resolve_problem_list_sort_direction(
-        const problem_dto::list_filter& filter_value
+    std::expected<std::int64_t, error_code> map_problem_count_row(
+        const pqxx::result& query_result
     ){
-        if(filter_value.direction_opt){
-            return *filter_value.direction_opt;
+        if(query_result.empty()){
+            return std::unexpected(error_code::create(errno_error::unknown_error));
         }
 
-        if(!filter_value.sort_opt){
-            return "desc";
-        }
-
-        if(*filter_value.sort_opt == "problem_id"){
-            return "asc";
-        }
-
-        return "desc";
-    }
-
-    void append_problem_list_viewer_join(
-        std::string& query,
-        problem_list_query_context& context_value
-    ){
-        if(!context_value.viewer_user_id_opt){
-            return;
-        }
-
-        query +=
-            "LEFT JOIN user_problem_attempt_summary AS ups "
-            "ON ups.problem_id = p.problem_id "
-            "AND ups.user_id = " +
-            context_value.predicates.append_param(*context_value.viewer_user_id_opt) + " ";
-    }
-
-    void append_problem_list_where_clauses(
-        std::string& query,
-        problem_list_query_context& context_value
-    ){
-        context_value.predicates.where_optional_param(
-            "p.problem_id = ",
-            context_value.filter_value.problem_id_opt
-        );
-
-        if(context_value.filter_value.title_opt){
-            context_value.predicates.where_param(
-                "p.title ILIKE ",
-                "%" + *context_value.filter_value.title_opt + "%"
-            );
-        }
-
-        if(context_value.filter_value.state_opt){
-            if(*context_value.filter_value.state_opt == "solved"){
-                context_value.predicates.where("COALESCE(ups.accepted_submission_count, 0) > 0");
-            }
-            else if(*context_value.filter_value.state_opt == "unsolved"){
-                context_value.predicates.where("COALESCE(ups.accepted_submission_count, 0) = 0");
-            }
-        }
-
-        query += context_value.predicates.sql();
-    }
-
-    void append_problem_list_order_by(
-        std::string& query,
-        const problem_dto::list_filter& filter_value
-    ){
-        const std::string sort_direction = resolve_problem_list_sort_direction(filter_value);
-        if(!filter_value.sort_opt){
-            query += " ORDER BY p.problem_id DESC";
-        }
-        else if(*filter_value.sort_opt == "problem_id"){
-            query += " ORDER BY p.problem_id " + sort_direction;
-        }
-        else if(*filter_value.sort_opt == "accepted_count"){
-            query +=
-                " ORDER BY COALESCE(ps.accepted_count, 0) " + sort_direction +
-                ", p.problem_id ASC";
-        }
-        else if(*filter_value.sort_opt == "submission_count"){
-            query +=
-                " ORDER BY COALESCE(ps.submission_count, 0) " + sort_direction +
-                ", p.problem_id ASC";
-        }
-        else if(*filter_value.sort_opt == "acceptance_rate"){
-            if(sort_direction == "asc"){
-                query +=
-                    " ORDER BY "
-                    "CASE WHEN COALESCE(ps.submission_count, 0) > 0 THEN 1 ELSE 0 END ASC, "
-                    "COALESCE("
-                    "COALESCE(ps.accepted_count, 0)::DOUBLE PRECISION / "
-                    "NULLIF(COALESCE(ps.submission_count, 0), 0), "
-                    "0.0"
-                    ") ASC, "
-                    "p.problem_id ASC";
-            }
-            else{
-                query +=
-                    " ORDER BY "
-                    "CASE WHEN COALESCE(ps.submission_count, 0) > 0 THEN 0 ELSE 1 END ASC, "
-                    "COALESCE("
-                    "COALESCE(ps.accepted_count, 0)::DOUBLE PRECISION / "
-                    "NULLIF(COALESCE(ps.submission_count, 0), 0), "
-                    "0.0"
-                    ") DESC, "
-                    "p.problem_id ASC";
-            }
-        }
-    }
-
-    void append_problem_list_limit_offset(
-        std::string& query,
-        problem_list_query_context& context_value
-    ){
-        if(context_value.filter_value.limit_opt){
-            query +=
-                " LIMIT " +
-                context_value.predicates.append_param(*context_value.filter_value.limit_opt);
-        }
-
-        if(context_value.filter_value.offset_opt){
-            query +=
-                " OFFSET " +
-                context_value.predicates.append_param(*context_value.filter_value.offset_opt);
-        }
-    }
-
-    struct user_problem_list_query_context{
-        std::int64_t user_id = 0;
-        std::optional<std::int64_t> viewer_user_id_opt;
-        sql_filter_builder predicates;
-    };
-
-    std::expected<user_problem_list_query_context, error_code> make_user_problem_list_query_context(
-        std::int64_t user_id,
-        std::optional<std::int64_t> viewer_user_id_opt
-    ){
-        if(user_id <= 0 || (viewer_user_id_opt && *viewer_user_id_opt <= 0)){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
-        }
-
-        return user_problem_list_query_context{
-            .user_id = user_id,
-            .viewer_user_id_opt = viewer_user_id_opt
-        };
-    }
-
-    void append_user_problem_list_viewer_join(
-        std::string& query,
-        user_problem_list_query_context& context_value
-    ){
-        if(!context_value.viewer_user_id_opt){
-            return;
-        }
-
-        query +=
-            "LEFT JOIN user_problem_attempt_summary AS viewer_ups "
-            "ON viewer_ups.problem_id = p.problem_id "
-            "AND viewer_ups.user_id = " +
-            context_value.predicates.append_param(*context_value.viewer_user_id_opt) + " ";
-    }
-
-    void append_user_problem_list_where_clauses(
-        std::string& query,
-        user_problem_list_query_context& context_value
-    ){
-        context_value.predicates.where_param("target_ups.user_id = ", context_value.user_id);
-        query += context_value.predicates.sql();
-    }
-
-    std::string make_user_problem_state_select_expr(
-        std::optional<std::int64_t> viewer_user_id_opt
-    ){
-        if(viewer_user_id_opt){
-            return
-                "CASE "
-                "WHEN COALESCE(viewer_ups.accepted_submission_count, 0) > 0 THEN 'solved' "
-                "WHEN COALESCE(viewer_ups.failed_submission_count, 0) > 0 THEN 'wrong' "
-                "ELSE NULL "
-                "END ";
-        }
-
-        return "NULL::TEXT ";
+        return query_result[0][0].as<std::int64_t>();
     }
 }
 
@@ -406,55 +211,19 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_reposi
     const problem_dto::list_filter& filter_value,
     std::optional<std::int64_t> viewer_user_id_opt
 ){
-    auto context_exp = make_problem_list_query_context(
+    auto query_exp = problem_core_query_builder::problem_list_query_builder{
         filter_value,
         viewer_user_id_opt
-    );
-    if(!context_exp){
-        return std::unexpected(context_exp.error());
+    }.build_list_query();
+    if(!query_exp){
+        return std::unexpected(query_exp.error());
     }
-    auto context_value = std::move(*context_exp);
-
-    std::string problem_list_query =
-        "SELECT "
-        "p.problem_id, "
-        "p.title, "
-        "p.version, "
-        "COALESCE(pl.time_limit_ms, 0), "
-        "COALESCE(pl.memory_limit_mb, 0), "
-        "COALESCE(ps.submission_count, 0), "
-        "COALESCE(ps.accepted_count, 0), ";
-
-    if(viewer_user_id_opt){
-        problem_list_query +=
-            "CASE "
-            "WHEN COALESCE(ups.accepted_submission_count, 0) > 0 THEN 'solved' "
-            "WHEN COALESCE(ups.failed_submission_count, 0) > 0 THEN 'wrong' "
-            "ELSE NULL "
-            "END ";
-    }
-    else{
-        problem_list_query += "NULL::TEXT ";
-    }
-
-    problem_list_query +=
-        "FROM problems AS p "
-        "LEFT JOIN problem_limits AS pl "
-        "ON pl.problem_id = p.problem_id "
-        "LEFT JOIN problem_statistics AS ps "
-        "ON ps.problem_id = p.problem_id ";
-
-    append_problem_list_viewer_join(problem_list_query, context_value);
-    append_problem_list_where_clauses(problem_list_query, context_value);
-    append_problem_list_order_by(problem_list_query, context_value.filter_value);
-    append_problem_list_limit_offset(problem_list_query, context_value);
-
     const auto problem_summary_query = transaction.exec(
-        problem_list_query,
-        context_value.predicates.take_params()
+        query_exp->sql,
+        std::move(query_exp->params)
     );
 
-    return problem_dto::make_summary_list_from_result(problem_summary_query);
+    return map_problem_summary_rows(problem_summary_query);
 }
 
 std::expected<std::int64_t, error_code> problem_core_repository::count_problems(
@@ -462,31 +231,18 @@ std::expected<std::int64_t, error_code> problem_core_repository::count_problems(
     const problem_dto::list_filter& filter_value,
     std::optional<std::int64_t> viewer_user_id_opt
 ){
-    auto context_exp = make_problem_list_query_context(
+    auto query_exp = problem_core_query_builder::problem_list_query_builder{
         filter_value,
         viewer_user_id_opt
-    );
-    if(!context_exp){
-        return std::unexpected(context_exp.error());
+    }.build_count_query();
+    if(!query_exp){
+        return std::unexpected(query_exp.error());
     }
-    auto context_value = std::move(*context_exp);
-
-    std::string problem_count_query =
-        "SELECT COUNT(*) "
-        "FROM problems AS p ";
-
-    append_problem_list_viewer_join(problem_count_query, context_value);
-    append_problem_list_where_clauses(problem_count_query, context_value);
-
     const auto problem_count_result = transaction.exec(
-        problem_count_query,
-        context_value.predicates.take_params()
+        query_exp->sql,
+        std::move(query_exp->params)
     );
-    if(problem_count_result.empty()){
-        return std::unexpected(error_code::create(errno_error::unknown_error));
-    }
-
-    return problem_count_result[0][0].as<std::int64_t>();
+    return map_problem_count_row(problem_count_result);
 }
 
 std::expected<std::vector<problem_dto::summary>, error_code>
@@ -495,43 +251,19 @@ problem_core_repository::list_user_solved_problems(
     std::int64_t user_id,
     std::optional<std::int64_t> viewer_user_id_opt
 ){
-    auto context_exp = make_user_problem_list_query_context(user_id, viewer_user_id_opt);
-    if(!context_exp){
-        return std::unexpected(context_exp.error());
+    auto query_exp = problem_core_query_builder::user_problem_list_query_builder{
+        user_id,
+        viewer_user_id_opt
+    }.build_solved_query();
+    if(!query_exp){
+        return std::unexpected(query_exp.error());
     }
-    auto context_value = std::move(*context_exp);
-
-    std::string problem_list_query =
-        "SELECT "
-        "p.problem_id, "
-        "p.title, "
-        "p.version, "
-        "COALESCE(pl.time_limit_ms, 0), "
-        "COALESCE(pl.memory_limit_mb, 0), "
-        "COALESCE(ps.submission_count, 0), "
-        "COALESCE(ps.accepted_count, 0), " +
-        make_user_problem_state_select_expr(context_value.viewer_user_id_opt);
-
-    problem_list_query +=
-        "FROM user_problem_attempt_summary AS target_ups "
-        "JOIN problems AS p "
-        "ON p.problem_id = target_ups.problem_id "
-        "LEFT JOIN problem_limits AS pl "
-        "ON pl.problem_id = p.problem_id "
-        "LEFT JOIN problem_statistics AS ps "
-        "ON ps.problem_id = p.problem_id ";
-
-    append_user_problem_list_viewer_join(problem_list_query, context_value);
-    context_value.predicates.where("target_ups.accepted_submission_count > 0");
-    append_user_problem_list_where_clauses(problem_list_query, context_value);
-    problem_list_query += " ORDER BY p.problem_id DESC";
-
     const auto problem_summary_query = transaction.exec(
-        problem_list_query,
-        context_value.predicates.take_params()
+        query_exp->sql,
+        std::move(query_exp->params)
     );
 
-    return problem_dto::make_summary_list_from_result(problem_summary_query);
+    return map_problem_summary_rows(problem_summary_query);
 }
 
 std::expected<std::vector<problem_dto::summary>, error_code>
@@ -540,44 +272,19 @@ problem_core_repository::list_user_wrong_problems(
     std::int64_t user_id,
     std::optional<std::int64_t> viewer_user_id_opt
 ){
-    auto context_exp = make_user_problem_list_query_context(user_id, viewer_user_id_opt);
-    if(!context_exp){
-        return std::unexpected(context_exp.error());
+    auto query_exp = problem_core_query_builder::user_problem_list_query_builder{
+        user_id,
+        viewer_user_id_opt
+    }.build_wrong_query();
+    if(!query_exp){
+        return std::unexpected(query_exp.error());
     }
-    auto context_value = std::move(*context_exp);
-
-    std::string problem_list_query =
-        "SELECT "
-        "p.problem_id, "
-        "p.title, "
-        "p.version, "
-        "COALESCE(pl.time_limit_ms, 0), "
-        "COALESCE(pl.memory_limit_mb, 0), "
-        "COALESCE(ps.submission_count, 0), "
-        "COALESCE(ps.accepted_count, 0), " +
-        make_user_problem_state_select_expr(context_value.viewer_user_id_opt);
-
-    problem_list_query +=
-        "FROM user_problem_attempt_summary AS target_ups "
-        "JOIN problems AS p "
-        "ON p.problem_id = target_ups.problem_id "
-        "LEFT JOIN problem_limits AS pl "
-        "ON pl.problem_id = p.problem_id "
-        "LEFT JOIN problem_statistics AS ps "
-        "ON ps.problem_id = p.problem_id ";
-
-    append_user_problem_list_viewer_join(problem_list_query, context_value);
-    context_value.predicates.where("COALESCE(target_ups.accepted_submission_count, 0) = 0");
-    context_value.predicates.where("COALESCE(target_ups.failed_submission_count, 0) > 0");
-    append_user_problem_list_where_clauses(problem_list_query, context_value);
-    problem_list_query += " ORDER BY p.problem_id DESC";
-
     const auto problem_summary_query = transaction.exec(
-        problem_list_query,
-        context_value.predicates.take_params()
+        query_exp->sql,
+        std::move(query_exp->params)
     );
 
-    return problem_dto::make_summary_list_from_result(problem_summary_query);
+    return map_problem_summary_rows(problem_summary_query);
 }
 
 std::expected<problem_content_dto::limits, error_code> problem_core_repository::get_limits(
