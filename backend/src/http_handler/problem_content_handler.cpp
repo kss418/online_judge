@@ -17,29 +17,30 @@ problem_content_handler::response_type problem_content_handler::get_limits(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto exists_exp = problem_guard::require_exists(
-        request,
-        db_connection_value,
-        problem_reference_value
-    );
-    if(!exists_exp){
-        return std::move(exists_exp.error());
-    }
-
-    const auto limits_exp = problem_content_service::get_limits(
-        db_connection_value,
-        problem_reference_value
-    );
-    return http_response_util::create_json_or_4xx_or_500(
-        request,
-        "get problem limits",
-        std::move(limits_exp),
-        [](const auto& limits_value){
-            boost::json::object response_object;
-            response_object["memory_limit_mb"] = limits_value.memory_mb;
-            response_object["time_limit_ms"] = limits_value.time_ms;
-            return response_object;
-        }
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&]() -> response_type {
+            const auto limits_exp = problem_content_service::get_limits(
+                db_connection_value,
+                problem_reference_value
+            );
+            return http_response_util::create_json_or_4xx_or_500(
+                request,
+                "get problem limits",
+                std::move(limits_exp),
+                [](const auto& limits_value){
+                    boost::json::object response_object;
+                    response_object["memory_limit_mb"] = limits_value.memory_mb;
+                    response_object["time_limit_ms"] = limits_value.time_ms;
+                    return response_object;
+                }
+            );
+        },
+        problem_guard::make_exists_guard(problem_reference_value)
     );
 }
 
@@ -49,32 +50,29 @@ problem_content_handler::response_type problem_content_handler::put_limits(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto auth_identity_exp = auth_guard::require_admin(
-        request,
-        db_connection_value
-    );
-    if(!auth_identity_exp){
-        return std::move(auth_identity_exp.error());
-    }
-
-    const auto limits_exp = request_dto::parse_json_or_400<problem_content_dto::limits>(
-        request,
-        problem_content_dto::make_limits_from_json
-    );
-    if(!limits_exp){
-        return std::move(limits_exp.error());
-    }
-
-    const auto set_limits_exp = problem_content_service::set_limits(
-        db_connection_value,
-        problem_reference_value,
-        *limits_exp
-    );
-    return http_response_util::create_message_or_4xx_or_500(
-        request,
-        "set problem limits",
-        std::move(set_limits_exp),
-        "problem limits updated"
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&](const auth_dto::identity&, const problem_content_dto::limits& limits_value){
+            const auto set_limits_exp = problem_content_service::set_limits(
+                db_connection_value,
+                problem_reference_value,
+                limits_value
+            );
+            return http_response_util::create_message_or_4xx_or_500(
+                request,
+                "set problem limits",
+                std::move(set_limits_exp),
+                "problem limits updated"
+            );
+        },
+        auth_guard::make_admin_guard(),
+        request_dto::make_json_guard<problem_content_dto::limits>(
+            problem_content_dto::make_limits_from_json
+        )
     );
 }
 
@@ -84,32 +82,29 @@ problem_content_handler::response_type problem_content_handler::put_statement(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto auth_identity_exp = auth_guard::require_admin(
-        request,
-        db_connection_value
-    );
-    if(!auth_identity_exp){
-        return std::move(auth_identity_exp.error());
-    }
-
-    const auto statement_exp = request_dto::parse_json_or_400<problem_content_dto::statement>(
-        request,
-        problem_content_dto::make_statement_from_json
-    );
-    if(!statement_exp){
-        return std::move(statement_exp.error());
-    }
-
-    const auto set_statement_exp = problem_content_service::set_statement(
-        db_connection_value,
-        problem_reference_value,
-        *statement_exp
-    );
-    return http_response_util::create_message_or_4xx_or_500(
-        request,
-        "set problem statement",
-        std::move(set_statement_exp),
-        "problem statement updated"
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&](const auth_dto::identity&, const problem_content_dto::statement& statement_value){
+            const auto set_statement_exp = problem_content_service::set_statement(
+                db_connection_value,
+                problem_reference_value,
+                statement_value
+            );
+            return http_response_util::create_message_or_4xx_or_500(
+                request,
+                "set problem statement",
+                std::move(set_statement_exp),
+                "problem statement updated"
+            );
+        },
+        auth_guard::make_admin_guard(),
+        request_dto::make_json_guard<problem_content_dto::statement>(
+            problem_content_dto::make_statement_from_json
+        )
     );
 }
 
@@ -119,24 +114,25 @@ problem_content_handler::response_type problem_content_handler::get_samples(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto exists_exp = problem_guard::require_exists(
-        request,
-        db_connection_value,
-        problem_reference_value
-    );
-    if(!exists_exp){
-        return std::move(exists_exp.error());
-    }
-
-    const auto sample_values_exp = problem_content_service::list_samples(
-        db_connection_value,
-        problem_reference_value
-    );
-    return http_response_util::create_json_or_4xx_or_500(
-        request,
-        "list problem samples",
-        std::move(sample_values_exp),
-        problem_json_serializer::make_sample_list_object
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&]() -> response_type {
+            const auto sample_values_exp = problem_content_service::list_samples(
+                db_connection_value,
+                problem_reference_value
+            );
+            return http_response_util::create_json_or_4xx_or_500(
+                request,
+                "list problem samples",
+                std::move(sample_values_exp),
+                problem_json_serializer::make_sample_list_object
+            );
+        },
+        problem_guard::make_exists_guard(problem_reference_value)
     );
 }
 
@@ -146,26 +142,28 @@ problem_content_handler::response_type problem_content_handler::post_sample(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto auth_identity_exp = auth_guard::require_admin(
-        request,
-        db_connection_value
-    );
-    if(!auth_identity_exp){
-        return std::move(auth_identity_exp.error());
-    }
-
-    const problem_content_dto::sample sample_value{};
-    const auto create_sample_exp = problem_content_service::create_sample(
-        db_connection_value,
-        problem_reference_value,
-        sample_value
-    );
-    return http_response_util::create_json_or_4xx_or_500(
-        request,
-        "create problem sample",
-        std::move(create_sample_exp),
-        problem_json_serializer::make_sample_created_object,
-        boost::beast::http::status::created
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&](const auth_dto::identity&) -> response_type {
+            const problem_content_dto::sample sample_value{};
+            const auto create_sample_exp = problem_content_service::create_sample(
+                db_connection_value,
+                problem_reference_value,
+                sample_value
+            );
+            return http_response_util::create_json_or_4xx_or_500(
+                request,
+                "create problem sample",
+                std::move(create_sample_exp),
+                problem_json_serializer::make_sample_created_object,
+                boost::beast::http::status::created
+            );
+        },
+        auth_guard::make_admin_guard()
     );
 }
 
@@ -179,42 +177,39 @@ problem_content_handler::response_type problem_content_handler::put_sample(
         .problem_id = problem_id,
         .sample_order = sample_order
     };
-    const auto auth_identity_exp = auth_guard::require_admin(
-        request,
-        db_connection_value
-    );
-    if(!auth_identity_exp){
-        return std::move(auth_identity_exp.error());
-    }
-
-    const auto sample_exp = request_dto::parse_json_or_400<problem_content_dto::sample>(
-        request,
-        problem_content_dto::make_sample_from_json
-    );
-    if(!sample_exp){
-        return std::move(sample_exp.error());
-    }
-
-    const auto set_sample_exp = problem_content_service::set_sample(
-        db_connection_value,
-        sample_reference_value,
-        *sample_exp
-    );
-    return http_response_util::create_response_or_4xx_or_500(
-        request,
-        "set problem sample",
-        std::move(set_sample_exp),
-        [&]() -> response_type {
-            return http_response_util::create_json_or_4xx_or_500(
-                request,
-                "get problem sample",
-                problem_content_service::get_sample(
-                    db_connection_value,
-                    sample_reference_value
-                ),
-                problem_json_serializer::make_sample_object
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&](const auth_dto::identity&, const problem_content_dto::sample& sample_value){
+            const auto set_sample_exp = problem_content_service::set_sample(
+                db_connection_value,
+                sample_reference_value,
+                sample_value
             );
-        }
+            return http_response_util::create_response_or_4xx_or_500(
+                request,
+                "set problem sample",
+                std::move(set_sample_exp),
+                [&]() -> response_type {
+                    return http_response_util::create_json_or_4xx_or_500(
+                        request,
+                        "get problem sample",
+                        problem_content_service::get_sample(
+                            db_connection_value,
+                            sample_reference_value
+                        ),
+                        problem_json_serializer::make_sample_object
+                    );
+                }
+            );
+        },
+        auth_guard::make_admin_guard(),
+        request_dto::make_json_guard<problem_content_dto::sample>(
+            problem_content_dto::make_sample_from_json
+        )
     );
 }
 
@@ -224,43 +219,45 @@ problem_content_handler::response_type problem_content_handler::delete_sample(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto auth_identity_exp = auth_guard::require_admin(
-        request,
-        db_connection_value
-    );
-    if(!auth_identity_exp){
-        return std::move(auth_identity_exp.error());
-    }
-
-    const auto sample_values_exp = problem_content_service::list_samples(
-        db_connection_value,
-        problem_reference_value
-    );
-    return http_response_util::create_response_or_4xx_or_500(
-        request,
-        "list problem samples",
-        std::move(sample_values_exp),
-        [&](
-            const std::vector<problem_content_dto::sample>& sample_values
-        ) -> response_type {
-            if(sample_values.empty()){
-                return http_response_util::create_error(
-                    request,
-                    boost::beast::http::status::bad_request,
-                    "invalid_sample_delete_request",
-                    "failed to delete sample: invalid argument"
-                );
-            }
-
-            return http_response_util::create_message_or_4xx_or_500(
-                request,
-                "delete problem sample",
-                problem_content_service::delete_sample(
-                    db_connection_value,
-                    problem_reference_value
-                ),
-                "problem sample deleted"
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&](const auth_dto::identity&) -> response_type {
+            const auto sample_values_exp = problem_content_service::list_samples(
+                db_connection_value,
+                problem_reference_value
             );
-        }
+            return http_response_util::create_response_or_4xx_or_500(
+                request,
+                "list problem samples",
+                std::move(sample_values_exp),
+                [&](
+                    const std::vector<problem_content_dto::sample>& sample_values
+                ) -> response_type {
+                    if(sample_values.empty()){
+                        return http_response_util::create_error(
+                            request,
+                            boost::beast::http::status::bad_request,
+                            "invalid_sample_delete_request",
+                            "failed to delete sample: invalid argument"
+                        );
+                    }
+
+                    return http_response_util::create_message_or_4xx_or_500(
+                        request,
+                        "delete problem sample",
+                        problem_content_service::delete_sample(
+                            db_connection_value,
+                            problem_reference_value
+                        ),
+                        "problem sample deleted"
+                    );
+                }
+            );
+        },
+        auth_guard::make_admin_guard()
     );
 }
