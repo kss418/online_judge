@@ -4,6 +4,7 @@ target_sources(lib
         http_dispatcher.cpp
         http_response_util.cpp
         query_param_util.cpp
+        request_dto.cpp
         request_parser.cpp
         testcase_uploader.cpp
         http_util.cpp

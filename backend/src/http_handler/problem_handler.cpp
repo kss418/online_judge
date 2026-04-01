@@ -1,6 +1,7 @@
 #include "http_handler/problem_handler.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_core/auth_guard.hpp"
+#include "http_core/request_dto.hpp"
 #include "http_core/http_util.hpp"
 
 #include "db_service/problem_core_service.hpp"
@@ -19,7 +20,7 @@ problem_handler::response_type problem_handler::get_problems(
         return std::move(auth_identity_opt_exp.error());
     }
 
-    const auto filter_exp = http_util::parse_problem_list_filter_or_400(request);
+    const auto filter_exp = request_dto::parse_problem_list_filter_or_400(request);
     if(!filter_exp){
         return std::move(filter_exp.error());
     }
@@ -132,7 +133,7 @@ problem_handler::response_type problem_handler::post_problem(
 ){
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
         const auto create_request_exp =
-            http_util::parse_json_dto_or_400<problem_dto::create_request>(
+            request_dto::parse_json_dto_or_400<problem_dto::create_request>(
                 request,
                 problem_dto::make_create_request_from_json
             );
@@ -168,7 +169,7 @@ problem_handler::response_type problem_handler::put_problem(
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
         const auto update_request_exp =
-            http_util::parse_json_dto_or_400<problem_dto::update_request>(
+            request_dto::parse_json_dto_or_400<problem_dto::update_request>(
                 request,
                 problem_dto::make_update_request_from_json
             );

@@ -3,6 +3,7 @@
 #include "db_service/submission_service.hpp"
 #include "dto/submission_dto.hpp"
 #include "http_core/auth_guard.hpp"
+#include "http_core/request_dto.hpp"
 #include "http_core/http_util.hpp"
 #include "serializer/submission_json_serializer.hpp"
 
@@ -105,7 +106,7 @@ submission_handler::response_type submission_handler::post_submission_status_bat
     db_connection& db_connection_value
 ){
     const auto batch_request_exp =
-        http_util::parse_json_dto_or_400<submission_dto::status_batch_request>(
+        request_dto::parse_json_dto_or_400<submission_dto::status_batch_request>(
             request,
             submission_dto::make_status_batch_request_from_json
         );
@@ -132,7 +133,7 @@ submission_handler::response_type submission_handler::post_submission(
     const auto handle_authenticated =
         [&](const auth_dto::identity& auth_identity_value) -> response_type {
             const auto create_request_exp =
-                http_util::parse_json_dto_or_400<submission_dto::create_request>(
+                request_dto::parse_json_dto_or_400<submission_dto::create_request>(
                     request,
                     submission_dto::make_create_request_from_json,
                     auth_identity_value.user_id,
@@ -224,7 +225,7 @@ submission_handler::response_type submission_handler::get_submissions(
         return std::move(auth_identity_opt_exp.error());
     }
 
-    const auto filter_exp = http_util::parse_submission_list_filter_or_400(request);
+    const auto filter_exp = request_dto::parse_submission_list_filter_or_400(request);
     if(!filter_exp){
         return std::move(filter_exp.error());
     }

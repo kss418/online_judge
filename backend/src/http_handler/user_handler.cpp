@@ -6,7 +6,7 @@
 #include "db_service/user_statistics_service.hpp"
 #include "common/permission_util.hpp"
 #include "http_core/auth_guard.hpp"
-#include "http_core/http_util.hpp"
+#include "http_core/request_dto.hpp"
 #include "serializer/user_json_serializer.hpp"
 
 namespace{
@@ -167,7 +167,7 @@ user_handler::response_type user_handler::get_public_user_list(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto filter_exp = http_util::parse_query_dto_or_400<user_dto::list_filter>(
+    const auto filter_exp = request_dto::parse_query_dto_or_400<user_dto::list_filter>(
         request,
         user_dto::make_list_filter_from_query_params
     );
@@ -433,7 +433,7 @@ user_handler::response_type user_handler::post_user_submission_ban(
 ){
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
         const auto submission_ban_request_exp =
-            http_util::parse_json_dto_or_400<user_dto::submission_ban_request>(
+            request_dto::parse_json_dto_or_400<user_dto::submission_ban_request>(
                 request,
                 user_dto::make_submission_ban_request_from_json
             );

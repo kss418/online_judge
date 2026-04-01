@@ -3,7 +3,7 @@
 #include "db_service/login_service.hpp"
 #include "dto/auth_dto.hpp"
 #include "http_core/auth_guard.hpp"
-#include "http_core/http_util.hpp"
+#include "http_core/request_dto.hpp"
 #include "serializer/auth_json_serializer.hpp"
 
 #include <string>
@@ -13,7 +13,7 @@ auth_handler::response_type auth_handler::post_sign_up(
     db_connection& db_connection_value
 ){
     const auto sign_up_request_exp =
-        http_util::parse_json_dto_or_400<auth_dto::sign_up_request>(
+        request_dto::parse_json_dto_or_400<auth_dto::sign_up_request>(
         request,
         auth_dto::make_sign_up_request_from_json
     );
@@ -38,7 +38,7 @@ auth_handler::response_type auth_handler::post_login(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto credentials_exp = http_util::parse_json_dto_or_400<auth_dto::credentials>(
+    const auto credentials_exp = request_dto::parse_json_dto_or_400<auth_dto::credentials>(
         request,
         auth_dto::make_credentials_from_json
     );

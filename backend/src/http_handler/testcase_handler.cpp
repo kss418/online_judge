@@ -6,6 +6,7 @@
 #include "common/zip_util.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_core/auth_guard.hpp"
+#include "http_core/request_dto.hpp"
 #include "http_core/testcase_uploader.hpp"
 #include "http_core/http_util.hpp"
 
@@ -104,7 +105,7 @@ testcase_handler::response_type testcase_handler::post_testcase(
 ){
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto testcase_exp = http_util::parse_json_dto_or_400<problem_dto::testcase>(
+        const auto testcase_exp = request_dto::parse_json_dto_or_400<problem_dto::testcase>(
             request,
             problem_dto::make_testcase_from_json
         );
@@ -144,7 +145,7 @@ testcase_handler::response_type testcase_handler::put_testcase(
         .testcase_order = testcase_order
     };
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
-        const auto testcase_exp = http_util::parse_json_dto_or_400<problem_dto::testcase>(
+        const auto testcase_exp = request_dto::parse_json_dto_or_400<problem_dto::testcase>(
             request,
             problem_dto::make_testcase_from_json
         );
@@ -364,7 +365,7 @@ testcase_handler::response_type testcase_handler::move_testcase(
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
         const auto testcase_move_request_exp =
-            http_util::parse_json_dto_or_400<problem_dto::testcase_move_request>(
+            request_dto::parse_json_dto_or_400<problem_dto::testcase_move_request>(
                 request,
                 problem_dto::make_testcase_move_request_from_json
             );

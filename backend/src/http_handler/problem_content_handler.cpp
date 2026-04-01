@@ -3,6 +3,7 @@
 #include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_core/auth_guard.hpp"
+#include "http_core/request_dto.hpp"
 #include "http_core/http_util.hpp"
 
 #include "db_service/problem_content_service.hpp"
@@ -48,7 +49,7 @@ problem_content_handler::response_type problem_content_handler::put_limits(
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
         const auto limits_exp =
-            http_util::parse_json_dto_or_400<problem_content_dto::limits>(
+            request_dto::parse_json_dto_or_400<problem_content_dto::limits>(
                 request,
                 problem_content_dto::make_limits_from_json
             );
@@ -84,7 +85,7 @@ problem_content_handler::response_type problem_content_handler::put_statement(
     problem_dto::reference problem_reference_value{problem_id};
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
         const auto statement_exp =
-            http_util::parse_json_dto_or_400<problem_content_dto::statement>(
+            request_dto::parse_json_dto_or_400<problem_content_dto::statement>(
                 request,
                 problem_content_dto::make_statement_from_json
             );
@@ -179,7 +180,7 @@ problem_content_handler::response_type problem_content_handler::put_sample(
     };
     const auto handle_authenticated = [&](const auth_dto::identity&) -> response_type {
         const auto sample_exp =
-            http_util::parse_json_dto_or_400<problem_content_dto::sample>(
+            request_dto::parse_json_dto_or_400<problem_content_dto::sample>(
                 request,
                 problem_content_dto::make_sample_from_json
             );

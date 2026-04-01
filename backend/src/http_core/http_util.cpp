@@ -3,26 +3,6 @@
 #include "common/permission_util.hpp"
 #include "db_service/problem_core_service.hpp"
 
-std::expected<submission_dto::list_filter, http_util::response_type>
-http_util::parse_submission_list_filter_or_400(
-    const request_type& request
-){
-    return parse_query_dto_or_400<submission_dto::list_filter>(
-        request,
-        submission_dto::make_list_filter_from_query_params
-    );
-}
-
-std::expected<problem_dto::list_filter, http_util::response_type>
-http_util::parse_problem_list_filter_or_400(
-    const request_type& request
-){
-    return parse_query_dto_or_400<problem_dto::list_filter>(
-        request,
-        problem_dto::make_list_filter_from_query_params
-    );
-}
-
 std::expected<void, http_util::response_type> http_util::require_existing_problem_or_response(
     const request_type& request,
     db_connection& db_connection,
