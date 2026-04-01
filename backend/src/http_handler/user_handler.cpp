@@ -231,36 +231,31 @@ user_handler::response_type user_handler::get_user_solved_problems(
     db_connection& db_connection_value,
     std::int64_t user_id
 ){
-    const auto auth_identity_opt_exp = auth_guard::require_optional_auth(
-        request,
-        db_connection_value
-    );
-    if(!auth_identity_opt_exp){
-        return std::move(auth_identity_opt_exp.error());
-    }
-
-    const auto user_summary_exp = user_guard::require_summary(
-        request,
-        db_connection_value,
-        user_id
-    );
-    if(!user_summary_exp){
-        return std::move(user_summary_exp.error());
-    }
-
-    const auto list_user_solved_problems_exp =
-        problem_core_service::list_user_solved_problems(
-            db_connection_value,
-            user_id,
-            auth_identity_opt_exp->has_value()
-                ? std::optional<std::int64_t>{auth_identity_opt_exp->value().user_id}
-                : std::nullopt
-        );
-    return http_response_util::create_json_or_4xx_or_500(
-        request,
-        "get user solved problems",
-        std::move(list_user_solved_problems_exp),
-        user_json_serializer::make_solved_problem_list_object
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&](const std::optional<auth_dto::identity>& auth_identity_opt,
+            const user_dto::summary&) -> response_type {
+            const auto list_user_solved_problems_exp =
+                problem_core_service::list_user_solved_problems(
+                    db_connection_value,
+                    user_id,
+                    auth_identity_opt.has_value()
+                        ? std::optional<std::int64_t>{auth_identity_opt->user_id}
+                        : std::nullopt
+                );
+            return http_response_util::create_json_or_4xx_or_500(
+                request,
+                "get user solved problems",
+                std::move(list_user_solved_problems_exp),
+                user_json_serializer::make_solved_problem_list_object
+            );
+        },
+        auth_guard::make_optional_auth_guard(),
+        user_guard::make_summary_guard(user_id)
     );
 }
 
@@ -269,36 +264,31 @@ user_handler::response_type user_handler::get_user_wrong_problems(
     db_connection& db_connection_value,
     std::int64_t user_id
 ){
-    const auto auth_identity_opt_exp = auth_guard::require_optional_auth(
-        request,
-        db_connection_value
-    );
-    if(!auth_identity_opt_exp){
-        return std::move(auth_identity_opt_exp.error());
-    }
-
-    const auto user_summary_exp = user_guard::require_summary(
-        request,
-        db_connection_value,
-        user_id
-    );
-    if(!user_summary_exp){
-        return std::move(user_summary_exp.error());
-    }
-
-    const auto list_user_wrong_problems_exp =
-        problem_core_service::list_user_wrong_problems(
-            db_connection_value,
-            user_id,
-            auth_identity_opt_exp->has_value()
-                ? std::optional<std::int64_t>{auth_identity_opt_exp->value().user_id}
-                : std::nullopt
-        );
-    return http_response_util::create_json_or_4xx_or_500(
-        request,
-        "get user wrong problems",
-        std::move(list_user_wrong_problems_exp),
-        user_json_serializer::make_wrong_problem_list_object
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&](const std::optional<auth_dto::identity>& auth_identity_opt,
+            const user_dto::summary&) -> response_type {
+            const auto list_user_wrong_problems_exp =
+                problem_core_service::list_user_wrong_problems(
+                    db_connection_value,
+                    user_id,
+                    auth_identity_opt.has_value()
+                        ? std::optional<std::int64_t>{auth_identity_opt->user_id}
+                        : std::nullopt
+                );
+            return http_response_util::create_json_or_4xx_or_500(
+                request,
+                "get user wrong problems",
+                std::move(list_user_wrong_problems_exp),
+                user_json_serializer::make_wrong_problem_list_object
+            );
+        },
+        auth_guard::make_optional_auth_guard(),
+        user_guard::make_summary_guard(user_id)
     );
 }
 

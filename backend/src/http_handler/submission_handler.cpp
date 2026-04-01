@@ -18,27 +18,25 @@ submission_handler::response_type submission_handler::get_submission_history(
     db_connection& db_connection_value,
     std::int64_t submission_id
 ){
-    const auto auth_identity_exp = auth_guard::require_admin(request, db_connection_value);
-    if(!auth_identity_exp){
-        return std::move(auth_identity_exp.error());
-    }
-
-    const auto history_values_exp = submission_guard::require_history(
-        request,
-        db_connection_value,
-        submission_id
-    );
-    if(!history_values_exp){
-        return std::move(history_values_exp.error());
-    }
-
-    return http_response_util::create_json(
-        request,
-        boost::beast::http::status::ok,
-        submission_json_serializer::make_history_list_object(
-            submission_id,
-            *history_values_exp
-        )
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&](const auth_dto::identity&,
+            const submission_dto::history_list& history_values) -> response_type {
+            return http_response_util::create_json(
+                request,
+                boost::beast::http::status::ok,
+                submission_json_serializer::make_history_list_object(
+                    submission_id,
+                    history_values
+                )
+            );
+        },
+        auth_guard::make_admin_guard(),
+        submission_guard::make_history_guard(submission_id)
     );
 }
 

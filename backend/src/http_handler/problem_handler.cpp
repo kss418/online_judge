@@ -12,69 +12,68 @@ problem_handler::response_type problem_handler::get_problems(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto auth_identity_opt_exp = auth_guard::require_optional_auth(
-        request,
-        db_connection_value
-    );
-    if(!auth_identity_opt_exp){
-        return std::move(auth_identity_opt_exp.error());
-    }
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&](const std::optional<auth_dto::identity>& auth_identity_opt,
+            const problem_dto::list_filter& filter_value) -> response_type {
+            std::optional<std::int64_t> viewer_user_id_opt = std::nullopt;
+            if(auth_identity_opt.has_value()){
+                viewer_user_id_opt = auth_identity_opt->user_id;
+            }
 
-    const auto filter_exp = request_dto::parse_problem_list_filter_or_400(request);
-    if(!filter_exp){
-        return std::move(filter_exp.error());
-    }
+            if(filter_value.state_opt && !viewer_user_id_opt){
+                return http_response_util::create_error(
+                    request,
+                    boost::beast::http::status::bad_request,
+                    "invalid_query_parameter",
+                    "invalid query parameter: state",
+                    "state"
+                );
+            }
 
-    std::optional<std::int64_t> viewer_user_id_opt = std::nullopt;
-    if(auth_identity_opt_exp->has_value()){
-        viewer_user_id_opt = auth_identity_opt_exp->value().user_id;
-    }
+            const auto summary_values_exp = problem_core_service::list_problems(
+                db_connection_value,
+                filter_value,
+                viewer_user_id_opt
+            );
+            if(!summary_values_exp){
+                return http_response_util::create_error(
+                    request,
+                    boost::beast::http::status::internal_server_error,
+                    "internal_server_error",
+                    "failed to list problems: " + to_string(summary_values_exp.error())
+                );
+            }
 
-    if(filter_exp->state_opt && !viewer_user_id_opt){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::bad_request,
-            "invalid_query_parameter",
-            "invalid query parameter: state",
-            "state"
-        );
-    }
+            const auto total_problem_count_exp = problem_core_service::count_problems(
+                db_connection_value,
+                filter_value,
+                viewer_user_id_opt
+            );
+            if(!total_problem_count_exp){
+                return http_response_util::create_error(
+                    request,
+                    boost::beast::http::status::internal_server_error,
+                    "internal_server_error",
+                    "failed to count problems: " + to_string(total_problem_count_exp.error())
+                );
+            }
 
-    const auto summary_values_exp = problem_core_service::list_problems(
-        db_connection_value,
-        *filter_exp,
-        viewer_user_id_opt
-    );
-    if(!summary_values_exp){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to list problems: " + to_string(summary_values_exp.error())
-        );
-    }
-
-    const auto total_problem_count_exp = problem_core_service::count_problems(
-        db_connection_value,
-        *filter_exp,
-        viewer_user_id_opt
-    );
-    if(!total_problem_count_exp){
-        return http_response_util::create_error(
-            request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to count problems: " + to_string(total_problem_count_exp.error())
-        );
-    }
-
-    return http_response_util::create_json(
-        request,
-        boost::beast::http::status::ok,
-        problem_json_serializer::make_list_object(
-            *summary_values_exp,
-            *total_problem_count_exp
-        )
+            return http_response_util::create_json(
+                request,
+                boost::beast::http::status::ok,
+                problem_json_serializer::make_list_object(
+                    *summary_values_exp,
+                    *total_problem_count_exp
+                )
+            );
+        },
+        auth_guard::make_optional_auth_guard(),
+        request_dto::make_problem_list_filter_guard()
     );
 }
 
@@ -131,29 +130,29 @@ problem_handler::response_type problem_handler::post_problem(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto auth_identity_exp = auth_guard::require_admin(request, db_connection_value);
-    if(!auth_identity_exp){
-        return std::move(auth_identity_exp.error());
-    }
-
-    const auto create_request_exp = request_dto::parse_json_or_400<problem_dto::create_request>(
-        request,
-        problem_dto::make_create_request_from_json
-    );
-    if(!create_request_exp){
-        return std::move(create_request_exp.error());
-    }
-
-    const auto create_problem_exp = problem_core_service::create_problem(
-        db_connection_value,
-        *create_request_exp
-    );
-    return http_response_util::create_json_or_4xx_or_500(
-        request,
-        "create problem",
-        std::move(create_problem_exp),
-        problem_json_serializer::make_created_object,
-        boost::beast::http::status::created
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&](const auth_dto::identity&, const problem_dto::create_request& create_request) {
+            const auto create_problem_exp = problem_core_service::create_problem(
+                db_connection_value,
+                create_request
+            );
+            return http_response_util::create_json_or_4xx_or_500(
+                request,
+                "create problem",
+                std::move(create_problem_exp),
+                problem_json_serializer::make_created_object,
+                boost::beast::http::status::created
+            );
+        },
+        auth_guard::make_admin_guard(),
+        request_dto::make_json_guard<problem_dto::create_request>(
+            problem_dto::make_create_request_from_json
+        )
     );
 }
 
@@ -163,37 +162,30 @@ problem_handler::response_type problem_handler::put_problem(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto auth_identity_exp = auth_guard::require_admin(request, db_connection_value);
-    if(!auth_identity_exp){
-        return std::move(auth_identity_exp.error());
-    }
-    const auto exists_exp = problem_guard::require_exists(
-        request,
-        db_connection_value,
-        problem_reference_value
-    );
-    if(!exists_exp){
-        return std::move(exists_exp.error());
-    }
-
-    const auto update_request_exp = request_dto::parse_json_or_400<problem_dto::update_request>(
-        request,
-        problem_dto::make_update_request_from_json
-    );
-    if(!update_request_exp){
-        return std::move(update_request_exp.error());
-    }
-
-    const auto update_problem_exp = problem_core_service::update_problem(
-        db_connection_value,
-        problem_reference_value,
-        *update_request_exp
-    );
-    return http_response_util::create_message_or_4xx_or_500(
-        request,
-        "update problem",
-        std::move(update_problem_exp),
-        "problem updated"
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&](const auth_dto::identity&, const problem_dto::update_request& update_request) {
+            const auto update_problem_exp = problem_core_service::update_problem(
+                db_connection_value,
+                problem_reference_value,
+                update_request
+            );
+            return http_response_util::create_message_or_4xx_or_500(
+                request,
+                "update problem",
+                std::move(update_problem_exp),
+                "problem updated"
+            );
+        },
+        auth_guard::make_admin_guard(),
+        problem_guard::make_exists_guard(problem_reference_value),
+        request_dto::make_json_guard<problem_dto::update_request>(
+            problem_dto::make_update_request_from_json
+        )
     );
 }
 
@@ -203,28 +195,26 @@ problem_handler::response_type problem_handler::delete_problem(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto auth_identity_exp = auth_guard::require_admin(request, db_connection_value);
-    if(!auth_identity_exp){
-        return std::move(auth_identity_exp.error());
-    }
-    const auto exists_exp = problem_guard::require_exists(
-        request,
-        db_connection_value,
-        problem_reference_value
-    );
-    if(!exists_exp){
-        return std::move(exists_exp.error());
-    }
-
-    const auto delete_problem_exp = problem_core_service::delete_problem(
-        db_connection_value,
-        problem_reference_value
-    );
-    return http_response_util::create_message_or_4xx_or_500(
-        request,
-        "delete problem",
-        std::move(delete_problem_exp),
-        "problem deleted"
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&](const auth_dto::identity&) {
+            const auto delete_problem_exp = problem_core_service::delete_problem(
+                db_connection_value,
+                problem_reference_value
+            );
+            return http_response_util::create_message_or_4xx_or_500(
+                request,
+                "delete problem",
+                std::move(delete_problem_exp),
+                "problem deleted"
+            );
+        },
+        auth_guard::make_admin_guard(),
+        problem_guard::make_exists_guard(problem_reference_value)
     );
 }
 
@@ -234,27 +224,25 @@ problem_handler::response_type problem_handler::post_problem_rejudge(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const auto auth_identity_exp = auth_guard::require_admin(request, db_connection_value);
-    if(!auth_identity_exp){
-        return std::move(auth_identity_exp.error());
-    }
-    const auto exists_exp = problem_guard::require_exists(
-        request,
-        db_connection_value,
-        problem_reference_value
-    );
-    if(!exists_exp){
-        return std::move(exists_exp.error());
-    }
-
-    const auto rejudge_problem_exp = submission_service::rejudge_problem(
-        db_connection_value,
-        problem_id
-    );
-    return http_response_util::create_message_or_4xx_or_500(
-        request,
-        "rejudge problem",
-        std::move(rejudge_problem_exp),
-        "problem submissions requeued"
+    const http_guard::guard_context guard_context{
+        .request = request,
+        .db_connection_value = db_connection_value
+    };
+    return http_guard::run_or_respond(
+        guard_context,
+        [&](const auth_dto::identity&) {
+            const auto rejudge_problem_exp = submission_service::rejudge_problem(
+                db_connection_value,
+                problem_id
+            );
+            return http_response_util::create_message_or_4xx_or_500(
+                request,
+                "rejudge problem",
+                std::move(rejudge_problem_exp),
+                "problem submissions requeued"
+            );
+        },
+        auth_guard::make_admin_guard(),
+        problem_guard::make_exists_guard(problem_reference_value)
     );
 }

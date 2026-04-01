@@ -4,6 +4,7 @@
 #include "dto/auth_dto.hpp"
 #include "dto/submission_dto.hpp"
 #include "http_core/http_response_util.hpp"
+#include "http_guard/guard_runner.hpp"
 
 #include <cstdint>
 #include <expected>
@@ -32,4 +33,34 @@ namespace submission_guard{
         const auth_dto::identity& auth_identity_value,
         const submission_dto::source_detail& source_detail_value
     );
+
+    inline auto make_history_guard(std::int64_t submission_id){
+        return [submission_id](const http_guard::guard_context& context){
+            return require_history(
+                context.request,
+                context.db_connection_value,
+                submission_id
+            );
+        };
+    }
+
+    inline auto make_detail_guard(std::int64_t submission_id){
+        return [submission_id](const http_guard::guard_context& context){
+            return require_detail(
+                context.request,
+                context.db_connection_value,
+                submission_id
+            );
+        };
+    }
+
+    inline auto make_source_detail_guard(std::int64_t submission_id){
+        return [submission_id](const http_guard::guard_context& context){
+            return require_source_detail(
+                context.request,
+                context.db_connection_value,
+                submission_id
+            );
+        };
+    }
 }

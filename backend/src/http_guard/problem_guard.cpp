@@ -2,7 +2,7 @@
 
 #include "db_service/problem_core_service.hpp"
 
-std::expected<void, problem_guard::response_type> problem_guard::require_existing_problem_or_response(
+std::expected<void, problem_guard::response_type> problem_guard::require_exists(
     const request_type& request,
     db_connection& db_connection,
     const problem_dto::reference& problem_reference_value
@@ -24,16 +24,4 @@ std::expected<void, problem_guard::response_type> problem_guard::require_existin
     }
 
     return {};
-}
-
-std::expected<void, problem_guard::response_type> problem_guard::require_exists(
-    const request_type& request,
-    db_connection& db_connection,
-    const problem_dto::reference& problem_reference_value
-){
-    return require_existing_problem_or_response(
-        request,
-        db_connection,
-        problem_reference_value
-    );
 }

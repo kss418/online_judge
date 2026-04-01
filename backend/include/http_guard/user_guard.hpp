@@ -3,6 +3,7 @@
 #include "common/db_connection.hpp"
 #include "dto/user_dto.hpp"
 #include "http_core/http_response_util.hpp"
+#include "http_guard/guard_runner.hpp"
 
 #include <cstdint>
 #include <expected>
@@ -22,4 +23,24 @@ namespace user_guard{
         db_connection& db_connection,
         std::string_view user_login_id
     );
+
+    inline auto make_summary_guard(std::int64_t user_id){
+        return [user_id](const http_guard::guard_context& context){
+            return require_summary(
+                context.request,
+                context.db_connection_value,
+                user_id
+            );
+        };
+    }
+
+    inline auto make_summary_by_login_id_guard(std::string_view user_login_id){
+        return [user_login_id](const http_guard::guard_context& context){
+            return require_summary_by_login_id(
+                context.request,
+                context.db_connection_value,
+                user_login_id
+            );
+        };
+    }
 }

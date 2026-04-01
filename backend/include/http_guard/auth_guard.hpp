@@ -3,12 +3,11 @@
 #include "common/db_connection.hpp"
 #include "dto/auth_dto.hpp"
 #include "http_core/http_response_util.hpp"
+#include "http_guard/guard_runner.hpp"
 
 #include <expected>
-#include <functional>
 #include <optional>
 #include <string_view>
-#include <utility>
 
 namespace auth_guard{
     using request_type = http_response_util::request_type;
@@ -37,54 +36,39 @@ namespace auth_guard{
         db_connection& db_connection
     );
 
-    template <typename callback_type>
-    response_type with_auth_bearer(
-        const request_type& request,
-        db_connection& db_connection,
-        callback_type&& callback
-    ){
-        const auto auth_identity_exp = require_auth(request, db_connection);
-        if(!auth_identity_exp){
-            return std::move(auth_identity_exp.error());
-        }
-
-        return std::invoke(
-            std::forward<callback_type>(callback),
-            *auth_identity_exp
-        );
+    inline auto make_auth_guard(){
+        return [](const http_guard::guard_context& context){
+            return require_auth(
+                context.request,
+                context.db_connection_value
+            );
+        };
     }
 
-    template <typename callback_type>
-    response_type with_admin_auth_bearer(
-        const request_type& request,
-        db_connection& db_connection,
-        callback_type&& callback
-    ){
-        const auto auth_identity_exp = require_admin(request, db_connection);
-        if(!auth_identity_exp){
-            return std::move(auth_identity_exp.error());
-        }
-
-        return std::invoke(
-            std::forward<callback_type>(callback),
-            *auth_identity_exp
-        );
+    inline auto make_optional_auth_guard(){
+        return [](const http_guard::guard_context& context){
+            return require_optional_auth(
+                context.request,
+                context.db_connection_value
+            );
+        };
     }
 
-    template <typename callback_type>
-    response_type with_superadmin_auth_bearer(
-        const request_type& request,
-        db_connection& db_connection,
-        callback_type&& callback
-    ){
-        const auto auth_identity_exp = require_superadmin(request, db_connection);
-        if(!auth_identity_exp){
-            return std::move(auth_identity_exp.error());
-        }
+    inline auto make_admin_guard(){
+        return [](const http_guard::guard_context& context){
+            return require_admin(
+                context.request,
+                context.db_connection_value
+            );
+        };
+    }
 
-        return std::invoke(
-            std::forward<callback_type>(callback),
-            *auth_identity_exp
-        );
+    inline auto make_superadmin_guard(){
+        return [](const http_guard::guard_context& context){
+            return require_superadmin(
+                context.request,
+                context.db_connection_value
+            );
+        };
     }
 }
