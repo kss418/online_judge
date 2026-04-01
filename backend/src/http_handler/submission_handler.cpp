@@ -2,6 +2,7 @@
 #include "common/submission_status.hpp"
 #include "db_service/submission_service.hpp"
 #include "dto/submission_dto.hpp"
+#include "http_core/auth_guard.hpp"
 #include "http_core/http_util.hpp"
 #include "serializer/submission_json_serializer.hpp"
 
@@ -33,7 +34,7 @@ submission_handler::response_type submission_handler::get_submission_history(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -76,7 +77,7 @@ submission_handler::response_type submission_handler::get_submission_source(
             );
         };
 
-    return http_util::with_auth_bearer(
+    return auth_guard::with_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -175,7 +176,7 @@ submission_handler::response_type submission_handler::post_submission(
             );
         };
 
-    return http_util::with_auth_bearer(
+    return auth_guard::with_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -204,7 +205,7 @@ submission_handler::response_type submission_handler::post_submission_rejudge(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -215,7 +216,7 @@ submission_handler::response_type submission_handler::get_submissions(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto auth_identity_opt_exp = http_util::try_optional_auth_bearer(
+    const auto auth_identity_opt_exp = auth_guard::try_optional_auth_bearer(
         request,
         db_connection_value
     );

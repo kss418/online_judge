@@ -1,11 +1,10 @@
 #pragma once
 
+#include "http_core/auth_guard.hpp"
 #include "http_core/http_response_util.hpp"
 #include "http_core/request_parser.hpp"
 
-#include "db_service/auth_service.hpp"
 #include "common/db_connection.hpp"
-#include "dto/auth_dto.hpp"
 #include "dto/dto_validation_error.hpp"
 #include "dto/problem_dto.hpp"
 #include "dto/submission_dto.hpp"
@@ -112,9 +111,6 @@ namespace http_util{
         db_connection& db_connection,
         const problem_dto::reference& problem_reference_value
     );
-    std::expected<auth_dto::token, response_type> parse_bearer_token_or_401(
-        const request_type& request
-    );
     template <typename callback_type>
     response_type with_existing_problem(
         const request_type& request,
@@ -133,58 +129,10 @@ namespace http_util{
 
         return std::invoke(std::forward<callback_type>(callback));
     }
-    std::expected<auth_dto::identity, response_type> try_auth_bearer(
-        const request_type& request,
-        db_connection& db_connection
-    );
-    std::expected<std::optional<auth_dto::identity>, response_type> try_optional_auth_bearer(
-        const request_type& request,
-        db_connection& db_connection
-    );
-    std::expected<auth_dto::identity, response_type> try_admin_auth_bearer(
-        const request_type& request,
-        db_connection& db_connection
-    );
-    std::expected<auth_dto::identity, response_type> try_superadmin_auth_bearer(
-        const request_type& request,
-        db_connection& db_connection
-    );
     bool is_owner_or_admin(
         const auth_dto::identity& auth_identity_value,
         std::int64_t owner_user_id
     );
-    template <typename callback_type>
-    response_type with_auth_bearer(
-        const request_type& request,
-        db_connection& db_connection,
-        callback_type&& callback
-    ){
-        const auto auth_identity_exp = try_auth_bearer(request, db_connection);
-        if(!auth_identity_exp){
-            return std::move(auth_identity_exp.error());
-        }
-
-        return std::invoke(
-            std::forward<callback_type>(callback),
-            *auth_identity_exp
-        );
-    }
-    template <typename callback_type>
-    response_type with_admin_auth_bearer(
-        const request_type& request,
-        db_connection& db_connection,
-        callback_type&& callback
-    ){
-        const auto auth_identity_exp = try_admin_auth_bearer(request, db_connection);
-        if(!auth_identity_exp){
-            return std::move(auth_identity_exp.error());
-        }
-
-        return std::invoke(
-            std::forward<callback_type>(callback),
-            *auth_identity_exp
-        );
-    }
     template <typename callback_type>
     response_type with_existing_problem_admin(
         const request_type& request,
@@ -193,7 +141,7 @@ namespace http_util{
         callback_type&& callback
     ){
         auto&& callback_ref = callback;
-        return with_admin_auth_bearer(
+        return auth_guard::with_admin_auth_bearer(
             request,
             db_connection,
             [&](const auth_dto::identity& auth_identity) -> response_type {
@@ -210,23 +158,4 @@ namespace http_util{
             }
         );
     }
-    template <typename callback_type>
-    response_type with_superadmin_auth_bearer(
-        const request_type& request,
-        db_connection& db_connection,
-        callback_type&& callback
-    ){
-        const auto auth_identity_exp = try_superadmin_auth_bearer(request, db_connection);
-        if(!auth_identity_exp){
-            return std::move(auth_identity_exp.error());
-        }
-
-        return std::invoke(
-            std::forward<callback_type>(callback),
-            *auth_identity_exp
-        );
-    }
-    std::optional<std::string_view> get_bearer_token(
-        const request_type& request
-    );
 }

@@ -1,5 +1,6 @@
 #include "http_handler/problem_handler.hpp"
 #include "dto/problem_dto.hpp"
+#include "http_core/auth_guard.hpp"
 #include "http_core/http_util.hpp"
 
 #include "db_service/problem_core_service.hpp"
@@ -10,7 +11,7 @@ problem_handler::response_type problem_handler::get_problems(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto auth_identity_opt_exp = http_util::try_optional_auth_bearer(
+    const auto auth_identity_opt_exp = auth_guard::try_optional_auth_bearer(
         request,
         db_connection_value
     );
@@ -81,7 +82,7 @@ problem_handler::response_type problem_handler::get_problem(
     db_connection& db_connection_value,
     std::int64_t problem_id
 ){
-    const auto auth_identity_opt_exp = http_util::try_optional_auth_bearer(
+    const auto auth_identity_opt_exp = auth_guard::try_optional_auth_bearer(
         request,
         db_connection_value
     );
@@ -152,7 +153,7 @@ problem_handler::response_type problem_handler::post_problem(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated

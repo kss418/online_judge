@@ -5,6 +5,7 @@
 #include "db_service/user_service.hpp"
 #include "db_service/user_statistics_service.hpp"
 #include "common/permission_util.hpp"
+#include "http_core/auth_guard.hpp"
 #include "http_core/http_util.hpp"
 #include "serializer/user_json_serializer.hpp"
 
@@ -47,7 +48,7 @@ user_handler::response_type user_handler::get_me(
             );
         };
 
-    return http_util::with_auth_bearer(
+    return auth_guard::with_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -73,7 +74,7 @@ user_handler::response_type user_handler::get_me_submission_statistics(
             );
         };
 
-    return http_util::with_auth_bearer(
+    return auth_guard::with_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -101,7 +102,7 @@ user_handler::response_type user_handler::get_me_submission_ban(
             );
         };
 
-    return http_util::with_auth_bearer(
+    return auth_guard::with_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -128,7 +129,7 @@ user_handler::response_type user_handler::get_me_solved_problems(
             );
         };
 
-    return http_util::with_auth_bearer(
+    return auth_guard::with_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -155,7 +156,7 @@ user_handler::response_type user_handler::get_me_wrong_problems(
             );
         };
 
-    return http_util::with_auth_bearer(
+    return auth_guard::with_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -258,7 +259,7 @@ user_handler::response_type user_handler::get_user_solved_problems(
     db_connection& db_connection_value,
     std::int64_t user_id
 ){
-    const auto auth_identity_opt_exp = http_util::try_optional_auth_bearer(
+    const auto auth_identity_opt_exp = auth_guard::try_optional_auth_bearer(
         request,
         db_connection_value
     );
@@ -296,7 +297,7 @@ user_handler::response_type user_handler::get_user_wrong_problems(
     db_connection& db_connection_value,
     std::int64_t user_id
 ){
-    const auto auth_identity_opt_exp = http_util::try_optional_auth_bearer(
+    const auto auth_identity_opt_exp = auth_guard::try_optional_auth_bearer(
         request,
         db_connection_value
     );
@@ -356,7 +357,7 @@ user_handler::response_type user_handler::put_user_admin(
         );
     };
 
-    return http_util::with_superadmin_auth_bearer(
+    return auth_guard::with_superadmin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -390,7 +391,7 @@ user_handler::response_type user_handler::put_user_regular(
         );
     };
 
-    return http_util::with_superadmin_auth_bearer(
+    return auth_guard::with_superadmin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -418,7 +419,7 @@ user_handler::response_type user_handler::get_user_submission_ban(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -457,7 +458,7 @@ user_handler::response_type user_handler::post_user_submission_ban(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -486,7 +487,7 @@ user_handler::response_type user_handler::delete_user_submission_ban(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -507,7 +508,7 @@ user_handler::response_type user_handler::get_user_list(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated

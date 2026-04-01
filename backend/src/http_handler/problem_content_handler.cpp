@@ -2,6 +2,7 @@
 
 #include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
+#include "http_core/auth_guard.hpp"
 #include "http_core/http_util.hpp"
 
 #include "db_service/problem_content_service.hpp"
@@ -68,7 +69,7 @@ problem_content_handler::response_type problem_content_handler::put_limits(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -104,7 +105,7 @@ problem_content_handler::response_type problem_content_handler::put_statement(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -159,7 +160,7 @@ problem_content_handler::response_type problem_content_handler::post_sample(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -209,7 +210,7 @@ problem_content_handler::response_type problem_content_handler::put_sample(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -256,7 +257,7 @@ problem_content_handler::response_type problem_content_handler::delete_sample(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated

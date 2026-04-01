@@ -2,6 +2,7 @@
 #include "db_service/auth_service.hpp"
 #include "db_service/login_service.hpp"
 #include "dto/auth_dto.hpp"
+#include "http_core/auth_guard.hpp"
 #include "http_core/http_util.hpp"
 #include "serializer/auth_json_serializer.hpp"
 
@@ -69,7 +70,7 @@ auth_handler::response_type auth_handler::post_token_renew(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto token_exp = http_util::parse_bearer_token_or_401(request);
+    const auto token_exp = auth_guard::parse_bearer_token_or_401(request);
     if(!token_exp){
         return std::move(token_exp.error());
     }
@@ -97,7 +98,7 @@ auth_handler::response_type auth_handler::post_logout(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const auto token_exp = http_util::parse_bearer_token_or_401(request);
+    const auto token_exp = auth_guard::parse_bearer_token_or_401(request);
     if(!token_exp){
         return std::move(token_exp.error());
     }

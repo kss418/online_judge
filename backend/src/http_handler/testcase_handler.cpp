@@ -5,6 +5,7 @@
 #include "common/temp_file.hpp"
 #include "common/zip_util.hpp"
 #include "dto/problem_dto.hpp"
+#include "http_core/auth_guard.hpp"
 #include "http_core/testcase_uploader.hpp"
 #include "http_core/http_util.hpp"
 
@@ -125,7 +126,7 @@ testcase_handler::response_type testcase_handler::post_testcase(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -174,7 +175,7 @@ testcase_handler::response_type testcase_handler::put_testcase(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
@@ -419,7 +420,7 @@ testcase_handler::response_type testcase_handler::delete_testcase(
         );
     };
 
-    return http_util::with_admin_auth_bearer(
+    return auth_guard::with_admin_auth_bearer(
         request,
         db_connection_value,
         handle_authenticated
