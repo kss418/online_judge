@@ -12,7 +12,7 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_service::auth_
     const auth_dto::token& token_value
 ){
     if(token_value.value.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::unauthorized));
     }
 
     const auto token_hash_exp = crypto_util::sha512_hex(token_value.value);
@@ -47,7 +47,7 @@ std::expected<bool, error_code> auth_service::renew_token(
     const auth_dto::token& token_value
 ){
     if(token_value.value.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::unauthorized));
     }
 
     const auto token_hash_exp = crypto_util::sha512_hex(token_value.value);
@@ -82,7 +82,7 @@ std::expected<bool, error_code> auth_service::revoke_token(
     const auth_dto::token& token_value
 ){
     if(token_value.value.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::unauthorized));
     }
 
     const auto token_hash_exp = crypto_util::sha512_hex(token_value.value);
@@ -120,7 +120,7 @@ std::expected<bool, error_code> auth_service::update_permission_level(
         user_id <= 0 ||
         !permission_util::is_valid_permission_level(permission_level)
     ){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(

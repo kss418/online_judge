@@ -101,13 +101,22 @@ enum class psql_error{
     unknown_psql_error
 };
 
+enum class http_error{
+    validation_error,
+    unauthorized,
+    forbidden,
+    not_found,
+    conflict
+};
+
 enum class error_type{
     syscall_type,
     errno_type,
     signal_type,
     limit_type,
     boost_type,
-    psql_type
+    psql_type,
+    http_type
 };
 
 struct error_code{
@@ -126,8 +135,13 @@ struct error_code{
 
     constexpr bool is_bad_request_error() const{
         return
+            *this == http_error::validation_error ||
             *this == errno_error::invalid_argument ||
             is_constraint_violation_error();
+    }
+
+    constexpr bool is_http_error() const{
+        return type_ == error_type::http_type;
     }
 
     static error_code create(syscall_error code);
@@ -136,6 +150,7 @@ struct error_code{
     static error_code create(limit_error code);
     static error_code create(boost_error code);
     static error_code create(psql_error code);
+    static error_code create(http_error code);
 
     static errno_error map_errno(int code);
     static boost_error map_boost_error(const boost::system::error_code& ec);
@@ -203,8 +218,19 @@ struct error_code{
     friend constexpr bool operator==(psql_error left, const error_code& right){
         return right == left;
     }
+
+    friend constexpr bool operator==(const error_code& left, http_error right){
+        return
+            left.type_ == error_type::http_type &&
+            left.code_ == static_cast<int>(right);
+    }
+
+    friend constexpr bool operator==(http_error left, const error_code& right){
+        return right == left;
+    }
 };
 
 std::string to_string(error_code ec);
 std::string to_string(boost_error ec);
 std::string to_string(psql_error ec);
+std::string to_string(http_error ec);

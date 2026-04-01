@@ -49,7 +49,7 @@ problem_guard::require_readable_detail(
                 viewer_user_id_opt
             );
             if(!problem_detail_exp){
-                if(problem_detail_exp.error() == errno_error::invalid_argument){
+                if(problem_detail_exp.error() == http_error::not_found){
                     return std::unexpected(
                         http_response_util::create_problem_not_found(context.request)
                     );

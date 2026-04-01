@@ -82,7 +82,7 @@ std::expected<problem_dto::detail, error_code> problem_core_service::get_problem
         problem_reference_value.problem_id <= 0 ||
         (viewer_user_id_opt && *viewer_user_id_opt <= 0)
     ){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_read_transaction(
@@ -97,6 +97,9 @@ std::expected<problem_dto::detail, error_code> problem_core_service::get_problem
                 problem_reference_value
             );
             if(!title_exp){
+                if(title_exp.error() == errno_error::invalid_argument){
+                    return std::unexpected(error_code::create(http_error::not_found));
+                }
                 return std::unexpected(title_exp.error());
             }
             detail_value.title_value = *title_exp;
@@ -106,6 +109,9 @@ std::expected<problem_dto::detail, error_code> problem_core_service::get_problem
                 problem_reference_value
             );
             if(!version_exp){
+                if(version_exp.error() == errno_error::invalid_argument){
+                    return std::unexpected(error_code::create(http_error::not_found));
+                }
                 return std::unexpected(version_exp.error());
             }
             detail_value.version_value = *version_exp;
@@ -115,6 +121,9 @@ std::expected<problem_dto::detail, error_code> problem_core_service::get_problem
                 problem_reference_value
             );
             if(!limits_exp){
+                if(limits_exp.error() == errno_error::invalid_argument){
+                    return std::unexpected(error_code::create(http_error::not_found));
+                }
                 return std::unexpected(limits_exp.error());
             }
             detail_value.limits_value = *limits_exp;
@@ -144,6 +153,9 @@ std::expected<problem_dto::detail, error_code> problem_core_service::get_problem
                 problem_reference_value
             );
             if(!statistics_exp){
+                if(statistics_exp.error() == errno_error::invalid_argument){
+                    return std::unexpected(error_code::create(http_error::not_found));
+                }
                 return std::unexpected(statistics_exp.error());
             }
             detail_value.statistics_value = *statistics_exp;
@@ -223,7 +235,7 @@ std::expected<void, error_code> problem_core_service::update_problem(
     const problem_dto::update_request& update_request_value
 ){
     if(problem_reference_value.problem_id <= 0 || update_request_value.title.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(
@@ -259,7 +271,7 @@ std::expected<void, error_code> problem_core_service::delete_problem(
     const problem_dto::reference& problem_reference_value
 ){
     if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(
@@ -316,7 +328,7 @@ problem_core_service::list_user_solved_problems(
     std::optional<std::int64_t> viewer_user_id_opt
 ){
     if(user_id <= 0 || (viewer_user_id_opt && *viewer_user_id_opt <= 0)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_read_transaction(
@@ -339,7 +351,7 @@ problem_core_service::list_user_wrong_problems(
     std::optional<std::int64_t> viewer_user_id_opt
 ){
     if(user_id <= 0 || (viewer_user_id_opt && *viewer_user_id_opt <= 0)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_read_transaction(

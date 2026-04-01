@@ -12,6 +12,17 @@ static bool is_queue_empty_error(const error_code& code){
     return code == errno_error::resource_temporarily_unavailable;
 }
 
+template <typename value_type>
+static std::expected<value_type, error_code> map_invalid_argument_to_not_found(
+    std::expected<value_type, error_code> value_exp
+){
+    if(!value_exp && value_exp.error() == errno_error::invalid_argument){
+        return std::unexpected(error_code::create(http_error::not_found));
+    }
+
+    return value_exp;
+}
+
 static bool should_hide_submission_metrics(std::string_view status){
     return status == to_string(submission_status::runtime_error);
 }
@@ -53,11 +64,17 @@ std::expected<submission_dto::history_list, error_code> submission_service::get_
     db_connection& connection,
     std::int64_t submission_id
 ){
+    if(submission_id <= 0){
+        return std::unexpected(error_code::create(http_error::validation_error));
+    }
+
     return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::history_list, error_code> {
-            return submission_repository::get_submission_history(transaction, submission_id);
+            return map_invalid_argument_to_not_found(
+                submission_repository::get_submission_history(transaction, submission_id)
+            );
         }
     );
 }
@@ -66,11 +83,17 @@ std::expected<submission_dto::source_detail, error_code> submission_service::get
     db_connection& connection,
     std::int64_t submission_id
 ){
+    if(submission_id <= 0){
+        return std::unexpected(error_code::create(http_error::validation_error));
+    }
+
     return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::source_detail, error_code> {
-            return submission_repository::get_submission_source(transaction, submission_id);
+            return map_invalid_argument_to_not_found(
+                submission_repository::get_submission_source(transaction, submission_id)
+            );
         }
     );
 }
@@ -79,13 +102,19 @@ std::expected<submission_dto::detail, error_code> submission_service::get_submis
     db_connection& connection,
     std::int64_t submission_id
 ){
+    if(submission_id <= 0){
+        return std::unexpected(error_code::create(http_error::validation_error));
+    }
+
     return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::detail, error_code> {
-            const auto submission_detail_exp = submission_repository::get_submission_detail(
-                transaction,
-                submission_id
+            auto submission_detail_exp = map_invalid_argument_to_not_found(
+                submission_repository::get_submission_detail(
+                    transaction,
+                    submission_id
+                )
             );
             if(!submission_detail_exp){
                 return std::unexpected(submission_detail_exp.error());
@@ -147,7 +176,7 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
         create_request_value.source_value.language.empty() ||
         create_request_value.source_value.source_code.empty()
     ){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(

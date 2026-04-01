@@ -12,7 +12,7 @@ namespace{
         std::expected<value_type, error_code> value_exp
     ){
         if(!value_exp){
-            return std::unexpected(http_response_util::create_404_or_500(
+            return std::unexpected(http_response_util::create_4xx_or_500(
                 request,
                 action,
                 value_exp.error()

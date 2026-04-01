@@ -199,6 +199,22 @@ std::string to_string(psql_error ec){
     return "unknown psql error";
 }
 
+std::string to_string(http_error ec){
+    switch(ec){
+        case http_error::validation_error:
+            return "validation error";
+        case http_error::unauthorized:
+            return "unauthorized";
+        case http_error::forbidden:
+            return "forbidden";
+        case http_error::not_found:
+            return "not found";
+        case http_error::conflict:
+            return "conflict";
+    }
+    return "unknown http error";
+}
+
 std::string to_string(error_code ec){
     if(ec.type_ == error_type::syscall_type) return to_string(static_cast<syscall_error>(ec.code_));
     else if(ec.type_ == error_type::errno_type) return to_string(static_cast<errno_error>(ec.code_));
@@ -206,6 +222,7 @@ std::string to_string(error_code ec){
     else if(ec.type_ == error_type::limit_type) return to_string(static_cast<limit_error>(ec.code_));
     else if(ec.type_ == error_type::boost_type) return to_string(static_cast<boost_error>(ec.code_));
     else if(ec.type_ == error_type::psql_type) return to_string(static_cast<psql_error>(ec.code_));
+    else if(ec.type_ == error_type::http_type) return to_string(static_cast<http_error>(ec.code_));
     return "unknown error code";
 }
 
@@ -231,6 +248,10 @@ error_code error_code::create(boost_error code){
 
 error_code error_code::create(psql_error code){
     return error_code{error_type::psql_type, static_cast<int>(code)};
+}
+
+error_code error_code::create(http_error code){
+    return error_code{error_type::http_type, static_cast<int>(code)};
 }
 
 errno_error error_code::map_errno(int code){

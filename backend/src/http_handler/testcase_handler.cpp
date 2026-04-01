@@ -36,7 +36,7 @@ testcase_handler::response_type testcase_handler::get_testcase(
                 "get testcase",
                 std::move(testcase_exp),
                 [&](const request_type& error_request, std::string_view action, const error_code& code) {
-                    if(code == errno_error::invalid_argument){
+                    if(code == http_error::not_found){
                         return http_response_util::create_error(
                             error_request,
                             boost::beast::http::status::not_found,
@@ -45,11 +45,10 @@ testcase_handler::response_type testcase_handler::get_testcase(
                         );
                     }
 
-                    return http_response_util::create_error(
+                    return http_response_util::create_4xx_or_500(
                         error_request,
-                        boost::beast::http::status::internal_server_error,
-                        "internal_server_error",
-                        "failed to " + std::string{action} + ": " + to_string(code)
+                        action,
+                        code
                     );
                 },
                 [&](const problem_dto::testcase& testcase_value) {

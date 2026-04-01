@@ -11,7 +11,7 @@ std::expected<problem_dto::testcase, error_code> testcase_service::create_testca
     const problem_dto::testcase& testcase_value
 ){
     if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(
@@ -67,17 +67,22 @@ std::expected<problem_dto::testcase, error_code> testcase_service::get_testcase(
         testcase_reference_value.problem_id <= 0 ||
         testcase_reference_value.testcase_order <= 0
     ){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::testcase, error_code> {
-            return testcase_repository::get_testcase(
+            const auto testcase_exp = testcase_repository::get_testcase(
                 transaction,
                 testcase_reference_value
             );
+            if(!testcase_exp && testcase_exp.error() == errno_error::invalid_argument){
+                return std::unexpected(error_code::create(http_error::not_found));
+            }
+
+            return testcase_exp;
         }
     );
 }
@@ -87,7 +92,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_service::get_tes
     const problem_dto::reference& problem_reference_value
 ){
     if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_read_transaction(
@@ -107,7 +112,7 @@ std::expected<std::vector<problem_dto::testcase>, error_code> testcase_service::
     const problem_dto::reference& problem_reference_value
 ){
     if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_read_transaction(
@@ -128,7 +133,7 @@ testcase_service::list_testcase_summaries(
     const problem_dto::reference& problem_reference_value
 ){
     if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_read_transaction(
@@ -152,7 +157,7 @@ std::expected<void, error_code> testcase_service::set_testcase(
         testcase_reference_value.problem_id <= 0 ||
         testcase_reference_value.testcase_order <= 0
     ){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(
@@ -193,7 +198,7 @@ std::expected<void, error_code> testcase_service::move_testcase(
         testcase_reference_value.testcase_order <= 0 ||
         target_testcase_order <= 0
     ){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     if(testcase_reference_value.testcase_order == target_testcase_order){
@@ -241,7 +246,7 @@ std::expected<void, error_code> testcase_service::delete_testcase(
         testcase_reference_value.problem_id <= 0 ||
         testcase_reference_value.testcase_order <= 0
     ){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(
@@ -276,7 +281,7 @@ std::expected<void, error_code> testcase_service::delete_all_testcases(
     const problem_dto::reference& problem_reference_value
 ){
     if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(
@@ -332,7 +337,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_service::replace
         problem_reference_value.problem_id <= 0 ||
         testcase_values.size() > 999
     ){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(error_code::create(http_error::validation_error));
     }
 
     return db_service_util::with_retry_write_transaction(

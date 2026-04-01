@@ -8,6 +8,48 @@
 #include <boost/beast/http/field.hpp>
 #include <boost/beast/version.hpp>
 
+namespace{
+    struct mapped_http_error{
+        boost::beast::http::status status;
+        std::string_view code;
+    };
+
+    std::optional<mapped_http_error> map_http_error(const error_code& code){
+        if(code == http_error::validation_error){
+            return mapped_http_error{
+                .status = boost::beast::http::status::bad_request,
+                .code = "validation_error"
+            };
+        }
+        if(code == http_error::unauthorized){
+            return mapped_http_error{
+                .status = boost::beast::http::status::unauthorized,
+                .code = "unauthorized"
+            };
+        }
+        if(code == http_error::forbidden){
+            return mapped_http_error{
+                .status = boost::beast::http::status::forbidden,
+                .code = "forbidden"
+            };
+        }
+        if(code == http_error::not_found){
+            return mapped_http_error{
+                .status = boost::beast::http::status::not_found,
+                .code = "not_found"
+            };
+        }
+        if(code == http_error::conflict || code == psql_error::unique_violation){
+            return mapped_http_error{
+                .status = boost::beast::http::status::conflict,
+                .code = "conflict"
+            };
+        }
+
+        return std::nullopt;
+    }
+}
+
 http_response_util::response_type http_response_util::create_text(
     const request_type& request,
     boost::beast::http::status status,
@@ -84,9 +126,9 @@ http_response_util::response_type http_response_util::create_4xx_or_500(
 ){
     boost::beast::http::status status = boost::beast::http::status::internal_server_error;
     std::string_view error_code_text = "internal_server_error";
-    if(code == psql_error::unique_violation){
-        status = boost::beast::http::status::conflict;
-        error_code_text = "conflict";
+    if(const auto mapped_error_opt = map_http_error(code)){
+        status = mapped_error_opt->status;
+        error_code_text = mapped_error_opt->code;
     }
     else if(code.is_bad_request_error()){
         status = boost::beast::http::status::bad_request;
@@ -106,6 +148,15 @@ http_response_util::response_type http_response_util::create_404_or_500(
     std::string_view action,
     const error_code& code
 ){
+    if(const auto mapped_error_opt = map_http_error(code)){
+        return create_error(
+            request,
+            mapped_error_opt->status,
+            mapped_error_opt->code,
+            "failed to " + std::string{action} + ": " + to_string(code)
+        );
+    }
+
     const auto status = code.is_bad_request_error()
         ? boost::beast::http::status::not_found
         : boost::beast::http::status::internal_server_error;
