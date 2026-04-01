@@ -3,6 +3,7 @@
 #include "common/permission_util.hpp"
 #include "db_service/submission_service.hpp"
 #include "http_guard/auth_guard.hpp"
+#include "http_core/request_dto.hpp"
 
 namespace{
     template <typename value_type>
@@ -52,6 +53,29 @@ submission_guard::require_detail(
             db_connection,
             submission_id
         )
+    );
+}
+
+std::expected<submission_dto::create_request, submission_guard::response_type>
+submission_guard::require_create_request(
+    const request_type& request,
+    db_connection& db_connection,
+    std::int64_t problem_id
+){
+    return http_guard::run_composite_guard(
+        request,
+        db_connection,
+        [problem_id](const http_guard::guard_context& context,
+            const auth_dto::identity& auth_identity_value)
+            -> std::expected<submission_dto::create_request, response_type> {
+            return request_dto::parse_json_or_400<submission_dto::create_request>(
+                context.request,
+                submission_dto::make_create_request_from_json,
+                auth_identity_value.user_id,
+                problem_id
+            );
+        },
+        auth_guard::make_auth_guard()
     );
 }
 

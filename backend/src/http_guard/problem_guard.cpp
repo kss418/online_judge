@@ -1,6 +1,7 @@
 #include "http_guard/problem_guard.hpp"
 
 #include "db_service/problem_core_service.hpp"
+#include "http_guard/auth_guard.hpp"
 
 std::expected<void, problem_guard::response_type> problem_guard::require_exists(
     const request_type& request,
@@ -24,4 +25,46 @@ std::expected<void, problem_guard::response_type> problem_guard::require_exists(
     }
 
     return {};
+}
+
+std::expected<problem_dto::detail, problem_guard::response_type>
+problem_guard::require_detail(
+    const request_type& request,
+    db_connection& db_connection,
+    const problem_dto::reference& problem_reference_value
+){
+    return http_guard::run_composite_guard(
+        request,
+        db_connection,
+        [problem_reference_value](const http_guard::guard_context& context,
+            const std::optional<auth_dto::identity>& auth_identity_opt)
+            -> std::expected<problem_dto::detail, response_type> {
+            std::optional<std::int64_t> viewer_user_id_opt = std::nullopt;
+            if(auth_identity_opt.has_value()){
+                viewer_user_id_opt = auth_identity_opt->user_id;
+            }
+
+            auto problem_detail_exp = problem_core_service::get_problem_detail(
+                context.db_connection_value,
+                problem_reference_value,
+                viewer_user_id_opt
+            );
+            if(!problem_detail_exp){
+                if(problem_detail_exp.error() == errno_error::invalid_argument){
+                    return std::unexpected(
+                        http_response_util::create_problem_not_found(context.request)
+                    );
+                }
+
+                return std::unexpected(http_response_util::create_404_or_500(
+                    context.request,
+                    "get problem detail",
+                    problem_detail_exp.error()
+                ));
+            }
+
+            return std::move(*problem_detail_exp);
+        },
+        auth_guard::make_optional_auth_guard()
+    );
 }

@@ -16,10 +16,25 @@ namespace problem_guard{
         db_connection& db_connection,
         const problem_dto::reference& problem_reference_value
     );
+    std::expected<problem_dto::detail, response_type> require_detail(
+        const request_type& request,
+        db_connection& db_connection,
+        const problem_dto::reference& problem_reference_value
+    );
 
     inline auto make_exists_guard(problem_dto::reference problem_reference_value){
         return [problem_reference_value](const http_guard::guard_context& context){
             return require_exists(
+                context.request,
+                context.db_connection_value,
+                problem_reference_value
+            );
+        };
+    }
+
+    inline auto make_detail_guard(problem_dto::reference problem_reference_value){
+        return [problem_reference_value](const http_guard::guard_context& context){
+            return require_detail(
                 context.request,
                 context.db_connection_value,
                 problem_reference_value

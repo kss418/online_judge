@@ -5,7 +5,6 @@
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/request_guard.hpp"
 #include "http_guard/submission_guard.hpp"
-#include "http_core/request_dto.hpp"
 #include "serializer/submission_json_serializer.hpp"
 
 namespace{
@@ -108,21 +107,10 @@ submission_handler::response_type submission_handler::post_submission(
     return http_guard::run_or_respond(
         request,
         db_connection_value,
-        [&](const auth_dto::identity& auth_identity_value) -> response_type {
-            const auto create_request_exp =
-                request_dto::parse_json_or_400<submission_dto::create_request>(
-                    request,
-                    submission_dto::make_create_request_from_json,
-                    auth_identity_value.user_id,
-                    problem_id
-                );
-            if(!create_request_exp){
-                return std::move(create_request_exp.error());
-            }
-
+        [&](const submission_dto::create_request& create_request) -> response_type {
             const auto create_submission_exp = submission_service::create_submission(
                 db_connection_value,
-                *create_request_exp
+                create_request
             );
             return http_response_util::create_response_or_error(
                 request,
@@ -153,7 +141,7 @@ submission_handler::response_type submission_handler::post_submission(
                 }
             );
         },
-        auth_guard::make_auth_guard()
+        submission_guard::make_create_request_guard(problem_id)
     );
 }
 

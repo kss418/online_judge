@@ -23,6 +23,11 @@ namespace submission_guard{
         db_connection& db_connection,
         std::int64_t submission_id
     );
+    std::expected<submission_dto::create_request, response_type> require_create_request(
+        const request_type& request,
+        db_connection& db_connection,
+        std::int64_t problem_id
+    );
     std::expected<submission_dto::source_detail, response_type> require_source_detail(
         const request_type& request,
         db_connection& db_connection,
@@ -55,6 +60,16 @@ namespace submission_guard{
                 context.request,
                 context.db_connection_value,
                 submission_id
+            );
+        };
+    }
+
+    inline auto make_create_request_guard(std::int64_t problem_id){
+        return [problem_id](const http_guard::guard_context& context){
+            return require_create_request(
+                context.request,
+                context.db_connection_value,
+                problem_id
             );
         };
     }

@@ -79,47 +79,18 @@ problem_handler::response_type problem_handler::get_problem(
     db_connection& db_connection_value,
     std::int64_t problem_id
 ){
-    const auto auth_identity_opt_exp = auth_guard::require_optional_auth(
-        request,
-        db_connection_value
-    );
-    if(!auth_identity_opt_exp){
-        return std::move(auth_identity_opt_exp.error());
-    }
-
     problem_dto::reference problem_reference_value{problem_id};
-    std::optional<std::int64_t> viewer_user_id_opt = std::nullopt;
-    if(auth_identity_opt_exp->has_value()){
-        viewer_user_id_opt = auth_identity_opt_exp->value().user_id;
-    }
-
-    const auto problem_detail_exp = problem_core_service::get_problem_detail(
-        db_connection_value,
-        problem_reference_value,
-        viewer_user_id_opt
-    );
-    return http_response_util::create_response_or_error(
+    return http_guard::run_or_respond(
         request,
-        "get problem detail",
-        std::move(problem_detail_exp),
-        [&](const request_type& error_request, std::string_view action, const error_code& code) {
-            if(code == errno_error::invalid_argument){
-                return http_response_util::create_problem_not_found(error_request);
-            }
-
-            return http_response_util::create_404_or_500(
-                error_request,
-                action,
-                code
-            );
-        },
-        [&](const problem_dto::detail& problem_detail) {
+        db_connection_value,
+        [&](const problem_dto::detail& problem_detail) -> response_type {
             return http_response_util::create_json(
                 request,
                 boost::beast::http::status::ok,
                 problem_json_serializer::make_detail_object(problem_detail)
             );
-        }
+        },
+        problem_guard::make_detail_guard(problem_reference_value)
     );
 }
 
