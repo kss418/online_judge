@@ -1,8 +1,6 @@
 #pragma once
 
 #include "dto/dto_validation_error.hpp"
-#include "dto/problem_dto.hpp"
-#include "dto/submission_dto.hpp"
 #include "http_core/http_response_util.hpp"
 #include "http_core/request_parser.hpp"
 
@@ -115,13 +113,4 @@ namespace request_dto{
             std::forward<arg_types>(args)...
         );
     }
-
-    std::expected<submission_dto::list_filter, response_type>
-    parse_submission_list_filter_or_400(
-        const request_type& request
-    );
-    std::expected<problem_dto::list_filter, response_type>
-    parse_problem_list_filter_or_400(
-        const request_type& request
-    );
 }

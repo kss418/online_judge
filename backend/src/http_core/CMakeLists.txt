@@ -2,7 +2,7 @@ target_sources(lib
     PRIVATE
         http_dispatcher.cpp
         http_response_util.cpp
-        request_dto.cpp
+        request_list_filter_dto.cpp
         request_parser.cpp
         testcase_uploader.cpp
         http_server.cpp

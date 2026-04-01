@@ -1,6 +1,7 @@
 #pragma once
 
 #include "http_core/request_dto.hpp"
+#include "http_core/request_list_filter_dto.hpp"
 #include "http_guard/guard_runner.hpp"
 
 #include <tuple>
