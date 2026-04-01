@@ -6,34 +6,9 @@
 #include "db_service/user_statistics_service.hpp"
 #include "common/permission_util.hpp"
 #include "http_guard/auth_guard.hpp"
+#include "http_guard/user_guard.hpp"
 #include "http_core/request_dto.hpp"
 #include "serializer/user_json_serializer.hpp"
-
-namespace{
-    std::expected<user_dto::summary, user_handler::response_type> require_user_summary(
-        const user_handler::request_type& request,
-        db_connection& db_connection_value,
-        std::int64_t user_id
-    ){
-        const auto get_user_summary_exp = user_service::get_summary(
-            db_connection_value,
-            user_id
-        );
-        if(!get_user_summary_exp){
-            return std::unexpected(http_response_util::create_4xx_or_500(
-                request,
-                "get user summary",
-                get_user_summary_exp.error()
-            ));
-        }
-        if(!get_user_summary_exp->has_value()){
-            return std::unexpected(http_response_util::create_user_not_found(request));
-        }
-
-        return get_user_summary_exp->value();
-    }
-
-}
 
 user_handler::response_type user_handler::get_me(
     const request_type& request,
@@ -187,18 +162,19 @@ user_handler::response_type user_handler::get_user_summary(
     db_connection& db_connection_value,
     std::int64_t user_id
 ){
-    const auto user_summary_exp = user_service::get_summary(
+    const auto required_user_summary_exp = user_guard::require_summary(
+        request,
         db_connection_value,
         user_id
     );
-    return http_response_util::create_json_or_4xx_or_500(
+    if(!required_user_summary_exp){
+        return std::move(required_user_summary_exp.error());
+    }
+
+    return http_response_util::create_json(
         request,
-        "get user summary",
-        std::move(user_summary_exp),
-        user_json_serializer::make_summary_object,
-        [&]{
-            return http_response_util::create_user_not_found(request);
-        }
+        boost::beast::http::status::ok,
+        user_json_serializer::make_summary_object(*required_user_summary_exp)
     );
 }
 
@@ -207,18 +183,19 @@ user_handler::response_type user_handler::get_user_summary_by_login_id(
     db_connection& db_connection_value,
     std::string_view user_login_id
 ){
-    const auto user_summary_exp = user_service::get_summary_by_login_id(
+    const auto user_summary_exp = user_guard::require_summary_by_login_id(
+        request,
         db_connection_value,
         user_login_id
     );
-    return http_response_util::create_json_or_4xx_or_500(
+    if(!user_summary_exp){
+        return std::move(user_summary_exp.error());
+    }
+
+    return http_response_util::create_json(
         request,
-        "get user summary by login id",
-        std::move(user_summary_exp),
-        user_json_serializer::make_summary_object,
-        [&]{
-            return http_response_util::create_user_not_found(request);
-        }
+        boost::beast::http::status::ok,
+        user_json_serializer::make_summary_object(*user_summary_exp)
     );
 }
 
@@ -227,7 +204,7 @@ user_handler::response_type user_handler::get_user_submission_statistics(
     db_connection& db_connection_value,
     std::int64_t user_id
 ){
-    const auto user_summary_exp = require_user_summary(
+    const auto user_summary_exp = user_guard::require_summary(
         request,
         db_connection_value,
         user_id
@@ -262,7 +239,7 @@ user_handler::response_type user_handler::get_user_solved_problems(
         return std::move(auth_identity_opt_exp.error());
     }
 
-    const auto user_summary_exp = require_user_summary(
+    const auto user_summary_exp = user_guard::require_summary(
         request,
         db_connection_value,
         user_id
@@ -300,7 +277,7 @@ user_handler::response_type user_handler::get_user_wrong_problems(
         return std::move(auth_identity_opt_exp.error());
     }
 
-    const auto user_summary_exp = require_user_summary(
+    const auto user_summary_exp = user_guard::require_summary(
         request,
         db_connection_value,
         user_id

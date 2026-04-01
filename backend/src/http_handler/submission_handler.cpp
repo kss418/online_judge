@@ -3,8 +3,8 @@
 #include "db_service/submission_service.hpp"
 #include "dto/submission_dto.hpp"
 #include "http_guard/auth_guard.hpp"
+#include "http_guard/submission_guard.hpp"
 #include "http_core/request_dto.hpp"
-#include "http_core/http_util.hpp"
 #include "serializer/submission_json_serializer.hpp"
 
 namespace{
@@ -23,19 +23,22 @@ submission_handler::response_type submission_handler::get_submission_history(
         return std::move(auth_identity_exp.error());
     }
 
-    return http_response_util::create_json_or_404_or_500(
+    const auto history_values_exp = submission_guard::require_history(
         request,
-        "get submission history",
-        submission_service::get_submission_history(
-            db_connection_value,
-            submission_id
-        ),
-        [&](const submission_dto::history_list& history_values){
-            return submission_json_serializer::make_history_list_object(
-                submission_id,
-                history_values
-            );
-        }
+        db_connection_value,
+        submission_id
+    );
+    if(!history_values_exp){
+        return std::move(history_values_exp.error());
+    }
+
+    return http_response_util::create_json(
+        request,
+        boost::beast::http::status::ok,
+        submission_json_serializer::make_history_list_object(
+            submission_id,
+            *history_values_exp
+        )
     );
 }
 
@@ -49,32 +52,28 @@ submission_handler::response_type submission_handler::get_submission_source(
         return std::move(auth_identity_exp.error());
     }
 
-    return http_response_util::create_response_or_404_or_500(
+    const auto source_detail_exp = submission_guard::require_source_detail(
         request,
-        "get submission source",
-        submission_service::get_submission_source(
-            db_connection_value,
-            submission_id
-        ),
-        [&](const submission_dto::source_detail& source_detail) -> response_type {
-            if(!http_util::is_owner_or_admin(
-                *auth_identity_exp,
-                source_detail.user_id
-            )){
-                return http_response_util::create_error(
-                    request,
-                    boost::beast::http::status::forbidden,
-                    "forbidden",
-                    "submission source access denied"
-                );
-            }
+        db_connection_value,
+        submission_id
+    );
+    if(!source_detail_exp){
+        return std::move(source_detail_exp.error());
+    }
 
-            return http_response_util::create_json(
-                request,
-                boost::beast::http::status::ok,
-                submission_json_serializer::make_source_object(source_detail)
-            );
-        }
+    const auto source_access_exp = submission_guard::require_source_access(
+        request,
+        *auth_identity_exp,
+        *source_detail_exp
+    );
+    if(!source_access_exp){
+        return std::move(source_access_exp.error());
+    }
+
+    return http_response_util::create_json(
+        request,
+        boost::beast::http::status::ok,
+        submission_json_serializer::make_source_object(*source_detail_exp)
     );
 }
 
@@ -83,14 +82,19 @@ submission_handler::response_type submission_handler::get_submission(
     db_connection& db_connection_value,
     std::int64_t submission_id
 ){
-    return http_response_util::create_json_or_404_or_500(
+    const auto submission_detail_exp = submission_guard::require_detail(
         request,
-        "get submission detail",
-        submission_service::get_submission_detail(
-            db_connection_value,
-            submission_id
-        ),
-        submission_json_serializer::make_detail_object
+        db_connection_value,
+        submission_id
+    );
+    if(!submission_detail_exp){
+        return std::move(submission_detail_exp.error());
+    }
+
+    return http_response_util::create_json(
+        request,
+        boost::beast::http::status::ok,
+        submission_json_serializer::make_detail_object(*submission_detail_exp)
     );
 }
 
