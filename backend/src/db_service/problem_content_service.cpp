@@ -114,10 +114,6 @@ std::expected<problem_content_dto::sample, error_code> problem_content_service::
     const problem_dto::reference& problem_reference_value,
     const problem_content_dto::sample& sample_value
 ){
-    if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction)
@@ -143,10 +139,6 @@ std::expected<problem_content_dto::sample, error_code> problem_content_service::
     db_connection& connection,
     const problem_content_dto::sample_ref& sample_reference_value
 ){
-    if(sample_reference_value.problem_id <= 0 || sample_reference_value.sample_order <= 0){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
@@ -166,10 +158,6 @@ problem_content_service::list_samples(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
-    if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
@@ -189,10 +177,6 @@ std::expected<void, error_code> problem_content_service::set_sample(
     const problem_content_dto::sample_ref& sample_reference_value,
     const problem_content_dto::sample& sample_value
 ){
-    if(sample_reference_value.problem_id <= 0 || sample_reference_value.sample_order <= 0){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
@@ -229,10 +213,6 @@ std::expected<void, error_code> problem_content_service::delete_sample(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
-    if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {

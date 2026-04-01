@@ -159,14 +159,6 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
     const submission_dto::create_request& create_request_value
 ){
     problem_dto::reference problem_reference_value{create_request_value.problem_id};
-    if(
-        create_request_value.user_id <= 0 ||
-        problem_reference_value.problem_id <= 0 ||
-        create_request_value.source_value.language.empty() ||
-        create_request_value.source_value.source_code.empty()
-    ){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
 
     return db_service_util::with_retry_write_transaction(
         connection,

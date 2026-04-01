@@ -11,7 +11,7 @@ std::expected<void, error_code> auth_repository::insert_token(
 ){
     if(
         user_id <= 0 ||
-        hashed_token_value.token_hash.empty() ||
+        !auth_dto::is_valid(hashed_token_value) ||
         token_ttl <= std::chrono::seconds::zero()
     ){
         return std::unexpected(
@@ -44,7 +44,7 @@ std::expected<bool, error_code> auth_repository::revoke_token(
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_token& hashed_token_value
 ){
-    if(hashed_token_value.token_hash.empty()){
+    if(!auth_dto::is_valid(hashed_token_value)){
         return std::unexpected(db_repository::invalid_input_error());
     }
 
@@ -62,7 +62,7 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_repository::ge
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_token& hashed_token_value
 ){
-    if(hashed_token_value.token_hash.empty()){
+    if(!auth_dto::is_valid(hashed_token_value)){
         return std::unexpected(db_repository::invalid_input_error());
     }
 
@@ -160,7 +160,7 @@ std::expected<bool, error_code> auth_repository::update_expires_at(
     std::chrono::seconds token_ttl
 ){
     if(
-        hashed_token_value.token_hash.empty() ||
+        !auth_dto::is_valid(hashed_token_value) ||
         token_ttl <= std::chrono::seconds::zero()
     ){
         return std::unexpected(db_repository::invalid_input_error());

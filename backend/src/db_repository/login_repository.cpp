@@ -7,10 +7,7 @@ std::expected<std::int64_t, error_code> login_repository::create_user(
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_sign_up_request& sign_up_request_value
 ){
-    if(
-        sign_up_request_value.user_login_id.empty() ||
-        sign_up_request_value.password_hash.empty()
-    ){
+    if(!auth_dto::is_valid(sign_up_request_value)){
         return std::unexpected(db_repository::invalid_input_error());
     }
 
@@ -36,10 +33,7 @@ std::expected<bool, error_code> login_repository::verify_user(
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_credentials& credentials_value
 ){
-    if(
-        credentials_value.user_login_id.empty() ||
-        credentials_value.password_hash.empty()
-    ){
+    if(!auth_dto::is_valid(credentials_value)){
         return std::unexpected(db_repository::invalid_input_error());
     }
 
@@ -60,10 +54,7 @@ std::expected<std::optional<auth_dto::identity>, error_code> login_repository::g
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_credentials& credentials_value
 ){
-    if(
-        credentials_value.user_login_id.empty() ||
-        credentials_value.password_hash.empty()
-    ){
+    if(!auth_dto::is_valid(credentials_value)){
         return std::unexpected(db_repository::invalid_input_error());
     }
 

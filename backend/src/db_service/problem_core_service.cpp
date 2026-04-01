@@ -66,6 +66,10 @@ std::expected<std::optional<std::string>, error_code> problem_core_service::get_
     const problem_dto::reference& problem_reference_value,
     std::int64_t user_id
 ){
+    if(user_id <= 0){
+        return std::unexpected(error_code::create(http_error::validation_error));
+    }
+
     return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
@@ -87,7 +91,6 @@ std::expected<problem_dto::detail, error_code> problem_core_service::get_problem
     std::optional<std::int64_t> viewer_user_id_opt
 ){
     if(
-        problem_reference_value.problem_id <= 0 ||
         (viewer_user_id_opt && *viewer_user_id_opt <= 0)
     ){
         return std::unexpected(error_code::create(http_error::validation_error));
@@ -253,10 +256,6 @@ std::expected<void, error_code> problem_core_service::update_problem(
     const problem_dto::reference& problem_reference_value,
     const problem_dto::update_request& update_request_value
 ){
-    if(problem_reference_value.problem_id <= 0 || update_request_value.title.empty()){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
@@ -293,10 +292,6 @@ std::expected<void, error_code> problem_core_service::delete_problem(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
-    if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {

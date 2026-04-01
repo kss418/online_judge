@@ -11,10 +11,6 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_service::auth_
     db_connection& connection_value,
     const auth_dto::token& token_value
 ){
-    if(token_value.value.empty()){
-        return std::unexpected(error_code::create(http_error::unauthorized));
-    }
-
     const auto token_hash_exp = crypto_util::sha512_hex(token_value.value);
     if(!token_hash_exp){
         return std::unexpected(token_hash_exp.error());
@@ -46,10 +42,6 @@ std::expected<bool, error_code> auth_service::renew_token(
     db_connection& connection_value,
     const auth_dto::token& token_value
 ){
-    if(token_value.value.empty()){
-        return std::unexpected(error_code::create(http_error::unauthorized));
-    }
-
     const auto token_hash_exp = crypto_util::sha512_hex(token_value.value);
     if(!token_hash_exp){
         return std::unexpected(token_hash_exp.error());
@@ -81,10 +73,6 @@ std::expected<bool, error_code> auth_service::revoke_token(
     db_connection& connection_value,
     const auth_dto::token& token_value
 ){
-    if(token_value.value.empty()){
-        return std::unexpected(error_code::create(http_error::unauthorized));
-    }
-
     const auto token_hash_exp = crypto_util::sha512_hex(token_value.value);
     if(!token_hash_exp){
         return std::unexpected(token_hash_exp.error());

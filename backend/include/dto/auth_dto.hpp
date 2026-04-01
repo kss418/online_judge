@@ -62,6 +62,13 @@ namespace auth_dto{
 
     using user_summary_list = std::vector<user_summary>;
 
+    bool is_valid(const token& token_value);
+    bool is_valid(const hashed_token& hashed_token_value);
+    bool is_valid(const sign_up_request& sign_up_request_value);
+    bool is_valid(const credentials& credentials_value);
+    bool is_valid(const hashed_sign_up_request& hashed_sign_up_request_value);
+    bool is_valid(const hashed_credentials& hashed_credentials_value);
+
     std::expected<sign_up_request, dto_validation_error> make_sign_up_request_from_json(
         const boost::json::object& json
     );

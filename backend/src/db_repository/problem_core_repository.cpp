@@ -141,6 +141,10 @@ std::expected<problem_dto::created, error_code> problem_core_repository::create_
     pqxx::transaction_base& transaction,
     const problem_dto::create_request& create_request_value
 ){
+    if(!problem_dto::is_valid(create_request_value)){
+        return std::unexpected(db_repository::invalid_input_error());
+    }
+
     const auto create_problem_result = transaction.exec(
         "INSERT INTO problems(version, title) "
         "VALUES($1, $2) "
@@ -164,6 +168,9 @@ std::expected<void, error_code> problem_core_repository::set_title(
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(db_repository::invalid_reference_error());
+    }
+    if(!problem_dto::is_valid(title_value)){
+        return std::unexpected(db_repository::invalid_input_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -317,6 +324,9 @@ std::expected<void, error_code> problem_core_repository::set_limits(
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(db_repository::invalid_reference_error());
+    }
+    if(!problem_content_dto::is_valid(limits_value)){
+        return std::unexpected(db_repository::invalid_input_error());
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 

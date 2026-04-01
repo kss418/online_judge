@@ -10,10 +10,6 @@ std::expected<problem_dto::testcase, error_code> testcase_service::create_testca
     const problem_dto::reference& problem_reference_value,
     const problem_dto::testcase& testcase_value
 ){
-    if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction)
@@ -63,13 +59,6 @@ std::expected<problem_dto::testcase, error_code> testcase_service::get_testcase(
     db_connection& connection,
     const problem_dto::testcase_ref& testcase_reference_value
 ){
-    if(
-        testcase_reference_value.problem_id <= 0 ||
-        testcase_reference_value.testcase_order <= 0
-    ){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
@@ -88,10 +77,6 @@ std::expected<problem_dto::testcase_count, error_code> testcase_service::get_tes
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
-    if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
@@ -110,10 +95,6 @@ std::expected<std::vector<problem_dto::testcase>, error_code> testcase_service::
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
-    if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
@@ -133,10 +114,6 @@ testcase_service::list_testcase_summaries(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
-    if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
@@ -156,13 +133,6 @@ std::expected<void, error_code> testcase_service::set_testcase(
     const problem_dto::testcase_ref& testcase_reference_value,
     const problem_dto::testcase& testcase_value
 ){
-    if(
-        testcase_reference_value.problem_id <= 0 ||
-        testcase_reference_value.testcase_order <= 0
-    ){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
@@ -196,11 +166,7 @@ std::expected<void, error_code> testcase_service::move_testcase(
     const problem_dto::testcase_ref& testcase_reference_value,
     std::int32_t target_testcase_order
 ){
-    if(
-        testcase_reference_value.problem_id <= 0 ||
-        testcase_reference_value.testcase_order <= 0 ||
-        target_testcase_order <= 0
-    ){
+    if(target_testcase_order <= 0){
         return std::unexpected(error_code::create(http_error::validation_error));
     }
 
@@ -245,13 +211,6 @@ std::expected<void, error_code> testcase_service::delete_testcase(
     db_connection& connection,
     const problem_dto::testcase_ref& testcase_reference_value
 ){
-    if(
-        testcase_reference_value.problem_id <= 0 ||
-        testcase_reference_value.testcase_order <= 0
-    ){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
@@ -283,10 +242,6 @@ std::expected<void, error_code> testcase_service::delete_all_testcases(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
-    if(problem_reference_value.problem_id <= 0){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
@@ -336,10 +291,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_service::replace
     const problem_dto::reference& problem_reference_value,
     const std::vector<problem_dto::testcase>& testcase_values
 ){
-    if(
-        problem_reference_value.problem_id <= 0 ||
-        testcase_values.size() > 999
-    ){
+    if(testcase_values.size() > 999){
         return std::unexpected(error_code::create(http_error::validation_error));
     }
 

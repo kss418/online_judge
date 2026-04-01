@@ -154,6 +154,32 @@ namespace{
     }};
 }
 
+bool submission_dto::is_valid(const source& source_value){
+    return
+        !source_value.language.empty() &&
+        !source_value.source_code.empty() &&
+        language_util::find_supported_language(source_value.language).has_value();
+}
+
+bool submission_dto::is_valid(const create_request& create_request_value){
+    return
+        create_request_value.user_id > 0 &&
+        create_request_value.problem_id > 0 &&
+        is_valid(create_request_value.source_value);
+}
+
+bool submission_dto::is_valid(const lease_request& lease_request_value){
+    return lease_request_value.lease_duration > std::chrono::seconds::zero();
+}
+
+bool submission_dto::is_valid(const status_update& status_update_value){
+    return status_update_value.submission_id > 0;
+}
+
+bool submission_dto::is_valid(const finalize_request& finalize_request_value){
+    return finalize_request_value.submission_id > 0;
+}
+
 std::expected<submission_dto::source, dto_validation_error> submission_dto::make_source_from_json(
     const boost::json::object& json
 ){

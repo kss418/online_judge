@@ -109,6 +109,9 @@ namespace problem_dto{
     };
 
     bool is_valid(const reference& reference_value);
+    bool is_valid(const title& title_value);
+    bool is_valid(const create_request& create_request_value);
+    bool is_valid(const update_request& update_request_value);
     bool is_valid(const testcase_ref& testcase_reference_value);
 
     std::expected<create_request, dto_validation_error> make_create_request_from_json(

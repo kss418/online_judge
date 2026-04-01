@@ -11,6 +11,12 @@ namespace{
     constexpr std::size_t credential_min_length = 4;
     constexpr std::size_t credential_max_length = 15;
 
+    bool is_valid_credential_value(std::string_view value){
+        return
+            value.size() >= credential_min_length &&
+            value.size() <= credential_max_length;
+    }
+
     std::optional<dto_validation_error> validate_credential_length(
         std::string_view field_name,
         std::string_view value
@@ -28,6 +34,38 @@ namespace{
 
         return std::nullopt;
     }
+}
+
+bool auth_dto::is_valid(const token& token_value){
+    return !token_value.value.empty();
+}
+
+bool auth_dto::is_valid(const hashed_token& hashed_token_value){
+    return !hashed_token_value.token_hash.empty();
+}
+
+bool auth_dto::is_valid(const sign_up_request& sign_up_request_value){
+    return
+        is_valid_credential_value(sign_up_request_value.user_login_id) &&
+        is_valid_credential_value(sign_up_request_value.raw_password);
+}
+
+bool auth_dto::is_valid(const credentials& credentials_value){
+    return
+        is_valid_credential_value(credentials_value.user_login_id) &&
+        is_valid_credential_value(credentials_value.raw_password);
+}
+
+bool auth_dto::is_valid(const hashed_sign_up_request& hashed_sign_up_request_value){
+    return
+        !hashed_sign_up_request_value.user_login_id.empty() &&
+        !hashed_sign_up_request_value.password_hash.empty();
+}
+
+bool auth_dto::is_valid(const hashed_credentials& hashed_credentials_value){
+    return
+        !hashed_credentials_value.user_login_id.empty() &&
+        !hashed_credentials_value.password_hash.empty();
 }
 
 std::expected<auth_dto::sign_up_request, dto_validation_error>
@@ -112,10 +150,7 @@ std::expected<auth_dto::hashed_sign_up_request, error_code> auth_dto::hash_sign_
 std::expected<auth_dto::hashed_credentials, error_code> auth_dto::hash_credentials(
     const credentials& credentials_value
 ){
-    if(
-        credentials_value.user_login_id.empty() ||
-        credentials_value.raw_password.empty()
-    ){
+    if(!is_valid(credentials_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 

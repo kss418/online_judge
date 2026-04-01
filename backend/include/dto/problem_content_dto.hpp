@@ -43,6 +43,8 @@ namespace problem_content_dto{
         std::int64_t accepted_count = 0;
     };
 
+    bool is_valid(const limits& limits_value);
+    bool is_valid(const statement& statement_value);
     bool is_valid(const sample_ref& sample_reference_value);
 
     std::expected<limits, dto_validation_error> make_limits_from_json(

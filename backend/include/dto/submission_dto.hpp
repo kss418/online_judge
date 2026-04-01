@@ -152,6 +152,12 @@ namespace submission_dto{
 
     using history_list = std::vector<history>;
 
+    bool is_valid(const source& source_value);
+    bool is_valid(const create_request& create_request_value);
+    bool is_valid(const lease_request& lease_request_value);
+    bool is_valid(const status_update& status_update_value);
+    bool is_valid(const finalize_request& finalize_request_value);
+
     std::expected<source, dto_validation_error> make_source_from_json(
         const boost::json::object& json
     );

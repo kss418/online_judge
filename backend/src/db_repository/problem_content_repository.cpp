@@ -75,6 +75,9 @@ std::expected<void, error_code> problem_content_repository::set_statement(
     if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(db_repository::invalid_reference_error());
     }
+    if(!problem_content_dto::is_valid(statement_value)){
+        return std::unexpected(db_repository::invalid_input_error());
+    }
 
     const std::string note_value = statement_value.note.value_or("");
     transaction.exec(

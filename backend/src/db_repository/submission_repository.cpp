@@ -268,12 +268,7 @@ std::expected<submission_dto::created, error_code> submission_repository::create
     pqxx::transaction_base& transaction,
     const submission_dto::create_request& create_request_value
 ){
-    if(
-        create_request_value.user_id <= 0 ||
-        create_request_value.problem_id <= 0 ||
-        create_request_value.source_value.language.empty() ||
-        create_request_value.source_value.source_code.empty()
-    ){
+    if(!submission_dto::is_valid(create_request_value)){
         return std::unexpected(db_repository::invalid_input_error());
     }
 
@@ -332,6 +327,10 @@ std::expected<void, error_code> submission_repository::update_submission_status(
     pqxx::transaction_base& transaction,
     const submission_dto::status_update& status_update_value
 ){
+    if(!submission_dto::is_valid(status_update_value)){
+        return std::unexpected(db_repository::invalid_reference_error());
+    }
+
     const std::int64_t submission_id = status_update_value.submission_id;
     const auto locked_submission_exp = get_locked_submission_context(
         transaction,
@@ -475,7 +474,7 @@ std::expected<submission_dto::queued_submission, error_code> submission_reposito
     const submission_dto::lease_request& lease_request_value
 ){
     const std::chrono::seconds lease_duration = lease_request_value.lease_duration;
-    if(lease_duration <= std::chrono::seconds::zero()){
+    if(!submission_dto::is_valid(lease_request_value)){
         return std::unexpected(db_repository::invalid_input_error());
     }
 
@@ -545,6 +544,10 @@ std::expected<submission_dto::finalize_result, error_code> submission_repository
     pqxx::transaction_base& transaction,
     const submission_dto::finalize_request& finalize_request_value
 ){
+    if(!submission_dto::is_valid(finalize_request_value)){
+        return std::unexpected(db_repository::invalid_reference_error());
+    }
+
     const std::int64_t submission_id = finalize_request_value.submission_id;
     const auto locked_submission_exp = get_locked_submission_context(
         transaction,
