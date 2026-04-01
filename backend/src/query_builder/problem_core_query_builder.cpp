@@ -1,6 +1,7 @@
 #include "query_builder/problem_core_query_builder.hpp"
 
 #include "db_repository/sql_filter_builder.hpp"
+#include "query_builder/viewer_problem_state_sql.hpp"
 
 #include <utility>
 
@@ -48,36 +49,6 @@ namespace{
         }
 
         return "desc";
-    }
-
-    std::string make_problem_list_state_select_expr(
-        std::optional<std::int64_t> viewer_user_id_opt
-    ){
-        if(viewer_user_id_opt){
-            return
-                "CASE "
-                "WHEN COALESCE(ups.accepted_submission_count, 0) > 0 THEN 'solved' "
-                "WHEN COALESCE(ups.failed_submission_count, 0) > 0 THEN 'wrong' "
-                "ELSE NULL "
-                "END ";
-        }
-
-        return "NULL::TEXT ";
-    }
-
-    void append_problem_list_viewer_join(
-        std::string& query,
-        problem_list_query_context& context_value
-    ){
-        if(!context_value.viewer_user_id_opt){
-            return;
-        }
-
-        query +=
-            "LEFT JOIN user_problem_attempt_summary AS ups "
-            "ON ups.problem_id = p.problem_id "
-            "AND ups.user_id = " +
-            context_value.predicates.append_param(*context_value.viewer_user_id_opt) + " ";
     }
 
     void append_problem_list_where_clauses(
@@ -203,7 +174,8 @@ namespace{
                 "COALESCE(pl.memory_limit_mb, 0), "
                 "COALESCE(ps.submission_count, 0), "
                 "COALESCE(ps.accepted_count, 0), " +
-                make_problem_list_state_select_expr(viewer_user_id_opt) +
+                viewer_problem_state_sql::make_state_select_expr(viewer_user_id_opt, "ups") +
+                " "
                 "FROM problems AS p "
                 "LEFT JOIN problem_limits AS pl "
                 "ON pl.problem_id = p.problem_id "
@@ -211,7 +183,13 @@ namespace{
                 "ON ps.problem_id = p.problem_id ";
         }
 
-        append_problem_list_viewer_join(query, context_value);
+        viewer_problem_state_sql::append_viewer_join(
+            query,
+            context_value.predicates,
+            context_value.viewer_user_id_opt,
+            "ups",
+            "p.problem_id"
+        );
         append_problem_list_where_clauses(query, context_value);
 
         if(!count_only){
@@ -247,42 +225,12 @@ namespace{
         };
     }
 
-    void append_user_problem_list_viewer_join(
-        std::string& query,
-        user_problem_list_query_context& context_value
-    ){
-        if(!context_value.viewer_user_id_opt){
-            return;
-        }
-
-        query +=
-            "LEFT JOIN user_problem_attempt_summary AS viewer_ups "
-            "ON viewer_ups.problem_id = p.problem_id "
-            "AND viewer_ups.user_id = " +
-            context_value.predicates.append_param(*context_value.viewer_user_id_opt) + " ";
-    }
-
     void append_user_problem_list_where_clauses(
         std::string& query,
         user_problem_list_query_context& context_value
     ){
         context_value.predicates.where_param("target_ups.user_id = ", context_value.user_id);
         query += context_value.predicates.sql();
-    }
-
-    std::string make_user_problem_state_select_expr(
-        std::optional<std::int64_t> viewer_user_id_opt
-    ){
-        if(viewer_user_id_opt){
-            return
-                "CASE "
-                "WHEN COALESCE(viewer_ups.accepted_submission_count, 0) > 0 THEN 'solved' "
-                "WHEN COALESCE(viewer_ups.failed_submission_count, 0) > 0 THEN 'wrong' "
-                "ELSE NULL "
-                "END ";
-        }
-
-        return "NULL::TEXT ";
     }
 
     std::expected<assembled_query, error_code>
@@ -306,7 +254,11 @@ namespace{
             "COALESCE(pl.memory_limit_mb, 0), "
             "COALESCE(ps.submission_count, 0), "
             "COALESCE(ps.accepted_count, 0), " +
-            make_user_problem_state_select_expr(context_value.viewer_user_id_opt) +
+            viewer_problem_state_sql::make_state_select_expr(
+                context_value.viewer_user_id_opt,
+                "viewer_ups"
+            ) +
+            " "
             "FROM user_problem_attempt_summary AS target_ups "
             "JOIN problems AS p "
             "ON p.problem_id = target_ups.problem_id "
@@ -315,7 +267,13 @@ namespace{
             "LEFT JOIN problem_statistics AS ps "
             "ON ps.problem_id = p.problem_id ";
 
-        append_user_problem_list_viewer_join(query, context_value);
+        viewer_problem_state_sql::append_viewer_join(
+            query,
+            context_value.predicates,
+            context_value.viewer_user_id_opt,
+            "viewer_ups",
+            "p.problem_id"
+        );
         if(solved_only){
             context_value.predicates.where("target_ups.accepted_submission_count > 0");
         }

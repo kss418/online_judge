@@ -3,4 +3,5 @@ target_sources(lib
         problem_core_query_builder.cpp
         submission_query_builder.cpp
         user_query_builder.cpp
+        viewer_problem_state_sql.cpp
 )

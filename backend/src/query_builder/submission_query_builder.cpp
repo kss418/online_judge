@@ -2,6 +2,7 @@
 
 #include "common/language_util.hpp"
 #include "db_repository/sql_filter_builder.hpp"
+#include "query_builder/viewer_problem_state_sql.hpp"
 
 #include <string>
 #include <utility>
@@ -46,36 +47,6 @@ namespace{
         const submission_dto::list_filter& filter_value
     ){
         return filter_value.limit_opt.value_or(submission_dto::DEFAULT_LIST_LIMIT);
-    }
-
-    std::string make_submission_list_state_select_expr(
-        std::optional<std::int64_t> viewer_user_id_opt
-    ){
-        if(viewer_user_id_opt){
-            return
-                "CASE "
-                "WHEN viewer_problem_state.accepted_submission_count > 0 THEN 'solved' "
-                "WHEN viewer_problem_state.failed_submission_count > 0 THEN 'wrong' "
-                "ELSE NULL "
-                "END, ";
-        }
-
-        return "NULL::text, ";
-    }
-
-    void append_submission_list_viewer_join(
-        std::string& query,
-        submission_list_query_context& context_value
-    ){
-        if(!context_value.viewer_user_id_opt){
-            return;
-        }
-
-        query +=
-            "LEFT JOIN user_problem_attempt_summary viewer_problem_state "
-            "ON viewer_problem_state.problem_id = submission_table.problem_id "
-            "AND viewer_problem_state.user_id = " +
-            context_value.predicates.append_param(*context_value.viewer_user_id_opt) + " ";
     }
 
     void append_submission_list_where_clauses(
@@ -153,7 +124,11 @@ submission_query_builder::submission_list_query_builder::build_list_query() cons
         "submission_table.score, "
         "submission_table.elapsed_ms, "
         "submission_table.max_rss_kb, " +
-        make_submission_list_state_select_expr(viewer_user_id_opt_) +
+        viewer_problem_state_sql::make_state_select_expr(
+            viewer_user_id_opt_,
+            "viewer_problem_state"
+        ) +
+        ", "
         "submission_table.created_at::text, "
         "submission_table.updated_at::text "
         "FROM submissions submission_table "
@@ -162,7 +137,13 @@ submission_query_builder::submission_list_query_builder::build_list_query() cons
         "JOIN users user_table "
         "ON user_table.user_id = submission_table.user_id ";
 
-    append_submission_list_viewer_join(query, context_value);
+    viewer_problem_state_sql::append_viewer_join(
+        query,
+        context_value.predicates,
+        context_value.viewer_user_id_opt,
+        "viewer_problem_state",
+        "submission_table.problem_id"
+    );
     append_submission_list_where_clauses(query, context_value);
     append_submission_list_order_by_and_limit(query, context_value);
 
