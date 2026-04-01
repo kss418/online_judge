@@ -2,7 +2,7 @@
 #include "dto/problem_dto.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
-#include "http_core/request_dto.hpp"
+#include "http_guard/request_guard.hpp"
 
 #include "db_service/problem_core_service.hpp"
 #include "db_service/submission_service.hpp"
@@ -70,7 +70,7 @@ problem_handler::response_type problem_handler::get_problems(
             );
         },
         auth_guard::make_optional_auth_guard(),
-        request_dto::make_problem_list_filter_guard()
+        request_guard::make_problem_list_filter_guard()
     );
 }
 
@@ -144,7 +144,7 @@ problem_handler::response_type problem_handler::post_problem(
             );
         },
         auth_guard::make_admin_guard(),
-        request_dto::make_json_guard<problem_dto::create_request>(
+        request_guard::make_json_guard<problem_dto::create_request>(
             problem_dto::make_create_request_from_json
         )
     );
@@ -174,7 +174,7 @@ problem_handler::response_type problem_handler::put_problem(
         },
         auth_guard::make_admin_guard(),
         problem_guard::make_exists_guard(problem_reference_value),
-        request_dto::make_json_guard<problem_dto::update_request>(
+        request_guard::make_json_guard<problem_dto::update_request>(
             problem_dto::make_update_request_from_json
         )
     );

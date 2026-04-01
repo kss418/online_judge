@@ -4,7 +4,7 @@
 #include "dto/problem_dto.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
-#include "http_core/request_dto.hpp"
+#include "http_guard/request_guard.hpp"
 
 #include "db_service/problem_content_service.hpp"
 #include "serializer/problem_json_serializer.hpp"
@@ -64,7 +64,7 @@ problem_content_handler::response_type problem_content_handler::put_limits(
             );
         },
         auth_guard::make_admin_guard(),
-        request_dto::make_json_guard<problem_content_dto::limits>(
+        request_guard::make_json_guard<problem_content_dto::limits>(
             problem_content_dto::make_limits_from_json
         )
     );
@@ -93,7 +93,7 @@ problem_content_handler::response_type problem_content_handler::put_statement(
             );
         },
         auth_guard::make_admin_guard(),
-        request_dto::make_json_guard<problem_content_dto::statement>(
+        request_guard::make_json_guard<problem_content_dto::statement>(
             problem_content_dto::make_statement_from_json
         )
     );
@@ -189,7 +189,7 @@ problem_content_handler::response_type problem_content_handler::put_sample(
             );
         },
         auth_guard::make_admin_guard(),
-        request_dto::make_json_guard<problem_content_dto::sample>(
+        request_guard::make_json_guard<problem_content_dto::sample>(
             problem_content_dto::make_sample_from_json
         )
     );

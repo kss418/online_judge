@@ -6,8 +6,8 @@
 #include "db_service/user_statistics_service.hpp"
 #include "common/permission_util.hpp"
 #include "http_guard/auth_guard.hpp"
+#include "http_guard/request_guard.hpp"
 #include "http_guard/user_guard.hpp"
-#include "http_core/request_dto.hpp"
 #include "serializer/user_json_serializer.hpp"
 
 user_handler::response_type user_handler::get_me(
@@ -147,7 +147,7 @@ user_handler::response_type user_handler::get_public_user_list(
                 user_json_serializer::make_public_list_object
             );
         },
-        request_dto::make_query_guard<user_dto::list_filter>(
+        request_guard::make_query_guard<user_dto::list_filter>(
             user_dto::make_list_filter_from_query_params
         )
     );
@@ -396,7 +396,7 @@ user_handler::response_type user_handler::post_user_submission_ban(
             );
         },
         auth_guard::make_admin_guard(),
-        request_dto::make_json_guard<user_dto::submission_ban_request>(
+        request_guard::make_json_guard<user_dto::submission_ban_request>(
             user_dto::make_submission_ban_request_from_json
         )
     );

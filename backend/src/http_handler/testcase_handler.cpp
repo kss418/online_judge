@@ -7,7 +7,7 @@
 #include "dto/problem_dto.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
-#include "http_core/request_dto.hpp"
+#include "http_guard/request_guard.hpp"
 #include "http_core/testcase_uploader.hpp"
 
 #include "db_service/testcase_service.hpp"
@@ -120,7 +120,7 @@ testcase_handler::response_type testcase_handler::post_testcase(
             );
         },
         auth_guard::make_admin_guard(),
-        request_dto::make_json_guard<problem_dto::testcase>(
+        request_guard::make_json_guard<problem_dto::testcase>(
             problem_dto::make_testcase_from_json
         )
     );
@@ -163,7 +163,7 @@ testcase_handler::response_type testcase_handler::put_testcase(
             );
         },
         auth_guard::make_admin_guard(),
-        request_dto::make_json_guard<problem_dto::testcase>(
+        request_guard::make_json_guard<problem_dto::testcase>(
             problem_dto::make_testcase_from_json
         )
     );
@@ -371,7 +371,7 @@ testcase_handler::response_type testcase_handler::move_testcase(
         },
         auth_guard::make_admin_guard(),
         problem_guard::make_exists_guard(problem_reference_value),
-        request_dto::make_json_guard<problem_dto::testcase_move_request>(
+        request_guard::make_json_guard<problem_dto::testcase_move_request>(
             problem_dto::make_testcase_move_request_from_json
         )
     );

@@ -3,6 +3,7 @@
 #include "db_service/submission_service.hpp"
 #include "dto/submission_dto.hpp"
 #include "http_guard/auth_guard.hpp"
+#include "http_guard/request_guard.hpp"
 #include "http_guard/submission_guard.hpp"
 #include "http_core/request_dto.hpp"
 #include "serializer/submission_json_serializer.hpp"
@@ -104,7 +105,7 @@ submission_handler::response_type submission_handler::post_submission_status_bat
                 submission_json_serializer::make_status_snapshot_batch_object
             );
         },
-        request_dto::make_json_guard<submission_dto::status_batch_request>(
+        request_guard::make_json_guard<submission_dto::status_batch_request>(
             submission_dto::make_status_batch_request_from_json
         )
     );
@@ -221,6 +222,6 @@ submission_handler::response_type submission_handler::get_submissions(
             );
         },
         auth_guard::make_optional_auth_guard(),
-        request_dto::make_submission_list_filter_guard()
+        request_guard::make_submission_list_filter_guard()
     );
 }
