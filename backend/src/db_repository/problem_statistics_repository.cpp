@@ -7,10 +7,10 @@ problem_statistics_repository::get_statistics(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
-    const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
+    const std::int64_t problem_id = problem_reference_value.problem_id;
 
     const auto statistics_query_result = transaction.exec(
         "SELECT submission_count, accepted_count "
@@ -33,10 +33,10 @@ std::expected<void, error_code> problem_statistics_repository::create_problem_st
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
-    const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
+    const std::int64_t problem_id = problem_reference_value.problem_id;
 
     const auto create_result = transaction.exec(
         "INSERT INTO problem_statistics(problem_id) "
@@ -54,10 +54,10 @@ std::expected<void, error_code> problem_statistics_repository::increase_submissi
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
-    const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
+    const std::int64_t problem_id = problem_reference_value.problem_id;
 
     const auto update_result = transaction.exec(
         "UPDATE problem_statistics "
@@ -79,10 +79,10 @@ std::expected<void, error_code> problem_statistics_repository::increase_accepted
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
-    const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
+    const std::int64_t problem_id = problem_reference_value.problem_id;
 
     const auto update_result = transaction.exec(
         "UPDATE problem_statistics "
@@ -104,10 +104,10 @@ std::expected<void, error_code> problem_statistics_repository::decrease_accepted
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
-    const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
+    const std::int64_t problem_id = problem_reference_value.problem_id;
 
     const auto update_result = transaction.exec(
         "UPDATE problem_statistics "

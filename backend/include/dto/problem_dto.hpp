@@ -108,6 +108,9 @@ namespace problem_dto{
         std::optional<std::int64_t> offset_opt = std::nullopt;
     };
 
+    bool is_valid(const reference& reference_value);
+    bool is_valid(const testcase_ref& testcase_reference_value);
+
     std::expected<create_request, dto_validation_error> make_create_request_from_json(
         const boost::json::object& json
     );

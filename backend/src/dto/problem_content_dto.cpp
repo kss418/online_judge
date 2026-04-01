@@ -2,6 +2,10 @@
 
 #include "common/json_field_util.hpp"
 
+bool problem_content_dto::is_valid(const sample_ref& sample_reference_value){
+    return sample_reference_value.problem_id > 0 && sample_reference_value.sample_order > 0;
+}
+
 std::expected<problem_content_dto::limits, dto_validation_error>
 problem_content_dto::make_limits_from_json(const boost::json::object& json){
     const auto memory_limit_mb_opt = json_field_util::get_positive_int32_field(

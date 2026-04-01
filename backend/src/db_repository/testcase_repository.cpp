@@ -10,7 +10,7 @@ std::expected<problem_dto::testcase, error_code> testcase_repository::create_tes
 ){
     const std::int64_t problem_id = testcase_reference_value.problem_id;
     const std::int32_t testcase_order = testcase_reference_value.testcase_order;
-    if(problem_id <= 0 || testcase_order <= 0){
+    if(!problem_dto::is_valid(testcase_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
     const auto create_testcase_result = transaction.exec(
@@ -52,7 +52,7 @@ std::expected<problem_dto::testcase, error_code> testcase_repository::get_testca
 ){
     const std::int64_t problem_id = testcase_reference_value.problem_id;
     const std::int32_t testcase_order = testcase_reference_value.testcase_order;
-    if(problem_id <= 0 || testcase_order <= 0){
+    if(!problem_dto::is_valid(testcase_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -80,7 +80,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_repository::get_
     const problem_dto::reference& problem_reference_value
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -105,7 +105,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_repository::incr
     const problem_dto::reference& problem_reference_value
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -130,6 +130,10 @@ std::expected<problem_dto::testcase_count, error_code> testcase_repository::decr
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
+    if(!problem_dto::is_valid(problem_reference_value)){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
     const auto decrease_result = transaction.exec(
         "UPDATE problem_statements "
         "SET testcase_count = testcase_count - 1, updated_at = NOW() "
@@ -152,7 +156,7 @@ std::expected<std::vector<problem_dto::testcase>, error_code> testcase_repositor
     const problem_dto::reference& problem_reference_value
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -184,7 +188,7 @@ testcase_repository::list_testcase_summaries(
     const problem_dto::reference& problem_reference_value
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -225,7 +229,7 @@ std::expected<void, error_code> testcase_repository::set_testcase(
 ){
     const std::int64_t problem_id = testcase_reference_value.problem_id;
     const std::int32_t testcase_order = testcase_reference_value.testcase_order;
-    if(problem_id <= 0 || testcase_order <= 0){
+    if(!problem_dto::is_valid(testcase_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -263,7 +267,7 @@ std::expected<void, error_code> testcase_repository::move_testcase(
 ){
     const std::int64_t problem_id = testcase_reference_value.problem_id;
     const std::int32_t source_testcase_order = testcase_reference_value.testcase_order;
-    if(problem_id <= 0 || source_testcase_order <= 0 || target_testcase_order <= 0){
+    if(!problem_dto::is_valid(testcase_reference_value) || target_testcase_order <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -327,7 +331,7 @@ std::expected<void, error_code> testcase_repository::delete_testcase(
 ){
     const std::int64_t problem_id = testcase_reference_value.problem_id;
     const std::int32_t testcase_order = testcase_reference_value.testcase_order;
-    if(problem_id <= 0 || testcase_order <= 0){
+    if(!problem_dto::is_valid(testcase_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -350,7 +354,7 @@ std::expected<void, error_code> testcase_repository::decrease_order(
 ){
     const std::int64_t problem_id = testcase_reference_value.problem_id;
     const std::int32_t testcase_order = testcase_reference_value.testcase_order;
-    if(problem_id <= 0 || testcase_order <= 0){
+    if(!problem_dto::is_valid(testcase_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -407,7 +411,7 @@ std::expected<void, error_code> testcase_repository::delete_all_testcases(
     const problem_dto::reference& problem_reference_value
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 
@@ -425,7 +429,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_repository::clea
     const problem_dto::reference& problem_reference_value
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
 

@@ -27,10 +27,10 @@ std::expected<problem_dto::existence, error_code> problem_core_repository::exist
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
-    const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
+    const std::int64_t problem_id = problem_reference_value.problem_id;
 
     const auto exists_query_result = transaction.exec(
         "SELECT EXISTS("
@@ -54,10 +54,10 @@ std::expected<problem_dto::title, error_code> problem_core_repository::get_title
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
-    const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
+    const std::int64_t problem_id = problem_reference_value.problem_id;
 
     const auto title_query_result = transaction.exec(
         "SELECT title "
@@ -79,10 +79,10 @@ std::expected<problem_dto::version, error_code> problem_core_repository::get_ver
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
-    const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
+    const std::int64_t problem_id = problem_reference_value.problem_id;
 
     const auto version_query_result = transaction.exec(
         "SELECT version "
@@ -105,10 +105,10 @@ std::expected<std::optional<std::string>, error_code> problem_core_repository::g
     const problem_dto::reference& problem_reference_value,
     std::int64_t user_id
 ){
-    const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0 || user_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value) || user_id <= 0){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
+    const std::int64_t problem_id = problem_reference_value.problem_id;
 
     const auto state_query_result = transaction.exec(
         "SELECT accepted_submission_count, failed_submission_count "
@@ -140,10 +140,6 @@ std::expected<problem_dto::created, error_code> problem_core_repository::create_
     pqxx::transaction_base& transaction,
     const problem_dto::create_request& create_request_value
 ){
-    if(create_request_value.title.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
-    }
-
     const auto create_problem_result = transaction.exec(
         "INSERT INTO problems(version, title) "
         "VALUES($1, $2) "
@@ -165,10 +161,10 @@ std::expected<void, error_code> problem_core_repository::set_title(
     const problem_dto::reference& problem_reference_value,
     const problem_dto::title& title_value
 ){
-    const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0 || title_value.value.empty()){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
+    const std::int64_t problem_id = problem_reference_value.problem_id;
 
     const auto update_result = transaction.exec(
         "UPDATE problems "
@@ -188,10 +184,10 @@ std::expected<void, error_code> problem_core_repository::delete_problem(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
-    const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
+    const std::int64_t problem_id = problem_reference_value.problem_id;
 
     const auto delete_result = transaction.exec(
         "DELETE FROM problems "
@@ -291,10 +287,10 @@ std::expected<problem_content_dto::limits, error_code> problem_core_repository::
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
-    const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
+    const std::int64_t problem_id = problem_reference_value.problem_id;
 
     const auto limits_query_result = transaction.exec(
         "SELECT memory_limit_mb, time_limit_ms "
@@ -318,10 +314,10 @@ std::expected<void, error_code> problem_core_repository::set_limits(
     const problem_dto::reference& problem_reference_value,
     const problem_content_dto::limits& limits_value
 ){
-    const std::int64_t problem_id = problem_reference_value.problem_id;
-    if(problem_id <= 0 || limits_value.memory_mb <= 0 || limits_value.time_ms <= 0){
+    if(!problem_dto::is_valid(problem_reference_value)){
         return std::unexpected(error_code::create(errno_error::invalid_argument));
     }
+    const std::int64_t problem_id = problem_reference_value.problem_id;
 
     transaction.exec(
         "INSERT INTO problem_limits(problem_id, memory_limit_mb, time_limit_ms, updated_at) "
@@ -345,6 +341,10 @@ std::expected<void, error_code> problem_core_repository::increase_version(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
+    if(!problem_dto::is_valid(problem_reference_value)){
+        return std::unexpected(error_code::create(errno_error::invalid_argument));
+    }
+
     const std::int64_t problem_id = problem_reference_value.problem_id;
     const auto update_result = transaction.exec(
         "UPDATE problems "

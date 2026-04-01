@@ -149,6 +149,16 @@ namespace{
     }};
 }
 
+bool problem_dto::is_valid(const reference& reference_value){
+    return reference_value.problem_id > 0;
+}
+
+bool problem_dto::is_valid(const testcase_ref& testcase_reference_value){
+    return
+        testcase_reference_value.problem_id > 0 &&
+        testcase_reference_value.testcase_order > 0;
+}
+
 std::expected<problem_dto::create_request, dto_validation_error>
 problem_dto::make_create_request_from_json(const boost::json::object& json){
     const auto title_opt = json_field_util::get_non_empty_string_field(json, "title");
