@@ -20,4 +20,6 @@ target_sources(lib
         blocking_io.cpp
         language_util.cpp
         json_field_util.cpp
+        testcase_uploader.cpp
+        testcase_zip_service.cpp
 )

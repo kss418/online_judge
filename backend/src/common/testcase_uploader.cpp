@@ -1,4 +1,4 @@
-#include "http_core/testcase_uploader.hpp"
+#include "common/testcase_uploader.hpp"
 
 #include "common/file_util.hpp"
 

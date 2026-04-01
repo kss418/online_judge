@@ -1,14 +1,10 @@
 #include "http_handler/testcase_handler.hpp"
 
-#include "common/blocking_io.hpp"
-#include "common/temp_dir.hpp"
-#include "common/temp_file.hpp"
-#include "common/zip_util.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
 #include "http_guard/request_guard.hpp"
-#include "http_core/testcase_uploader.hpp"
+#include "http_guard/testcase_upload_guard.hpp"
 
 #include "db_service/testcase_service.hpp"
 #include "serializer/common_json_serializer.hpp"
@@ -178,150 +174,12 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
     return http_guard::run_or_respond(
         request,
         db_connection_value,
-        [&](const auth_dto::identity&) -> response_type {
-            if(request.body().empty()){
-                return http_response_util::create_error(
-                    request,
-                    boost::beast::http::status::bad_request,
-                    "invalid_testcase_zip",
-                    "invalid testcase zip: request body is empty"
-                );
-            }
-
-            auto temp_zip_file_exp = temp_file::create("/tmp/oj_testcase_zip_XXXXXX");
-            if(!temp_zip_file_exp){
-                return http_response_util::create_error(
-                    request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to create testcase zip temp file: " + to_string(temp_zip_file_exp.error())
-                );
-            }
-
-            temp_file temp_zip_file = std::move(*temp_zip_file_exp);
-            const auto write_body_exp = blocking_io::write_all(
-                temp_zip_file.get_fd(),
-                request.body()
-            );
-            if(!write_body_exp){
-                return http_response_util::create_error(
-                    request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to write testcase zip temp file: " + to_string(write_body_exp.error())
-                );
-            }
-
-            const auto close_zip_file_exp = temp_zip_file.close_fd_checked();
-            if(!close_zip_file_exp){
-                return http_response_util::create_error(
-                    request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to finalize testcase zip temp file: " + to_string(close_zip_file_exp.error())
-                );
-            }
-
-            const auto list_zip_entries_exp = zip_util::list_entry_names(
-                temp_zip_file.get_path()
-            );
-            if(!list_zip_entries_exp){
-                if(list_zip_entries_exp.error() == errno_error::file_not_found){
-                    return http_response_util::create_error(
-                        request,
-                        boost::beast::http::status::internal_server_error,
-                        "internal_server_error",
-                        "failed to inspect testcase zip: unzip command unavailable"
-                    );
-                }
-                if(list_zip_entries_exp.error().is_bad_request_error()){
-                    return http_response_util::create_error(
-                        request,
-                        boost::beast::http::status::bad_request,
-                        "invalid_testcase_zip",
-                        "invalid testcase zip"
-                    );
-                }
-                return http_response_util::create_error(
-                    request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to inspect testcase zip: " + to_string(list_zip_entries_exp.error())
-                );
-            }
-
-            const auto archive_entries_exp = testcase_uploader::parse_testcase_archive_entries(
-                *list_zip_entries_exp
-            );
-            if(!archive_entries_exp){
-                return http_response_util::create_error(
-                    request,
-                    boost::beast::http::status::bad_request,
-                    "invalid_testcase_zip",
-                    archive_entries_exp.error()
-                );
-            }
-
-            auto extraction_directory_exp = temp_dir::create(
-                "/tmp/oj_testcase_zip_extract_XXXXXX"
-            );
-            if(!extraction_directory_exp){
-                return http_response_util::create_error(
-                    request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to create testcase extract directory: " +
-                        to_string(extraction_directory_exp.error())
-                );
-            }
-
-            temp_dir extraction_directory = std::move(*extraction_directory_exp);
-            const auto unzip_archive_exp = zip_util::extract_to_directory(
-                temp_zip_file.get_path(),
-                extraction_directory.get_path()
-            );
-            if(!unzip_archive_exp){
-                if(unzip_archive_exp.error() == errno_error::file_not_found){
-                    return http_response_util::create_error(
-                        request,
-                        boost::beast::http::status::internal_server_error,
-                        "internal_server_error",
-                        "failed to extract testcase zip: unzip command unavailable"
-                    );
-                }
-                if(unzip_archive_exp.error().is_bad_request_error()){
-                    return http_response_util::create_error(
-                        request,
-                        boost::beast::http::status::bad_request,
-                        "invalid_testcase_zip",
-                        "invalid testcase zip"
-                    );
-                }
-                return http_response_util::create_error(
-                    request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to extract testcase zip: " + to_string(unzip_archive_exp.error())
-                );
-            }
-
-            const auto testcase_values_exp = testcase_uploader::load_testcases_from_directory(
-                extraction_directory.get_path(),
-                *archive_entries_exp
-            );
-            if(!testcase_values_exp){
-                return http_response_util::create_error(
-                    request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to read extracted testcase files: " + to_string(testcase_values_exp.error())
-                );
-            }
-
+        [&](const auth_dto::identity&,
+            const std::vector<problem_dto::testcase>& testcase_values) -> response_type {
             const auto replace_testcases_exp = testcase_service::replace_testcases(
                 db_connection_value,
                 problem_reference_value,
-                *testcase_values_exp
+                testcase_values
             );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
@@ -338,7 +196,8 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
             );
         },
         auth_guard::make_admin_guard(),
-        problem_guard::make_exists_guard(problem_reference_value)
+        problem_guard::make_exists_guard(problem_reference_value),
+        testcase_upload_guard::make_testcase_zip_guard()
     );
 }
 

@@ -4,7 +4,6 @@ target_sources(lib
         http_response_util.cpp
         request_list_filter_dto.cpp
         request_parser.cpp
-        testcase_uploader.cpp
         http_server.cpp
         acceptor.cpp
         http_session.cpp
