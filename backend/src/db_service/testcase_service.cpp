@@ -74,15 +74,12 @@ std::expected<problem_dto::testcase, error_code> testcase_service::get_testcase(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::testcase, error_code> {
-            const auto testcase_exp = testcase_repository::get_testcase(
-                transaction,
-                testcase_reference_value
+            return db_service_util::map_repository_error_to_http_error(
+                testcase_repository::get_testcase(
+                    transaction,
+                    testcase_reference_value
+                )
             );
-            if(!testcase_exp && testcase_exp.error() == repository_error::not_found){
-                return std::unexpected(error_code::create(http_error::not_found));
-            }
-
-            return testcase_exp;
         }
     );
 }
@@ -99,9 +96,11 @@ std::expected<problem_dto::testcase_count, error_code> testcase_service::get_tes
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::testcase_count, error_code> {
-            return testcase_repository::get_testcase_count(
-                transaction,
-                problem_reference_value
+            return db_service_util::map_repository_error_to_http_error(
+                testcase_repository::get_testcase_count(
+                    transaction,
+                    problem_reference_value
+                )
             );
         }
     );
@@ -119,9 +118,11 @@ std::expected<std::vector<problem_dto::testcase>, error_code> testcase_service::
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_dto::testcase>, error_code> {
-            return testcase_repository::list_testcases(
-                transaction,
-                problem_reference_value
+            return db_service_util::map_repository_error_to_http_error(
+                testcase_repository::list_testcases(
+                    transaction,
+                    problem_reference_value
+                )
             );
         }
     );
@@ -140,9 +141,11 @@ testcase_service::list_testcase_summaries(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_dto::testcase_summary>, error_code> {
-            return testcase_repository::list_testcase_summaries(
-                transaction,
-                problem_reference_value
+            return db_service_util::map_repository_error_to_http_error(
+                testcase_repository::list_testcase_summaries(
+                    transaction,
+                    problem_reference_value
+                )
             );
         }
     );

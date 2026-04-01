@@ -12,19 +12,6 @@ static bool is_queue_empty_error(const error_code& code){
     return code == errno_error::resource_temporarily_unavailable;
 }
 
-template <typename value_type>
-static std::expected<value_type, error_code> map_repository_error_to_http_error(
-    std::expected<value_type, error_code> value_exp
-){
-    if(!value_exp){
-        if(const auto http_error_opt = map_error_to_http_error(value_exp.error())){
-            return std::unexpected(error_code::create(*http_error_opt));
-        }
-    }
-
-    return value_exp;
-}
-
 static bool should_hide_submission_metrics(std::string_view status){
     return status == to_string(submission_status::runtime_error);
 }
@@ -74,7 +61,7 @@ std::expected<submission_dto::history_list, error_code> submission_service::get_
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::history_list, error_code> {
-            return map_repository_error_to_http_error(
+            return db_service_util::map_repository_error_to_http_error(
                 submission_repository::get_submission_history(transaction, submission_id)
             );
         }
@@ -93,7 +80,7 @@ std::expected<submission_dto::source_detail, error_code> submission_service::get
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::source_detail, error_code> {
-            return map_repository_error_to_http_error(
+            return db_service_util::map_repository_error_to_http_error(
                 submission_repository::get_submission_source(transaction, submission_id)
             );
         }
@@ -112,7 +99,7 @@ std::expected<submission_dto::detail, error_code> submission_service::get_submis
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_dto::detail, error_code> {
-            auto submission_detail_exp = map_repository_error_to_http_error(
+            auto submission_detail_exp = db_service_util::map_repository_error_to_http_error(
                 submission_repository::get_submission_detail(
                     transaction,
                     submission_id

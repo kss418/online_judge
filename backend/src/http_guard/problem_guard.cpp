@@ -13,11 +13,10 @@ std::expected<void, problem_guard::response_type> problem_guard::require_exists(
         problem_reference_value
     );
     if(!exists_problem_exp){
-        return std::unexpected(http_response_util::create_error(
+        return std::unexpected(http_response_util::create_4xx_or_500(
             request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to check problem: " + to_string(exists_problem_exp.error())
+            "check problem",
+            exists_problem_exp.error()
         ));
     }
     if(!exists_problem_exp->exists){

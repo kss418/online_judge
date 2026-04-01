@@ -15,11 +15,31 @@
 namespace db_service_util{
     inline constexpr int DB_TRANSACTION_ATTEMPT_COUNT = 5;
 
+    inline error_code map_repository_error_to_http_error(const error_code& error_code_value){
+        if(const auto http_error_opt = map_error_to_http_error(error_code_value)){
+            return error_code::create(*http_error_opt);
+        }
+
+        return error_code_value;
+    }
+
     template <typename result_type>
     concept expected_error_result = requires{
         typename result_type::value_type;
         typename result_type::error_type;
     } && std::same_as<typename result_type::error_type, error_code>;
+
+    template <typename result_type>
+        requires expected_error_result<result_type>
+    result_type map_repository_error_to_http_error(result_type result_exp){
+        if(!result_exp){
+            return std::unexpected(
+                map_repository_error_to_http_error(result_exp.error())
+            );
+        }
+
+        return result_exp;
+    }
 
     template <typename callback_type>
     using write_transaction_result = std::invoke_result_t<callback_type, pqxx::work&>;

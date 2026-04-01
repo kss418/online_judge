@@ -12,9 +12,11 @@ user_statistics_service::get_submission_statistics(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<user_statistics_dto::submission_statistics, error_code> {
-            return user_statistics_repository::get_submission_statistics(
-                transaction,
-                user_id
+            return db_service_util::map_repository_error_to_http_error(
+                user_statistics_repository::get_submission_statistics(
+                    transaction,
+                    user_id
+                )
             );
         }
     );
@@ -28,9 +30,11 @@ std::expected<void, error_code> user_statistics_service::create_user_submission_
         connection,
         db_service_util::DB_TRANSACTION_ATTEMPT_COUNT,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            return user_statistics_repository::create_user_submission_statistics(
-                transaction,
-                user_id
+            return db_service_util::map_repository_error_to_http_error(
+                user_statistics_repository::create_user_submission_statistics(
+                    transaction,
+                    user_id
+                )
             );
         }
     );
@@ -44,9 +48,11 @@ std::expected<void, error_code> user_statistics_service::ensure_user_submission_
         connection,
         db_service_util::DB_TRANSACTION_ATTEMPT_COUNT,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            return user_statistics_repository::ensure_user_submission_statistics(
-                transaction,
-                user_id
+            return db_service_util::map_repository_error_to_http_error(
+                user_statistics_repository::ensure_user_submission_statistics(
+                    transaction,
+                    user_id
+                )
             );
         }
     );
@@ -65,36 +71,44 @@ std::expected<void, error_code> user_statistics_service::record_submission_creat
         db_service_util::DB_TRANSACTION_ATTEMPT_COUNT,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
             const auto ensure_statistics_exp =
-                user_statistics_repository::ensure_user_submission_statistics(
-                    transaction,
-                    user_id
+                db_service_util::map_repository_error_to_http_error(
+                    user_statistics_repository::ensure_user_submission_statistics(
+                        transaction,
+                        user_id
+                    )
                 );
             if(!ensure_statistics_exp){
                 return std::unexpected(ensure_statistics_exp.error());
             }
 
             const auto increase_submission_count_exp =
-                user_statistics_repository::increase_submission_count(
-                    transaction,
-                    user_id
+                db_service_util::map_repository_error_to_http_error(
+                    user_statistics_repository::increase_submission_count(
+                        transaction,
+                        user_id
+                    )
                 );
             if(!increase_submission_count_exp){
                 return std::unexpected(increase_submission_count_exp.error());
             }
 
             const auto increase_queued_count_exp =
-                user_statistics_repository::increase_status_count(
-                    transaction,
-                    user_id,
-                    submission_status::queued
+                db_service_util::map_repository_error_to_http_error(
+                    user_statistics_repository::increase_status_count(
+                        transaction,
+                        user_id,
+                        submission_status::queued
+                    )
                 );
             if(!increase_queued_count_exp){
                 return std::unexpected(increase_queued_count_exp.error());
             }
 
-            return user_statistics_repository::touch_last_submission_at(
-                transaction,
-                user_id
+            return db_service_util::map_repository_error_to_http_error(
+                user_statistics_repository::touch_last_submission_at(
+                    transaction,
+                    user_id
+                )
             );
         }
     );
@@ -115,9 +129,11 @@ std::expected<void, error_code> user_statistics_service::record_submission_statu
         db_service_util::DB_TRANSACTION_ATTEMPT_COUNT,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
             const auto ensure_statistics_exp =
-                user_statistics_repository::ensure_user_submission_statistics(
-                    transaction,
-                    user_id
+                db_service_util::map_repository_error_to_http_error(
+                    user_statistics_repository::ensure_user_submission_statistics(
+                        transaction,
+                        user_id
+                    )
                 );
             if(!ensure_statistics_exp){
                 return std::unexpected(ensure_statistics_exp.error());
@@ -125,10 +141,12 @@ std::expected<void, error_code> user_statistics_service::record_submission_statu
 
             if(from_status_opt && *from_status_opt != to_status){
                 const auto decrease_from_status_exp =
-                    user_statistics_repository::decrease_status_count(
-                        transaction,
-                        user_id,
-                        *from_status_opt
+                    db_service_util::map_repository_error_to_http_error(
+                        user_statistics_repository::decrease_status_count(
+                            transaction,
+                            user_id,
+                            *from_status_opt
+                        )
                     );
                 if(!decrease_from_status_exp){
                     return std::unexpected(decrease_from_status_exp.error());
@@ -137,10 +155,12 @@ std::expected<void, error_code> user_statistics_service::record_submission_statu
 
             if(!from_status_opt || *from_status_opt != to_status){
                 const auto increase_to_status_exp =
-                    user_statistics_repository::increase_status_count(
-                        transaction,
-                        user_id,
-                        to_status
+                    db_service_util::map_repository_error_to_http_error(
+                        user_statistics_repository::increase_status_count(
+                            transaction,
+                            user_id,
+                            to_status
+                        )
                     );
                 if(!increase_to_status_exp){
                     return std::unexpected(increase_to_status_exp.error());
@@ -149,9 +169,11 @@ std::expected<void, error_code> user_statistics_service::record_submission_statu
 
             if(to_status == submission_status::accepted){
                 const auto touch_last_accepted_at_exp =
-                    user_statistics_repository::touch_last_accepted_at(
-                        transaction,
-                        user_id
+                    db_service_util::map_repository_error_to_http_error(
+                        user_statistics_repository::touch_last_accepted_at(
+                            transaction,
+                            user_id
+                        )
                     );
                 if(!touch_last_accepted_at_exp){
                     return std::unexpected(touch_last_accepted_at_exp.error());

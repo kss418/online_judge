@@ -15,9 +15,11 @@ std::expected<problem_dto::existence, error_code> problem_core_service::exists_p
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::existence, error_code> {
-            return problem_core_repository::exists_problem(
-                transaction,
-                problem_reference_value
+            return db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::exists_problem(
+                    transaction,
+                    problem_reference_value
+                )
             );
         }
     );
@@ -31,9 +33,11 @@ std::expected<problem_dto::title, error_code> problem_core_service::get_title(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::title, error_code> {
-            return problem_core_repository::get_title(
-                transaction,
-                problem_reference_value
+            return db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::get_title(
+                    transaction,
+                    problem_reference_value
+                )
             );
         }
     );
@@ -47,9 +51,11 @@ std::expected<problem_dto::version, error_code> problem_core_service::get_versio
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::version, error_code> {
-            return problem_core_repository::get_version(
-                transaction,
-                problem_reference_value
+            return db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::get_version(
+                    transaction,
+                    problem_reference_value
+                )
             );
         }
     );
@@ -64,10 +70,12 @@ std::expected<std::optional<std::string>, error_code> problem_core_service::get_
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::optional<std::string>, error_code> {
-            return problem_core_repository::get_user_problem_state(
-                transaction,
-                problem_reference_value,
-                user_id
+            return db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::get_user_problem_state(
+                    transaction,
+                    problem_reference_value,
+                    user_id
+                )
             );
         }
     );
@@ -92,80 +100,83 @@ std::expected<problem_dto::detail, error_code> problem_core_service::get_problem
             problem_dto::detail detail_value;
             detail_value.problem_reference_value = problem_reference_value;
 
-            const auto title_exp = problem_core_repository::get_title(
-                transaction,
-                problem_reference_value
+            const auto title_exp = db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::get_title(
+                    transaction,
+                    problem_reference_value
+                )
             );
             if(!title_exp){
-                if(title_exp.error() == repository_error::not_found){
-                    return std::unexpected(error_code::create(http_error::not_found));
-                }
                 return std::unexpected(title_exp.error());
             }
             detail_value.title_value = *title_exp;
 
-            const auto version_exp = problem_core_repository::get_version(
-                transaction,
-                problem_reference_value
+            const auto version_exp = db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::get_version(
+                    transaction,
+                    problem_reference_value
+                )
             );
             if(!version_exp){
-                if(version_exp.error() == repository_error::not_found){
-                    return std::unexpected(error_code::create(http_error::not_found));
-                }
                 return std::unexpected(version_exp.error());
             }
             detail_value.version_value = *version_exp;
 
-            const auto limits_exp = problem_core_repository::get_limits(
-                transaction,
-                problem_reference_value
+            const auto limits_exp = db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::get_limits(
+                    transaction,
+                    problem_reference_value
+                )
             );
             if(!limits_exp){
-                if(limits_exp.error() == repository_error::not_found){
-                    return std::unexpected(error_code::create(http_error::not_found));
-                }
                 return std::unexpected(limits_exp.error());
             }
             detail_value.limits_value = *limits_exp;
 
-            const auto statement_exp = problem_content_repository::get_statement(
-                transaction,
-                problem_reference_value
+            const auto statement_exp = db_service_util::map_repository_error_to_http_error(
+                problem_content_repository::get_statement(
+                    transaction,
+                    problem_reference_value
+                )
             );
             if(statement_exp){
                 detail_value.statement_opt = *statement_exp;
             }
-            else if(statement_exp.error() != repository_error::not_found){
+            else if(statement_exp.error() != http_error::not_found){
                 return std::unexpected(statement_exp.error());
             }
 
-            const auto sample_values_exp = problem_content_repository::list_samples(
-                transaction,
-                problem_reference_value
+            const auto sample_values_exp = db_service_util::map_repository_error_to_http_error(
+                problem_content_repository::list_samples(
+                    transaction,
+                    problem_reference_value
+                )
             );
             if(!sample_values_exp){
                 return std::unexpected(sample_values_exp.error());
             }
             detail_value.sample_values = std::move(*sample_values_exp);
 
-            const auto statistics_exp = problem_statistics_repository::get_statistics(
-                transaction,
-                problem_reference_value
+            const auto statistics_exp = db_service_util::map_repository_error_to_http_error(
+                problem_statistics_repository::get_statistics(
+                    transaction,
+                    problem_reference_value
+                )
             );
             if(!statistics_exp){
-                if(statistics_exp.error() == repository_error::not_found){
-                    return std::unexpected(error_code::create(http_error::not_found));
-                }
                 return std::unexpected(statistics_exp.error());
             }
             detail_value.statistics_value = *statistics_exp;
 
             if(viewer_user_id_opt){
-                const auto user_problem_state_exp = problem_core_repository::get_user_problem_state(
-                    transaction,
-                    problem_reference_value,
-                    *viewer_user_id_opt
-                );
+                const auto user_problem_state_exp =
+                    db_service_util::map_repository_error_to_http_error(
+                        problem_core_repository::get_user_problem_state(
+                            transaction,
+                            problem_reference_value,
+                            *viewer_user_id_opt
+                        )
+                    );
                 if(!user_problem_state_exp){
                     return std::unexpected(user_problem_state_exp.error());
                 }
@@ -185,9 +196,11 @@ std::expected<problem_dto::created, error_code> problem_core_service::create_pro
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<problem_dto::created, error_code> {
-            const auto created_exp = problem_core_repository::create_problem(
-                transaction,
-                create_request_value
+            const auto created_exp = db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::create_problem(
+                    transaction,
+                    create_request_value
+                )
             );
             if(!created_exp){
                 return std::unexpected(created_exp.error());
@@ -198,27 +211,33 @@ std::expected<problem_dto::created, error_code> problem_core_service::create_pro
             initial_limits_value.memory_mb = problem_core_service::INITIAL_MEMORY_LIMIT_MB;
             initial_limits_value.time_ms = problem_core_service::INITIAL_TIME_LIMIT_MS;
 
-            const auto set_limits_exp = problem_core_repository::set_limits(
-                transaction,
-                problem_reference_value,
-                initial_limits_value
+            const auto set_limits_exp = db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::set_limits(
+                    transaction,
+                    problem_reference_value,
+                    initial_limits_value
+                )
             );
             if(!set_limits_exp){
                 return std::unexpected(set_limits_exp.error());
             }
 
             const auto create_problem_statistics_exp =
-                problem_statistics_repository::create_problem_statistics(
-                    transaction,
-                    problem_reference_value
+                db_service_util::map_repository_error_to_http_error(
+                    problem_statistics_repository::create_problem_statistics(
+                        transaction,
+                        problem_reference_value
+                    )
                 );
             if(!create_problem_statistics_exp){
                 return std::unexpected(create_problem_statistics_exp.error());
             }
 
-            const auto ensure_statement_exp = problem_content_repository::ensure_statement_row(
-                transaction,
-                problem_reference_value
+            const auto ensure_statement_exp = db_service_util::map_repository_error_to_http_error(
+                problem_content_repository::ensure_statement_row(
+                    transaction,
+                    problem_reference_value
+                )
             );
             if(!ensure_statement_exp){
                 return std::unexpected(ensure_statement_exp.error());
@@ -244,18 +263,22 @@ std::expected<void, error_code> problem_core_service::update_problem(
             problem_dto::title title_value;
             title_value.value = update_request_value.title;
 
-            const auto set_title_exp = problem_core_repository::set_title(
-                transaction,
-                problem_reference_value,
-                title_value
+            const auto set_title_exp = db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::set_title(
+                    transaction,
+                    problem_reference_value,
+                    title_value
+                )
             );
             if(!set_title_exp){
                 return std::unexpected(set_title_exp.error());
             }
 
-            const auto version_exp = problem_core_repository::increase_version(
-                transaction,
-                problem_reference_value
+            const auto version_exp = db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::increase_version(
+                    transaction,
+                    problem_reference_value
+                )
             );
             if(!version_exp){
                 return std::unexpected(version_exp.error());
@@ -277,9 +300,11 @@ std::expected<void, error_code> problem_core_service::delete_problem(
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            return problem_core_repository::delete_problem(
-                transaction,
-                problem_reference_value
+            return db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::delete_problem(
+                    transaction,
+                    problem_reference_value
+                )
             );
         }
     );
@@ -335,10 +360,12 @@ problem_core_service::list_user_solved_problems(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_dto::summary>, error_code> {
-            return problem_core_repository::list_user_solved_problems(
-                transaction,
-                user_id,
-                viewer_user_id_opt
+            return db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::list_user_solved_problems(
+                    transaction,
+                    user_id,
+                    viewer_user_id_opt
+                )
             );
         }
     );
@@ -358,10 +385,12 @@ problem_core_service::list_user_wrong_problems(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_dto::summary>, error_code> {
-            return problem_core_repository::list_user_wrong_problems(
-                transaction,
-                user_id,
-                viewer_user_id_opt
+            return db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::list_user_wrong_problems(
+                    transaction,
+                    user_id,
+                    viewer_user_id_opt
+                )
             );
         }
     );

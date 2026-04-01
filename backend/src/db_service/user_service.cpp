@@ -31,9 +31,11 @@ std::expected<std::optional<user_dto::summary>, error_code> user_service::get_su
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::optional<user_dto::summary>, error_code> {
-            return user_repository::get_summary(
-                transaction,
-                user_id
+            return db_service_util::map_repository_error_to_http_error(
+                user_repository::get_summary(
+                    transaction,
+                    user_id
+                )
             );
         }
     );
@@ -52,9 +54,11 @@ user_service::get_summary_by_login_id(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::optional<user_dto::summary>, error_code> {
-            return user_repository::get_summary_by_login_id(
-                transaction,
-                user_login_id
+            return db_service_util::map_repository_error_to_http_error(
+                user_repository::get_summary_by_login_id(
+                    transaction,
+                    user_login_id
+                )
             );
         }
     );
@@ -74,11 +78,14 @@ user_service::create_submission_ban(
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<std::optional<user_dto::submission_ban>, error_code> {
-            const auto create_submission_ban_exp = user_repository::create_submission_ban(
-                transaction,
-                user_id,
-                duration_minutes
-            );
+            const auto create_submission_ban_exp =
+                db_service_util::map_repository_error_to_http_error(
+                    user_repository::create_submission_ban(
+                        transaction,
+                        user_id,
+                        duration_minutes
+                    )
+                );
             if(!create_submission_ban_exp){
                 return std::unexpected(create_submission_ban_exp.error());
             }
@@ -109,9 +116,11 @@ user_service::get_submission_ban_status(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::optional<user_dto::submission_ban_status>, error_code> {
-            return user_repository::get_submission_ban_status(
-                transaction,
-                user_id
+            return db_service_util::map_repository_error_to_http_error(
+                user_repository::get_submission_ban_status(
+                    transaction,
+                    user_id
+                )
             );
         }
     );
@@ -130,10 +139,12 @@ std::expected<bool, error_code> user_service::update_submission_banned_until(
         connection,
         [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
             const auto update_submission_banned_until_exp =
-                user_repository::update_submission_banned_until(
-                    transaction,
-                    user_id,
-                    submission_banned_until
+                db_service_util::map_repository_error_to_http_error(
+                    user_repository::update_submission_banned_until(
+                        transaction,
+                        user_id,
+                        submission_banned_until
+                    )
                 );
             if(!update_submission_banned_until_exp){
                 return std::unexpected(update_submission_banned_until_exp.error());
@@ -156,9 +167,11 @@ std::expected<bool, error_code> user_service::clear_submission_banned_until(
         connection,
         [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
             const auto clear_submission_banned_until_exp =
-                user_repository::clear_submission_banned_until(
-                    transaction,
-                    user_id
+                db_service_util::map_repository_error_to_http_error(
+                    user_repository::clear_submission_banned_until(
+                        transaction,
+                        user_id
+                    )
                 );
             if(!clear_submission_banned_until_exp){
                 return std::unexpected(clear_submission_banned_until_exp.error());
