@@ -27,12 +27,9 @@ testcase_handler::response_type testcase_handler::get_testcase(
         .problem_id = problem_id,
         .testcase_order = testcase_order
     };
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&) -> response_type {
             const auto testcase_exp = testcase_service::get_testcase(
                 db_connection_value,
@@ -79,12 +76,9 @@ testcase_handler::response_type testcase_handler::get_testcases(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&) -> response_type {
             const auto testcase_summary_values_exp = testcase_service::list_testcase_summaries(
                 db_connection_value,
@@ -108,12 +102,9 @@ testcase_handler::response_type testcase_handler::post_testcase(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&, const problem_dto::testcase& testcase_value) -> response_type {
             const auto create_testcase_exp = testcase_service::create_testcase(
                 db_connection_value,
@@ -145,12 +136,9 @@ testcase_handler::response_type testcase_handler::put_testcase(
         .problem_id = problem_id,
         .testcase_order = testcase_order
     };
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&, const problem_dto::testcase& testcase_value) -> response_type {
             const auto set_testcase_exp = testcase_service::set_testcase(
                 db_connection_value,
@@ -187,12 +175,9 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&) -> response_type {
             if(request.body().empty()){
                 return http_response_util::create_error(
@@ -363,12 +348,9 @@ testcase_handler::response_type testcase_handler::move_testcase(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&,
             const problem_dto::testcase_move_request& testcase_move_request) -> response_type {
             problem_dto::testcase_ref testcase_reference_value{
@@ -405,12 +387,9 @@ testcase_handler::response_type testcase_handler::delete_testcase(
         .problem_id = problem_id,
         .testcase_order = testcase_order
     };
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&) -> response_type {
             const auto delete_testcase_exp = testcase_service::delete_testcase(
                 db_connection_value,
@@ -433,12 +412,9 @@ testcase_handler::response_type testcase_handler::delete_all_testcases(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&) -> response_type {
             const auto delete_all_testcases_exp = testcase_service::delete_all_testcases(
                 db_connection_value,

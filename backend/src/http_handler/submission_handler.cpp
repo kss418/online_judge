@@ -18,12 +18,9 @@ submission_handler::response_type submission_handler::get_submission_history(
     db_connection& db_connection_value,
     std::int64_t submission_id
 ){
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&,
             const submission_dto::history_list& history_values) -> response_type {
             return http_response_util::create_json(
@@ -45,12 +42,9 @@ submission_handler::response_type submission_handler::get_submission_source(
     db_connection& db_connection_value,
     std::int64_t submission_id
 ){
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity& auth_identity_value,
             const submission_dto::source_detail& source_detail_value) -> response_type {
             const auto source_access_exp = submission_guard::require_source_access(
@@ -78,12 +72,9 @@ submission_handler::response_type submission_handler::get_submission(
     db_connection& db_connection_value,
     std::int64_t submission_id
 ){
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const submission_dto::detail& submission_detail_value) -> response_type {
             return http_response_util::create_json(
                 request,
@@ -99,12 +90,9 @@ submission_handler::response_type submission_handler::post_submission_status_bat
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const submission_dto::status_batch_request& batch_request) -> response_type {
             return http_response_util::create_json_or_4xx_or_500(
                 request,
@@ -127,12 +115,9 @@ submission_handler::response_type submission_handler::post_submission(
     db_connection& db_connection_value,
     std::int64_t problem_id
 ){
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity& auth_identity_value) -> response_type {
             const auto create_request_exp =
                 request_dto::parse_json_or_400<submission_dto::create_request>(
@@ -187,12 +172,9 @@ submission_handler::response_type submission_handler::post_submission_rejudge(
     db_connection& db_connection_value,
     std::int64_t submission_id
 ){
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&) -> response_type {
             return http_response_util::create_json_or_4xx_or_500(
                 request,
@@ -217,12 +199,9 @@ submission_handler::response_type submission_handler::get_submissions(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const std::optional<auth_dto::identity>& auth_identity_opt,
             const submission_dto::list_filter& filter_value) -> response_type {
             std::optional<std::int64_t> viewer_user_id_opt = std::nullopt;

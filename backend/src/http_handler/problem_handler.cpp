@@ -12,12 +12,9 @@ problem_handler::response_type problem_handler::get_problems(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const std::optional<auth_dto::identity>& auth_identity_opt,
             const problem_dto::list_filter& filter_value) -> response_type {
             std::optional<std::int64_t> viewer_user_id_opt = std::nullopt;
@@ -130,12 +127,9 @@ problem_handler::response_type problem_handler::post_problem(
     const request_type& request,
     db_connection& db_connection_value
 ){
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&, const problem_dto::create_request& create_request) {
             const auto create_problem_exp = problem_core_service::create_problem(
                 db_connection_value,
@@ -162,12 +156,9 @@ problem_handler::response_type problem_handler::put_problem(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&, const problem_dto::update_request& update_request) {
             const auto update_problem_exp = problem_core_service::update_problem(
                 db_connection_value,
@@ -195,12 +186,9 @@ problem_handler::response_type problem_handler::delete_problem(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&) {
             const auto delete_problem_exp = problem_core_service::delete_problem(
                 db_connection_value,
@@ -224,12 +212,9 @@ problem_handler::response_type problem_handler::post_problem_rejudge(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&) {
             const auto rejudge_problem_exp = submission_service::rejudge_problem(
                 db_connection_value,

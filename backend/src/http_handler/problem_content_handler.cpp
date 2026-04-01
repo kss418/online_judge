@@ -17,12 +17,9 @@ problem_content_handler::response_type problem_content_handler::get_limits(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&]() -> response_type {
             const auto limits_exp = problem_content_service::get_limits(
                 db_connection_value,
@@ -50,12 +47,9 @@ problem_content_handler::response_type problem_content_handler::put_limits(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&, const problem_content_dto::limits& limits_value){
             const auto set_limits_exp = problem_content_service::set_limits(
                 db_connection_value,
@@ -82,12 +76,9 @@ problem_content_handler::response_type problem_content_handler::put_statement(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&, const problem_content_dto::statement& statement_value){
             const auto set_statement_exp = problem_content_service::set_statement(
                 db_connection_value,
@@ -114,12 +105,9 @@ problem_content_handler::response_type problem_content_handler::get_samples(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&]() -> response_type {
             const auto sample_values_exp = problem_content_service::list_samples(
                 db_connection_value,
@@ -142,12 +130,9 @@ problem_content_handler::response_type problem_content_handler::post_sample(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&) -> response_type {
             const problem_content_dto::sample sample_value{};
             const auto create_sample_exp = problem_content_service::create_sample(
@@ -177,12 +162,9 @@ problem_content_handler::response_type problem_content_handler::put_sample(
         .problem_id = problem_id,
         .sample_order = sample_order
     };
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&, const problem_content_dto::sample& sample_value){
             const auto set_sample_exp = problem_content_service::set_sample(
                 db_connection_value,
@@ -219,12 +201,9 @@ problem_content_handler::response_type problem_content_handler::delete_sample(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    const http_guard::guard_context guard_context{
-        .request = request,
-        .db_connection_value = db_connection_value
-    };
     return http_guard::run_or_respond(
-        guard_context,
+        request,
+        db_connection_value,
         [&](const auth_dto::identity&) -> response_type {
             const auto sample_values_exp = problem_content_service::list_samples(
                 db_connection_value,

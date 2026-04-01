@@ -90,6 +90,16 @@ namespace http_guard{
         return std::tuple<>{};
     }
 
+    inline std::expected<std::tuple<>, response_type> run(
+        const request_type& request,
+        db_connection& db_connection_value
+    ){
+        return run(guard_context{
+            .request = request,
+            .db_connection_value = db_connection_value
+        });
+    }
+
     template <typename guard_type, typename... remaining_guard_types>
     std::expected<
         detail::combined_guard_tuple_type<guard_type, remaining_guard_types...>,
@@ -132,6 +142,26 @@ namespace http_guard{
         );
     }
 
+    template <typename guard_type, typename... remaining_guard_types>
+    std::expected<
+        detail::combined_guard_tuple_type<guard_type, remaining_guard_types...>,
+        response_type
+    > run(
+        const request_type& request,
+        db_connection& db_connection_value,
+        guard_type&& guard,
+        remaining_guard_types&&... remaining_guards
+    ){
+        return run(
+            guard_context{
+                .request = request,
+                .db_connection_value = db_connection_value
+            },
+            std::forward<guard_type>(guard),
+            std::forward<remaining_guard_types>(remaining_guards)...
+        );
+    }
+
     template <typename success_type, typename... guard_types>
     response_type run_or_respond(
         const guard_context& context,
@@ -154,6 +184,23 @@ namespace http_guard{
                 );
             },
             std::move(*guard_values_exp)
+        );
+    }
+
+    template <typename success_type, typename... guard_types>
+    response_type run_or_respond(
+        const request_type& request,
+        db_connection& db_connection_value,
+        success_type&& success,
+        guard_types&&... guards
+    ){
+        return run_or_respond(
+            guard_context{
+                .request = request,
+                .db_connection_value = db_connection_value
+            },
+            std::forward<success_type>(success),
+            std::forward<guard_types>(guards)...
         );
     }
 }
