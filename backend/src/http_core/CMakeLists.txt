@@ -5,7 +5,6 @@ target_sources(lib
         request_dto.cpp
         request_parser.cpp
         testcase_uploader.cpp
-        http_util.cpp
         http_server.cpp
         acceptor.cpp
         http_session.cpp
