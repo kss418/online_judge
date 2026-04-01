@@ -5,7 +5,7 @@
 #include "db_service/user_service.hpp"
 #include "db_service/user_statistics_service.hpp"
 #include "common/permission_util.hpp"
-#include "http_core/auth_guard.hpp"
+#include "http_guard/auth_guard.hpp"
 #include "http_core/request_dto.hpp"
 #include "serializer/user_json_serializer.hpp"
 

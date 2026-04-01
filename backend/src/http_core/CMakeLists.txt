@@ -1,6 +1,5 @@
 target_sources(lib
     PRIVATE
-        auth_guard.cpp
         http_dispatcher.cpp
         http_response_util.cpp
         query_param_util.cpp

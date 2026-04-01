@@ -2,7 +2,7 @@
 #include "db_service/auth_service.hpp"
 #include "db_service/login_service.hpp"
 #include "dto/auth_dto.hpp"
-#include "http_core/auth_guard.hpp"
+#include "http_guard/auth_guard.hpp"
 #include "http_core/request_dto.hpp"
 #include "serializer/auth_json_serializer.hpp"
 

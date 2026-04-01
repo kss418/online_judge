@@ -1,6 +1,6 @@
 #include "http_router/auth_router.hpp"
 
-#include "http_core/http_util.hpp"
+#include "http_core/http_response_util.hpp"
 
 auth_router::auth_router(db_connection& db_connection) :
     db_connection_(db_connection){}

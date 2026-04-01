@@ -2,7 +2,7 @@
 #include "common/submission_status.hpp"
 #include "db_service/submission_service.hpp"
 #include "dto/submission_dto.hpp"
-#include "http_core/auth_guard.hpp"
+#include "http_guard/auth_guard.hpp"
 #include "http_core/request_dto.hpp"
 #include "http_core/http_util.hpp"
 #include "serializer/submission_json_serializer.hpp"

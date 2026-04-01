@@ -5,10 +5,10 @@
 #include "common/temp_file.hpp"
 #include "common/zip_util.hpp"
 #include "dto/problem_dto.hpp"
-#include "http_core/auth_guard.hpp"
+#include "http_guard/auth_guard.hpp"
+#include "http_guard/problem_guard.hpp"
 #include "http_core/request_dto.hpp"
 #include "http_core/testcase_uploader.hpp"
-#include "http_core/http_util.hpp"
 
 #include "db_service/testcase_service.hpp"
 #include "serializer/common_json_serializer.hpp"
@@ -63,7 +63,7 @@ testcase_handler::response_type testcase_handler::get_testcase(
         );
     };
 
-    return http_util::with_existing_problem_admin(
+    return problem_guard::with_existing_problem_admin(
         request,
         db_connection_value,
         problem_reference_value,
@@ -90,7 +90,7 @@ testcase_handler::response_type testcase_handler::get_testcases(
         );
     };
 
-    return http_util::with_existing_problem_admin(
+    return problem_guard::with_existing_problem_admin(
         request,
         db_connection_value,
         problem_reference_value,
@@ -349,7 +349,7 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
         );
     };
 
-    return http_util::with_existing_problem_admin(
+    return problem_guard::with_existing_problem_admin(
         request,
         db_connection_value,
         problem_reference_value,
@@ -390,7 +390,7 @@ testcase_handler::response_type testcase_handler::move_testcase(
         );
     };
 
-    return http_util::with_existing_problem_admin(
+    return problem_guard::with_existing_problem_admin(
         request,
         db_connection_value,
         problem_reference_value,
@@ -447,7 +447,7 @@ testcase_handler::response_type testcase_handler::delete_all_testcases(
         );
     };
 
-    return http_util::with_existing_problem_admin(
+    return problem_guard::with_existing_problem_admin(
         request,
         db_connection_value,
         problem_reference_value,

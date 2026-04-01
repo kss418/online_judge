@@ -9,6 +9,7 @@ add_subdirectory(db_repository)
 add_subdirectory(http_handler)
 add_subdirectory(http_router)
 add_subdirectory(http_core)
+add_subdirectory(http_guard)
 add_subdirectory(judge_core)
 add_subdirectory(pl_runner)
 

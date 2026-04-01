@@ -2,9 +2,9 @@
 
 #include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
-#include "http_core/auth_guard.hpp"
+#include "http_guard/auth_guard.hpp"
+#include "http_guard/problem_guard.hpp"
 #include "http_core/request_dto.hpp"
-#include "http_core/http_util.hpp"
 
 #include "db_service/problem_content_service.hpp"
 #include "serializer/problem_json_serializer.hpp"
@@ -17,7 +17,7 @@ problem_content_handler::response_type problem_content_handler::get_limits(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    return http_util::with_existing_problem(
+    return problem_guard::with_existing_problem(
         request,
         db_connection_value,
         problem_reference_value,
@@ -119,7 +119,7 @@ problem_content_handler::response_type problem_content_handler::get_samples(
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
-    return http_util::with_existing_problem(
+    return problem_guard::with_existing_problem(
         request,
         db_connection_value,
         problem_reference_value,

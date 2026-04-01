@@ -1,8 +1,8 @@
 #include "http_handler/problem_handler.hpp"
 #include "dto/problem_dto.hpp"
-#include "http_core/auth_guard.hpp"
+#include "http_guard/auth_guard.hpp"
+#include "http_guard/problem_guard.hpp"
 #include "http_core/request_dto.hpp"
-#include "http_core/http_util.hpp"
 
 #include "db_service/problem_core_service.hpp"
 #include "db_service/submission_service.hpp"
@@ -190,7 +190,7 @@ problem_handler::response_type problem_handler::put_problem(
         );
     };
 
-    return http_util::with_existing_problem_admin(
+    return problem_guard::with_existing_problem_admin(
         request,
         db_connection_value,
         problem_reference_value,
@@ -217,7 +217,7 @@ problem_handler::response_type problem_handler::delete_problem(
         );
     };
 
-    return http_util::with_existing_problem_admin(
+    return problem_guard::with_existing_problem_admin(
         request,
         db_connection_value,
         problem_reference_value,
@@ -244,7 +244,7 @@ problem_handler::response_type problem_handler::post_problem_rejudge(
         );
     };
 
-    return http_util::with_existing_problem_admin(
+    return problem_guard::with_existing_problem_admin(
         request,
         db_connection_value,
         problem_reference_value,
