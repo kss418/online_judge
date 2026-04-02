@@ -1,5 +1,5 @@
 #include "db_repository/testcase_repository.hpp"
-#include "db_repository/db_repository.hpp"
+#include "error/repository_error.hpp"
 
 #include <pqxx/pqxx>
 #include <utility>
@@ -12,7 +12,7 @@ std::expected<problem_dto::testcase, repository_error> testcase_repository::crea
     const std::int64_t problem_id = testcase_reference_value.problem_id;
     const std::int32_t testcase_order = testcase_reference_value.testcase_order;
     if(!problem_dto::is_valid(testcase_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
     const auto create_testcase_result = transaction.exec(
         "INSERT INTO problem_testcases("
@@ -38,7 +38,7 @@ std::expected<problem_dto::testcase, repository_error> testcase_repository::crea
     );
 
     if(create_testcase_result.empty()){
-        return std::unexpected(db_repository::internal_error());
+        return std::unexpected(repository_error::internal);
     }
 
     problem_dto::testcase created_testcase_value = testcase_value;
@@ -54,7 +54,7 @@ std::expected<problem_dto::testcase, repository_error> testcase_repository::get_
     const std::int64_t problem_id = testcase_reference_value.problem_id;
     const std::int32_t testcase_order = testcase_reference_value.testcase_order;
     if(!problem_dto::is_valid(testcase_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto testcase_query_result = transaction.exec(
@@ -65,7 +65,7 @@ std::expected<problem_dto::testcase, repository_error> testcase_repository::get_
     );
 
     if(testcase_query_result.empty()){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     problem_dto::testcase testcase_value;
@@ -82,7 +82,7 @@ std::expected<problem_dto::testcase_count, repository_error> testcase_repository
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto testcase_count_query_result = transaction.exec(
@@ -93,7 +93,7 @@ std::expected<problem_dto::testcase_count, repository_error> testcase_repository
     );
 
     if(testcase_count_query_result.empty()){
-        return std::unexpected(db_repository::internal_error());
+        return std::unexpected(repository_error::internal);
     }
 
     problem_dto::testcase_count testcase_count_value;
@@ -107,7 +107,7 @@ std::expected<problem_dto::testcase_count, repository_error> testcase_repository
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto increase_result = transaction.exec(
@@ -119,7 +119,7 @@ std::expected<problem_dto::testcase_count, repository_error> testcase_repository
     );
 
     if(increase_result.empty()){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     problem_dto::testcase_count testcase_count_value;
@@ -132,7 +132,7 @@ std::expected<problem_dto::testcase_count, repository_error> testcase_repository
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto decrease_result = transaction.exec(
@@ -144,7 +144,7 @@ std::expected<problem_dto::testcase_count, repository_error> testcase_repository
     );
 
     if(decrease_result.empty()){
-        return std::unexpected(db_repository::conflict_error());
+        return std::unexpected(repository_error::conflict);
     }
 
     problem_dto::testcase_count testcase_count_value;
@@ -158,7 +158,7 @@ std::expected<std::vector<problem_dto::testcase>, repository_error> testcase_rep
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto testcases_query_result = transaction.exec(
@@ -190,7 +190,7 @@ testcase_repository::list_testcase_summaries(
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto testcases_query_result = transaction.exec(
@@ -231,7 +231,7 @@ std::expected<void, repository_error> testcase_repository::set_testcase(
     const std::int64_t problem_id = testcase_reference_value.problem_id;
     const std::int32_t testcase_order = testcase_reference_value.testcase_order;
     if(!problem_dto::is_valid(testcase_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto update_result = transaction.exec(
@@ -255,7 +255,7 @@ std::expected<void, repository_error> testcase_repository::set_testcase(
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     return {};
@@ -269,7 +269,7 @@ std::expected<void, repository_error> testcase_repository::move_testcase(
     const std::int64_t problem_id = testcase_reference_value.problem_id;
     const std::int32_t source_testcase_order = testcase_reference_value.testcase_order;
     if(!problem_dto::is_valid(testcase_reference_value) || target_testcase_order <= 0){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     if(source_testcase_order == target_testcase_order){
@@ -320,7 +320,7 @@ std::expected<void, repository_error> testcase_repository::move_testcase(
         max_testcase_order - min_testcase_order + 1
     );
     if(move_result.affected_rows() != expected_affected_rows){
-        return std::unexpected(db_repository::conflict_error());
+        return std::unexpected(repository_error::conflict);
     }
 
     return {};
@@ -333,7 +333,7 @@ std::expected<void, repository_error> testcase_repository::delete_testcase(
     const std::int64_t problem_id = testcase_reference_value.problem_id;
     const std::int32_t testcase_order = testcase_reference_value.testcase_order;
     if(!problem_dto::is_valid(testcase_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto delete_result = transaction.exec(
@@ -343,7 +343,7 @@ std::expected<void, repository_error> testcase_repository::delete_testcase(
     );
 
     if(delete_result.affected_rows() == 0){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     return {};
@@ -356,7 +356,7 @@ std::expected<void, repository_error> testcase_repository::decrease_order(
     const std::int64_t problem_id = testcase_reference_value.problem_id;
     const std::int32_t testcase_order = testcase_reference_value.testcase_order;
     if(!problem_dto::is_valid(testcase_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     transaction.exec(
@@ -413,7 +413,7 @@ std::expected<void, repository_error> testcase_repository::delete_all_testcases(
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     transaction.exec(
@@ -431,7 +431,7 @@ std::expected<problem_dto::testcase_count, repository_error> testcase_repository
 ){
     const std::int64_t problem_id = problem_reference_value.problem_id;
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto clear_result = transaction.exec(
@@ -443,7 +443,7 @@ std::expected<problem_dto::testcase_count, repository_error> testcase_repository
     );
 
     if(clear_result.empty()){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     problem_dto::testcase_count testcase_count_value;

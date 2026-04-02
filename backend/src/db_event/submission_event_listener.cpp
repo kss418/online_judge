@@ -1,17 +1,18 @@
 #include "db_event/submission_event_listener.hpp"
 
 #include "common/submission_status.hpp"
+#include "error/error_code.hpp"
 
 #include <pqxx/pqxx>
 
 #include <chrono>
 #include <utility>
 
-std::expected<submission_event_listener, error_code> submission_event_listener::create(
+std::expected<submission_event_listener, db_error> submission_event_listener::create(
     db_connection db_connection_value
 ){
     if(!db_connection_value.is_connected()){
-        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+        return std::unexpected(db_error::invalid_connection);
     }
 
     return submission_event_listener(std::move(db_connection_value));
@@ -24,9 +25,9 @@ bool submission_event_listener::is_connected() const{
     return db_connection_.is_connected();
 }
 
-std::expected<void, error_code> submission_event_listener::listen_submission_queue(){
+std::expected<void, db_error> submission_event_listener::listen_submission_queue(){
     if(!is_connected()){
-        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+        return std::unexpected(db_error::invalid_connection);
     }
 
     try{
@@ -37,18 +38,20 @@ std::expected<void, error_code> submission_event_listener::listen_submission_que
         return {};
     }
     catch(const std::exception& exception){
-        return std::unexpected(error_code::map_psql_error_code(exception));
+        return std::unexpected(
+            db_error::from_error_code(error_code::map_psql_error_code(exception))
+        );
     }
 }
 
-std::expected<bool, error_code> submission_event_listener::wait_submission_notification(
+std::expected<bool, db_error> submission_event_listener::wait_submission_notification(
     std::chrono::milliseconds timeout
 ){
     if(!is_connected()){
-        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+        return std::unexpected(db_error::invalid_connection);
     }
     if(timeout < std::chrono::milliseconds::zero()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(db_error::invalid_argument);
     }
 
     try{
@@ -64,6 +67,8 @@ std::expected<bool, error_code> submission_event_listener::wait_submission_notif
         return notification_count > 0;
     }
     catch(const std::exception& exception){
-        return std::unexpected(error_code::map_psql_error_code(exception));
+        return std::unexpected(
+            db_error::from_error_code(error_code::map_psql_error_code(exception))
+        );
     }
 }

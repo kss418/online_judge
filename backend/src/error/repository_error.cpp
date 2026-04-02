@@ -58,6 +58,14 @@ const repository_error repository_error::internal{
     repository_error_code::internal
 };
 
+bool repository_error::should_retry_db_error(const db_error& error){
+    return error.is_retryable();
+}
+
+bool repository_error::should_reconnect_db_error(const db_error& error){
+    return error.should_reconnect();
+}
+
 std::string to_string(repository_error_code ec){
     switch(ec){
         case repository_error_code::invalid_reference:

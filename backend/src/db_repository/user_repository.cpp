@@ -1,5 +1,5 @@
 #include "db_repository/user_repository.hpp"
-#include "db_repository/db_repository.hpp"
+#include "error/repository_error.hpp"
 
 #include "query_builder/user_query_builder.hpp"
 
@@ -24,7 +24,7 @@ std::expected<std::optional<user_dto::summary>, repository_error> user_repositor
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto user_summary_result = transaction.exec(
@@ -54,7 +54,7 @@ user_repository::get_summary_by_login_id(
     std::string_view user_login_id
 ){
     if(user_login_id.empty()){
-        return std::unexpected(db_repository::invalid_input_error());
+        return std::unexpected(repository_error::invalid_input);
     }
 
     const auto user_summary_result = transaction.exec(
@@ -86,8 +86,8 @@ std::expected<std::optional<std::string>, repository_error> user_repository::cre
     if(user_id <= 0 || duration_minutes <= 0){
         return std::unexpected(
             user_id <= 0
-                ? db_repository::invalid_reference_error()
-                : db_repository::invalid_input_error()
+                ? repository_error::invalid_reference
+                : repository_error::invalid_input
         );
     }
 
@@ -114,7 +114,7 @@ user_repository::get_submission_ban_status(
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto user_info_result = transaction.exec(
@@ -144,7 +144,7 @@ user_repository::get_active_submission_banned_until(
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto user_info_result = transaction.exec(
@@ -160,7 +160,7 @@ user_repository::get_active_submission_banned_until(
     );
 
     if(user_info_result.empty()){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
     if(user_info_result[0][0].is_null()){
         return std::optional<std::string>{std::nullopt};
@@ -177,8 +177,8 @@ std::expected<bool, repository_error> user_repository::update_submission_banned_
     if(user_id <= 0 || submission_banned_until.empty()){
         return std::unexpected(
             user_id <= 0
-                ? db_repository::invalid_reference_error()
-                : db_repository::invalid_input_error()
+                ? repository_error::invalid_reference
+                : repository_error::invalid_input
         );
     }
 
@@ -199,7 +199,7 @@ std::expected<bool, repository_error> user_repository::clear_submission_banned_u
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto update_result = transaction.exec(

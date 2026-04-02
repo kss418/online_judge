@@ -44,7 +44,7 @@ namespace{
         return error_code::create(errno_error::io_error);
     }
 
-    std::expected<std::size_t, error_code> resolve_http_db_pool_size(
+    std::expected<std::size_t, infra_error> resolve_http_db_pool_size(
         std::size_t default_http_db_pool_size
     ){
         const char* pool_size_text = std::getenv("HTTP_DB_POOL_SIZE");
@@ -57,13 +57,13 @@ namespace{
             !pool_size_opt ||
             *pool_size_opt > static_cast<std::int64_t>(std::numeric_limits<std::size_t>::max())
         ){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(infra_error::invalid_argument);
         }
 
         return static_cast<std::size_t>(*pool_size_opt);
     }
 
-    std::expected<std::size_t, error_code> resolve_http_handler_worker_count(
+    std::expected<std::size_t, infra_error> resolve_http_handler_worker_count(
         std::size_t default_http_worker_count
     ){
         const char* worker_count_text = std::getenv("HTTP_HANDLER_WORKER_COUNT");
@@ -76,7 +76,7 @@ namespace{
             !worker_count_opt ||
             *worker_count_opt > static_cast<std::int64_t>(std::numeric_limits<std::size_t>::max())
         ){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(infra_error::invalid_argument);
         }
 
         return static_cast<std::size_t>(*worker_count_opt);
@@ -88,12 +88,14 @@ std::expected<std::shared_ptr<http_server>, error_code> http_server::create(
 ){
     auto pool_size_exp = resolve_http_db_pool_size(default_http_worker_count);
     if(!pool_size_exp){
-        return std::unexpected(pool_size_exp.error());
+        return std::unexpected(map_infra_error_to_error_code(pool_size_exp.error()));
     }
 
     auto handler_worker_count_exp = resolve_http_handler_worker_count(default_http_worker_count);
     if(!handler_worker_count_exp){
-        return std::unexpected(handler_worker_count_exp.error());
+        return std::unexpected(
+            map_infra_error_to_error_code(handler_worker_count_exp.error())
+        );
     }
 
     auto db_config_exp = db_connection::load_db_connection_config();

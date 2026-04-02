@@ -1,5 +1,5 @@
 #include "db_repository/user_statistics_repository.hpp"
-#include "db_repository/db_repository.hpp"
+#include "error/repository_error.hpp"
 
 #include <pqxx/pqxx>
 
@@ -29,7 +29,7 @@ namespace{
                 return "output_exceeded_submission_count";
         }
 
-        return std::unexpected(db_repository::invalid_input_error());
+        return std::unexpected(repository_error::invalid_input);
     }
 }
 
@@ -39,7 +39,7 @@ user_statistics_repository::get_submission_statistics(
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto statistics_query_result = transaction.exec(
@@ -64,7 +64,7 @@ user_statistics_repository::get_submission_statistics(
     );
 
     if(statistics_query_result.empty()){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     return user_statistics_dto::make_submission_statistics_from_row(
@@ -78,7 +78,7 @@ std::expected<void, repository_error> user_statistics_repository::touch_timestam
     std::string_view column_name
 ){
     if(user_id <= 0 || column_name.empty()){
-        return std::unexpected(db_repository::invalid_input_error());
+        return std::unexpected(repository_error::invalid_input);
     }
 
     const std::string update_query =
@@ -92,7 +92,7 @@ std::expected<void, repository_error> user_statistics_repository::touch_timestam
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     return {};
@@ -103,7 +103,7 @@ std::expected<void, repository_error> user_statistics_repository::create_user_su
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto create_result = transaction.exec(
@@ -113,7 +113,7 @@ std::expected<void, repository_error> user_statistics_repository::create_user_su
     );
 
     if(create_result.affected_rows() == 0){
-        return std::unexpected(db_repository::internal_error());
+        return std::unexpected(repository_error::internal);
     }
 
     return {};
@@ -124,7 +124,7 @@ std::expected<void, repository_error> user_statistics_repository::ensure_user_su
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     transaction.exec(
@@ -142,7 +142,7 @@ std::expected<void, repository_error> user_statistics_repository::increase_submi
     std::int64_t user_id
 ){
     if(user_id <= 0){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto update_result = transaction.exec(
@@ -155,7 +155,7 @@ std::expected<void, repository_error> user_statistics_repository::increase_submi
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     return {};
@@ -167,7 +167,7 @@ std::expected<void, repository_error> user_statistics_repository::increase_statu
     submission_status status
 ){
     if(user_id <= 0){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto column_name_exp = get_status_count_column(status);
@@ -187,7 +187,7 @@ std::expected<void, repository_error> user_statistics_repository::increase_statu
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     return {};
@@ -199,7 +199,7 @@ std::expected<void, repository_error> user_statistics_repository::decrease_statu
     submission_status status
 ){
     if(user_id <= 0){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const auto column_name_exp = get_status_count_column(status);
@@ -219,7 +219,7 @@ std::expected<void, repository_error> user_statistics_repository::decrease_statu
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(db_repository::conflict_error());
+        return std::unexpected(repository_error::conflict);
     }
 
     return {};

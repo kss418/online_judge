@@ -3,8 +3,8 @@
 #include "common/db_connection.hpp"
 #include "error/db_error.hpp"
 #include "error/error_code.hpp"
+#include "error/repository_error.hpp"
 #include "error/service_error.hpp"
-#include "db_repository/db_repository.hpp"
 
 #include <pqxx/pqxx>
 
@@ -107,6 +107,9 @@ namespace db_service_util{
     using service_read_transaction_result =
         std::invoke_result_t<callback_type, pqxx::read_transaction&>;
 
+    template <typename callback_type>
+    using operation_result = std::invoke_result_t<callback_type>;
+
     namespace detail{
         inline std::expected<void, service_error> handle_service_db_error(
             db_connection& connection,
@@ -116,18 +119,18 @@ namespace db_service_util{
         ){
             if(
                 attempt == retry_count ||
-                !db_repository::should_retry_db_error(raw_error)
+                !repository_error::should_retry_db_error(raw_error)
             ){
                 return std::unexpected(map_db_error_to_service_error(raw_error));
             }
 
-            if(db_repository::should_reconnect_db_error(raw_error)){
+            if(repository_error::should_reconnect_db_error(raw_error)){
                 const auto reconnect_exp = connection.reconnect();
                 if(!reconnect_exp){
                     const auto reconnect_error = reconnect_exp.error();
                     if(
                         attempt == retry_count ||
-                        !db_repository::should_retry_db_error(reconnect_error)
+                        !repository_error::should_retry_db_error(reconnect_error)
                     ){
                         return std::unexpected(
                             map_db_error_to_service_error(reconnect_error)
@@ -138,6 +141,45 @@ namespace db_service_util{
 
             return {};
         }
+    }
+
+    template <typename callback_type>
+        requires expected_db_result<operation_result<callback_type>>
+    auto retry_db_operation(
+        db_connection& db_connection_value,
+        int retry_count,
+        callback_type&& callback
+    ) -> operation_result<callback_type> {
+        if(retry_count <= 0){
+            return std::unexpected(db_error::invalid_argument);
+        }
+
+        db_error last_error = db_error::internal;
+
+        for(int attempt = 1; attempt <= retry_count; ++attempt){
+            auto callback_result_exp = std::invoke(callback);
+            if(callback_result_exp){
+                return callback_result_exp;
+            }
+
+            const db_error callback_error = callback_result_exp.error();
+            last_error = callback_error;
+            if(
+                attempt == retry_count ||
+                !repository_error::should_retry_db_error(callback_error)
+            ){
+                return std::unexpected(callback_error);
+            }
+
+            if(repository_error::should_reconnect_db_error(callback_error)){
+                const auto reconnect_exp = db_connection_value.reconnect();
+                if(!reconnect_exp){
+                    last_error = reconnect_exp.error();
+                }
+            }
+        }
+
+        return std::unexpected(last_error);
     }
 
     template <typename callback_type>
@@ -177,7 +219,7 @@ namespace db_service_util{
         int retry_count,
         callback_type&& callback
     ) -> write_transaction_result<callback_type> {
-        return db_repository::retry_db_operation(
+        return retry_db_operation(
             connection,
             retry_count,
             [&]() -> write_transaction_result<callback_type> {
@@ -329,7 +371,7 @@ namespace db_service_util{
         int retry_count,
         callback_type&& callback
     ) -> read_transaction_result<callback_type> {
-        return db_repository::retry_db_operation(
+        return retry_db_operation(
             connection,
             retry_count,
             [&]() -> read_transaction_result<callback_type> {

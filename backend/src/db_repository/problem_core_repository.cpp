@@ -1,5 +1,5 @@
 #include "db_repository/problem_core_repository.hpp"
-#include "db_repository/db_repository.hpp"
+#include "error/repository_error.hpp"
 #include "query_builder/problem_core_query_builder.hpp"
 
 #include <pqxx/pqxx>
@@ -17,7 +17,7 @@ namespace{
         const pqxx::result& query_result
     ){
         if(query_result.empty()){
-            return std::unexpected(db_repository::internal_error());
+            return std::unexpected(repository_error::internal);
         }
 
         return query_result[0][0].as<std::int64_t>();
@@ -29,7 +29,7 @@ std::expected<problem_dto::existence, repository_error> problem_core_repository:
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -43,7 +43,7 @@ std::expected<problem_dto::existence, repository_error> problem_core_repository:
     );
 
     if(exists_query_result.empty()){
-        return std::unexpected(db_repository::internal_error());
+        return std::unexpected(repository_error::internal);
     }
 
     problem_dto::existence existence_value;
@@ -56,7 +56,7 @@ std::expected<problem_dto::title, repository_error> problem_core_repository::get
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -68,7 +68,7 @@ std::expected<problem_dto::title, repository_error> problem_core_repository::get
     );
 
     if(title_query_result.empty()){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     problem_dto::title title_value;
@@ -81,7 +81,7 @@ std::expected<problem_dto::version, repository_error> problem_core_repository::g
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -93,7 +93,7 @@ std::expected<problem_dto::version, repository_error> problem_core_repository::g
     );
 
     if(version_query_result.empty()){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     problem_dto::version version_value;
@@ -107,7 +107,7 @@ std::expected<std::optional<std::string>, repository_error> problem_core_reposit
     std::int64_t user_id
 ){
     if(!problem_dto::is_valid(problem_reference_value) || user_id <= 0){
-        return std::unexpected(db_repository::invalid_input_error());
+        return std::unexpected(repository_error::invalid_input);
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -142,7 +142,7 @@ std::expected<problem_dto::created, repository_error> problem_core_repository::c
     const problem_dto::create_request& create_request_value
 ){
     if(!problem_dto::is_valid(create_request_value)){
-        return std::unexpected(db_repository::invalid_input_error());
+        return std::unexpected(repository_error::invalid_input);
     }
 
     const auto create_problem_result = transaction.exec(
@@ -153,7 +153,7 @@ std::expected<problem_dto::created, repository_error> problem_core_repository::c
     );
 
     if(create_problem_result.empty()){
-        return std::unexpected(db_repository::internal_error());
+        return std::unexpected(repository_error::internal);
     }
 
     problem_dto::created created_value;
@@ -167,10 +167,10 @@ std::expected<void, repository_error> problem_core_repository::set_title(
     const problem_dto::title& title_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
     if(!problem_dto::is_valid(title_value)){
-        return std::unexpected(db_repository::invalid_input_error());
+        return std::unexpected(repository_error::invalid_input);
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -182,7 +182,7 @@ std::expected<void, repository_error> problem_core_repository::set_title(
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     return {};
@@ -193,7 +193,7 @@ std::expected<void, repository_error> problem_core_repository::delete_problem(
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -204,7 +204,7 @@ std::expected<void, repository_error> problem_core_repository::delete_problem(
     );
 
     if(delete_result.affected_rows() == 0){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     return {};
@@ -220,7 +220,9 @@ std::expected<std::vector<problem_dto::summary>, repository_error> problem_core_
         viewer_user_id_opt
     }.build_list_query();
     if(!query_exp){
-        return std::unexpected(db_repository::map_error(query_exp.error()));
+        return std::unexpected(
+            repository_error::from_error_code(query_exp.error())
+        );
     }
     const auto problem_summary_query = transaction.exec(
         query_exp->sql,
@@ -240,7 +242,9 @@ std::expected<std::int64_t, repository_error> problem_core_repository::count_pro
         viewer_user_id_opt
     }.build_count_query();
     if(!query_exp){
-        return std::unexpected(db_repository::map_error(query_exp.error()));
+        return std::unexpected(
+            repository_error::from_error_code(query_exp.error())
+        );
     }
     const auto problem_count_result = transaction.exec(
         query_exp->sql,
@@ -260,7 +264,9 @@ problem_core_repository::list_user_solved_problems(
         viewer_user_id_opt
     }.build_solved_query();
     if(!query_exp){
-        return std::unexpected(db_repository::map_error(query_exp.error()));
+        return std::unexpected(
+            repository_error::from_error_code(query_exp.error())
+        );
     }
     const auto problem_summary_query = transaction.exec(
         query_exp->sql,
@@ -281,7 +287,9 @@ problem_core_repository::list_user_wrong_problems(
         viewer_user_id_opt
     }.build_wrong_query();
     if(!query_exp){
-        return std::unexpected(db_repository::map_error(query_exp.error()));
+        return std::unexpected(
+            repository_error::from_error_code(query_exp.error())
+        );
     }
     const auto problem_summary_query = transaction.exec(
         query_exp->sql,
@@ -296,7 +304,7 @@ std::expected<problem_content_dto::limits, repository_error> problem_core_reposi
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -308,7 +316,7 @@ std::expected<problem_content_dto::limits, repository_error> problem_core_reposi
     );
 
     if(limits_query_result.empty()){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     problem_content_dto::limits limits_value;
@@ -323,10 +331,10 @@ std::expected<void, repository_error> problem_core_repository::set_limits(
     const problem_content_dto::limits& limits_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
     if(!problem_content_dto::is_valid(limits_value)){
-        return std::unexpected(db_repository::invalid_input_error());
+        return std::unexpected(repository_error::invalid_input);
     }
     const std::int64_t problem_id = problem_reference_value.problem_id;
 
@@ -353,7 +361,7 @@ std::expected<void, repository_error> problem_core_repository::increase_version(
     const problem_dto::reference& problem_reference_value
 ){
     if(!problem_dto::is_valid(problem_reference_value)){
-        return std::unexpected(db_repository::invalid_reference_error());
+        return std::unexpected(repository_error::invalid_reference);
     }
 
     const std::int64_t problem_id = problem_reference_value.problem_id;
@@ -365,7 +373,7 @@ std::expected<void, repository_error> problem_core_repository::increase_version(
     );
 
     if(update_result.affected_rows() == 0){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     return {};

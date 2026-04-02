@@ -18,7 +18,7 @@ std::uint32_t default_http_worker_count(){
     return hardware_thread_count == 0 ? std::uint32_t{1} : hardware_thread_count;
 }
 
-std::expected<std::uint32_t, error_code> resolve_http_worker_count(){
+std::expected<std::uint32_t, infra_error> resolve_http_worker_count(){
     const char* worker_count_text = std::getenv("HTTP_WORKER_COUNT");
     if(worker_count_text == nullptr || *worker_count_text == '\0'){
         return default_http_worker_count();
@@ -29,7 +29,7 @@ std::expected<std::uint32_t, error_code> resolve_http_worker_count(){
         !worker_count_opt ||
         *worker_count_opt > static_cast<std::int64_t>(std::numeric_limits<std::uint32_t>::max())
     ){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(infra_error::invalid_argument);
     }
 
     return static_cast<std::uint32_t>(*worker_count_opt);

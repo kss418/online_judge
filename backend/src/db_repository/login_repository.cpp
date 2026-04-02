@@ -1,5 +1,5 @@
 #include "db_repository/login_repository.hpp"
-#include "db_repository/db_repository.hpp"
+#include "error/repository_error.hpp"
 
 #include <pqxx/pqxx>
 
@@ -8,7 +8,7 @@ std::expected<std::int64_t, repository_error> login_repository::create_user(
     const auth_dto::hashed_sign_up_request& sign_up_request_value
 ){
     if(!auth_dto::is_valid(sign_up_request_value)){
-        return std::unexpected(db_repository::invalid_input_error());
+        return std::unexpected(repository_error::invalid_input);
     }
 
     const auto create_user_result = transaction.exec(
@@ -34,7 +34,7 @@ std::expected<bool, repository_error> login_repository::verify_user(
     const auth_dto::hashed_credentials& credentials_value
 ){
     if(!auth_dto::is_valid(credentials_value)){
-        return std::unexpected(db_repository::invalid_input_error());
+        return std::unexpected(repository_error::invalid_input);
     }
 
     const auto verify_result = transaction.exec(
@@ -55,7 +55,7 @@ std::expected<std::optional<auth_dto::identity>, repository_error> login_reposit
     const auth_dto::hashed_credentials& credentials_value
 ){
     if(!auth_dto::is_valid(credentials_value)){
-        return std::unexpected(db_repository::invalid_input_error());
+        return std::unexpected(repository_error::invalid_input);
     }
 
     const auto login_identity_result = transaction.exec(

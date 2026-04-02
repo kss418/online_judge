@@ -1,5 +1,5 @@
 #include "db_repository/auth_repository.hpp"
-#include "db_repository/db_repository.hpp"
+#include "error/repository_error.hpp"
 
 #include "common/permission_util.hpp"
 
@@ -16,8 +16,8 @@ std::expected<void, repository_error> auth_repository::insert_token(
     ){
         return std::unexpected(
             user_id <= 0
-                ? db_repository::invalid_reference_error()
-                : db_repository::invalid_input_error()
+                ? repository_error::invalid_reference
+                : repository_error::invalid_input
         );
     }
 
@@ -34,7 +34,7 @@ std::expected<void, repository_error> auth_repository::insert_token(
     );
 
     if(insert_result.empty()){
-        return std::unexpected(db_repository::not_found_error());
+        return std::unexpected(repository_error::not_found);
     }
 
     return {};
@@ -45,7 +45,7 @@ std::expected<bool, repository_error> auth_repository::revoke_token(
     const auth_dto::hashed_token& hashed_token_value
 ){
     if(!auth_dto::is_valid(hashed_token_value)){
-        return std::unexpected(db_repository::invalid_input_error());
+        return std::unexpected(repository_error::invalid_input);
     }
 
     const auto revoke_result = transaction.exec(
@@ -63,7 +63,7 @@ std::expected<std::optional<auth_dto::identity>, repository_error> auth_reposito
     const auth_dto::hashed_token& hashed_token_value
 ){
     if(!auth_dto::is_valid(hashed_token_value)){
-        return std::unexpected(db_repository::invalid_input_error());
+        return std::unexpected(repository_error::invalid_input);
     }
 
     const auto token_identity_result = transaction.exec(
@@ -101,8 +101,8 @@ std::expected<bool, repository_error> auth_repository::update_permission_level(
     ){
         return std::unexpected(
             user_id <= 0
-                ? db_repository::invalid_reference_error()
-                : db_repository::invalid_input_error()
+                ? repository_error::invalid_reference
+                : repository_error::invalid_input
         );
     }
 
@@ -163,7 +163,7 @@ std::expected<bool, repository_error> auth_repository::update_expires_at(
         !auth_dto::is_valid(hashed_token_value) ||
         token_ttl <= std::chrono::seconds::zero()
     ){
-        return std::unexpected(db_repository::invalid_input_error());
+        return std::unexpected(repository_error::invalid_input);
     }
 
     const auto update_result = transaction.exec(

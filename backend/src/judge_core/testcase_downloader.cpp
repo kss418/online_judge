@@ -5,6 +5,7 @@
 #include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"
 #include "db_service/testcase_service.hpp"
+#include "error/infra_error.hpp"
 #include "judge_core/testcase_util.hpp"
 
 #include <cstdlib>
@@ -16,10 +17,10 @@
 namespace{
     constexpr int FILE_OPERATION_ATTEMPT_COUNT = 5;
 
-    std::expected<std::filesystem::path, error_code> read_testcase_root_path(){
+    std::expected<std::filesystem::path, infra_error> read_testcase_root_path(){
         const char* testcase_root_path = std::getenv("TESTCASE_PATH");
         if(testcase_root_path == nullptr || *testcase_root_path == '\0'){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(infra_error::invalid_argument);
         }
 
         return std::filesystem::path(testcase_root_path);
