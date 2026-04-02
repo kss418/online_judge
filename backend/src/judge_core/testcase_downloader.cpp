@@ -2,7 +2,6 @@
 
 #include "common/file_util.hpp"
 #include "common/temp_dir.hpp"
-#include "db_service/db_service_util.hpp"
 #include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"
 #include "db_service/testcase_service.hpp"
@@ -52,7 +51,9 @@ testcase_downloader::testcase_downloader(
 ) :
     connection_(std::move(connection)){}
 
-std::expected<testcase_downloader, error_code> testcase_downloader::create(db_connection connection){
+std::expected<testcase_downloader, judge_error> testcase_downloader::create(
+    db_connection connection
+){
     if(!connection.is_connected()){
         return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
     }
@@ -60,7 +61,7 @@ std::expected<testcase_downloader, error_code> testcase_downloader::create(db_co
     return testcase_downloader(std::move(connection));
 }
 
-std::expected<std::int32_t, error_code> testcase_downloader::fetch_problem_version(
+std::expected<std::int32_t, judge_error> testcase_downloader::fetch_problem_version(
     std::int64_t problem_id
 ){
     const problem_dto::reference problem_reference_value{problem_id};
@@ -69,27 +70,23 @@ std::expected<std::int32_t, error_code> testcase_downloader::fetch_problem_versi
         problem_reference_value
     );
     if(!version_exp){
-        return std::unexpected(
-            db_service_util::map_service_error_to_error_code(version_exp.error())
-        );
+        return std::unexpected(version_exp.error());
     }
 
     return version_exp->version;
 }
 
-std::expected<problem_content_dto::limits, error_code> testcase_downloader::fetch_problem_limits(
+std::expected<problem_content_dto::limits, judge_error> testcase_downloader::fetch_problem_limits(
     std::int64_t problem_id
 ){
     const problem_dto::reference problem_reference_value{problem_id};
-    return db_service_util::map_service_error_to_error_code(
-        problem_content_service::get_limits(
-            connection_,
-            problem_reference_value
-        )
+    return problem_content_service::get_limits(
+        connection_,
+        problem_reference_value
     );
 }
 
-std::expected<problem_content_dto::limits, error_code> testcase_downloader::read_problem_limits(
+std::expected<problem_content_dto::limits, judge_error> testcase_downloader::read_problem_limits(
     const std::filesystem::path& testcase_directory_path
 ) const{
     const auto memory_limit_file_path_exp = testcase_util::make_testcase_memory_limit_file_path(
@@ -122,7 +119,7 @@ std::expected<problem_content_dto::limits, error_code> testcase_downloader::read
     return problem_limits_value;
 }
 
-std::expected<testcase_snapshot, error_code> testcase_downloader::make_testcase_snapshot(
+std::expected<testcase_snapshot, judge_error> testcase_downloader::make_testcase_snapshot(
     std::int64_t problem_id,
     std::int32_t version,
     const std::filesystem::path& testcase_directory_path
@@ -156,7 +153,7 @@ std::expected<testcase_snapshot, error_code> testcase_downloader::make_testcase_
     );
 }
 
-std::expected<void, error_code> testcase_downloader::sync_limit_file(
+std::expected<void, judge_error> testcase_downloader::sync_limit_file(
     const problem_content_dto::limits& problem_limits_value,
     const std::filesystem::path& testcase_directory_path
 ){
@@ -200,7 +197,7 @@ std::expected<void, error_code> testcase_downloader::sync_limit_file(
     return {};
 }
 
-std::expected<void, error_code> testcase_downloader::sync_version_directory(
+std::expected<void, judge_error> testcase_downloader::sync_version_directory(
     const std::filesystem::path& testcase_root_path,
     std::int64_t problem_id,
     std::int32_t version,
@@ -277,7 +274,7 @@ std::expected<void, error_code> testcase_downloader::sync_version_directory(
     return {};
 }
 
-std::expected<testcase_snapshot, error_code> testcase_downloader::ensure_testcase_snapshot(
+std::expected<testcase_snapshot, judge_error> testcase_downloader::ensure_testcase_snapshot(
     std::int64_t problem_id
 ){
     const auto testcase_root_path_exp = read_testcase_root_path();
@@ -328,7 +325,7 @@ std::expected<testcase_snapshot, error_code> testcase_downloader::ensure_testcas
     );
 }
 
-std::expected<void, error_code> testcase_downloader::download_all(
+std::expected<void, judge_error> testcase_downloader::download_all(
     std::int64_t problem_id,
     const std::filesystem::path& testcase_directory_path
 ){
@@ -338,11 +335,7 @@ std::expected<void, error_code> testcase_downloader::download_all(
         problem_reference_value
     );
     if(!testcase_count_exp){
-        return std::unexpected(
-            db_service_util::map_service_error_to_error_code(
-                testcase_count_exp.error()
-            )
-        );
+        return std::unexpected(testcase_count_exp.error());
     }
 
     for(std::int32_t order = 1; order <= testcase_count_exp->testcase_count; ++order){
@@ -355,7 +348,7 @@ std::expected<void, error_code> testcase_downloader::download_all(
     return {};
 }
 
-std::expected<void, error_code> testcase_downloader::download_one(
+std::expected<void, judge_error> testcase_downloader::download_one(
     std::int64_t problem_id,
     std::int32_t order,
     const std::filesystem::path& testcase_directory_path
@@ -368,9 +361,7 @@ std::expected<void, error_code> testcase_downloader::download_one(
         testcase_reference_value
     );
     if(!testcase_exp){
-        return std::unexpected(
-            db_service_util::map_service_error_to_error_code(testcase_exp.error())
-        );
+        return std::unexpected(testcase_exp.error());
     }
 
     const auto input_path_exp = testcase_util::make_testcase_input_path(

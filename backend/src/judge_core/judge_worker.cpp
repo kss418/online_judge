@@ -3,7 +3,6 @@
 #include "common/file_util.hpp"
 #include "common/logger.hpp"
 #include "common/timer.hpp"
-#include "db_service/db_service_util.hpp"
 #include "db_service/submission_service.hpp"
 #include "judge_core/checker.hpp"
 #include "judge_core/judge_util.hpp"
@@ -55,7 +54,7 @@ namespace{
     }
 }
 
-std::expected<judge_worker, error_code> judge_worker::create(
+std::expected<judge_worker, judge_error> judge_worker::create(
     submission_event_listener submission_event_listener,
     std::shared_ptr<problem_lock_registry> problem_lock_registry
 ){
@@ -244,7 +243,7 @@ judge_worker::process_submission_data judge_worker::make_process_submission_data
     return process_submission_data_value;
 }
 
-std::expected<judge_result, error_code> judge_worker::check_result(
+std::expected<judge_result, judge_error> judge_worker::check_result(
     const testcase_snapshot& testcase_snapshot_value,
     const testcase_runner::run_batch& run_batch_value
 ){
@@ -275,7 +274,7 @@ std::expected<judge_result, error_code> judge_worker::check_result(
     return checker::check_all(output_lines, testcase_snapshot_value);
 }
 
-std::expected<void, error_code> judge_worker::run(){
+std::expected<void, judge_error> judge_worker::run(){
     while(true){
         auto queued_submission_opt_exp = lease_submission();
         if(!queued_submission_opt_exp){
@@ -341,7 +340,8 @@ std::expected<void, error_code> judge_worker::run(){
     }
 }
 
-std::expected<judge_worker::submission_stage_metrics, error_code> judge_worker::process_submission(
+std::expected<judge_worker::submission_stage_metrics, judge_error>
+judge_worker::process_submission(
     const submission_dto::queued_submission& queued_submission_value
 ){
     submission_stage_metrics submission_stage_metrics_value = make_submission_stage_metrics(
@@ -363,16 +363,12 @@ std::expected<judge_worker::submission_stage_metrics, error_code> judge_worker::
         queued_submission_value.submission_id
     );
     if(!mark_judging_exp){
-        return std::unexpected(
-            db_service_util::map_service_error_to_error_code(
-                mark_judging_exp.error()
-            )
-        );
+        return std::unexpected(mark_judging_exp.error());
     }
 
     const auto testcase_snapshot_exp = timer::measure_elapsed_ms(
         submission_stage_metrics_value.testcase_snapshot_elapsed_ms,
-        [this, &queued_submission_value]() -> std::expected<testcase_snapshot, error_code> {
+        [this, &queued_submission_value]() -> std::expected<testcase_snapshot, judge_error> {
             auto problem_lock_exp = problem_lock_registry_->lock(
                 queued_submission_value.problem_id
             );
@@ -418,7 +414,8 @@ std::expected<judge_worker::submission_stage_metrics, error_code> judge_worker::
     return submission_stage_metrics_value;
 }
 
-std::expected<judge_worker::process_submission_data, error_code> judge_worker::judge_submission(
+std::expected<judge_worker::process_submission_data, judge_error>
+judge_worker::judge_submission(
     const std::filesystem::path& source_file_path,
     const testcase_snapshot& testcase_snapshot_value
 ){
@@ -444,7 +441,7 @@ std::expected<judge_worker::process_submission_data, error_code> judge_worker::j
     );
 }
 
-std::expected<void, error_code> judge_worker::finalize_submission(
+std::expected<void, judge_error> judge_worker::finalize_submission(
     std::int64_t submission_id,
     judge_result result,
     const std::vector<sandbox_runner::run_result>& run_results
@@ -471,16 +468,13 @@ std::expected<void, error_code> judge_worker::finalize_submission(
         finalize_request_value
     );
     if(!finalize_submission_exp){
-        return std::unexpected(
-            db_service_util::map_service_error_to_error_code(
-                finalize_submission_exp.error()
-            )
-        );
+        return std::unexpected(finalize_submission_exp.error());
     }
 
     return {};
 }
-std::expected<std::filesystem::path, error_code> judge_worker::prepare_submission(
+
+std::expected<std::filesystem::path, judge_error> judge_worker::prepare_submission(
     const submission_dto::queued_submission& queued_submission_value
 ){
     const auto workspace_path_exp = judge_util::instance().make_submission_workspace_path(
@@ -519,7 +513,7 @@ std::expected<std::filesystem::path, error_code> judge_worker::prepare_submissio
     return *source_file_path_exp;
 }
 
-std::expected<void, error_code> judge_worker::cleanup_submission_workspace(
+std::expected<void, judge_error> judge_worker::cleanup_submission_workspace(
     std::int64_t submission_id
 ){
     const auto workspace_path_exp = judge_util::instance().make_submission_workspace_path(
@@ -532,26 +526,23 @@ std::expected<void, error_code> judge_worker::cleanup_submission_workspace(
     return file_util::remove_all(*workspace_path_exp);
 }
 
-std::expected<void, error_code> judge_worker::requeue_submission(
+std::expected<void, judge_error> judge_worker::requeue_submission(
     std::int64_t submission_id,
     std::string reason
 ){
-    return db_service_util::map_service_error_to_error_code(
-        submission_service::requeue_submission_immediately(
-            db_connection_,
-            submission_id,
-            std::move(reason)
-        )
+    return submission_service::requeue_submission_immediately(
+        db_connection_,
+        submission_id,
+        std::move(reason)
     );
 }
 
-std::expected<std::optional<submission_dto::queued_submission>, error_code> judge_worker::lease_submission(){
+std::expected<std::optional<submission_dto::queued_submission>, judge_error>
+judge_worker::lease_submission(){
     submission_dto::lease_request lease_request_value;
     lease_request_value.lease_duration = LEASE_DURATION;
-    return db_service_util::map_service_error_to_error_code(
-        submission_service::lease_submission(
-            db_connection_,
-            lease_request_value
-        )
+    return submission_service::lease_submission(
+        db_connection_,
+        lease_request_value
     );
 }

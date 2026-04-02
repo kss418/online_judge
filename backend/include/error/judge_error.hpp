@@ -19,6 +19,8 @@ struct judge_error{
     std::string message;
 
     judge_error(judge_error_code code_value, std::string message_value = {});
+    judge_error(const service_error& ec);
+    judge_error(const error_code& ec);
 
     bool operator==(const judge_error& other) const;
 

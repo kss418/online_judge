@@ -34,6 +34,12 @@ judge_error::judge_error(
             : std::move(message_value)
     ){}
 
+judge_error::judge_error(const service_error& ec) :
+    judge_error(from_service(ec)){}
+
+judge_error::judge_error(const error_code& ec) :
+    judge_error(from_error_code(ec)){}
+
 bool judge_error::operator==(const judge_error& other) const{
     return code == other.code;
 }

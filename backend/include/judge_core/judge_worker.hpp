@@ -1,10 +1,10 @@
 #pragma once
 
 #include "common/submission_status.hpp"
-#include "error/error_code.hpp"
 #include "common/db_connection.hpp"
 #include "db_event/submission_event_listener.hpp"
 #include "dto/submission_dto.hpp"
+#include "error/judge_error.hpp"
 #include "judge_core/problem_lock_registry.hpp"
 #include "judge_core/testcase_snapshot.hpp"
 #include "judge_core/testcase_downloader.hpp"
@@ -23,13 +23,14 @@
 
 class judge_worker{
 public:
-    static std::expected<judge_worker, error_code> create(
+    static std::expected<judge_worker, judge_error> create(
         submission_event_listener submission_event_listener,
         std::shared_ptr<problem_lock_registry> problem_lock_registry
     );
 
-    std::expected<void, error_code> run();
-    std::expected<std::optional<submission_dto::queued_submission>, error_code> lease_submission();
+    std::expected<void, judge_error> run();
+    std::expected<std::optional<submission_dto::queued_submission>, judge_error>
+    lease_submission();
 
     struct submission_stage_metrics{
         std::string event = "completed";
@@ -88,27 +89,27 @@ private:
         judge_result judge_result_value,
         testcase_runner::run_batch&& run_batch_value
     );
-    std::expected<void, error_code> finalize_submission(
+    std::expected<void, judge_error> finalize_submission(
         std::int64_t submission_id,
         judge_result result,
         const std::vector<sandbox_runner::run_result>& run_results
     );
-    std::expected<submission_stage_metrics, error_code> process_submission(
+    std::expected<submission_stage_metrics, judge_error> process_submission(
         const submission_dto::queued_submission& queued_submission_value
     );
-    std::expected<std::filesystem::path, error_code> prepare_submission(
+    std::expected<std::filesystem::path, judge_error> prepare_submission(
         const submission_dto::queued_submission& queued_submission_value
     );
-    std::expected<void, error_code> cleanup_submission_workspace(std::int64_t submission_id);
-    std::expected<void, error_code> requeue_submission(
+    std::expected<void, judge_error> cleanup_submission_workspace(std::int64_t submission_id);
+    std::expected<void, judge_error> requeue_submission(
         std::int64_t submission_id,
         std::string reason
     );
-    std::expected<process_submission_data, error_code> judge_submission(
+    std::expected<process_submission_data, judge_error> judge_submission(
         const std::filesystem::path& source_file_path,
         const testcase_snapshot& testcase_snapshot_value
     );
-    std::expected<judge_result, error_code> check_result(
+    std::expected<judge_result, judge_error> check_result(
         const testcase_snapshot& testcase_snapshot_value,
         const testcase_runner::run_batch& run_batch_value
     );
