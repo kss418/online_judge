@@ -26,7 +26,8 @@ std::expected<void, repository_error> problem_content_repository::ensure_stateme
     return {};
 }
 
-std::expected<problem_content_dto::statement, repository_error> problem_content_repository::get_statement(
+std::expected<std::optional<problem_content_dto::statement>, repository_error>
+problem_content_repository::get_statement(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -43,7 +44,7 @@ std::expected<problem_content_dto::statement, repository_error> problem_content_
     );
 
     if(statement_query_result.empty()){
-        return std::unexpected(repository_error::not_found);
+        return std::optional<problem_content_dto::statement>{std::nullopt};
     }
 
     problem_content_dto::statement statement_value;
@@ -60,10 +61,10 @@ std::expected<problem_content_dto::statement, repository_error> problem_content_
         statement_value.output_format.empty() &&
         !statement_value.note
     ){
-        return std::unexpected(repository_error::not_found);
+        return std::optional<problem_content_dto::statement>{std::nullopt};
     }
 
-    return statement_value;
+    return std::optional<problem_content_dto::statement>{std::move(statement_value)};
 }
 
 std::expected<void, repository_error> problem_content_repository::set_statement(

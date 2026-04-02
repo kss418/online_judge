@@ -128,12 +128,6 @@ struct error_code{
             *this == psql_error::check_violation;
     }
 
-    bool is_bad_request_error() const{
-        return
-            *this == errno_error::invalid_argument ||
-            is_constraint_violation_error();
-    }
-
     constexpr bool is_repository_error() const{
         return type_ == error_type::repository_type;
     }

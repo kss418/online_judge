@@ -57,7 +57,10 @@ testcase_zip_service::load_testcases_from_zip_body(std::string_view zip_body){
         if(list_zip_entries_exp.error() == errno_error::file_not_found){
             return std::unexpected(make_error(error_kind::inspect_zip_unavailable));
         }
-        if(list_zip_entries_exp.error().is_bad_request_error()){
+        if(
+            list_zip_entries_exp.error() == errno_error::invalid_argument ||
+            list_zip_entries_exp.error().is_constraint_violation_error()
+        ){
             return std::unexpected(make_error(error_kind::inspect_zip_invalid));
         }
         return std::unexpected(make_error(
@@ -95,7 +98,10 @@ testcase_zip_service::load_testcases_from_zip_body(std::string_view zip_body){
         if(unzip_archive_exp.error() == errno_error::file_not_found){
             return std::unexpected(make_error(error_kind::extract_zip_unavailable));
         }
-        if(unzip_archive_exp.error().is_bad_request_error()){
+        if(
+            unzip_archive_exp.error() == errno_error::invalid_argument ||
+            unzip_archive_exp.error().is_constraint_violation_error()
+        ){
             return std::unexpected(make_error(error_kind::extract_zip_invalid));
         }
         return std::unexpected(make_error(

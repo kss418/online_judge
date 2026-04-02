@@ -200,24 +200,33 @@ http_response_util::response_type http_response_util::create_not_found(
     );
 }
 
-http_response_util::response_type http_response_util::create_problem_not_found(
-    const request_type& request
+http_response_util::response_type http_response_util::create_resource_not_found(
+    const request_type& request,
+    std::string_view resource_name
 ){
+    const std::string resource_name_value{resource_name};
     return create_error(
         request,
         boost::beast::http::status::not_found,
-        "problem_not_found",
-        "problem not found"
+        resource_name_value + "_not_found",
+        resource_name_value + " not found"
     );
+}
+
+http_response_util::response_type http_response_util::create_problem_not_found(
+    const request_type& request
+){
+    return create_resource_not_found(request, "problem");
 }
 
 http_response_util::response_type http_response_util::create_user_not_found(
     const request_type& request
 ){
-    return create_error(
-        request,
-        boost::beast::http::status::not_found,
-        "user_not_found",
-        "user not found"
-    );
+    return create_resource_not_found(request, "user");
+}
+
+http_response_util::response_type http_response_util::create_testcase_not_found(
+    const request_type& request
+){
+    return create_resource_not_found(request, "testcase");
 }

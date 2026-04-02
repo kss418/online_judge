@@ -39,11 +39,8 @@ testcase_handler::response_type testcase_handler::get_testcase(
                     std::string_view action,
                     const service_error& code) {
                     if(code == service_error::not_found){
-                        return http_response_util::create_error(
-                            error_request,
-                            boost::beast::http::status::not_found,
-                            "testcase_not_found",
-                            "testcase not found"
+                        return http_response_util::create_testcase_not_found(
+                            error_request
                         );
                     }
 

@@ -470,7 +470,8 @@ std::expected<void, repository_error> submission_repository::rejudge_submission(
     return {};
 }
 
-std::expected<submission_dto::queued_submission, repository_error> submission_repository::lease_submission(
+std::expected<std::optional<submission_dto::queued_submission>, repository_error>
+submission_repository::lease_submission(
     pqxx::transaction_base& transaction,
     const submission_dto::lease_request& lease_request_value
 ){
@@ -498,7 +499,7 @@ std::expected<submission_dto::queued_submission, repository_error> submission_re
     );
 
     if(lease_candidate_result.empty()){
-        return std::unexpected(repository_error::not_found);
+        return std::optional<submission_dto::queued_submission>{std::nullopt};
     }
 
     submission_dto::queued_submission queued_submission_value =
@@ -515,7 +516,9 @@ std::expected<submission_dto::queued_submission, repository_error> submission_re
         pqxx::params{queued_submission_value.submission_id, lease_duration.count()}
     );
 
-    return queued_submission_value;
+    return std::optional<submission_dto::queued_submission>{
+        std::move(queued_submission_value)
+    };
 }
 
 std::expected<void, repository_error> submission_repository::release_submission_lease(

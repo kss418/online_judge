@@ -51,14 +51,15 @@ std::expected<void, service_error> problem_content_service::set_limits(
     );
 }
 
-std::expected<problem_content_dto::statement, service_error> problem_content_service::get_statement(
+std::expected<std::optional<problem_content_dto::statement>, service_error>
+problem_content_service::get_statement(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
     return db_service_util::with_retry_service_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<problem_content_dto::statement, service_error> {
+            -> std::expected<std::optional<problem_content_dto::statement>, service_error> {
             return problem_content_repository::get_statement(
                 transaction,
                 problem_reference_value

@@ -8,10 +8,6 @@
 #include <string>
 #include <utility>
 
-static bool is_queue_empty_error(repository_error code){
-    return code == repository_error::not_found;
-}
-
 static bool should_hide_submission_metrics(std::string_view status){
     return status == to_string(submission_status::runtime_error);
 }
@@ -313,16 +309,10 @@ submission_service::lease_submission(
                 lease_request_value
             );
             if(!lease_submission_exp){
-                if(is_queue_empty_error(lease_submission_exp.error())){
-                    return std::optional<submission_dto::queued_submission>{};
-                }
-
                 return std::unexpected(lease_submission_exp.error());
             }
 
-            return std::optional<submission_dto::queued_submission>{
-                std::move(*lease_submission_exp)
-            };
+            return std::move(*lease_submission_exp);
         }
     );
 }

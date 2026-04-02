@@ -105,10 +105,17 @@ namespace http_response_util{
     response_type create_not_found(
         const request_type& request
     );
+    response_type create_resource_not_found(
+        const request_type& request,
+        std::string_view resource_name
+    );
     response_type create_problem_not_found(
         const request_type& request
     );
     response_type create_user_not_found(
+        const request_type& request
+    );
+    response_type create_testcase_not_found(
         const request_type& request
     );
 

@@ -126,12 +126,10 @@ std::expected<problem_dto::detail, service_error> problem_core_service::get_prob
                 transaction,
                 problem_reference_value
             );
-            if(statement_exp){
-                detail_value.statement_opt = *statement_exp;
-            }
-            else if(statement_exp.error() != repository_error::not_found){
+            if(!statement_exp){
                 return std::unexpected(statement_exp.error());
             }
+            detail_value.statement_opt = std::move(*statement_exp);
 
             const auto sample_values_exp = problem_content_repository::list_samples(
                 transaction,

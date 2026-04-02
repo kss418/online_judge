@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <expected>
+#include <optional>
 #include <vector>
 
 namespace pqxx{
@@ -18,7 +19,7 @@ namespace problem_content_repository{
         const problem_dto::reference& problem_reference_value
     );
 
-    std::expected<problem_content_dto::statement, repository_error> get_statement(
+    std::expected<std::optional<problem_content_dto::statement>, repository_error> get_statement(
         pqxx::transaction_base& transaction,
         const problem_dto::reference& problem_reference_value
     );

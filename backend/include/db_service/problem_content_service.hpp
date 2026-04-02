@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <expected>
+#include <optional>
 #include <vector>
 
 namespace problem_content_service{
@@ -21,7 +22,7 @@ namespace problem_content_service{
         const problem_content_dto::limits& limits_value
     );
 
-    std::expected<problem_content_dto::statement, service_error> get_statement(
+    std::expected<std::optional<problem_content_dto::statement>, service_error> get_statement(
         db_connection& connection,
         const problem_dto::reference& problem_reference_value
     );
