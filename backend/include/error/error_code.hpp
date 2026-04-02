@@ -145,7 +145,6 @@ struct error_code{
     static boost_error map_boost_error(const boost::system::error_code& ec);
     static error_code map_boost_error_code(const boost::system::error_code& ec);
     static psql_error map_psql_error(const std::exception& exception);
-    static error_code map_psql_error_code(const std::exception& exception);
     static signal_error map_signal(int signal_number);
 
     friend constexpr bool operator==(const error_code& left, syscall_error right){

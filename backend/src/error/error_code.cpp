@@ -413,10 +413,6 @@ psql_error error_code::map_psql_error(const std::exception& exception){
     return psql_error::unknown_psql_error;
 }
 
-error_code error_code::map_psql_error_code(const std::exception& exception){
-    return error_code::create(error_code::map_psql_error(exception));
-}
-
 signal_error error_code::map_signal(int signal_number){
     switch(signal_number){
         case SIGABRT:

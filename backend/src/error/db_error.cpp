@@ -150,46 +150,6 @@ std::string to_string(const db_error& ec){
     return ec.message;
 }
 
-db_error db_error::from_error_code(const error_code& ec){
-    if(ec == errno_error::invalid_argument){
-        return db_error::invalid_argument;
-    }
-    if(ec == errno_error::invalid_file_descriptor){
-        return db_error::invalid_connection;
-    }
-    if(ec == errno_error::interrupted_system_call){
-        return db_error::interrupted;
-    }
-    if(ec == psql_error::unique_violation){
-        return db_error::unique_violation;
-    }
-    if(
-        ec.is_constraint_violation_error() &&
-        ec != psql_error::unique_violation
-    ){
-        return db_error::constraint_violation;
-    }
-    if(ec == psql_error::broken_connection){
-        return db_error::broken_connection;
-    }
-    if(ec == psql_error::serialization_failure){
-        return db_error::serialization_failure;
-    }
-    if(ec == psql_error::deadlock_detected){
-        return db_error::deadlock_detected;
-    }
-    if(
-        ec == errno_error::resource_temporarily_unavailable ||
-        ec == boost_error::timed_out ||
-        ec == boost_error::would_block ||
-        ec == boost_error::try_again
-    ){
-        return db_error::unavailable;
-    }
-
-    return db_error::internal;
-}
-
 db_error db_error::from_psql_exception(const std::exception& exception){
     return map_psql_error(error_code::map_psql_error(exception));
 }

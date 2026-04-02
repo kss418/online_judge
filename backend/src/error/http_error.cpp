@@ -20,6 +20,26 @@ namespace{
         }
         return "unknown http error";
     }
+
+    http_error map_service_error(const service_error& ec){
+        switch(ec.code){
+            case service_error_code::validation_error:
+                return http_error{http_error_code::validation_error, ec.message};
+            case service_error_code::unauthorized:
+                return http_error{http_error_code::unauthorized, ec.message};
+            case service_error_code::forbidden:
+                return http_error{http_error_code::forbidden, ec.message};
+            case service_error_code::not_found:
+                return http_error{http_error_code::not_found, ec.message};
+            case service_error_code::conflict:
+                return http_error{http_error_code::conflict, ec.message};
+            case service_error_code::unavailable:
+            case service_error_code::internal:
+                return http_error{http_error_code::internal, ec.message};
+        }
+
+        return http_error::internal;
+    }
 }
 
 http_error::http_error(
@@ -32,6 +52,10 @@ http_error::http_error(
             ? default_message(code_value)
             : std::move(message_value)
     ){}
+
+http_error::http_error(const service_error& error)
+:
+    http_error(map_service_error(error)){}
 
 bool http_error::operator==(const http_error& other) const{
     return code == other.code;
@@ -76,24 +100,4 @@ std::string to_string(http_error_code ec){
 
 std::string to_string(const http_error& ec){
     return ec.message;
-}
-
-http_error http_error::from_service(const service_error& ec){
-    switch(ec.code){
-        case service_error_code::validation_error:
-            return http_error{http_error_code::validation_error, ec.message};
-        case service_error_code::unauthorized:
-            return http_error{http_error_code::unauthorized, ec.message};
-        case service_error_code::forbidden:
-            return http_error{http_error_code::forbidden, ec.message};
-        case service_error_code::not_found:
-            return http_error{http_error_code::not_found, ec.message};
-        case service_error_code::conflict:
-            return http_error{http_error_code::conflict, ec.message};
-        case service_error_code::unavailable:
-        case service_error_code::internal:
-            return http_error{http_error_code::internal, ec.message};
-    }
-
-    return http_error::internal;
 }

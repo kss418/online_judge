@@ -16,7 +16,7 @@ namespace{
     };
 
     mapped_http_error map_http_error(const service_error& code){
-        const auto http_error_value = http_error::from_service(code);
+        const http_error http_error_value(code);
 
         if(http_error_value == http_error::validation_error){
             return mapped_http_error{

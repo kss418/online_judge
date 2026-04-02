@@ -2,8 +2,6 @@
 
 #include <string>
 
-struct error_code;
-
 enum class infra_error_code{
     invalid_argument,
     permission_denied,
@@ -29,8 +27,6 @@ struct infra_error{
     static const infra_error conflict;
     static const infra_error unavailable;
     static const infra_error internal;
-
-    static infra_error from_error_code(const error_code& ec);
 };
 
 std::string to_string(infra_error_code ec);

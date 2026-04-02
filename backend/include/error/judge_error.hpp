@@ -33,11 +33,6 @@ struct judge_error{
     static const judge_error conflict;
     static const judge_error unavailable;
     static const judge_error internal;
-
-    static judge_error from_db_error(const db_error& ec);
-    static judge_error from_infra_error(const infra_error& ec);
-    static judge_error from_service(const service_error& ec);
-    static judge_error from_error_code(const error_code& ec);
 };
 
 std::string to_string(judge_error_code ec);

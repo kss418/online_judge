@@ -1,7 +1,5 @@
 #include "error/infra_error.hpp"
 
-#include "error/error_code.hpp"
-
 #include <utility>
 
 namespace{
@@ -84,29 +82,4 @@ std::string to_string(infra_error_code ec){
 
 std::string to_string(const infra_error& ec){
     return ec.message;
-}
-
-infra_error infra_error::from_error_code(const error_code& ec){
-    if(ec == errno_error::invalid_argument){
-        return infra_error::invalid_argument;
-    }
-    if(ec == errno_error::permission_denied){
-        return infra_error::permission_denied;
-    }
-    if(ec == errno_error::file_not_found){
-        return infra_error::not_found;
-    }
-    if(ec == errno_error::file_exists){
-        return infra_error::conflict;
-    }
-    if(
-        ec == errno_error::resource_temporarily_unavailable ||
-        ec == boost_error::timed_out ||
-        ec == boost_error::would_block ||
-        ec == boost_error::try_again
-    ){
-        return infra_error::unavailable;
-    }
-
-    return infra_error::internal;
 }

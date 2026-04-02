@@ -19,6 +19,35 @@ namespace{
 
         return "unknown connection pool error";
     }
+
+    pool_error map_db_error(const db_error& error){
+        switch(error.code){
+            case db_error_code::invalid_argument:
+                return pool_error{
+                    pool_error_code::invalid_argument,
+                    error.message
+                };
+            case db_error_code::invalid_connection:
+            case db_error_code::interrupted:
+            case db_error_code::broken_connection:
+            case db_error_code::serialization_failure:
+            case db_error_code::deadlock_detected:
+            case db_error_code::unavailable:
+                return pool_error{
+                    pool_error_code::unavailable,
+                    error.message
+                };
+            case db_error_code::unique_violation:
+            case db_error_code::constraint_violation:
+            case db_error_code::internal:
+                return pool_error{
+                    pool_error_code::internal,
+                    error.message
+                };
+        }
+
+        return pool_error::internal;
+    }
 }
 
 pool_error::pool_error(
@@ -33,7 +62,7 @@ pool_error::pool_error(
     ){}
 
 pool_error::pool_error(const db_error& error) :
-    pool_error(from_db_error(error)){}
+    pool_error(map_db_error(error)){}
 
 bool pool_error::operator==(const pool_error& other) const{
     return code == other.code;
@@ -69,33 +98,4 @@ std::string to_string(pool_error_code error){
 
 std::string to_string(const pool_error& error){
     return error.message;
-}
-
-pool_error pool_error::from_db_error(const db_error& error){
-    switch(error.code){
-        case db_error_code::invalid_argument:
-            return pool_error{
-                pool_error_code::invalid_argument,
-                error.message
-            };
-        case db_error_code::invalid_connection:
-        case db_error_code::interrupted:
-        case db_error_code::broken_connection:
-        case db_error_code::serialization_failure:
-        case db_error_code::deadlock_detected:
-        case db_error_code::unavailable:
-            return pool_error{
-                pool_error_code::unavailable,
-                error.message
-            };
-        case db_error_code::unique_violation:
-        case db_error_code::constraint_violation:
-        case db_error_code::internal:
-            return pool_error{
-                pool_error_code::internal,
-                error.message
-            };
-    }
-
-    return pool_error::internal;
 }

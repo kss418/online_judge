@@ -26,10 +26,6 @@ struct http_server_error{
     static const http_server_error invalid_configuration;
     static const http_server_error unavailable;
     static const http_server_error internal;
-
-    static http_server_error from_infra_error(const infra_error& error);
-    static http_server_error from_pool_error(const pool_error& error);
-    static http_server_error from_error_code(const error_code& error);
 };
 
 std::string to_string(http_server_error_code error);

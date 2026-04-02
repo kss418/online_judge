@@ -6,12 +6,6 @@
 #include <utility>
 #include <vector>
 
-namespace{
-    pool_error map_db_error_to_pool_error(const db_error& error){
-        return pool_error::from_db_error(error);
-    }
-}
-
 struct db_connection_pool::state{
     struct slot{
         db_connection connection_;
@@ -145,7 +139,7 @@ std::expected<db_connection_pool, pool_error> db_connection_pool::create(
     for(std::size_t index = 0; index < pool_size; ++index){
         auto connection_exp = db_connection::create(config);
         if(!connection_exp){
-            return std::unexpected(map_db_error_to_pool_error(connection_exp.error()));
+            return std::unexpected(pool_error(connection_exp.error()));
         }
 
         state::slot slot_value;
@@ -205,7 +199,7 @@ std::expected<db_connection_pool::lease, pool_error> db_connection_pool::acquire
         const auto reconnect_exp = connection_value.reconnect();
         if(!reconnect_exp){
             state_->release_slot_index(slot_index);
-            return std::unexpected(map_db_error_to_pool_error(reconnect_exp.error()));
+            return std::unexpected(pool_error(reconnect_exp.error()));
         }
     }
 

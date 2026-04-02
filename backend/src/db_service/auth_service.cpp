@@ -13,9 +13,7 @@ std::expected<std::optional<auth_dto::identity>, service_error> auth_service::au
 ){
     const auto token_hash_exp = crypto_util::sha512_hex(token_value.value);
     if(!token_hash_exp){
-        return std::unexpected(
-            service_error::from_infra_error(token_hash_exp.error())
-        );
+        return std::unexpected(service_error(token_hash_exp.error()));
     }
     auth_dto::hashed_token hashed_token_value;
     hashed_token_value.token_hash = *token_hash_exp;
@@ -46,9 +44,7 @@ std::expected<bool, service_error> auth_service::renew_token(
 ){
     const auto token_hash_exp = crypto_util::sha512_hex(token_value.value);
     if(!token_hash_exp){
-        return std::unexpected(
-            service_error::from_infra_error(token_hash_exp.error())
-        );
+        return std::unexpected(service_error(token_hash_exp.error()));
     }
     auth_dto::hashed_token hashed_token_value;
     hashed_token_value.token_hash = *token_hash_exp;
@@ -79,9 +75,7 @@ std::expected<bool, service_error> auth_service::revoke_token(
 ){
     const auto token_hash_exp = crypto_util::sha512_hex(token_value.value);
     if(!token_hash_exp){
-        return std::unexpected(
-            service_error::from_infra_error(token_hash_exp.error())
-        );
+        return std::unexpected(service_error(token_hash_exp.error()));
     }
     auth_dto::hashed_token hashed_token_value;
     hashed_token_value.token_hash = *token_hash_exp;

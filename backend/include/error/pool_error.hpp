@@ -24,8 +24,6 @@ struct pool_error{
     static const pool_error timed_out;
     static const pool_error unavailable;
     static const pool_error internal;
-
-    static pool_error from_db_error(const db_error& error);
 };
 
 std::string to_string(pool_error_code error);

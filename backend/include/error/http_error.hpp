@@ -18,6 +18,7 @@ struct http_error{
     std::string message;
 
     http_error(http_error_code code_value, std::string message_value = {});
+    http_error(const service_error& error);
 
     bool operator==(const http_error& other) const;
 
@@ -27,8 +28,6 @@ struct http_error{
     static const http_error not_found;
     static const http_error conflict;
     static const http_error internal;
-
-    static http_error from_service(const service_error& ec);
 };
 
 std::string to_string(http_error_code ec);

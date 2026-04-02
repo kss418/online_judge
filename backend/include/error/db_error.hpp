@@ -3,8 +3,6 @@
 #include <exception>
 #include <string>
 
-struct error_code;
-
 enum class db_error_code{
     invalid_argument,
     invalid_connection,
@@ -41,7 +39,6 @@ struct db_error{
     static const db_error unavailable;
     static const db_error internal;
 
-    static db_error from_error_code(const error_code& ec);
     static db_error from_psql_exception(const std::exception& exception);
 };
 

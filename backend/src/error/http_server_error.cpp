@@ -19,6 +19,85 @@ namespace{
 
         return "unknown http server error";
     }
+
+    http_server_error map_infra_error(const infra_error& error){
+        switch(error.code){
+            case infra_error_code::invalid_argument:
+            case infra_error_code::permission_denied:
+            case infra_error_code::not_found:
+            case infra_error_code::conflict:
+                return http_server_error{
+                    http_server_error_code::invalid_configuration,
+                    error.message
+                };
+            case infra_error_code::unavailable:
+                return http_server_error{
+                    http_server_error_code::unavailable,
+                    error.message
+                };
+            case infra_error_code::internal:
+                return http_server_error{
+                    http_server_error_code::internal,
+                    error.message
+                };
+        }
+
+        return http_server_error::internal;
+    }
+
+    http_server_error map_pool_error(const pool_error& error){
+        switch(error.code){
+            case pool_error_code::invalid_argument:
+                return http_server_error{
+                    http_server_error_code::invalid_configuration,
+                    error.message
+                };
+            case pool_error_code::timed_out:
+            case pool_error_code::unavailable:
+                return http_server_error{
+                    http_server_error_code::unavailable,
+                    error.message
+                };
+            case pool_error_code::internal:
+                return http_server_error{
+                    http_server_error_code::internal,
+                    error.message
+                };
+        }
+
+        return http_server_error::internal;
+    }
+
+    http_server_error map_error_code(const error_code& error){
+        if(
+            error == errno_error::invalid_argument ||
+            error == errno_error::permission_denied ||
+            error == errno_error::file_not_found ||
+            error == errno_error::file_exists
+        ){
+            return http_server_error{
+                http_server_error_code::invalid_configuration,
+                to_string(error)
+            };
+        }
+
+        if(
+            error == errno_error::resource_temporarily_unavailable ||
+            error == boost_error::timed_out ||
+            error == boost_error::would_block ||
+            error == boost_error::try_again
+        ){
+            return http_server_error{
+                http_server_error_code::unavailable,
+                to_string(error)
+            };
+        }
+
+        return http_server_error{
+            http_server_error_code::internal,
+            to_string(error)
+        };
+    }
 }
 
 http_server_error::http_server_error(
@@ -34,15 +113,15 @@ http_server_error::http_server_error(
 
 http_server_error::http_server_error(const infra_error& error)
 :
-    http_server_error(from_infra_error(error)){}
+    http_server_error(map_infra_error(error)){}
 
 http_server_error::http_server_error(const pool_error& error)
 :
-    http_server_error(from_pool_error(error)){}
+    http_server_error(map_pool_error(error)){}
 
 http_server_error::http_server_error(const error_code& error)
 :
-    http_server_error(from_error_code(error)){}
+    http_server_error(map_error_code(error)){}
 
 bool http_server_error::operator==(const http_server_error& other) const{
     return code == other.code;
@@ -73,83 +152,4 @@ std::string to_string(http_server_error_code error){
 
 std::string to_string(const http_server_error& error){
     return error.message;
-}
-
-http_server_error http_server_error::from_infra_error(const infra_error& error){
-    switch(error.code){
-        case infra_error_code::invalid_argument:
-        case infra_error_code::permission_denied:
-        case infra_error_code::not_found:
-        case infra_error_code::conflict:
-            return http_server_error{
-                http_server_error_code::invalid_configuration,
-                error.message
-            };
-        case infra_error_code::unavailable:
-            return http_server_error{
-                http_server_error_code::unavailable,
-                error.message
-            };
-        case infra_error_code::internal:
-            return http_server_error{
-                http_server_error_code::internal,
-                error.message
-            };
-    }
-
-    return http_server_error::internal;
-}
-
-http_server_error http_server_error::from_pool_error(const pool_error& error){
-    switch(error.code){
-        case pool_error_code::invalid_argument:
-            return http_server_error{
-                http_server_error_code::invalid_configuration,
-                error.message
-            };
-        case pool_error_code::timed_out:
-        case pool_error_code::unavailable:
-            return http_server_error{
-                http_server_error_code::unavailable,
-                error.message
-            };
-        case pool_error_code::internal:
-            return http_server_error{
-                http_server_error_code::internal,
-                error.message
-            };
-    }
-
-    return http_server_error::internal;
-}
-
-http_server_error http_server_error::from_error_code(const error_code& error){
-    if(
-        error == errno_error::invalid_argument ||
-        error == errno_error::permission_denied ||
-        error == errno_error::file_not_found ||
-        error == errno_error::file_exists
-    ){
-        return http_server_error{
-            http_server_error_code::invalid_configuration,
-            to_string(error)
-        };
-    }
-
-    if(
-        error == errno_error::resource_temporarily_unavailable ||
-        error == boost_error::timed_out ||
-        error == boost_error::would_block ||
-        error == boost_error::try_again
-    ){
-        return http_server_error{
-            http_server_error_code::unavailable,
-            to_string(error)
-        };
-    }
-
-    return http_server_error{
-        http_server_error_code::internal,
-        to_string(error)
-    };
 }
