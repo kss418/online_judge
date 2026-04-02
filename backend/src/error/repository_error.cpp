@@ -2,23 +2,78 @@
 
 #include "error/error_code.hpp"
 
-std::string to_string(repository_error ec){
+#include <utility>
+
+namespace{
+    std::string default_message(repository_error_code ec){
+        switch(ec){
+            case repository_error_code::invalid_reference:
+                return "invalid reference";
+            case repository_error_code::invalid_input:
+                return "invalid input";
+            case repository_error_code::not_found:
+                return "repository not found";
+            case repository_error_code::conflict:
+                return "repository conflict";
+            case repository_error_code::internal:
+                return "repository internal";
+        }
+        return "unknown repository error";
+    }
+}
+
+repository_error::repository_error(
+    repository_error_code code_value,
+    std::string message_value
+):
+    code(code_value),
+    message(
+        message_value.empty()
+            ? default_message(code_value)
+            : std::move(message_value)
+    ){}
+
+bool repository_error::operator==(const repository_error& other) const{
+    return code == other.code;
+}
+
+const repository_error repository_error::invalid_reference{
+    repository_error_code::invalid_reference
+};
+const repository_error repository_error::invalid_input{
+    repository_error_code::invalid_input
+};
+const repository_error repository_error::not_found{
+    repository_error_code::not_found
+};
+const repository_error repository_error::conflict{
+    repository_error_code::conflict
+};
+const repository_error repository_error::internal{
+    repository_error_code::internal
+};
+
+std::string to_string(repository_error_code ec){
     switch(ec){
-        case repository_error::invalid_reference:
+        case repository_error_code::invalid_reference:
             return "invalid reference";
-        case repository_error::invalid_input:
+        case repository_error_code::invalid_input:
             return "invalid input";
-        case repository_error::not_found:
+        case repository_error_code::not_found:
             return "repository not found";
-        case repository_error::conflict:
+        case repository_error_code::conflict:
             return "repository conflict";
-        case repository_error::internal:
+        case repository_error_code::internal:
             return "repository internal";
     }
     return "unknown repository error";
 }
 
-std::optional<repository_error> map_error_to_repository_error(const error_code& ec){
+std::string to_string(const repository_error& ec){
+    return ec.message;
+}
+
+std::optional<repository_error> repository_error::from_error_code(const error_code& ec){
     if(ec == repository_error::invalid_reference){
         return repository_error::invalid_reference;
     }

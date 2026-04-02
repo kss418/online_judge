@@ -36,7 +36,7 @@ repository_error db_repository::internal_error(){
 }
 
 repository_error db_repository::map_error(const error_code& error_code_value){
-    if(const auto repository_error_opt = map_error_to_repository_error(error_code_value)){
+    if(const auto repository_error_opt = repository_error::from_error_code(error_code_value)){
         return *repository_error_opt;
     }
 

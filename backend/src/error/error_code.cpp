@@ -206,8 +206,8 @@ std::string to_string(error_code ec){
     else if(ec.type_ == error_type::limit_type) return to_string(static_cast<limit_error>(ec.code_));
     else if(ec.type_ == error_type::boost_type) return to_string(static_cast<boost_error>(ec.code_));
     else if(ec.type_ == error_type::psql_type) return to_string(static_cast<psql_error>(ec.code_));
-    else if(ec.type_ == error_type::repository_type) return to_string(static_cast<repository_error>(ec.code_));
-    else if(ec.type_ == error_type::http_type) return to_string(static_cast<http_error>(ec.code_));
+    else if(ec.type_ == error_type::repository_type) return to_string(repository_error{static_cast<repository_error_code>(ec.code_)});
+    else if(ec.type_ == error_type::http_type) return to_string(http_error{static_cast<http_error_code>(ec.code_)});
     return "unknown error code";
 }
 
@@ -235,12 +235,12 @@ error_code error_code::create(psql_error code){
     return error_code{error_type::psql_type, static_cast<int>(code)};
 }
 
-error_code error_code::create(repository_error code){
-    return error_code{error_type::repository_type, static_cast<int>(code)};
+error_code error_code::create(const repository_error& code){
+    return error_code{error_type::repository_type, static_cast<int>(code.code)};
 }
 
-error_code error_code::create(http_error code){
-    return error_code{error_type::http_type, static_cast<int>(code)};
+error_code error_code::create(const http_error& code){
+    return error_code{error_type::http_type, static_cast<int>(code.code)};
 }
 
 errno_error error_code::map_errno(int code){

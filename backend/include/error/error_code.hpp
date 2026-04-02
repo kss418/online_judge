@@ -130,7 +130,7 @@ struct error_code{
             *this == psql_error::check_violation;
     }
 
-    constexpr bool is_bad_request_error() const{
+    bool is_bad_request_error() const{
         return
             *this == http_error::validation_error ||
             *this == errno_error::invalid_argument ||
@@ -151,8 +151,8 @@ struct error_code{
     static error_code create(limit_error code);
     static error_code create(boost_error code);
     static error_code create(psql_error code);
-    static error_code create(repository_error code);
-    static error_code create(http_error code);
+    static error_code create(const repository_error& code);
+    static error_code create(const http_error& code);
 
     static errno_error map_errno(int code);
     static boost_error map_boost_error(const boost::system::error_code& ec);
@@ -221,23 +221,23 @@ struct error_code{
         return right == left;
     }
 
-    friend constexpr bool operator==(const error_code& left, repository_error right){
+    friend bool operator==(const error_code& left, const repository_error& right){
         return
             left.type_ == error_type::repository_type &&
-            left.code_ == static_cast<int>(right);
+            left.code_ == static_cast<int>(right.code);
     }
 
-    friend constexpr bool operator==(repository_error left, const error_code& right){
+    friend bool operator==(const repository_error& left, const error_code& right){
         return right == left;
     }
 
-    friend constexpr bool operator==(const error_code& left, http_error right){
+    friend bool operator==(const error_code& left, const http_error& right){
         return
             left.type_ == error_type::http_type &&
-            left.code_ == static_cast<int>(right);
+            left.code_ == static_cast<int>(right.code);
     }
 
-    friend constexpr bool operator==(http_error left, const error_code& right){
+    friend bool operator==(const http_error& left, const error_code& right){
         return right == left;
     }
 };

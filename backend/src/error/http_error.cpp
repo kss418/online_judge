@@ -2,44 +2,104 @@
 
 #include "error/error_code.hpp"
 
-std::string to_string(http_error ec){
+#include <utility>
+
+namespace{
+    std::string default_message(http_error_code ec){
+        switch(ec){
+            case http_error_code::validation_error:
+                return "validation error";
+            case http_error_code::unauthorized:
+                return "unauthorized";
+            case http_error_code::forbidden:
+                return "forbidden";
+            case http_error_code::not_found:
+                return "not found";
+            case http_error_code::conflict:
+                return "conflict";
+            case http_error_code::internal:
+                return "internal";
+        }
+        return "unknown http error";
+    }
+}
+
+http_error::http_error(
+    http_error_code code_value,
+    std::string message_value
+):
+    code(code_value),
+    message(
+        message_value.empty()
+            ? default_message(code_value)
+            : std::move(message_value)
+    ){}
+
+bool http_error::operator==(const http_error& other) const{
+    return code == other.code;
+}
+
+const http_error http_error::validation_error{
+    http_error_code::validation_error
+};
+const http_error http_error::unauthorized{
+    http_error_code::unauthorized
+};
+const http_error http_error::forbidden{
+    http_error_code::forbidden
+};
+const http_error http_error::not_found{
+    http_error_code::not_found
+};
+const http_error http_error::conflict{
+    http_error_code::conflict
+};
+const http_error http_error::internal{
+    http_error_code::internal
+};
+
+std::string to_string(http_error_code ec){
     switch(ec){
-        case http_error::validation_error:
+        case http_error_code::validation_error:
             return "validation error";
-        case http_error::unauthorized:
+        case http_error_code::unauthorized:
             return "unauthorized";
-        case http_error::forbidden:
+        case http_error_code::forbidden:
             return "forbidden";
-        case http_error::not_found:
+        case http_error_code::not_found:
             return "not found";
-        case http_error::conflict:
+        case http_error_code::conflict:
             return "conflict";
-        case http_error::internal:
+        case http_error_code::internal:
             return "internal";
     }
     return "unknown http error";
 }
 
-std::optional<http_error> from_service(service_error ec){
-    switch(ec){
-        case service_error::validation_error:
-            return http_error::validation_error;
-        case service_error::unauthorized:
-            return http_error::unauthorized;
-        case service_error::forbidden:
-            return http_error::forbidden;
-        case service_error::not_found:
-            return http_error::not_found;
-        case service_error::conflict:
-            return http_error::conflict;
-        case service_error::unavailable:
-        case service_error::internal:
-            return http_error::internal;
+std::string to_string(const http_error& ec){
+    return ec.message;
+}
+
+std::optional<http_error> http_error::from_service(const service_error& ec){
+    switch(ec.code){
+        case service_error_code::validation_error:
+            return http_error{http_error_code::validation_error, ec.message};
+        case service_error_code::unauthorized:
+            return http_error{http_error_code::unauthorized, ec.message};
+        case service_error_code::forbidden:
+            return http_error{http_error_code::forbidden, ec.message};
+        case service_error_code::not_found:
+            return http_error{http_error_code::not_found, ec.message};
+        case service_error_code::conflict:
+            return http_error{http_error_code::conflict, ec.message};
+        case service_error_code::unavailable:
+        case service_error_code::internal:
+            return http_error{http_error_code::internal, ec.message};
     }
     return std::nullopt;
 }
 
-std::optional<http_error> from_error_code(const error_code& ec){
+std::optional<http_error> http_error::from_error_code(const error_code& ec){
     if(ec == http_error::validation_error){
         return http_error::validation_error;
     }
@@ -61,8 +121,8 @@ std::optional<http_error> from_error_code(const error_code& ec){
     if(ec == psql_error::unique_violation){
         return http_error::conflict;
     }
-    if(const auto service_error_opt = service_error_util::from_error_code(ec)){
-        return from_service(*service_error_opt);
+    if(const auto service_error_opt = service_error::from_error_code(ec)){
+        return http_error::from_service(*service_error_opt);
     }
 
     return std::nullopt;
