@@ -10,7 +10,7 @@ namespace{
     std::expected<std::vector<problem_dto::summary>, repository_error> map_problem_summary_rows(
         const pqxx::result& query_result
     ){
-        return db_repository::map_error(problem_dto::make_summary_list_from_result(query_result));
+        return problem_dto::make_summary_list_from_result(query_result);
     }
 
     std::expected<std::int64_t, repository_error> map_problem_count_row(

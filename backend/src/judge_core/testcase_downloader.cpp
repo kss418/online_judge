@@ -2,6 +2,7 @@
 
 #include "common/file_util.hpp"
 #include "common/temp_dir.hpp"
+#include "db_service/db_service_util.hpp"
 #include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"
 #include "db_service/testcase_service.hpp"
@@ -68,7 +69,9 @@ std::expected<std::int32_t, error_code> testcase_downloader::fetch_problem_versi
         problem_reference_value
     );
     if(!version_exp){
-        return std::unexpected(version_exp.error());
+        return std::unexpected(
+            db_service_util::map_service_error_to_error_code(version_exp.error())
+        );
     }
 
     return version_exp->version;
@@ -78,9 +81,11 @@ std::expected<problem_content_dto::limits, error_code> testcase_downloader::fetc
     std::int64_t problem_id
 ){
     const problem_dto::reference problem_reference_value{problem_id};
-    return problem_content_service::get_limits(
-        connection_,
-        problem_reference_value
+    return db_service_util::map_service_error_to_error_code(
+        problem_content_service::get_limits(
+            connection_,
+            problem_reference_value
+        )
     );
 }
 
@@ -333,7 +338,11 @@ std::expected<void, error_code> testcase_downloader::download_all(
         problem_reference_value
     );
     if(!testcase_count_exp){
-        return std::unexpected(testcase_count_exp.error());
+        return std::unexpected(
+            db_service_util::map_service_error_to_error_code(
+                testcase_count_exp.error()
+            )
+        );
     }
 
     for(std::int32_t order = 1; order <= testcase_count_exp->testcase_count; ++order){
@@ -359,7 +368,9 @@ std::expected<void, error_code> testcase_downloader::download_one(
         testcase_reference_value
     );
     if(!testcase_exp){
-        return std::unexpected(testcase_exp.error());
+        return std::unexpected(
+            db_service_util::map_service_error_to_error_code(testcase_exp.error())
+        );
     }
 
     const auto input_path_exp = testcase_util::make_testcase_input_path(

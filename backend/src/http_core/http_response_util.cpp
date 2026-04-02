@@ -53,6 +53,91 @@ namespace{
 
         return std::nullopt;
     }
+
+    std::optional<mapped_http_error> map_http_error(const service_error& code){
+        const auto http_error_opt = http_error::from_service(code);
+        if(!http_error_opt){
+            return std::nullopt;
+        }
+
+        if(*http_error_opt == http_error::validation_error){
+            return mapped_http_error{
+                .status = boost::beast::http::status::bad_request,
+                .code = "validation_error"
+            };
+        }
+        if(*http_error_opt == http_error::unauthorized){
+            return mapped_http_error{
+                .status = boost::beast::http::status::unauthorized,
+                .code = "unauthorized"
+            };
+        }
+        if(*http_error_opt == http_error::forbidden){
+            return mapped_http_error{
+                .status = boost::beast::http::status::forbidden,
+                .code = "forbidden"
+            };
+        }
+        if(*http_error_opt == http_error::not_found){
+            return mapped_http_error{
+                .status = boost::beast::http::status::not_found,
+                .code = "not_found"
+            };
+        }
+        if(*http_error_opt == http_error::conflict){
+            return mapped_http_error{
+                .status = boost::beast::http::status::conflict,
+                .code = "conflict"
+            };
+        }
+
+        return std::nullopt;
+    }
+
+    bool is_bad_request_error(const error_code& code){
+        return code.is_bad_request_error();
+    }
+
+    bool is_bad_request_error(const service_error& code){
+        return code == service_error::validation_error;
+    }
+
+    template <typename error_type>
+    http_response_util::response_type create_mapped_error_response(
+        const http_response_util::request_type& request,
+        std::string_view action,
+        const error_type& code,
+        bool not_found_from_bad_request
+    ){
+        if(const auto mapped_error_opt = map_http_error(code)){
+            return http_response_util::create_error(
+                request,
+                mapped_error_opt->status,
+                mapped_error_opt->code,
+                "failed to " + std::string{action} + ": " + to_string(code)
+            );
+        }
+
+        const auto bad_request = is_bad_request_error(code);
+
+        const auto status = not_found_from_bad_request
+            ? (bad_request
+                ? boost::beast::http::status::not_found
+                : boost::beast::http::status::internal_server_error)
+            : (bad_request
+                ? boost::beast::http::status::bad_request
+                : boost::beast::http::status::internal_server_error);
+        const auto error_code_text = not_found_from_bad_request
+            ? (bad_request ? "not_found" : "internal_server_error")
+            : (bad_request ? "bad_request" : "internal_server_error");
+
+        return http_response_util::create_error(
+            request,
+            status,
+            error_code_text,
+            "failed to " + std::string{action} + ": " + to_string(code)
+        );
+    }
 }
 
 http_response_util::response_type http_response_util::create_text(
@@ -129,23 +214,15 @@ http_response_util::response_type http_response_util::create_4xx_or_500(
     std::string_view action,
     const error_code& code
 ){
-    boost::beast::http::status status = boost::beast::http::status::internal_server_error;
-    std::string_view error_code_text = "internal_server_error";
-    if(const auto mapped_error_opt = map_http_error(code)){
-        status = mapped_error_opt->status;
-        error_code_text = mapped_error_opt->code;
-    }
-    else if(code.is_bad_request_error()){
-        status = boost::beast::http::status::bad_request;
-        error_code_text = "bad_request";
-    }
+    return create_mapped_error_response(request, action, code, false);
+}
 
-    return create_error(
-        request,
-        status,
-        error_code_text,
-        "failed to " + std::string{action} + ": " + to_string(code)
-    );
+http_response_util::response_type http_response_util::create_4xx_or_500(
+    const request_type& request,
+    std::string_view action,
+    const service_error& code
+){
+    return create_mapped_error_response(request, action, code, false);
 }
 
 http_response_util::response_type http_response_util::create_404_or_500(
@@ -153,28 +230,15 @@ http_response_util::response_type http_response_util::create_404_or_500(
     std::string_view action,
     const error_code& code
 ){
-    if(const auto mapped_error_opt = map_http_error(code)){
-        return create_error(
-            request,
-            mapped_error_opt->status,
-            mapped_error_opt->code,
-            "failed to " + std::string{action} + ": " + to_string(code)
-        );
-    }
+    return create_mapped_error_response(request, action, code, true);
+}
 
-    const auto status = code.is_bad_request_error()
-        ? boost::beast::http::status::not_found
-        : boost::beast::http::status::internal_server_error;
-    const auto error_code_text = code.is_bad_request_error()
-        ? "not_found"
-        : "internal_server_error";
-
-    return create_error(
-        request,
-        status,
-        error_code_text,
-        "failed to " + std::string{action} + ": " + to_string(code)
-    );
+http_response_util::response_type http_response_util::create_404_or_500(
+    const request_type& request,
+    std::string_view action,
+    const service_error& code
+){
+    return create_mapped_error_response(request, action, code, true);
 }
 
 http_response_util::response_type http_response_util::create_bearer_unauthorized(

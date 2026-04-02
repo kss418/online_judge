@@ -9,7 +9,7 @@ namespace{
     std::expected<value_type, submission_guard::response_type> require_submission_value(
         const submission_guard::request_type& request,
         std::string_view action,
-        std::expected<value_type, error_code> value_exp
+        std::expected<value_type, service_error> value_exp
     ){
         if(!value_exp){
             return std::unexpected(http_response_util::create_4xx_or_500(

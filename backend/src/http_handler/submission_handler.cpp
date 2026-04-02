@@ -8,8 +8,8 @@
 #include "serializer/submission_json_serializer.hpp"
 
 namespace{
-    bool is_submission_banned_error(const error_code& code){
-        return code == errno_error::permission_denied;
+    bool is_submission_banned_error(const service_error& code){
+        return code == service_error::forbidden;
     }
 }
 
@@ -116,7 +116,9 @@ submission_handler::response_type submission_handler::post_submission(
                 request,
                 "create submission",
                 std::move(create_submission_exp),
-                [&](const request_type& error_request, std::string_view action, const error_code& code) {
+                [&](const request_type& error_request,
+                    std::string_view action,
+                    const service_error& code) {
                     if(is_submission_banned_error(code)){
                         return http_response_util::create_error(
                             error_request,

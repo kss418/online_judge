@@ -16,7 +16,7 @@ std::expected<user_dto::list, repository_error> user_repository::get_public_list
         query_value.sql,
         std::move(query_value.params)
     );
-    return db_repository::map_error(user_dto::make_list_from_result(user_list_result));
+    return user_dto::make_list_from_result(user_list_result);
 }
 
 std::expected<std::optional<user_dto::summary>, repository_error> user_repository::get_summary(
@@ -43,14 +43,9 @@ std::expected<std::optional<user_dto::summary>, repository_error> user_repositor
         return std::nullopt;
     }
 
-    const auto summary_exp = db_repository::map_error(
+    return std::optional<user_dto::summary>{
         user_dto::make_summary_from_row(user_summary_result[0])
-    );
-    if(!summary_exp){
-        return std::unexpected(summary_exp.error());
-    }
-
-    return std::optional<user_dto::summary>{std::move(*summary_exp)};
+    };
 }
 
 std::expected<std::optional<user_dto::summary>, repository_error>
@@ -78,14 +73,9 @@ user_repository::get_summary_by_login_id(
         return std::nullopt;
     }
 
-    const auto summary_exp = db_repository::map_error(
+    return std::optional<user_dto::summary>{
         user_dto::make_summary_from_row(user_summary_result[0])
-    );
-    if(!summary_exp){
-        return std::unexpected(summary_exp.error());
-    }
-
-    return std::optional<user_dto::summary>{std::move(*summary_exp)};
+    };
 }
 
 std::expected<std::optional<std::string>, repository_error> user_repository::create_submission_ban(

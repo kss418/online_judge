@@ -49,129 +49,140 @@ static submission_dto::summary_page sanitize_submission_metrics(
     return summary_page_value;
 }
 
-std::expected<submission_dto::history_list, error_code> submission_service::get_submission_history(
+std::expected<submission_dto::history_list, service_error> submission_service::get_submission_history(
     db_connection& connection,
     std::int64_t submission_id
 ){
     if(submission_id <= 0){
-        return std::unexpected(error_code::create(http_error::validation_error));
+        return std::unexpected(service_error::validation_error);
     }
 
-    return db_service_util::with_retry_read_transaction(
-        connection,
-        [&](pqxx::read_transaction& transaction)
-            -> std::expected<submission_dto::history_list, error_code> {
-            return db_service_util::map_repository_error_to_http_error(
-                submission_repository::get_submission_history(transaction, submission_id)
-            );
-        }
-    );
-}
-
-std::expected<submission_dto::source_detail, error_code> submission_service::get_submission_source(
-    db_connection& connection,
-    std::int64_t submission_id
-){
-    if(submission_id <= 0){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
-    return db_service_util::with_retry_read_transaction(
-        connection,
-        [&](pqxx::read_transaction& transaction)
-            -> std::expected<submission_dto::source_detail, error_code> {
-            return db_service_util::map_repository_error_to_http_error(
-                submission_repository::get_submission_source(transaction, submission_id)
-            );
-        }
-    );
-}
-
-std::expected<submission_dto::detail, error_code> submission_service::get_submission_detail(
-    db_connection& connection,
-    std::int64_t submission_id
-){
-    if(submission_id <= 0){
-        return std::unexpected(error_code::create(http_error::validation_error));
-    }
-
-    return db_service_util::with_retry_read_transaction(
-        connection,
-        [&](pqxx::read_transaction& transaction)
-            -> std::expected<submission_dto::detail, error_code> {
-            auto submission_detail_exp = db_service_util::map_repository_error_to_http_error(
-                submission_repository::get_submission_detail(
-                    transaction,
-                    submission_id
-                )
-            );
-            if(!submission_detail_exp){
-                return std::unexpected(submission_detail_exp.error());
+    return db_service_util::map_error_to_service_error(
+        db_service_util::with_retry_read_transaction(
+            connection,
+            [&](pqxx::read_transaction& transaction)
+                -> std::expected<submission_dto::history_list, error_code> {
+                return db_service_util::map_repository_error_to_http_error(
+                    submission_repository::get_submission_history(transaction, submission_id)
+                );
             }
-
-            return sanitize_submission_metrics(*submission_detail_exp);
-        }
+        )
     );
 }
 
-std::expected<std::vector<submission_dto::status_snapshot>, error_code>
+std::expected<submission_dto::source_detail, service_error> submission_service::get_submission_source(
+    db_connection& connection,
+    std::int64_t submission_id
+){
+    if(submission_id <= 0){
+        return std::unexpected(service_error::validation_error);
+    }
+
+    return db_service_util::map_error_to_service_error(
+        db_service_util::with_retry_read_transaction(
+            connection,
+            [&](pqxx::read_transaction& transaction)
+                -> std::expected<submission_dto::source_detail, error_code> {
+                return db_service_util::map_repository_error_to_http_error(
+                    submission_repository::get_submission_source(transaction, submission_id)
+                );
+            }
+        )
+    );
+}
+
+std::expected<submission_dto::detail, service_error> submission_service::get_submission_detail(
+    db_connection& connection,
+    std::int64_t submission_id
+){
+    if(submission_id <= 0){
+        return std::unexpected(service_error::validation_error);
+    }
+
+    return db_service_util::map_error_to_service_error(
+        db_service_util::with_retry_read_transaction(
+            connection,
+            [&](pqxx::read_transaction& transaction)
+                -> std::expected<submission_dto::detail, error_code> {
+                auto submission_detail_exp = db_service_util::map_repository_error_to_http_error(
+                    submission_repository::get_submission_detail(
+                        transaction,
+                        submission_id
+                    )
+                );
+                if(!submission_detail_exp){
+                    return std::unexpected(submission_detail_exp.error());
+                }
+
+                return sanitize_submission_metrics(*submission_detail_exp);
+            }
+        )
+    );
+}
+
+std::expected<std::vector<submission_dto::status_snapshot>, service_error>
 submission_service::get_submission_status_snapshots(
     db_connection& connection,
     const std::vector<std::int64_t>& submission_ids
 ){
-    return db_service_util::with_retry_read_transaction(
-        connection,
-        [&](pqxx::read_transaction& transaction)
-            -> std::expected<std::vector<submission_dto::status_snapshot>, error_code> {
-            const auto snapshot_values_exp =
-                submission_repository::get_submission_status_snapshots(
-                    transaction,
-                    submission_ids
-                );
-            if(!snapshot_values_exp){
-                return std::unexpected(
-                    error_code::create(
-                        db_service_util::map_repository_error_to_http_error(
-                            snapshot_values_exp.error()
+    return db_service_util::map_error_to_service_error(
+        db_service_util::with_retry_read_transaction(
+            connection,
+            [&](pqxx::read_transaction& transaction)
+                -> std::expected<std::vector<submission_dto::status_snapshot>, error_code> {
+                const auto snapshot_values_exp =
+                    submission_repository::get_submission_status_snapshots(
+                        transaction,
+                        submission_ids
+                    );
+                if(!snapshot_values_exp){
+                    return std::unexpected(
+                        error_code::create(
+                            db_service_util::map_repository_error_to_http_error(
+                                snapshot_values_exp.error()
+                            )
                         )
-                    )
-                );
-            }
+                    );
+                }
 
-            return sanitize_submission_metrics(std::move(*snapshot_values_exp));
-        }
+                return sanitize_submission_metrics(std::move(*snapshot_values_exp));
+            }
+        )
     );
 }
 
-std::expected<std::vector<submission_dto::summary>, error_code>
+std::expected<std::vector<submission_dto::summary>, service_error>
 submission_service::get_wa_or_ac_submissions(
     db_connection& connection,
     std::int64_t problem_id
 ){
-    return db_service_util::with_retry_read_transaction(
-        connection,
-        [&](pqxx::read_transaction& transaction)
-            -> std::expected<std::vector<submission_dto::summary>, error_code> {
-            return db_service_util::map_repository_error_to_http_error(
-                submission_repository::get_wa_or_ac_submissions(
-                    transaction,
-                    problem_id
-                )
-            );
-        }
+    return db_service_util::map_error_to_service_error(
+        db_service_util::with_retry_read_transaction(
+            connection,
+            [&](pqxx::read_transaction& transaction)
+                -> std::expected<std::vector<submission_dto::summary>, error_code> {
+                return db_service_util::map_repository_error_to_http_error(
+                    submission_repository::get_wa_or_ac_submissions(
+                        transaction,
+                        problem_id
+                    )
+                );
+            }
+        )
     );
 }
 
-std::expected<submission_dto::created, error_code> submission_service::create_submission(
+std::expected<submission_dto::created, service_error> submission_service::create_submission(
     db_connection& connection,
     const submission_dto::create_request& create_request_value
 ){
     problem_dto::reference problem_reference_value{create_request_value.problem_id};
 
-    return db_service_util::with_retry_write_transaction(
-        connection,
-        [&](pqxx::work& transaction)
-            -> std::expected<submission_dto::created, error_code> {
+    return db_service_util::map_error_to_service_error(
+        db_service_util::with_retry_write_transaction(
+            connection,
+            [&](pqxx::work& transaction)
+                -> std::expected<submission_dto::created, error_code> {
             const auto active_submission_ban_exp =
                 user_repository::get_active_submission_banned_until(
                     transaction,
@@ -251,28 +262,31 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
             }
 
             return *create_submission_exp;
-        }
+            }
+        )
     );
 }
 
-std::expected<void, error_code> submission_service::update_submission_status(
+std::expected<void, service_error> submission_service::update_submission_status(
     db_connection& connection,
     const submission_dto::status_update& status_update_value
 ){
-    return db_service_util::with_retry_write_transaction(
-        connection,
-        [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            return db_service_util::map_repository_error_to_http_error(
-                submission_repository::update_submission_status(
-                    transaction,
-                    status_update_value
-                )
-            );
-        }
+    return db_service_util::map_error_to_service_error(
+        db_service_util::with_retry_write_transaction(
+            connection,
+            [&](pqxx::work& transaction) -> std::expected<void, error_code> {
+                return db_service_util::map_repository_error_to_http_error(
+                    submission_repository::update_submission_status(
+                        transaction,
+                        status_update_value
+                    )
+                );
+            }
+        )
     );
 }
 
-std::expected<void, error_code> submission_service::mark_queued(
+std::expected<void, service_error> submission_service::mark_queued(
     db_connection& connection,
     std::int64_t submission_id
 ){
@@ -284,7 +298,7 @@ std::expected<void, error_code> submission_service::mark_queued(
     return update_submission_status(connection, status_update_value);
 }
 
-std::expected<void, error_code> submission_service::mark_judging(
+std::expected<void, service_error> submission_service::mark_judging(
     db_connection& connection,
     std::int64_t submission_id
 ){
@@ -296,30 +310,33 @@ std::expected<void, error_code> submission_service::mark_judging(
     return update_submission_status(connection, status_update_value);
 }
 
-std::expected<void, error_code> submission_service::rejudge(
+std::expected<void, service_error> submission_service::rejudge(
     db_connection& connection,
     std::int64_t submission_id
 ){
-    return db_service_util::with_retry_write_transaction(
-        connection,
-        [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            return db_service_util::map_repository_error_to_http_error(
-                submission_repository::rejudge_submission(
-                    transaction,
-                    submission_id
-                )
-            );
-        }
+    return db_service_util::map_error_to_service_error(
+        db_service_util::with_retry_write_transaction(
+            connection,
+            [&](pqxx::work& transaction) -> std::expected<void, error_code> {
+                return db_service_util::map_repository_error_to_http_error(
+                    submission_repository::rejudge_submission(
+                        transaction,
+                        submission_id
+                    )
+                );
+            }
+        )
     );
 }
 
-std::expected<void, error_code> submission_service::rejudge_problem(
+std::expected<void, service_error> submission_service::rejudge_problem(
     db_connection& connection,
     std::int64_t problem_id
 ){
-    return db_service_util::with_retry_write_transaction(
-        connection,
-        [&](pqxx::work& transaction) -> std::expected<void, error_code> {
+    return db_service_util::map_error_to_service_error(
+        db_service_util::with_retry_write_transaction(
+            connection,
+            [&](pqxx::work& transaction) -> std::expected<void, error_code> {
             const auto submission_values_exp =
                 submission_repository::get_wa_or_ac_submissions(
                     transaction,
@@ -353,19 +370,21 @@ std::expected<void, error_code> submission_service::rejudge_problem(
             }
 
             return {};
-        }
+            }
+        )
     );
 }
 
-std::expected<std::optional<submission_dto::queued_submission>, error_code>
+std::expected<std::optional<submission_dto::queued_submission>, service_error>
 submission_service::lease_submission(
     db_connection& connection,
     const submission_dto::lease_request& lease_request_value
 ){
-    return db_service_util::with_retry_write_transaction(
-        connection,
-        [&](pqxx::work& transaction)
-            -> std::expected<std::optional<submission_dto::queued_submission>, error_code> {
+    return db_service_util::map_error_to_service_error(
+        db_service_util::with_retry_write_transaction(
+            connection,
+            [&](pqxx::work& transaction)
+                -> std::expected<std::optional<submission_dto::queued_submission>, error_code> {
             auto lease_submission_exp = submission_repository::lease_submission(
                 transaction,
                 lease_request_value
@@ -387,19 +406,21 @@ submission_service::lease_submission(
             return std::optional<submission_dto::queued_submission>{
                 std::move(*lease_submission_exp)
             };
-        }
+            }
+        )
     );
 }
 
-std::expected<void, error_code> submission_service::requeue_submission_immediately(
+std::expected<void, service_error> submission_service::requeue_submission_immediately(
     db_connection& connection,
     std::int64_t submission_id,
     std::optional<std::string> reason_opt
 ){
     const std::optional<std::string> queued_reason_opt = std::move(reason_opt);
-    return db_service_util::with_retry_write_transaction(
-        connection,
-        [&](pqxx::work& transaction) -> std::expected<void, error_code> {
+    return db_service_util::map_error_to_service_error(
+        db_service_util::with_retry_write_transaction(
+            connection,
+            [&](pqxx::work& transaction) -> std::expected<void, error_code> {
             const submission_dto::status_update status_update_value =
                 submission_dto::make_status_update(
                     submission_id,
@@ -426,18 +447,20 @@ std::expected<void, error_code> submission_service::requeue_submission_immediate
                     submission_id
                 )
             );
-        }
+            }
+        )
     );
 }
 
-std::expected<void, error_code> submission_service::finalize_submission(
+std::expected<void, service_error> submission_service::finalize_submission(
     db_connection& connection,
     const submission_dto::finalize_request& finalize_request_value
 ){
-    return db_service_util::with_retry_write_transaction(
-        connection,
-        db_service_util::DB_TRANSACTION_ATTEMPT_COUNT,
-        [&](pqxx::work& transaction) -> std::expected<void, error_code> {
+    return db_service_util::map_error_to_service_error(
+        db_service_util::with_retry_write_transaction(
+            connection,
+            db_service_util::DB_TRANSACTION_ATTEMPT_COUNT,
+            [&](pqxx::work& transaction) -> std::expected<void, error_code> {
             const auto finalize_submission_exp = submission_repository::finalize_submission(
                 transaction,
                 finalize_request_value
@@ -473,36 +496,39 @@ std::expected<void, error_code> submission_service::finalize_submission(
             }
 
             return {};
-        }
+            }
+        )
     );
 }
 
-std::expected<submission_dto::summary_page, error_code>
+std::expected<submission_dto::summary_page, service_error>
 submission_service::list_submissions(
     db_connection& connection,
     const submission_dto::list_filter& filter_value,
     std::optional<std::int64_t> viewer_user_id_opt
 ){
-    return db_service_util::with_retry_read_transaction(
-        connection,
-        [&](pqxx::read_transaction& transaction)
-            -> std::expected<submission_dto::summary_page, error_code> {
-            const auto summary_page_exp = submission_repository::list_submissions(
-                transaction,
-                filter_value,
-                viewer_user_id_opt
-            );
-            if(!summary_page_exp){
-                return std::unexpected(
-                    error_code::create(
-                        db_service_util::map_repository_error_to_http_error(
-                            summary_page_exp.error()
-                        )
-                    )
+    return db_service_util::map_error_to_service_error(
+        db_service_util::with_retry_read_transaction(
+            connection,
+            [&](pqxx::read_transaction& transaction)
+                -> std::expected<submission_dto::summary_page, error_code> {
+                const auto summary_page_exp = submission_repository::list_submissions(
+                    transaction,
+                    filter_value,
+                    viewer_user_id_opt
                 );
-            }
+                if(!summary_page_exp){
+                    return std::unexpected(
+                        error_code::create(
+                            db_service_util::map_repository_error_to_http_error(
+                                summary_page_exp.error()
+                            )
+                        )
+                    );
+                }
 
-            return sanitize_submission_metrics(std::move(*summary_page_exp));
-        }
+                return sanitize_submission_metrics(std::move(*summary_page_exp));
+            }
+        )
     );
 }

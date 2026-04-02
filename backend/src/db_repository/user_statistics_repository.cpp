@@ -67,9 +67,9 @@ user_statistics_repository::get_submission_statistics(
         return std::unexpected(db_repository::not_found_error());
     }
 
-    return db_repository::map_error(user_statistics_dto::make_submission_statistics_from_row(
+    return user_statistics_dto::make_submission_statistics_from_row(
         statistics_query_result[0]
-    ));
+    );
 }
 
 std::expected<void, repository_error> user_statistics_repository::touch_timestamp_column(

@@ -39,7 +39,7 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require
     const auto auth_identity_exp = auth_service::auth_token(db_connection, *token_exp);
     if(!auth_identity_exp){
         const auto code = auth_identity_exp.error();
-        if(code == http_error::unauthorized){
+        if(code == service_error::unauthorized){
             return std::unexpected(http_response_util::create_bearer_error(
                 request,
                 "missing_or_invalid_bearer_token",

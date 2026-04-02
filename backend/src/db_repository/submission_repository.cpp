@@ -107,9 +107,7 @@ std::expected<submission_dto::history_list, repository_error> submission_reposit
         return std::unexpected(db_repository::not_found_error());
     }
 
-    return db_repository::map_error(
-        submission_dto::make_history_list_from_result(submission_history_query)
-    );
+    return submission_dto::make_history_list_from_result(submission_history_query);
 }
 
 std::expected<submission_dto::source_detail, repository_error> submission_repository::get_submission_source(
@@ -137,9 +135,7 @@ std::expected<submission_dto::source_detail, repository_error> submission_reposi
         return std::unexpected(db_repository::not_found_error());
     }
 
-    return db_repository::map_error(
-        submission_dto::make_source_detail_from_row(submission_source_query[0])
-    );
+    return submission_dto::make_source_detail_from_row(submission_source_query[0]);
 }
 
 std::expected<submission_dto::detail, repository_error> submission_repository::get_submission_detail(
@@ -172,9 +168,7 @@ std::expected<submission_dto::detail, repository_error> submission_repository::g
         return std::unexpected(db_repository::not_found_error());
     }
 
-    return db_repository::map_error(
-        submission_dto::make_detail_from_row(submission_detail_result[0])
-    );
+    return submission_dto::make_detail_from_row(submission_detail_result[0]);
 }
 
 std::expected<std::vector<submission_dto::status_snapshot>, repository_error>
@@ -197,9 +191,7 @@ submission_repository::get_submission_status_snapshots(
         query_exp->sql,
         std::move(query_exp->params)
     );
-    return db_repository::map_error(
-        submission_dto::make_status_snapshot_list_from_result(submission_status_result)
-    );
+    return submission_dto::make_status_snapshot_list_from_result(submission_status_result);
 }
 
 std::expected<std::vector<submission_dto::summary>, repository_error>
@@ -245,9 +237,7 @@ submission_repository::get_wa_or_ac_submissions(
         }
     );
 
-    return db_repository::map_error(
-        submission_dto::make_summary_list_from_result(submission_summary_query)
-    );
+    return submission_dto::make_summary_list_from_result(submission_summary_query);
 }
 
 std::expected<submission_status, repository_error> submission_repository::get_submission_status(
@@ -305,10 +295,10 @@ std::expected<submission_dto::created, repository_error> submission_repository::
         pqxx::params{submission_id, to_string(submission_status::queued)}
     );
 
-    return db_repository::map_error(submission_dto::make_created(
+    return submission_dto::make_created(
         submission_id,
         submission_status::queued
-    ));
+    );
 }
 
 std::expected<void, repository_error> submission_repository::enqueue_submission(
@@ -620,10 +610,10 @@ std::expected<submission_dto::finalize_result, repository_error> submission_repo
         return std::unexpected(update_summary_exp.error());
     }
 
-    return db_repository::map_error(submission_dto::make_finalize_result(
+    return submission_dto::make_finalize_result(
         locked_submission_exp->problem_id,
         should_increase_accepted_count
-    ));
+    );
 }
 
 std::expected<submission_dto::summary_page, repository_error> submission_repository::list_submissions(
@@ -644,13 +634,8 @@ std::expected<submission_dto::summary_page, repository_error> submission_reposit
         std::move(query_exp->params)
     );
 
-    auto summary_values_exp = db_repository::map_error(
-        submission_dto::make_summary_list_from_result(submission_summary_query)
-    );
-    if(!summary_values_exp){
-        return std::unexpected(summary_values_exp.error());
-    }
-    auto summary_values = std::move(*summary_values_exp);
+    auto summary_values =
+        submission_dto::make_summary_list_from_result(submission_summary_query);
     submission_dto::summary_page summary_page_value;
     summary_page_value.has_more =
         summary_values.size() >

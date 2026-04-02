@@ -3,6 +3,7 @@
 #include "common/file_util.hpp"
 #include "common/logger.hpp"
 #include "common/timer.hpp"
+#include "db_service/db_service_util.hpp"
 #include "db_service/submission_service.hpp"
 #include "judge_core/checker.hpp"
 #include "judge_core/judge_util.hpp"
@@ -362,7 +363,11 @@ std::expected<judge_worker::submission_stage_metrics, error_code> judge_worker::
         queued_submission_value.submission_id
     );
     if(!mark_judging_exp){
-        return std::unexpected(mark_judging_exp.error());
+        return std::unexpected(
+            db_service_util::map_service_error_to_error_code(
+                mark_judging_exp.error()
+            )
+        );
     }
 
     const auto testcase_snapshot_exp = timer::measure_elapsed_ms(
@@ -466,7 +471,11 @@ std::expected<void, error_code> judge_worker::finalize_submission(
         finalize_request_value
     );
     if(!finalize_submission_exp){
-        return std::unexpected(finalize_submission_exp.error());
+        return std::unexpected(
+            db_service_util::map_service_error_to_error_code(
+                finalize_submission_exp.error()
+            )
+        );
     }
 
     return {};
@@ -527,18 +536,22 @@ std::expected<void, error_code> judge_worker::requeue_submission(
     std::int64_t submission_id,
     std::string reason
 ){
-    return submission_service::requeue_submission_immediately(
-        db_connection_,
-        submission_id,
-        std::move(reason)
+    return db_service_util::map_service_error_to_error_code(
+        submission_service::requeue_submission_immediately(
+            db_connection_,
+            submission_id,
+            std::move(reason)
+        )
     );
 }
 
 std::expected<std::optional<submission_dto::queued_submission>, error_code> judge_worker::lease_submission(){
     submission_dto::lease_request lease_request_value;
     lease_request_value.lease_duration = LEASE_DURATION;
-    return submission_service::lease_submission(
-        db_connection_,
-        lease_request_value
+    return db_service_util::map_service_error_to_error_code(
+        submission_service::lease_submission(
+            db_connection_,
+            lease_request_value
+        )
     );
 }
