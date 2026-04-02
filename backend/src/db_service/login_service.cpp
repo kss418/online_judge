@@ -14,16 +14,14 @@ std::expected<auth_dto::session, service_error> login_service::sign_up(
     );
     if(!hashed_sign_up_request_exp){
         return std::unexpected(
-            db_service_util::map_error_to_service_error(
-                hashed_sign_up_request_exp.error()
-            )
+            service_error::from_infra_error(hashed_sign_up_request_exp.error())
         );
     }
 
     const auto issued_token_exp = token_util::issue_token();
     if(!issued_token_exp){
         return std::unexpected(
-            db_service_util::map_error_to_service_error(issued_token_exp.error())
+            service_error::from_infra_error(issued_token_exp.error())
         );
     }
     auth_dto::hashed_token hashed_token_value;
@@ -69,7 +67,7 @@ std::expected<std::optional<auth_dto::session>, service_error> login_service::lo
     );
     if(!hashed_credentials_exp){
         return std::unexpected(
-            db_service_util::map_error_to_service_error(hashed_credentials_exp.error())
+            service_error::from_infra_error(hashed_credentials_exp.error())
         );
     }
 
@@ -91,7 +89,7 @@ std::expected<std::optional<auth_dto::session>, service_error> login_service::lo
             const auto issued_token_exp = token_util::issue_token();
             if(!issued_token_exp){
                 return std::unexpected(
-                    db_service_util::map_error_to_service_error(issued_token_exp.error())
+                    service_error::from_infra_error(issued_token_exp.error())
                 );
             }
             auth_dto::hashed_token hashed_token_value;

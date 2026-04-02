@@ -1,5 +1,5 @@
 #pragma once
-#include "error/error_code.hpp"
+#include "error/infra_error.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -16,6 +16,6 @@ namespace token_util{
         std::string token_hash;
     };
 
-    std::expected<std::string, error_code> generate_token();
-    std::expected<issued_token, error_code> issue_token();
+    std::expected<std::string, infra_error> generate_token();
+    std::expected<issued_token, infra_error> issue_token();
 }

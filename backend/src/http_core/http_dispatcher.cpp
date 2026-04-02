@@ -99,7 +99,7 @@ http_dispatcher::response_type http_dispatcher::handle(const request_type& reque
 
     auto db_connection_lease_exp = db_connection_pool_.acquire_for(DB_CONNECTION_ACQUIRE_TIMEOUT);
     if(!db_connection_lease_exp){
-        if(db_connection_lease_exp.error() == boost_error::timed_out){
+        if(db_connection_lease_exp.error() == pool_error::timed_out){
             return http_response_util::create_error(
                 request,
                 boost::beast::http::status::service_unavailable,

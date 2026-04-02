@@ -1,6 +1,6 @@
 #pragma once
 
-#include "error/error_code.hpp"
+#include "error/infra_error.hpp"
 #include "dto/dto_validation_error.hpp"
 
 #include <boost/json/fwd.hpp>
@@ -76,11 +76,11 @@ namespace auth_dto{
     std::expected<credentials, dto_validation_error> make_credentials_from_json(
         const boost::json::object& json
     );
-    std::expected<hashed_sign_up_request, error_code> hash_sign_up_request(
+    std::expected<hashed_sign_up_request, infra_error> hash_sign_up_request(
         const sign_up_request& sign_up_request_value
     );
 
-    std::expected<hashed_credentials, error_code> hash_credentials(
+    std::expected<hashed_credentials, infra_error> hash_credentials(
         const credentials& credentials_value
     );
 }

@@ -6,7 +6,6 @@
 #include "http_router/submission_router.hpp"
 #include "http_router/system_router.hpp"
 #include "http_router/user_router.hpp"
-#include "error/error_code.hpp"
 
 #include <expected>
 #include <optional>

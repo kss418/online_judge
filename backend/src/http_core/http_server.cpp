@@ -2,12 +2,48 @@
 
 #include "common/string_util.hpp"
 #include "http_core/http_response_util.hpp"
+#include "error/pool_error.hpp"
+#include "error/infra_error.hpp"
 
 #include <cstdlib>
 #include <limits>
 #include <utility>
 
 namespace{
+    error_code map_infra_error_to_error_code(const infra_error& error){
+        switch(error.code){
+            case infra_error_code::invalid_argument:
+                return error_code::create(errno_error::invalid_argument);
+            case infra_error_code::permission_denied:
+                return error_code::create(errno_error::permission_denied);
+            case infra_error_code::not_found:
+                return error_code::create(errno_error::file_not_found);
+            case infra_error_code::conflict:
+                return error_code::create(errno_error::file_exists);
+            case infra_error_code::unavailable:
+                return error_code::create(errno_error::resource_temporarily_unavailable);
+            case infra_error_code::internal:
+                return error_code::create(errno_error::io_error);
+        }
+
+        return error_code::create(errno_error::io_error);
+    }
+
+    error_code map_pool_error_to_error_code(const pool_error& error){
+        switch(error.code){
+            case pool_error_code::invalid_argument:
+                return error_code::create(errno_error::invalid_argument);
+            case pool_error_code::timed_out:
+                return error_code::create(boost_error::timed_out);
+            case pool_error_code::unavailable:
+                return error_code::create(errno_error::resource_temporarily_unavailable);
+            case pool_error_code::internal:
+                return error_code::create(errno_error::io_error);
+        }
+
+        return error_code::create(errno_error::io_error);
+    }
+
     std::expected<std::size_t, error_code> resolve_http_db_pool_size(
         std::size_t default_http_db_pool_size
     ){
@@ -60,9 +96,14 @@ std::expected<std::shared_ptr<http_server>, error_code> http_server::create(
         return std::unexpected(handler_worker_count_exp.error());
     }
 
-    auto db_connection_pool_exp = db_connection_pool::create(*pool_size_exp);
+    auto db_config_exp = db_connection::load_db_connection_config();
+    if(!db_config_exp){
+        return std::unexpected(map_infra_error_to_error_code(db_config_exp.error()));
+    }
+
+    auto db_connection_pool_exp = db_connection_pool::create(*db_config_exp, *pool_size_exp);
     if(!db_connection_pool_exp){
-        return std::unexpected(db_connection_pool_exp.error());
+        return std::unexpected(map_pool_error_to_error_code(db_connection_pool_exp.error()));
     }
 
     auto response_worker_pool_exp = worker_pool::create(*handler_worker_count_exp);

@@ -425,7 +425,24 @@ namespace nsjail_util::detail{
 std::expected<std::filesystem::path, error_code> nsjail_util::require_nsjail_path(){
     const auto nsjail_path_exp = env_util::require_env("JUDGE_NSJAIL_PATH");
     if(!nsjail_path_exp){
-        return std::unexpected(nsjail_path_exp.error());
+        switch(nsjail_path_exp.error().code){
+            case infra_error_code::invalid_argument:
+                return std::unexpected(error_code::create(errno_error::invalid_argument));
+            case infra_error_code::permission_denied:
+                return std::unexpected(error_code::create(errno_error::permission_denied));
+            case infra_error_code::not_found:
+                return std::unexpected(error_code::create(errno_error::file_not_found));
+            case infra_error_code::conflict:
+                return std::unexpected(error_code::create(errno_error::file_exists));
+            case infra_error_code::unavailable:
+                return std::unexpected(
+                    error_code::create(errno_error::resource_temporarily_unavailable)
+                );
+            case infra_error_code::internal:
+                return std::unexpected(error_code::create(errno_error::io_error));
+        }
+
+        return std::unexpected(error_code::create(errno_error::io_error));
     }
 
     const std::filesystem::path nsjail_path = *nsjail_path_exp;

@@ -19,9 +19,9 @@ std::string crypto_util::to_hex_string(std::span<const unsigned char> bytes){
     return hex_string;
 }
 
-std::expected<std::string, error_code> crypto_util::sha512_hex(std::string_view value){
+std::expected<std::string, infra_error> crypto_util::sha512_hex(std::string_view value){
     if(value.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(infra_error::invalid_argument);
     }
 
     std::array<unsigned char, EVP_MAX_MD_SIZE> digest{};
@@ -35,7 +35,7 @@ std::expected<std::string, error_code> crypto_util::sha512_hex(std::string_view 
         nullptr
     );
     if(digest_ok != 1){
-        return std::unexpected(error_code::create(errno_error::unknown_error));
+        return std::unexpected(infra_error::internal);
     }
 
     return crypto_util::to_hex_string(

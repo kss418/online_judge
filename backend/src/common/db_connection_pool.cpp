@@ -6,6 +6,12 @@
 #include <utility>
 #include <vector>
 
+namespace{
+    pool_error map_db_error_to_pool_error(const db_error& error){
+        return pool_error::from_db_error(error);
+    }
+}
+
 struct db_connection_pool::state{
     struct slot{
         db_connection connection_;
@@ -17,7 +23,7 @@ struct db_connection_pool::state{
     std::vector<slot> slots_;
     std::deque<std::size_t> free_slot_indices_;
 
-    std::expected<std::size_t, error_code> acquire_slot_index(
+    std::expected<std::size_t, pool_error> acquire_slot_index(
         std::chrono::milliseconds timeout,
         bool use_timeout
     ){
@@ -28,7 +34,7 @@ struct db_connection_pool::state{
 
         if(use_timeout){
             if(!condition_variable_.wait_for(lock, timeout, has_available_slot)){
-                return std::unexpected(error_code::create(boost_error::timed_out));
+                return std::unexpected(pool_error::timed_out);
             }
         }
         else{
@@ -125,18 +131,21 @@ void db_connection_pool::lease::release(){
     slot_index_ = 0;
 }
 
-std::expected<db_connection_pool, error_code> db_connection_pool::create(std::size_t pool_size){
+std::expected<db_connection_pool, pool_error> db_connection_pool::create(
+    const db_connection_config& config,
+    std::size_t pool_size
+){
     if(pool_size == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(pool_error::invalid_argument);
     }
 
     auto state_value = std::make_shared<state>();
     state_value->slots_.reserve(pool_size);
 
     for(std::size_t index = 0; index < pool_size; ++index){
-        auto connection_exp = db_connection::create();
+        auto connection_exp = db_connection::create(config);
         if(!connection_exp){
-            return std::unexpected(connection_exp.error());
+            return std::unexpected(map_db_error_to_pool_error(connection_exp.error()));
         }
 
         state::slot slot_value;
@@ -148,15 +157,15 @@ std::expected<db_connection_pool, error_code> db_connection_pool::create(std::si
     return db_connection_pool(std::move(state_value));
 }
 
-std::expected<db_connection_pool::lease, error_code> db_connection_pool::acquire(){
+std::expected<db_connection_pool::lease, pool_error> db_connection_pool::acquire(){
     return acquire_impl(std::chrono::milliseconds::zero(), false);
 }
 
-std::expected<db_connection_pool::lease, error_code> db_connection_pool::acquire_for(
+std::expected<db_connection_pool::lease, pool_error> db_connection_pool::acquire_for(
     std::chrono::milliseconds timeout
 ){
     if(timeout < std::chrono::milliseconds::zero()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(pool_error::invalid_argument);
     }
 
     return acquire_impl(timeout, true);
@@ -177,12 +186,12 @@ std::size_t db_connection_pool::available_count() const{
 db_connection_pool::db_connection_pool(std::shared_ptr<state> state_value) :
     state_(std::move(state_value)){}
 
-std::expected<db_connection_pool::lease, error_code> db_connection_pool::acquire_impl(
+std::expected<db_connection_pool::lease, pool_error> db_connection_pool::acquire_impl(
     std::chrono::milliseconds timeout,
     bool use_timeout
 ){
     if(!state_){
-        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+        return std::unexpected(pool_error::internal);
     }
 
     const auto slot_index_exp = state_->acquire_slot_index(timeout, use_timeout);
@@ -196,7 +205,7 @@ std::expected<db_connection_pool::lease, error_code> db_connection_pool::acquire
         const auto reconnect_exp = connection_value.reconnect();
         if(!reconnect_exp){
             state_->release_slot_index(slot_index);
-            return std::unexpected(reconnect_exp.error());
+            return std::unexpected(map_db_error_to_pool_error(reconnect_exp.error()));
         }
     }
 

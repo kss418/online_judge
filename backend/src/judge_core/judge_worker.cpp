@@ -79,7 +79,12 @@ std::expected<judge_worker, judge_error> judge_worker::create(
         return std::unexpected(listen_submission_queue_exp.error());
     }
 
-    auto testcase_downloader_connection_exp = db_connection::create();
+    auto db_config_exp = db_connection::load_db_connection_config();
+    if(!db_config_exp){
+        return std::unexpected(db_config_exp.error());
+    }
+
+    auto testcase_downloader_connection_exp = db_connection::create(*db_config_exp);
     if(!testcase_downloader_connection_exp){
         return std::unexpected(testcase_downloader_connection_exp.error());
     }
@@ -91,7 +96,7 @@ std::expected<judge_worker, judge_error> judge_worker::create(
         return std::unexpected(testcase_downloader_exp.error());
     }
 
-    auto db_connection_exp = db_connection::create();
+    auto db_connection_exp = db_connection::create(*db_config_exp);
     if(!db_connection_exp){
         return std::unexpected(db_connection_exp.error());
     }

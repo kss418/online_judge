@@ -3,6 +3,7 @@
 #include "common/logger.hpp"
 #include "common/string_util.hpp"
 #include "db_event/submission_event_listener.hpp"
+#include "error/judge_error.hpp"
 #include "error/error_code.hpp"
 #include "judge_core/problem_lock_registry.hpp"
 #include "judge_core/judge_worker.hpp"
@@ -19,8 +20,13 @@
 
 constexpr std::chrono::seconds WORKER_RESTART_DELAY{1};
 
-std::expected<submission_event_listener, error_code> create_submission_event_listener(){
-    auto db_connection_exp = db_connection::create();
+std::expected<submission_event_listener, judge_error> create_submission_event_listener(){
+    auto db_config_exp = db_connection::load_db_connection_config();
+    if(!db_config_exp){
+        return std::unexpected(db_config_exp.error());
+    }
+
+    auto db_connection_exp = db_connection::create(*db_config_exp);
     if(!db_connection_exp){
         return std::unexpected(db_connection_exp.error());
     }

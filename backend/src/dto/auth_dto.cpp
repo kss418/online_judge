@@ -130,7 +130,7 @@ std::expected<auth_dto::credentials, dto_validation_error> auth_dto::make_creden
     return credentials_value;
 }
 
-std::expected<auth_dto::hashed_sign_up_request, error_code> auth_dto::hash_sign_up_request(
+std::expected<auth_dto::hashed_sign_up_request, infra_error> auth_dto::hash_sign_up_request(
     const sign_up_request& sign_up_request_value
 ){
     auth_dto::credentials credentials_value;
@@ -147,11 +147,11 @@ std::expected<auth_dto::hashed_sign_up_request, error_code> auth_dto::hash_sign_
     return hashed_sign_up_request_value;
 }
 
-std::expected<auth_dto::hashed_credentials, error_code> auth_dto::hash_credentials(
+std::expected<auth_dto::hashed_credentials, infra_error> auth_dto::hash_credentials(
     const credentials& credentials_value
 ){
     if(!is_valid(credentials_value)){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(infra_error::invalid_argument);
     }
 
     const auto password_hash_exp = password_util::get_password_hash(

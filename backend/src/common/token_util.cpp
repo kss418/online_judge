@@ -6,20 +6,20 @@
 #include <array>
 #include <string>
 
-std::expected<std::string, error_code> token_util::generate_token(){
+std::expected<std::string, infra_error> token_util::generate_token(){
     std::array<unsigned char, TOKEN_BYTE_LENGTH> token_bytes{};
     const int rand_ok = RAND_bytes(
         token_bytes.data(),
         static_cast<int>(token_bytes.size())
     );
     if(rand_ok != 1){
-        return std::unexpected(error_code::create(errno_error::unknown_error));
+        return std::unexpected(infra_error::internal);
     }
 
     return crypto_util::to_hex_string(token_bytes);
 }
 
-std::expected<token_util::issued_token, error_code> token_util::issue_token(){
+std::expected<token_util::issued_token, infra_error> token_util::issue_token(){
     const auto token_exp = generate_token();
     if(!token_exp){
         return std::unexpected(token_exp.error());

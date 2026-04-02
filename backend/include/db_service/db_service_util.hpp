@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/db_connection.hpp"
+#include "error/db_error.hpp"
 #include "error/error_code.hpp"
 #include "error/service_error.hpp"
 #include "db_repository/db_repository.hpp"
@@ -16,6 +17,10 @@
 namespace db_service_util{
     inline constexpr int DB_TRANSACTION_ATTEMPT_COUNT = 5;
 
+    inline service_error map_db_error_to_service_error(const db_error& error_code_value){
+        return service_error::from_db_error(error_code_value);
+    }
+
     inline service_error map_error_to_service_error(const error_code& error_code_value){
         return service_error::from_error_code(error_code_value);
     }
@@ -24,6 +29,22 @@ namespace db_service_util{
         const repository_error& repository_error_value
     ){
         return service_error::from_repository(repository_error_value);
+    }
+
+    template <typename T>
+    std::expected<T, service_error> map_db_error_to_service_error(
+        std::expected<T, db_error> result_exp
+    ){
+        if(!result_exp){
+            return std::unexpected(map_db_error_to_service_error(result_exp.error()));
+        }
+
+        if constexpr(std::is_void_v<T>){
+            return {};
+        }
+        else{
+            return std::expected<T, service_error>{std::move(*result_exp)};
+        }
     }
 
     template <typename T>
@@ -61,10 +82,10 @@ namespace db_service_util{
     }
 
     template <typename result_type>
-    concept expected_error_result = requires{
+    concept expected_db_result = requires{
         typename result_type::value_type;
         typename result_type::error_type;
-    } && std::same_as<typename result_type::error_type, error_code>;
+    } && std::same_as<typename result_type::error_type, db_error>;
 
     template <typename result_type>
     concept expected_service_result = requires{
@@ -87,17 +108,17 @@ namespace db_service_util{
         std::invoke_result_t<callback_type, pqxx::read_transaction&>;
 
     namespace detail{
-        inline std::expected<void, service_error> handle_service_infra_error(
+        inline std::expected<void, service_error> handle_service_db_error(
             db_connection& connection,
             int attempt,
             int retry_count,
-            error_code raw_error
+            db_error raw_error
         ){
             if(
                 attempt == retry_count ||
                 !db_repository::should_retry_db_error(raw_error)
             ){
-                return std::unexpected(map_error_to_service_error(raw_error));
+                return std::unexpected(map_db_error_to_service_error(raw_error));
             }
 
             if(db_repository::should_reconnect_db_error(raw_error)){
@@ -109,7 +130,7 @@ namespace db_service_util{
                         !db_repository::should_retry_db_error(reconnect_error)
                     ){
                         return std::unexpected(
-                            map_error_to_service_error(reconnect_error)
+                            map_db_error_to_service_error(reconnect_error)
                         );
                     }
                 }
@@ -120,13 +141,13 @@ namespace db_service_util{
     }
 
     template <typename callback_type>
-        requires expected_error_result<write_transaction_result<callback_type>>
+        requires expected_db_result<write_transaction_result<callback_type>>
     auto with_write_transaction(
         db_connection& connection,
         callback_type&& callback
     ) -> write_transaction_result<callback_type> {
         if(!connection.is_connected()){
-            return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+            return std::unexpected(db_error::invalid_connection);
         }
 
         try{
@@ -143,12 +164,14 @@ namespace db_service_util{
             return callback_result_exp;
         }
         catch(const std::exception& exception){
-            return std::unexpected(error_code::map_psql_error_code(exception));
+            return std::unexpected(
+                db_error::from_error_code(error_code::map_psql_error_code(exception))
+            );
         }
     }
 
     template <typename callback_type>
-        requires expected_error_result<write_transaction_result<callback_type>>
+        requires expected_db_result<write_transaction_result<callback_type>>
     auto with_retry_write_transaction(
         db_connection& connection,
         int retry_count,
@@ -164,7 +187,7 @@ namespace db_service_util{
     }
 
     template <typename callback_type>
-        requires expected_error_result<write_transaction_result<callback_type>>
+        requires expected_db_result<write_transaction_result<callback_type>>
     auto with_retry_write_transaction(
         db_connection& connection,
         callback_type&& callback
@@ -184,9 +207,7 @@ namespace db_service_util{
     ) -> service_write_transaction_result<callback_type> {
         if(!connection.is_connected()){
             return std::unexpected(
-                map_error_to_service_error(
-                    error_code::create(errno_error::invalid_file_descriptor)
-                )
+                map_db_error_to_service_error(db_error::invalid_connection)
             );
         }
 
@@ -205,8 +226,10 @@ namespace db_service_util{
         }
         catch(const std::exception& exception){
             return std::unexpected(
-                map_error_to_service_error(
-                    error_code::map_psql_error_code(exception)
+                map_db_error_to_service_error(
+                    db_error::from_error_code(
+                        error_code::map_psql_error_code(exception)
+                    )
                 )
             );
         }
@@ -221,19 +244,17 @@ namespace db_service_util{
     ) -> service_write_transaction_result<callback_type> {
         if(retry_count <= 0){
             return std::unexpected(
-                map_error_to_service_error(
-                    error_code::create(errno_error::invalid_argument)
-                )
+                map_db_error_to_service_error(db_error::invalid_argument)
             );
         }
 
         for(int attempt = 1; attempt <= retry_count; ++attempt){
             if(!connection.is_connected()){
-                const auto retry_exp = detail::handle_service_infra_error(
+                const auto retry_exp = detail::handle_service_db_error(
                     connection,
                     attempt,
                     retry_count,
-                    error_code::create(errno_error::invalid_file_descriptor)
+                    db_error::invalid_connection
                 );
                 if(!retry_exp){
                     return std::unexpected(retry_exp.error());
@@ -252,11 +273,11 @@ namespace db_service_util{
                 return callback_result_exp;
             }
             catch(const std::exception& exception){
-                const auto retry_exp = detail::handle_service_infra_error(
+                const auto retry_exp = detail::handle_service_db_error(
                     connection,
                     attempt,
                     retry_count,
-                    error_code::map_psql_error_code(exception)
+                    db_error::from_error_code(error_code::map_psql_error_code(exception))
                 );
                 if(!retry_exp){
                     return std::unexpected(retry_exp.error());
@@ -281,13 +302,13 @@ namespace db_service_util{
     }
 
     template <typename callback_type>
-        requires expected_error_result<read_transaction_result<callback_type>>
+        requires expected_db_result<read_transaction_result<callback_type>>
     auto with_read_transaction(
         db_connection& connection,
         callback_type&& callback
     ) -> read_transaction_result<callback_type> {
         if(!connection.is_connected()){
-            return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+            return std::unexpected(db_error::invalid_connection);
         }
 
         try{
@@ -295,12 +316,14 @@ namespace db_service_util{
             return std::invoke(std::forward<callback_type>(callback), transaction);
         }
         catch(const std::exception& exception){
-            return std::unexpected(error_code::map_psql_error_code(exception));
+            return std::unexpected(
+                db_error::from_error_code(error_code::map_psql_error_code(exception))
+            );
         }
     }
 
     template <typename callback_type>
-        requires expected_error_result<read_transaction_result<callback_type>>
+        requires expected_db_result<read_transaction_result<callback_type>>
     auto with_retry_read_transaction(
         db_connection& connection,
         int retry_count,
@@ -316,7 +339,7 @@ namespace db_service_util{
     }
 
     template <typename callback_type>
-        requires expected_error_result<read_transaction_result<callback_type>>
+        requires expected_db_result<read_transaction_result<callback_type>>
     auto with_retry_read_transaction(
         db_connection& connection,
         callback_type&& callback
@@ -336,9 +359,7 @@ namespace db_service_util{
     ) -> service_read_transaction_result<callback_type> {
         if(!connection.is_connected()){
             return std::unexpected(
-                map_error_to_service_error(
-                    error_code::create(errno_error::invalid_file_descriptor)
-                )
+                map_db_error_to_service_error(db_error::invalid_connection)
             );
         }
 
@@ -348,8 +369,10 @@ namespace db_service_util{
         }
         catch(const std::exception& exception){
             return std::unexpected(
-                map_error_to_service_error(
-                    error_code::map_psql_error_code(exception)
+                map_db_error_to_service_error(
+                    db_error::from_error_code(
+                        error_code::map_psql_error_code(exception)
+                    )
                 )
             );
         }
@@ -364,19 +387,17 @@ namespace db_service_util{
     ) -> service_read_transaction_result<callback_type> {
         if(retry_count <= 0){
             return std::unexpected(
-                map_error_to_service_error(
-                    error_code::create(errno_error::invalid_argument)
-                )
+                map_db_error_to_service_error(db_error::invalid_argument)
             );
         }
 
         for(int attempt = 1; attempt <= retry_count; ++attempt){
             if(!connection.is_connected()){
-                const auto retry_exp = detail::handle_service_infra_error(
+                const auto retry_exp = detail::handle_service_db_error(
                     connection,
                     attempt,
                     retry_count,
-                    error_code::create(errno_error::invalid_file_descriptor)
+                    db_error::invalid_connection
                 );
                 if(!retry_exp){
                     return std::unexpected(retry_exp.error());
@@ -394,11 +415,11 @@ namespace db_service_util{
                 return callback_result_exp;
             }
             catch(const std::exception& exception){
-                const auto retry_exp = detail::handle_service_infra_error(
+                const auto retry_exp = detail::handle_service_db_error(
                     connection,
                     attempt,
                     retry_count,
-                    error_code::map_psql_error_code(exception)
+                    db_error::from_error_code(error_code::map_psql_error_code(exception))
                 );
                 if(!retry_exp){
                     return std::unexpected(retry_exp.error());

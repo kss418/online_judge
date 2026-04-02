@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/db_connection.hpp"
-#include "error/error_code.hpp"
+#include "error/pool_error.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -45,10 +45,13 @@ public:
     db_connection_pool(db_connection_pool&&) noexcept = default;
     db_connection_pool& operator=(db_connection_pool&&) noexcept = default;
 
-    static std::expected<db_connection_pool, error_code> create(std::size_t pool_size);
+    static std::expected<db_connection_pool, pool_error> create(
+        const db_connection_config& config,
+        std::size_t pool_size
+    );
 
-    std::expected<lease, error_code> acquire();
-    std::expected<lease, error_code> acquire_for(std::chrono::milliseconds timeout);
+    std::expected<lease, pool_error> acquire();
+    std::expected<lease, pool_error> acquire_for(std::chrono::milliseconds timeout);
 
     std::size_t size() const;
     std::size_t available_count() const;
@@ -56,7 +59,7 @@ public:
 private:
     explicit db_connection_pool(std::shared_ptr<state> state_value);
 
-    std::expected<lease, error_code> acquire_impl(
+    std::expected<lease, pool_error> acquire_impl(
         std::chrono::milliseconds timeout,
         bool use_timeout
     );

@@ -1,14 +1,18 @@
 #pragma once
-#include "error/error_code.hpp"
+#include "error/db_error.hpp"
+#include "error/infra_error.hpp"
 
 #include <pqxx/pqxx>
 #include <expected>
 #include <memory>
 #include <string>
 
+struct db_connection_config{
+    std::string connection_string;
+};
+
 class db_connection{
-    static std::expected<std::string, error_code> initialize();
-    std::expected<void, error_code> connect(const std::string& connection_string_value);
+    std::expected<void, db_error> connect(const std::string& connection_string_value);
     std::string connection_string_;
     std::unique_ptr<pqxx::connection> connection_;
 public:
@@ -18,8 +22,11 @@ public:
     db_connection(db_connection&&) noexcept = default;
     db_connection& operator=(db_connection&&) noexcept = default;
 
-    static std::expected<db_connection, error_code> create();
-    std::expected<void, error_code> reconnect();
+    static std::expected<db_connection_config, infra_error> load_db_connection_config();
+    static std::expected<db_connection, db_error> create(
+        const db_connection_config& config
+    );
+    std::expected<void, db_error> reconnect();
     void disconnect();
     bool is_connected() const;
     const std::string& connection_string() const;

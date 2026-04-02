@@ -1,18 +1,18 @@
 #include "db_repository/db_repository.hpp"
 
-bool db_repository::should_retry_db_error(const error_code& error_code_value){
+bool db_repository::should_retry_db_error(const db_error& error_code_value){
     return
-        error_code_value == errno_error::invalid_file_descriptor ||
-        error_code_value == errno_error::interrupted_system_call ||
-        error_code_value == psql_error::broken_connection ||
-        error_code_value == psql_error::serialization_failure ||
-        error_code_value == psql_error::deadlock_detected;
+        error_code_value == db_error::invalid_connection ||
+        error_code_value == db_error::interrupted ||
+        error_code_value == db_error::broken_connection ||
+        error_code_value == db_error::serialization_failure ||
+        error_code_value == db_error::deadlock_detected;
 }
 
-bool db_repository::should_reconnect_db_error(const error_code& error_code_value){
+bool db_repository::should_reconnect_db_error(const db_error& error_code_value){
     return
-        error_code_value == errno_error::invalid_file_descriptor ||
-        error_code_value == psql_error::broken_connection;
+        error_code_value == db_error::invalid_connection ||
+        error_code_value == db_error::broken_connection;
 }
 
 repository_error db_repository::invalid_reference_error(){
@@ -35,6 +35,10 @@ repository_error db_repository::internal_error(){
     return repository_error::internal;
 }
 
+repository_error db_repository::map_error(const db_error& error_code_value){
+    return repository_error::from_db_error(error_code_value);
+}
+
 repository_error db_repository::map_error(const error_code& error_code_value){
-    return repository_error::from_error_code(error_code_value);
+    return map_error(db_error::from_error_code(error_code_value));
 }
