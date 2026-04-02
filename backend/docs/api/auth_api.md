@@ -87,8 +87,18 @@ Examples:
 ```json
 {
   "error": {
+    "code": "invalid_length",
+    "message": "user_login_id must be between 4 and 15 characters",
+    "field": "user_login_id"
+  }
+}
+```
+
+```json
+{
+  "error": {
     "code": "conflict",
-    "message": "failed to sign up: psql unique violation"
+    "message": "failed to sign up: database unique violation"
   }
 }
 ```

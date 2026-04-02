@@ -62,6 +62,9 @@ register_temp_file demote_user_response_file
 register_temp_file unauthorized_promote_response_file
 register_temp_file unauthorized_demote_response_file
 register_temp_file duplicate_user_login_id_response_file
+register_temp_file invalid_json_sign_up_response_file
+register_temp_file missing_field_sign_up_response_file
+register_temp_file invalid_length_sign_up_response_file
 
 trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
 
@@ -81,6 +84,68 @@ append_log_line "${test_log_temp_file}" "test_db_name=${test_db_name}"
 
 apply_test_database_migrations
 ensure_dedicated_http_server
+
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/auth/sign-up" \
+    "${invalid_json_sign_up_response_file}" \
+    "400" \
+    "invalid json sign-up" \
+    "" \
+    '{"user_login_id":"broken"'
+assert_json_error_code \
+    "${invalid_json_sign_up_response_file}" \
+    "invalid_json" \
+    "invalid json sign-up"
+assert_json_error_message \
+    "${invalid_json_sign_up_response_file}" \
+    "invalid json" \
+    "invalid json sign-up"
+print_success_log "invalid json sign-up validation success"
+
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/auth/sign-up" \
+    "${missing_field_sign_up_response_file}" \
+    "400" \
+    "missing field sign-up" \
+    "" \
+    '{"raw_password":"password123"}'
+assert_json_error_code \
+    "${missing_field_sign_up_response_file}" \
+    "missing_field" \
+    "missing field sign-up"
+assert_json_error_message \
+    "${missing_field_sign_up_response_file}" \
+    "required field: user_login_id" \
+    "missing field sign-up"
+assert_json_error_field \
+    "${missing_field_sign_up_response_file}" \
+    "user_login_id" \
+    "missing field sign-up"
+print_success_log "missing field sign-up validation success"
+
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/auth/sign-up" \
+    "${invalid_length_sign_up_response_file}" \
+    "400" \
+    "invalid length sign-up" \
+    "" \
+    '{"user_login_id":"abc","raw_password":"password123"}'
+assert_json_error_code \
+    "${invalid_length_sign_up_response_file}" \
+    "invalid_length" \
+    "invalid length sign-up"
+assert_json_error_message \
+    "${invalid_length_sign_up_response_file}" \
+    "user_login_id must be between 4 and 15 characters" \
+    "invalid length sign-up"
+assert_json_error_field \
+    "${invalid_length_sign_up_response_file}" \
+    "user_login_id" \
+    "invalid length sign-up"
+print_success_log "invalid length sign-up validation success"
 
 sign_up_user \
     "${user_login_id}" \
@@ -532,7 +597,7 @@ assert_json_error_code \
     "duplicate user_login_id sign-up"
 assert_json_error_message \
     "${duplicate_user_login_id_response_file}" \
-    "failed to sign up: psql unique violation" \
+    "failed to sign up: database unique violation" \
     "duplicate user_login_id sign-up"
 print_success_log "duplicate user_login_id failure success"
 

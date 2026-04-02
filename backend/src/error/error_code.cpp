@@ -178,7 +178,7 @@ std::string to_string(psql_error ec){
         case psql_error::statement_completion_unknown:
             return "psql statement completion unknown";
         case psql_error::unique_violation:
-            return "psql unique violation";
+            return "database unique violation";
         case psql_error::foreign_key_violation:
             return "psql foreign key violation";
         case psql_error::not_null_violation:
