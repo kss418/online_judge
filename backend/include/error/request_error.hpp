@@ -21,6 +21,12 @@ enum class request_error_code{
 };
 
 namespace request_error{
+    struct query_param_error_adapter{
+        static http_error duplicate(std::string_view key);
+        static http_error invalid(std::string_view key);
+        static http_error unsupported(std::string_view key);
+    };
+
     http_error make_error(
         request_error_code code,
         std::string message = {},

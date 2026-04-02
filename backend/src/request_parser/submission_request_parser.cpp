@@ -13,18 +13,6 @@
 #include <utility>
 
 namespace{
-    http_error make_duplicate_query_parameter_error(std::string_view key){
-        return request_error::make_duplicate_query_parameter_error(key);
-    }
-
-    http_error make_invalid_query_parameter_error(std::string_view key){
-        return request_error::make_invalid_query_parameter_error(key);
-    }
-
-    http_error make_unsupported_query_parameter_error(std::string_view key){
-        return request_error::make_unsupported_query_parameter_error(key);
-    }
-
     std::optional<std::int64_t> parse_positive_json_int64(const boost::json::value& value){
         if(value.is_int64()){
             const std::int64_t int64_value = value.as_int64();
@@ -64,8 +52,8 @@ namespace{
                     key,
                     raw_value,
                     string_util::parse_positive_int64,
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         },
@@ -85,8 +73,8 @@ namespace{
 
                         return std::string{value};
                     },
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         },
@@ -100,8 +88,8 @@ namespace{
                     key,
                     raw_value,
                     string_util::parse_positive_int64,
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         },
@@ -122,8 +110,8 @@ namespace{
 
                         return std::string{language_opt->language};
                     },
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         },
@@ -144,8 +132,8 @@ namespace{
 
                         return to_string(*status_opt);
                     },
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         },
@@ -159,8 +147,8 @@ namespace{
                     key,
                     raw_value,
                     string_util::parse_positive_int32,
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         },
@@ -174,8 +162,8 @@ namespace{
                     key,
                     raw_value,
                     string_util::parse_positive_int64,
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         }
@@ -248,7 +236,7 @@ submission_request_parser::parse_list_filter(const std::vector<query_param>& que
     return query_param_util::make_filter_from_query_params(
         query_params,
         submission_list_filter_bindings,
-        make_unsupported_query_parameter_error
+        request_error::query_param_error_adapter::unsupported
     );
 }
 

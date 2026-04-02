@@ -33,6 +33,18 @@ namespace{
     }
 }
 
+http_error request_error::query_param_error_adapter::duplicate(std::string_view key){
+    return make_duplicate_query_parameter_error(key);
+}
+
+http_error request_error::query_param_error_adapter::invalid(std::string_view key){
+    return make_invalid_query_parameter_error(key);
+}
+
+http_error request_error::query_param_error_adapter::unsupported(std::string_view key){
+    return make_unsupported_query_parameter_error(key);
+}
+
 http_error request_error::make_error(
     request_error_code code,
     std::string message,

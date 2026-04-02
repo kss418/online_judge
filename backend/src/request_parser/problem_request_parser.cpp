@@ -10,18 +10,6 @@
 #include <string>
 
 namespace{
-    http_error make_duplicate_query_parameter_error(std::string_view key){
-        return request_error::make_duplicate_query_parameter_error(key);
-    }
-
-    http_error make_invalid_query_parameter_error(std::string_view key){
-        return request_error::make_invalid_query_parameter_error(key);
-    }
-
-    http_error make_unsupported_query_parameter_error(std::string_view key){
-        return request_error::make_unsupported_query_parameter_error(key);
-    }
-
     std::optional<std::int64_t> parse_non_negative_int64(std::string_view raw_value){
         if(raw_value == "0"){
             return std::int64_t{0};
@@ -73,8 +61,8 @@ namespace{
                     key,
                     raw_value,
                     string_util::parse_positive_int64,
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         },
@@ -94,8 +82,8 @@ namespace{
 
                         return std::string{value};
                     },
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         },
@@ -109,8 +97,8 @@ namespace{
                     key,
                     raw_value,
                     parse_problem_list_state,
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         },
@@ -124,8 +112,8 @@ namespace{
                     key,
                     raw_value,
                     parse_problem_list_sort,
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         },
@@ -139,8 +127,8 @@ namespace{
                     key,
                     raw_value,
                     parse_sort_direction,
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         },
@@ -154,8 +142,8 @@ namespace{
                     key,
                     raw_value,
                     string_util::parse_positive_int32,
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         },
@@ -169,8 +157,8 @@ namespace{
                     key,
                     raw_value,
                     parse_non_negative_int64,
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         }
@@ -206,7 +194,7 @@ problem_request_parser::parse_list_filter(const std::vector<query_param>& query_
     return query_param_util::make_filter_from_query_params(
         query_params,
         problem_list_filter_bindings,
-        make_unsupported_query_parameter_error
+        request_error::query_param_error_adapter::unsupported
     );
 }
 

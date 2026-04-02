@@ -9,18 +9,6 @@
 #include <string>
 
 namespace{
-    http_error make_duplicate_query_parameter_error(std::string_view key){
-        return request_error::make_duplicate_query_parameter_error(key);
-    }
-
-    http_error make_invalid_query_parameter_error(std::string_view key){
-        return request_error::make_invalid_query_parameter_error(key);
-    }
-
-    http_error make_unsupported_query_parameter_error(std::string_view key){
-        return request_error::make_unsupported_query_parameter_error(key);
-    }
-
     const std::array<
         query_param_util::query_param_binding<user_dto::list_filter>,
         1
@@ -41,8 +29,8 @@ namespace{
 
                         return std::string{value};
                     },
-                    make_duplicate_query_parameter_error,
-                    make_invalid_query_parameter_error
+                    request_error::query_param_error_adapter::duplicate,
+                    request_error::query_param_error_adapter::invalid
                 );
             }
         }
@@ -72,6 +60,6 @@ user_request_parser::parse_list_filter(const std::vector<query_param>& query_par
     return query_param_util::make_filter_from_query_params(
         query_params,
         user_list_filter_bindings,
-        make_unsupported_query_parameter_error
+        request_error::query_param_error_adapter::unsupported
     );
 }
