@@ -1,7 +1,6 @@
 #include "db_service/auth_service.hpp"
 #include "common/permission_util.hpp"
 #include "db_service/db_service_util.hpp"
-#include "db_service/service_error_bridge.hpp"
 #include "db_repository/auth_repository.hpp"
 #include "common/crypto_util.hpp"
 #include "common/token_util.hpp"
@@ -21,31 +20,23 @@ std::expected<std::optional<auth_dto::identity>, service_error> auth_service::au
     auth_dto::hashed_token hashed_token_value;
     hashed_token_value.token_hash = *token_hash_exp;
 
-    return db_service_util::map_error_to_service_error(
-        db_service_util::with_retry_read_transaction(
-            connection_value,
-            [&](pqxx::read_transaction& transaction)
-                -> std::expected<std::optional<auth_dto::identity>, error_code> {
-                const auto get_token_identity_exp = auth_repository::get_token_identity(
-                    transaction,
-                    hashed_token_value
-                );
-                if(!get_token_identity_exp){
-                    return std::unexpected(
-                        error_code::create(
-                            db_service_error_bridge::map_repository_error(
-                                get_token_identity_exp.error()
-                            )
-                        )
-                    );
-                }
-                if(!get_token_identity_exp->has_value()){
-                    return std::nullopt;
-                }
-
-                return get_token_identity_exp->value();
+    return db_service_util::with_retry_service_read_transaction(
+        connection_value,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<std::optional<auth_dto::identity>, service_error> {
+            const auto get_token_identity_exp = auth_repository::get_token_identity(
+                transaction,
+                hashed_token_value
+            );
+            if(!get_token_identity_exp){
+                return std::unexpected(get_token_identity_exp.error());
             }
-        )
+            if(!get_token_identity_exp->has_value()){
+                return std::optional<auth_dto::identity>{};
+            }
+
+            return get_token_identity_exp->value();
+        }
     );
 }
 
@@ -62,31 +53,23 @@ std::expected<bool, service_error> auth_service::renew_token(
     auth_dto::hashed_token hashed_token_value;
     hashed_token_value.token_hash = *token_hash_exp;
 
-    return db_service_util::map_error_to_service_error(
-        db_service_util::with_retry_write_transaction(
-            connection_value,
-            [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
-                const auto update_expires_at_exp = auth_repository::update_expires_at(
-                    transaction,
-                    hashed_token_value,
-                    token_util::TOKEN_TTL
-                );
-                if(!update_expires_at_exp){
-                    return std::unexpected(
-                        error_code::create(
-                            db_service_error_bridge::map_repository_error(
-                                update_expires_at_exp.error()
-                            )
-                        )
-                    );
-                }
-                if(!update_expires_at_exp.value()){
-                    return false;
-                }
-
-                return true;
+    return db_service_util::with_retry_service_write_transaction(
+        connection_value,
+        [&](pqxx::work& transaction) -> std::expected<bool, service_error> {
+            const auto update_expires_at_exp = auth_repository::update_expires_at(
+                transaction,
+                hashed_token_value,
+                token_util::TOKEN_TTL
+            );
+            if(!update_expires_at_exp){
+                return std::unexpected(update_expires_at_exp.error());
             }
-        )
+            if(!update_expires_at_exp.value()){
+                return false;
+            }
+
+            return true;
+        }
     );
 }
 
@@ -103,30 +86,22 @@ std::expected<bool, service_error> auth_service::revoke_token(
     auth_dto::hashed_token hashed_token_value;
     hashed_token_value.token_hash = *token_hash_exp;
 
-    return db_service_util::map_error_to_service_error(
-        db_service_util::with_retry_write_transaction(
-            connection_value,
-            [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
-                const auto revoke_token_exp = auth_repository::revoke_token(
-                    transaction,
-                    hashed_token_value
-                );
-                if(!revoke_token_exp){
-                    return std::unexpected(
-                        error_code::create(
-                            db_service_error_bridge::map_repository_error(
-                                revoke_token_exp.error()
-                            )
-                        )
-                    );
-                }
-                if(!revoke_token_exp.value()){
-                    return false;
-                }
-
-                return true;
+    return db_service_util::with_retry_service_write_transaction(
+        connection_value,
+        [&](pqxx::work& transaction) -> std::expected<bool, service_error> {
+            const auto revoke_token_exp = auth_repository::revoke_token(
+                transaction,
+                hashed_token_value
+            );
+            if(!revoke_token_exp){
+                return std::unexpected(revoke_token_exp.error());
             }
-        )
+            if(!revoke_token_exp.value()){
+                return false;
+            }
+
+            return true;
+        }
     );
 }
 
@@ -142,43 +117,32 @@ std::expected<bool, service_error> auth_service::update_permission_level(
         return std::unexpected(service_error::validation_error);
     }
 
-    return db_service_util::map_error_to_service_error(
-        db_service_util::with_retry_write_transaction(
-            connection_value,
-            [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
-                const auto update_permission_level_exp = auth_repository::update_permission_level(
+    return db_service_util::with_retry_service_write_transaction(
+        connection_value,
+        [&](pqxx::work& transaction) -> std::expected<bool, service_error> {
+            const auto update_permission_level_exp =
+                auth_repository::update_permission_level(
                     transaction,
                     user_id,
                     permission_level
                 );
-                if(!update_permission_level_exp){
-                    return std::unexpected(
-                        error_code::create(
-                            db_service_error_bridge::map_repository_error(
-                                update_permission_level_exp.error()
-                            )
-                        )
-                    );
-                }
-
-                return *update_permission_level_exp;
+            if(!update_permission_level_exp){
+                return std::unexpected(update_permission_level_exp.error());
             }
-        )
+
+            return *update_permission_level_exp;
+        }
     );
 }
 
 std::expected<auth_dto::user_summary_list, service_error> auth_service::get_user_list(
     db_connection& connection_value
 ){
-    return db_service_util::map_error_to_service_error(
-        db_service_util::with_retry_read_transaction(
-            connection_value,
-            [&](pqxx::read_transaction& transaction)
-                -> std::expected<auth_dto::user_summary_list, error_code> {
-                return db_service_error_bridge::map_repository_error(
-                    auth_repository::get_user_list(transaction)
-                );
-            }
-        )
+    return db_service_util::with_retry_service_read_transaction(
+        connection_value,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<auth_dto::user_summary_list, service_error> {
+            return auth_repository::get_user_list(transaction);
+        }
     );
 }

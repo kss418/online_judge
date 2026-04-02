@@ -38,6 +38,10 @@ service_error::service_error(
             : std::move(message_value)
     ){}
 
+service_error::service_error(const repository_error& ec)
+:
+    service_error(from_repository(ec)){}
+
 bool service_error::operator==(const service_error& other) const{
     return code == other.code;
 }

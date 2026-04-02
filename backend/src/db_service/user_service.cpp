@@ -2,25 +2,20 @@
 
 #include "db_repository/user_repository.hpp"
 #include "db_service/db_service_util.hpp"
-#include "db_service/service_error_bridge.hpp"
 
 std::expected<user_dto::list, service_error> user_service::get_public_list(
     db_connection& connection,
     const user_dto::list_filter& filter_value
 ){
-    return db_service_util::map_error_to_service_error(
-        db_service_util::with_retry_read_transaction(
-            connection,
-            [&](pqxx::read_transaction& transaction)
-                -> std::expected<user_dto::list, error_code> {
-                return db_service_error_bridge::map_repository_error(
-                    user_repository::get_public_list(
-                        transaction,
-                        filter_value
-                    )
-                );
-            }
-        )
+    return db_service_util::with_retry_service_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<user_dto::list, service_error> {
+            return user_repository::get_public_list(
+                transaction,
+                filter_value
+            );
+        }
     );
 }
 
@@ -32,19 +27,15 @@ std::expected<std::optional<user_dto::summary>, service_error> user_service::get
         return std::unexpected(service_error::validation_error);
     }
 
-    return db_service_util::map_error_to_service_error(
-        db_service_util::with_retry_read_transaction(
-            connection,
-            [&](pqxx::read_transaction& transaction)
-                -> std::expected<std::optional<user_dto::summary>, error_code> {
-                return db_service_error_bridge::map_repository_error(
-                    user_repository::get_summary(
-                        transaction,
-                        user_id
-                    )
-                );
-            }
-        )
+    return db_service_util::with_retry_service_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<std::optional<user_dto::summary>, service_error> {
+            return user_repository::get_summary(
+                transaction,
+                user_id
+            );
+        }
     );
 }
 
@@ -57,19 +48,15 @@ user_service::get_summary_by_login_id(
         return std::unexpected(service_error::validation_error);
     }
 
-    return db_service_util::map_error_to_service_error(
-        db_service_util::with_retry_read_transaction(
-            connection,
-            [&](pqxx::read_transaction& transaction)
-                -> std::expected<std::optional<user_dto::summary>, error_code> {
-                return db_service_error_bridge::map_repository_error(
-                    user_repository::get_summary_by_login_id(
-                        transaction,
-                        user_login_id
-                    )
-                );
-            }
-        )
+    return db_service_util::with_retry_service_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<std::optional<user_dto::summary>, service_error> {
+            return user_repository::get_summary_by_login_id(
+                transaction,
+                user_login_id
+            );
+        }
     );
 }
 
@@ -83,34 +70,30 @@ user_service::create_submission_ban(
         return std::unexpected(service_error::validation_error);
     }
 
-    return db_service_util::map_error_to_service_error(
-        db_service_util::with_retry_write_transaction(
-            connection,
-            [&](pqxx::work& transaction)
-                -> std::expected<std::optional<user_dto::submission_ban>, error_code> {
-                const auto create_submission_ban_exp =
-                    db_service_error_bridge::map_repository_error(
-                        user_repository::create_submission_ban(
-                            transaction,
-                            user_id,
-                            duration_minutes
-                        )
-                    );
-                if(!create_submission_ban_exp){
-                    return std::unexpected(create_submission_ban_exp.error());
-                }
-                if(!create_submission_ban_exp->has_value()){
-                    return std::optional<user_dto::submission_ban>{std::nullopt};
-                }
-
-                user_dto::submission_ban submission_ban_value;
-                submission_ban_value.user_id = user_id;
-                submission_ban_value.duration_minutes = duration_minutes;
-                submission_ban_value.submission_banned_until =
-                    std::move(create_submission_ban_exp->value());
-                return submission_ban_value;
+    return db_service_util::with_retry_service_write_transaction(
+        connection,
+        [&](pqxx::work& transaction)
+            -> std::expected<std::optional<user_dto::submission_ban>, service_error> {
+            const auto create_submission_ban_exp =
+                user_repository::create_submission_ban(
+                    transaction,
+                    user_id,
+                    duration_minutes
+                );
+            if(!create_submission_ban_exp){
+                return std::unexpected(create_submission_ban_exp.error());
             }
-        )
+            if(!create_submission_ban_exp->has_value()){
+                return std::optional<user_dto::submission_ban>{std::nullopt};
+            }
+
+            user_dto::submission_ban submission_ban_value;
+            submission_ban_value.user_id = user_id;
+            submission_ban_value.duration_minutes = duration_minutes;
+            submission_ban_value.submission_banned_until =
+                std::move(create_submission_ban_exp->value());
+            return submission_ban_value;
+        }
     );
 }
 
@@ -123,19 +106,15 @@ user_service::get_submission_ban_status(
         return std::unexpected(service_error::validation_error);
     }
 
-    return db_service_util::map_error_to_service_error(
-        db_service_util::with_retry_read_transaction(
-            connection,
-            [&](pqxx::read_transaction& transaction)
-                -> std::expected<std::optional<user_dto::submission_ban_status>, error_code> {
-                return db_service_error_bridge::map_repository_error(
-                    user_repository::get_submission_ban_status(
-                        transaction,
-                        user_id
-                    )
-                );
-            }
-        )
+    return db_service_util::with_retry_service_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<std::optional<user_dto::submission_ban_status>, service_error> {
+            return user_repository::get_submission_ban_status(
+                transaction,
+                user_id
+            );
+        }
     );
 }
 
@@ -148,25 +127,21 @@ std::expected<bool, service_error> user_service::update_submission_banned_until(
         return std::unexpected(service_error::validation_error);
     }
 
-    return db_service_util::map_error_to_service_error(
-        db_service_util::with_retry_write_transaction(
-            connection,
-            [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
-                const auto update_submission_banned_until_exp =
-                    db_service_error_bridge::map_repository_error(
-                        user_repository::update_submission_banned_until(
-                            transaction,
-                            user_id,
-                            submission_banned_until
-                        )
-                    );
-                if(!update_submission_banned_until_exp){
-                    return std::unexpected(update_submission_banned_until_exp.error());
-                }
-
-                return *update_submission_banned_until_exp;
+    return db_service_util::with_retry_service_write_transaction(
+        connection,
+        [&](pqxx::work& transaction) -> std::expected<bool, service_error> {
+            const auto update_submission_banned_until_exp =
+                user_repository::update_submission_banned_until(
+                    transaction,
+                    user_id,
+                    submission_banned_until
+                );
+            if(!update_submission_banned_until_exp){
+                return std::unexpected(update_submission_banned_until_exp.error());
             }
-        )
+
+            return *update_submission_banned_until_exp;
+        }
     );
 }
 
@@ -178,23 +153,19 @@ std::expected<bool, service_error> user_service::clear_submission_banned_until(
         return std::unexpected(service_error::validation_error);
     }
 
-    return db_service_util::map_error_to_service_error(
-        db_service_util::with_retry_write_transaction(
-            connection,
-            [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
-                const auto clear_submission_banned_until_exp =
-                    db_service_error_bridge::map_repository_error(
-                        user_repository::clear_submission_banned_until(
-                            transaction,
-                            user_id
-                        )
-                    );
-                if(!clear_submission_banned_until_exp){
-                    return std::unexpected(clear_submission_banned_until_exp.error());
-                }
-
-                return *clear_submission_banned_until_exp;
+    return db_service_util::with_retry_service_write_transaction(
+        connection,
+        [&](pqxx::work& transaction) -> std::expected<bool, service_error> {
+            const auto clear_submission_banned_until_exp =
+                user_repository::clear_submission_banned_until(
+                    transaction,
+                    user_id
+                );
+            if(!clear_submission_banned_until_exp){
+                return std::unexpected(clear_submission_banned_until_exp.error());
             }
-        )
+
+            return *clear_submission_banned_until_exp;
+        }
     );
 }

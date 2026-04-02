@@ -21,6 +21,7 @@ struct service_error{
     std::string message;
 
     service_error(service_error_code code_value, std::string message_value = {});
+    service_error(const repository_error& ec);
 
     bool operator==(const service_error& other) const;
 
