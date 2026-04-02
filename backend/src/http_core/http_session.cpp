@@ -175,8 +175,8 @@ http_session::response_type http_session::create_read_error_response(
         ? boost::beast::http::status::payload_too_large
         : boost::beast::http::status::bad_request;
     const auto error_code_text = ec == boost::beast::http::error::body_limit
-        ? "payload_too_large"
-        : "bad_request";
+        ? to_code_string(http_error_code::payload_too_large)
+        : to_code_string(http_error_code::bad_request);
     const std::string error_message = ec == boost::beast::http::error::body_limit
         ? "request body too large"
         : "bad request: " + ec.message();

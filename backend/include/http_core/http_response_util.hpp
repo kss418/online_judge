@@ -1,5 +1,6 @@
 #pragma once
 
+#include "error/http_error.hpp"
 #include "error/service_error.hpp"
 
 #include <boost/json.hpp>
@@ -79,6 +80,10 @@ namespace http_response_util{
         std::string_view code,
         std::string_view message,
         std::optional<std::string> field_opt = std::nullopt
+    );
+    response_type create_error(
+        const request_type& request,
+        const http_error& error
     );
     response_type create_bearer_error(
         const request_type& request,

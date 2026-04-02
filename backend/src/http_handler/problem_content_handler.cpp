@@ -219,9 +219,7 @@ problem_content_handler::response_type problem_content_handler::delete_sample(
                     if(sample_values.empty()){
                         return http_response_util::create_error(
                             request,
-                            boost::beast::http::status::bad_request,
-                            "invalid_sample_delete_request",
-                            "failed to delete sample: invalid argument"
+                            http_error{http_error_code::invalid_sample_delete_request}
                         );
                     }
 

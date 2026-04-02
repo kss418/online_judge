@@ -50,7 +50,7 @@ namespace{
             "problem_id",
             [](problem_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.problem_id_opt,
                     key,
@@ -63,7 +63,7 @@ namespace{
             "title",
             [](problem_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.title_opt,
                     key,
@@ -82,7 +82,7 @@ namespace{
             "state",
             [](problem_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.state_opt,
                     key,
@@ -95,7 +95,7 @@ namespace{
             "sort",
             [](problem_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.sort_opt,
                     key,
@@ -108,7 +108,7 @@ namespace{
             "direction",
             [](problem_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.direction_opt,
                     key,
@@ -121,7 +121,7 @@ namespace{
             "limit",
             [](problem_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.limit_opt,
                     key,
@@ -134,7 +134,7 @@ namespace{
             "offset",
             [](problem_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.offset_opt,
                     key,
@@ -168,14 +168,14 @@ bool problem_dto::is_valid(const testcase_ref& testcase_reference_value){
         testcase_reference_value.testcase_order > 0;
 }
 
-std::expected<problem_dto::create_request, dto_validation_error>
+std::expected<problem_dto::create_request, http_error>
 problem_dto::make_create_request_from_json(const boost::json::object& json){
     const auto title_opt = json_field_util::get_non_empty_string_field(json, "title");
     if(!title_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: title",
-            .field_opt = "title"
+        return std::unexpected(http_error{
+            http_error_code::missing_field,
+            "required field: title",
+            "title"
         });
     }
 
@@ -184,14 +184,14 @@ problem_dto::make_create_request_from_json(const boost::json::object& json){
     return create_request_value;
 }
 
-std::expected<problem_dto::update_request, dto_validation_error>
+std::expected<problem_dto::update_request, http_error>
 problem_dto::make_update_request_from_json(const boost::json::object& json){
     const auto title_opt = json_field_util::get_non_empty_string_field(json, "title");
     if(!title_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: title",
-            .field_opt = "title"
+        return std::unexpected(http_error{
+            http_error_code::missing_field,
+            "required field: title",
+            "title"
         });
     }
 
@@ -200,7 +200,7 @@ problem_dto::make_update_request_from_json(const boost::json::object& json){
     return update_request_value;
 }
 
-std::expected<problem_dto::list_filter, dto_validation_error>
+std::expected<problem_dto::list_filter, http_error>
 problem_dto::make_list_filter_from_query_params(
     const std::vector<query_param>& query_params
 ){
@@ -210,24 +210,24 @@ problem_dto::make_list_filter_from_query_params(
     );
 }
 
-std::expected<problem_dto::testcase, dto_validation_error> problem_dto::make_testcase_from_json(
+std::expected<problem_dto::testcase, http_error> problem_dto::make_testcase_from_json(
     const boost::json::object& json
 ){
     const auto input_opt = json_field_util::get_string_field(json, "testcase_input");
     if(!input_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: testcase_input",
-            .field_opt = "testcase_input"
+        return std::unexpected(http_error{
+            http_error_code::missing_field,
+            "required field: testcase_input",
+            "testcase_input"
         });
     }
 
     const auto output_opt = json_field_util::get_string_field(json, "testcase_output");
     if(!output_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: testcase_output",
-            .field_opt = "testcase_output"
+        return std::unexpected(http_error{
+            http_error_code::missing_field,
+            "required field: testcase_output",
+            "testcase_output"
         });
     }
 
@@ -237,17 +237,17 @@ std::expected<problem_dto::testcase, dto_validation_error> problem_dto::make_tes
     return testcase_value;
 }
 
-std::expected<problem_dto::testcase_move_request, dto_validation_error>
+std::expected<problem_dto::testcase_move_request, http_error>
 problem_dto::make_testcase_move_request_from_json(const boost::json::object& json){
     const auto source_testcase_order_opt = json_field_util::get_positive_int32_field(
         json,
         "source_testcase_order"
     );
     if(!source_testcase_order_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "invalid_field",
-            .message = "source_testcase_order must be a positive integer",
-            .field_opt = "source_testcase_order"
+        return std::unexpected(http_error{
+            http_error_code::invalid_field,
+            "source_testcase_order must be a positive integer",
+            "source_testcase_order"
         });
     }
 
@@ -256,10 +256,10 @@ problem_dto::make_testcase_move_request_from_json(const boost::json::object& jso
         "target_testcase_order"
     );
     if(!target_testcase_order_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "invalid_field",
-            .message = "target_testcase_order must be a positive integer",
-            .field_opt = "target_testcase_order"
+        return std::unexpected(http_error{
+            http_error_code::invalid_field,
+            "target_testcase_order must be a positive integer",
+            "target_testcase_order"
         });
     }
 

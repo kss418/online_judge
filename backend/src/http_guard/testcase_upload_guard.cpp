@@ -13,94 +13,101 @@ namespace{
             case error_kind::create_temp_file_failed:
                 return http_response_util::create_error(
                     request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to create testcase zip temp file: " + error_value.detail
+                    http_error{
+                        http_error_code::internal_server_error,
+                        "failed to create testcase zip temp file: " + error_value.detail
+                    }
                 );
             case error_kind::write_temp_file_failed:
                 return http_response_util::create_error(
                     request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to write testcase zip temp file: " + error_value.detail
+                    http_error{
+                        http_error_code::internal_server_error,
+                        "failed to write testcase zip temp file: " + error_value.detail
+                    }
                 );
             case error_kind::finalize_temp_file_failed:
                 return http_response_util::create_error(
                     request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to finalize testcase zip temp file: " + error_value.detail
+                    http_error{
+                        http_error_code::internal_server_error,
+                        "failed to finalize testcase zip temp file: " + error_value.detail
+                    }
                 );
             case error_kind::inspect_zip_unavailable:
                 return http_response_util::create_error(
                     request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to inspect testcase zip: unzip command unavailable"
+                    http_error{
+                        http_error_code::internal_server_error,
+                        "failed to inspect testcase zip: unzip command unavailable"
+                    }
                 );
             case error_kind::inspect_zip_invalid:
                 return http_response_util::create_error(
                     request,
-                    boost::beast::http::status::bad_request,
-                    "invalid_testcase_zip",
-                    "invalid testcase zip"
+                    http_error{http_error_code::invalid_testcase_zip}
                 );
             case error_kind::inspect_zip_failed:
                 return http_response_util::create_error(
                     request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to inspect testcase zip: " + error_value.detail
+                    http_error{
+                        http_error_code::internal_server_error,
+                        "failed to inspect testcase zip: " + error_value.detail
+                    }
                 );
             case error_kind::invalid_archive_entries:
                 return http_response_util::create_error(
                     request,
-                    boost::beast::http::status::bad_request,
-                    "invalid_testcase_zip",
-                    error_value.detail
+                    http_error{
+                        http_error_code::invalid_testcase_zip,
+                        error_value.detail
+                    }
                 );
             case error_kind::create_extract_directory_failed:
                 return http_response_util::create_error(
                     request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to create testcase extract directory: " + error_value.detail
+                    http_error{
+                        http_error_code::internal_server_error,
+                        "failed to create testcase extract directory: " + error_value.detail
+                    }
                 );
             case error_kind::extract_zip_unavailable:
                 return http_response_util::create_error(
                     request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to extract testcase zip: unzip command unavailable"
+                    http_error{
+                        http_error_code::internal_server_error,
+                        "failed to extract testcase zip: unzip command unavailable"
+                    }
                 );
             case error_kind::extract_zip_invalid:
                 return http_response_util::create_error(
                     request,
-                    boost::beast::http::status::bad_request,
-                    "invalid_testcase_zip",
-                    "invalid testcase zip"
+                    http_error{http_error_code::invalid_testcase_zip}
                 );
             case error_kind::extract_zip_failed:
                 return http_response_util::create_error(
                     request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to extract testcase zip: " + error_value.detail
+                    http_error{
+                        http_error_code::internal_server_error,
+                        "failed to extract testcase zip: " + error_value.detail
+                    }
                 );
             case error_kind::load_testcases_failed:
                 return http_response_util::create_error(
                     request,
-                    boost::beast::http::status::internal_server_error,
-                    "internal_server_error",
-                    "failed to read extracted testcase files: " + error_value.detail
+                    http_error{
+                        http_error_code::internal_server_error,
+                        "failed to read extracted testcase files: " + error_value.detail
+                    }
                 );
         }
 
         return http_response_util::create_error(
             request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to process testcase zip"
+            http_error{
+                http_error_code::internal_server_error,
+                "failed to process testcase zip"
+            }
         );
     }
 }
@@ -110,9 +117,10 @@ testcase_upload_guard::require_testcase_zip_upload(const request_type& request){
     if(request.body().empty()){
         return std::unexpected(http_response_util::create_error(
             request,
-            boost::beast::http::status::bad_request,
-            "invalid_testcase_zip",
-            "invalid testcase zip: request body is empty"
+            http_error{
+                http_error_code::invalid_testcase_zip,
+                "invalid testcase zip: request body is empty"
+            }
         ));
     }
 

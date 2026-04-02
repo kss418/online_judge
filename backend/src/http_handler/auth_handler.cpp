@@ -54,9 +54,7 @@ auth_handler::response_type auth_handler::post_login(
                 [&]{
                     return http_response_util::create_error(
                         request,
-                        boost::beast::http::status::unauthorized,
-                        "invalid_credentials",
-                        "invalid credentials"
+                        http_error{http_error_code::invalid_credentials}
                     );
                 }
             );
@@ -85,10 +83,9 @@ auth_handler::response_type auth_handler::post_token_renew(
                 std::move(renew_token_exp),
                 "token renewed",
                 [&]{
-                    return http_response_util::create_bearer_error(
+                    return http_response_util::create_error(
                         request,
-                        "invalid_or_expired_token",
-                        "invalid, expired, or revoked token"
+                        http_error{http_error_code::invalid_or_expired_token}
                     );
                 }
             );
@@ -115,10 +112,9 @@ auth_handler::response_type auth_handler::post_logout(
                 std::move(revoke_token_exp),
                 "logged out",
                 [&]{
-                    return http_response_util::create_bearer_error(
+                    return http_response_util::create_error(
                         request,
-                        "invalid_or_expired_token",
-                        "invalid, expired, or revoked token"
+                        http_error{http_error_code::invalid_or_expired_token}
                     );
                 }
             );

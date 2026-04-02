@@ -17,7 +17,7 @@ namespace{
             value.size() <= credential_max_length;
     }
 
-    std::optional<dto_validation_error> validate_credential_length(
+    std::optional<http_error> validate_credential_length(
         std::string_view field_name,
         std::string_view value
     ){
@@ -25,10 +25,10 @@ namespace{
             value.size() < credential_min_length ||
             value.size() > credential_max_length
         ){
-            return dto_validation_error{
-                .code = "invalid_length",
-                .message = std::string{field_name} + " must be between 4 and 15 characters",
-                .field_opt = std::string{field_name}
+            return http_error{
+                http_error_code::invalid_length,
+                std::string{field_name} + " must be between 4 and 15 characters",
+                std::string{field_name}
             };
         }
 
@@ -68,7 +68,7 @@ bool auth_dto::is_valid(const hashed_credentials& hashed_credentials_value){
         !hashed_credentials_value.password_hash.empty();
 }
 
-std::expected<auth_dto::sign_up_request, dto_validation_error>
+std::expected<auth_dto::sign_up_request, http_error>
 auth_dto::make_sign_up_request_from_json(const boost::json::object& json){
     const auto credentials_exp = make_credentials_from_json(json);
     if(!credentials_exp){
@@ -81,7 +81,7 @@ auth_dto::make_sign_up_request_from_json(const boost::json::object& json){
     return sign_up_request_value;
 }
 
-std::expected<auth_dto::credentials, dto_validation_error> auth_dto::make_credentials_from_json(
+std::expected<auth_dto::credentials, http_error> auth_dto::make_credentials_from_json(
     const boost::json::object& json
 ){
     const auto user_login_id_opt = json_field_util::get_non_empty_string_field(
@@ -89,10 +89,10 @@ std::expected<auth_dto::credentials, dto_validation_error> auth_dto::make_creden
         "user_login_id"
     );
     if(!user_login_id_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: user_login_id",
-            .field_opt = "user_login_id"
+        return std::unexpected(http_error{
+            http_error_code::missing_field,
+            "required field: user_login_id",
+            "user_login_id"
         });
     }
 
@@ -101,10 +101,10 @@ std::expected<auth_dto::credentials, dto_validation_error> auth_dto::make_creden
         "raw_password"
     );
     if(!raw_password_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: raw_password",
-            .field_opt = "raw_password"
+        return std::unexpected(http_error{
+            http_error_code::missing_field,
+            "required field: raw_password",
+            "raw_password"
         });
     }
 

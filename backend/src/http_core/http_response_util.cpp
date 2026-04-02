@@ -10,48 +10,15 @@
 #include <boost/beast/version.hpp>
 
 namespace{
-    struct mapped_http_error{
-        boost::beast::http::status status;
-        std::string_view code;
-    };
-
-    mapped_http_error map_http_error(const service_error& code){
-        const http_error http_error_value(code);
-
-        if(http_error_value == http_error::validation_error){
-            return mapped_http_error{
-                .status = boost::beast::http::status::bad_request,
-                .code = "validation_error"
-            };
-        }
-        if(http_error_value == http_error::unauthorized){
-            return mapped_http_error{
-                .status = boost::beast::http::status::unauthorized,
-                .code = "unauthorized"
-            };
-        }
-        if(http_error_value == http_error::forbidden){
-            return mapped_http_error{
-                .status = boost::beast::http::status::forbidden,
-                .code = "forbidden"
-            };
-        }
-        if(http_error_value == http_error::not_found){
-            return mapped_http_error{
-                .status = boost::beast::http::status::not_found,
-                .code = "not_found"
-            };
-        }
-        if(http_error_value == http_error::conflict){
-            return mapped_http_error{
-                .status = boost::beast::http::status::conflict,
-                .code = "conflict"
-            };
+    http_error map_not_found_from_bad_request(http_error error){
+        if(error.status() != boost::beast::http::status::bad_request){
+            return error;
         }
 
-        return mapped_http_error{
-            .status = boost::beast::http::status::internal_server_error,
-            .code = "internal_server_error"
+        return http_error{
+            http_error_code::not_found,
+            std::move(error.message),
+            std::move(error.field_opt)
         };
     }
 
@@ -62,21 +29,13 @@ namespace{
         const error_type& code,
         bool not_found_from_bad_request
     ){
-        auto mapped_error = map_http_error(code);
-        if(
-            not_found_from_bad_request &&
-            mapped_error.status == boost::beast::http::status::bad_request
-        ){
-            mapped_error.status = boost::beast::http::status::not_found;
-            mapped_error.code = "not_found";
+        auto mapped_error = http_error::from_service_error(code);
+        mapped_error.message = "failed to " + std::string{action} + ": " + to_string(code);
+        if(not_found_from_bad_request){
+            mapped_error = map_not_found_from_bad_request(std::move(mapped_error));
         }
 
-        return http_response_util::create_error(
-            request,
-            mapped_error.status,
-            mapped_error.code,
-            "failed to " + std::string{action} + ": " + to_string(code)
-        );
+        return http_response_util::create_error(request, mapped_error);
     }
 }
 
@@ -134,6 +93,25 @@ http_response_util::response_type http_response_util::create_error(
     );
 }
 
+http_response_util::response_type http_response_util::create_error(
+    const request_type& request,
+    const http_error& error
+){
+    auto response = create_json(
+        request,
+        error.status(),
+        common_json_serializer::make_error_object(
+            error.code_string(),
+            error.message,
+            error.field_opt
+        )
+    );
+    if(error.requires_bearer_auth()){
+        response.set(boost::beast::http::field::www_authenticate, "Bearer");
+    }
+    return response;
+}
+
 http_response_util::response_type http_response_util::create_bearer_error(
     const request_type& request,
     std::string_view code,
@@ -170,34 +148,19 @@ http_response_util::response_type http_response_util::create_bearer_unauthorized
     std::string body
 ){
     const auto message = string_util::trim_right_whitespace(body);
-    auto response = create_bearer_error(
-        request,
-        "unauthorized",
-        message
-    );
-    return response;
+    return create_bearer_error(request, to_code_string(http_error_code::unauthorized), message);
 }
 
 http_response_util::response_type http_response_util::create_method_not_allowed(
     const request_type& request
 ){
-    return create_error(
-        request,
-        boost::beast::http::status::method_not_allowed,
-        "method_not_allowed",
-        "method not allowed"
-    );
+    return create_error(request, http_error{http_error_code::method_not_allowed});
 }
 
 http_response_util::response_type http_response_util::create_not_found(
     const request_type& request
 ){
-    return create_error(
-        request,
-        boost::beast::http::status::not_found,
-        "not_found",
-        "not found"
-    );
+    return create_error(request, http_error{http_error_code::not_found});
 }
 
 http_response_util::response_type http_response_util::create_resource_not_found(
@@ -216,17 +179,17 @@ http_response_util::response_type http_response_util::create_resource_not_found(
 http_response_util::response_type http_response_util::create_problem_not_found(
     const request_type& request
 ){
-    return create_resource_not_found(request, "problem");
+    return create_error(request, http_error{http_error_code::problem_not_found});
 }
 
 http_response_util::response_type http_response_util::create_user_not_found(
     const request_type& request
 ){
-    return create_resource_not_found(request, "user");
+    return create_error(request, http_error{http_error_code::user_not_found});
 }
 
 http_response_util::response_type http_response_util::create_testcase_not_found(
     const request_type& request
 ){
-    return create_resource_not_found(request, "testcase");
+    return create_error(request, http_error{http_error_code::testcase_not_found});
 }

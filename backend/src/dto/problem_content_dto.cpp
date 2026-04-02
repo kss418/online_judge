@@ -17,17 +17,17 @@ bool problem_content_dto::is_valid(const sample_ref& sample_reference_value){
     return sample_reference_value.problem_id > 0 && sample_reference_value.sample_order > 0;
 }
 
-std::expected<problem_content_dto::limits, dto_validation_error>
+std::expected<problem_content_dto::limits, http_error>
 problem_content_dto::make_limits_from_json(const boost::json::object& json){
     const auto memory_limit_mb_opt = json_field_util::get_positive_int32_field(
         json,
         "memory_limit_mb"
     );
     if(!memory_limit_mb_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "invalid_field",
-            .message = "memory_limit_mb must be a positive integer",
-            .field_opt = "memory_limit_mb"
+        return std::unexpected(http_error{
+            http_error_code::invalid_field,
+            "memory_limit_mb must be a positive integer",
+            "memory_limit_mb"
         });
     }
 
@@ -36,10 +36,10 @@ problem_content_dto::make_limits_from_json(const boost::json::object& json){
         "time_limit_ms"
     );
     if(!time_limit_ms_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "invalid_field",
-            .message = "time_limit_ms must be a positive integer",
-            .field_opt = "time_limit_ms"
+        return std::unexpected(http_error{
+            http_error_code::invalid_field,
+            "time_limit_ms must be a positive integer",
+            "time_limit_ms"
         });
     }
 
@@ -49,17 +49,17 @@ problem_content_dto::make_limits_from_json(const boost::json::object& json){
     return limits_value;
 }
 
-std::expected<problem_content_dto::statement, dto_validation_error>
+std::expected<problem_content_dto::statement, http_error>
 problem_content_dto::make_statement_from_json(const boost::json::object& json){
     const auto description_opt = json_field_util::get_non_empty_string_field(
         json,
         "description"
     );
     if(!description_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: description",
-            .field_opt = "description"
+        return std::unexpected(http_error{
+            http_error_code::missing_field,
+            "required field: description",
+            "description"
         });
     }
 
@@ -68,10 +68,10 @@ problem_content_dto::make_statement_from_json(const boost::json::object& json){
         "input_format"
     );
     if(!input_format_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: input_format",
-            .field_opt = "input_format"
+        return std::unexpected(http_error{
+            http_error_code::missing_field,
+            "required field: input_format",
+            "input_format"
         });
     }
 
@@ -80,10 +80,10 @@ problem_content_dto::make_statement_from_json(const boost::json::object& json){
         "output_format"
     );
     if(!output_format_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: output_format",
-            .field_opt = "output_format"
+        return std::unexpected(http_error{
+            http_error_code::missing_field,
+            "required field: output_format",
+            "output_format"
         });
     }
 
@@ -102,10 +102,10 @@ problem_content_dto::make_statement_from_json(const boost::json::object& json){
             statement_value.note = std::string{note_string.data(), note_string.size()};
         }
         else{
-            return std::unexpected(dto_validation_error{
-                .code = "invalid_field",
-                .message = "note must be a string or null",
-                .field_opt = "note"
+            return std::unexpected(http_error{
+                http_error_code::invalid_field,
+                "note must be a string or null",
+                "note"
             });
         }
     }
@@ -113,23 +113,23 @@ problem_content_dto::make_statement_from_json(const boost::json::object& json){
     return statement_value;
 }
 
-std::expected<problem_content_dto::sample, dto_validation_error>
+std::expected<problem_content_dto::sample, http_error>
 problem_content_dto::make_sample_from_json(const boost::json::object& json){
     const auto input_opt = json_field_util::get_string_field(json, "sample_input");
     if(!input_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: sample_input",
-            .field_opt = "sample_input"
+        return std::unexpected(http_error{
+            http_error_code::missing_field,
+            "required field: sample_input",
+            "sample_input"
         });
     }
 
     const auto output_opt = json_field_util::get_string_field(json, "sample_output");
     if(!output_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: sample_output",
-            .field_opt = "sample_output"
+        return std::unexpected(http_error{
+            http_error_code::missing_field,
+            "required field: sample_output",
+            "sample_output"
         });
     }
 

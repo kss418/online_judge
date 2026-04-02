@@ -41,7 +41,7 @@ namespace{
             "user_id",
             [](submission_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.user_id_opt,
                     key,
@@ -54,7 +54,7 @@ namespace{
             "user_login_id",
             [](submission_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.user_login_id_opt,
                     key,
@@ -73,7 +73,7 @@ namespace{
             "problem_id",
             [](submission_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.problem_id_opt,
                     key,
@@ -86,7 +86,7 @@ namespace{
             "language",
             [](submission_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.language_opt,
                     key,
@@ -106,7 +106,7 @@ namespace{
             "status",
             [](submission_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.status_opt,
                     key,
@@ -126,7 +126,7 @@ namespace{
             "limit",
             [](submission_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.limit_opt,
                     key,
@@ -139,7 +139,7 @@ namespace{
             "before_submission_id",
             [](submission_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.before_submission_id_opt,
                     key,
@@ -177,7 +177,7 @@ bool submission_dto::is_valid(const finalize_request& finalize_request_value){
     return finalize_request_value.submission_id > 0;
 }
 
-std::expected<submission_dto::source, dto_validation_error> submission_dto::make_source_from_json(
+std::expected<submission_dto::source, http_error> submission_dto::make_source_from_json(
     const boost::json::object& json
 ){
     const auto language_opt = json_field_util::get_non_empty_string_field(
@@ -185,17 +185,17 @@ std::expected<submission_dto::source, dto_validation_error> submission_dto::make
         "language"
     );
     if(!language_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: language",
-            .field_opt = "language"
+        return std::unexpected(http_error{
+            http_error_code::missing_field,
+            "required field: language",
+            "language"
         });
     }
     if(!language_util::find_supported_language(*language_opt)){
-        return std::unexpected(dto_validation_error{
-            .code = "invalid_field",
-            .message = "unsupported language: " + std::string{*language_opt},
-            .field_opt = "language"
+        return std::unexpected(http_error{
+            http_error_code::invalid_field,
+            "unsupported language: " + std::string{*language_opt},
+            "language"
         });
     }
 
@@ -204,10 +204,10 @@ std::expected<submission_dto::source, dto_validation_error> submission_dto::make
         "source_code"
     );
     if(!source_code_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: source_code",
-            .field_opt = "source_code"
+        return std::unexpected(http_error{
+            http_error_code::missing_field,
+            "required field: source_code",
+            "source_code"
         });
     }
 
@@ -217,7 +217,7 @@ std::expected<submission_dto::source, dto_validation_error> submission_dto::make
     return source_value;
 }
 
-std::expected<submission_dto::list_filter, dto_validation_error>
+std::expected<submission_dto::list_filter, http_error>
 submission_dto::make_list_filter_from_query_params(
     const std::vector<query_param>& query_params
 ){
@@ -227,23 +227,23 @@ submission_dto::make_list_filter_from_query_params(
     );
 }
 
-std::expected<submission_dto::status_batch_request, dto_validation_error>
+std::expected<submission_dto::status_batch_request, http_error>
 submission_dto::make_status_batch_request_from_json(
     const boost::json::object& json
 ){
     const auto* submission_ids_value = json.if_contains("submission_ids");
     if(submission_ids_value == nullptr){
-        return std::unexpected(dto_validation_error{
-            .code = "missing_field",
-            .message = "required field: submission_ids",
-            .field_opt = "submission_ids"
+        return std::unexpected(http_error{
+            http_error_code::missing_field,
+            "required field: submission_ids",
+            "submission_ids"
         });
     }
     if(!submission_ids_value->is_array()){
-        return std::unexpected(dto_validation_error{
-            .code = "invalid_field",
-            .message = "submission_ids must be an array of positive integers",
-            .field_opt = "submission_ids"
+        return std::unexpected(http_error{
+            http_error_code::invalid_field,
+            "submission_ids must be an array of positive integers",
+            "submission_ids"
         });
     }
 
@@ -253,10 +253,10 @@ submission_dto::make_status_batch_request_from_json(
     for(const auto& submission_id_value : submission_ids){
         const auto submission_id_opt = parse_positive_json_int64(submission_id_value);
         if(!submission_id_opt){
-            return std::unexpected(dto_validation_error{
-                .code = "invalid_field",
-                .message = "submission_ids must be an array of positive integers",
-                .field_opt = "submission_ids"
+            return std::unexpected(http_error{
+                http_error_code::invalid_field,
+                "submission_ids must be an array of positive integers",
+                "submission_ids"
             });
         }
 
@@ -266,24 +266,24 @@ submission_dto::make_status_batch_request_from_json(
     return request_value;
 }
 
-std::expected<submission_dto::create_request, dto_validation_error>
+std::expected<submission_dto::create_request, http_error>
 submission_dto::make_create_request_from_json(
     const boost::json::object& json,
     std::int64_t user_id,
     std::int64_t problem_id
 ){
     if(user_id <= 0){
-        return std::unexpected(dto_validation_error{
-            .code = "invalid_argument",
-            .message = "user_id must be positive",
-            .field_opt = "user_id"
+        return std::unexpected(http_error{
+            http_error_code::invalid_argument,
+            "user_id must be positive",
+            "user_id"
         });
     }
     if(problem_id <= 0){
-        return std::unexpected(dto_validation_error{
-            .code = "invalid_argument",
-            .message = "problem_id must be positive",
-            .field_opt = "problem_id"
+        return std::unexpected(http_error{
+            http_error_code::invalid_argument,
+            "problem_id must be positive",
+            "problem_id"
         });
     }
 

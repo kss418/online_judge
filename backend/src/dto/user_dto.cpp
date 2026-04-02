@@ -12,7 +12,7 @@ namespace{
             "q",
             [](user_dto::list_filter& filter_value,
                std::string_view key,
-               std::string_view raw_value) -> std::expected<void, dto_validation_error> {
+               std::string_view raw_value) -> std::expected<void, http_error> {
                 return query_param_util::parse_unique_query_param(
                     filter_value.query_opt,
                     key,
@@ -30,17 +30,17 @@ namespace{
     }};
 }
 
-std::expected<user_dto::submission_ban_request, dto_validation_error>
+std::expected<user_dto::submission_ban_request, http_error>
 user_dto::make_submission_ban_request_from_json(const boost::json::object& json){
     const auto duration_minutes_opt = json_field_util::get_positive_int32_field(
         json,
         "duration_minutes"
     );
     if(!duration_minutes_opt){
-        return std::unexpected(dto_validation_error{
-            .code = "invalid_field",
-            .message = "duration_minutes must be a positive integer",
-            .field_opt = "duration_minutes"
+        return std::unexpected(http_error{
+            http_error_code::invalid_field,
+            "duration_minutes must be a positive integer",
+            "duration_minutes"
         });
     }
 
@@ -49,7 +49,7 @@ user_dto::make_submission_ban_request_from_json(const boost::json::object& json)
     return request_value;
 }
 
-std::expected<user_dto::list_filter, dto_validation_error>
+std::expected<user_dto::list_filter, http_error>
 user_dto::make_list_filter_from_query_params(
     const std::vector<query_param>& query_params
 ){

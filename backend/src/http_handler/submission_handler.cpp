@@ -122,9 +122,7 @@ submission_handler::response_type submission_handler::post_submission(
                     if(is_submission_banned_error(code)){
                         return http_response_util::create_error(
                             error_request,
-                            boost::beast::http::status::forbidden,
-                            "submission_banned",
-                            "submission is currently banned"
+                            http_error{http_error_code::submission_banned}
                         );
                     }
 

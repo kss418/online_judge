@@ -102,17 +102,19 @@ http_dispatcher::response_type http_dispatcher::handle(const request_type& reque
         if(db_connection_lease_exp.error() == pool_error::timed_out){
             return http_response_util::create_error(
                 request,
-                boost::beast::http::status::service_unavailable,
-                "service_unavailable",
-                "db connection pool is busy, retry later"
+                http_error{
+                    http_error_code::service_unavailable,
+                    "db connection pool is busy, retry later"
+                }
             );
         }
 
         return http_response_util::create_error(
             request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to acquire db connection: " + to_string(db_connection_lease_exp.error())
+            http_error{
+                http_error_code::internal_server_error,
+                "failed to acquire db connection: " + to_string(db_connection_lease_exp.error())
+            }
         );
     }
 

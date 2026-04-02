@@ -1,6 +1,5 @@
 #pragma once
 
-#include "dto/dto_validation_error.hpp"
 #include "http_core/http_response_util.hpp"
 #include "http_core/request_parser.hpp"
 
@@ -23,9 +22,7 @@ namespace request_dto{
         if(!request_object_opt){
             return std::unexpected(http_response_util::create_error(
                 request,
-                boost::beast::http::status::bad_request,
-                "invalid_json",
-                "invalid json"
+                http_error{http_error_code::invalid_json}
             ));
         }
 
@@ -35,13 +32,9 @@ namespace request_dto{
             std::forward<arg_types>(args)...
         );
         if(!dto_exp){
-            const auto& validation_error = dto_exp.error();
             return std::unexpected(http_response_util::create_error(
                 request,
-                boost::beast::http::status::bad_request,
-                validation_error.code,
-                validation_error.message,
-                validation_error.field_opt
+                dto_exp.error()
             ));
         }
 
@@ -76,9 +69,7 @@ namespace request_dto{
         if(!query_params_opt){
             return std::unexpected(http_response_util::create_error(
                 request,
-                boost::beast::http::status::bad_request,
-                "invalid_query_string",
-                "invalid query string"
+                http_error{http_error_code::invalid_query_string}
             ));
         }
 
@@ -88,13 +79,9 @@ namespace request_dto{
             std::forward<arg_types>(args)...
         );
         if(!dto_exp){
-            const auto& validation_error = dto_exp.error();
             return std::unexpected(http_response_util::create_error(
                 request,
-                boost::beast::http::status::bad_request,
-                validation_error.code,
-                validation_error.message,
-                validation_error.field_opt
+                dto_exp.error()
             ));
         }
 

@@ -15,10 +15,9 @@ std::expected<auth_dto::token, auth_guard::response_type> auth_guard::parse_bear
 ){
     const auto token_opt = get_bearer_token(request);
     if(!token_opt){
-        return std::unexpected(http_response_util::create_bearer_error(
+        return std::unexpected(http_response_util::create_error(
             request,
-            "missing_or_invalid_bearer_token",
-            "missing or invalid bearer token"
+            http_error{http_error_code::missing_or_invalid_bearer_token}
         ));
     }
 
@@ -40,25 +39,24 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require
     if(!auth_identity_exp){
         const auto code = auth_identity_exp.error();
         if(code == service_error::unauthorized){
-            return std::unexpected(http_response_util::create_bearer_error(
+            return std::unexpected(http_response_util::create_error(
                 request,
-                "missing_or_invalid_bearer_token",
-                "missing or invalid bearer token"
+                http_error{http_error_code::missing_or_invalid_bearer_token}
             ));
         }
 
         return std::unexpected(http_response_util::create_error(
             request,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to authenticate token: " + to_string(code)
+            http_error{
+                http_error_code::internal_server_error,
+                "failed to authenticate token: " + to_string(code)
+            }
         ));
     }
     if(!auth_identity_exp->has_value()){
-        return std::unexpected(http_response_util::create_bearer_error(
+        return std::unexpected(http_response_util::create_error(
             request,
-            "invalid_or_expired_token",
-            "invalid, expired, or revoked token"
+            http_error{http_error_code::invalid_or_expired_token}
         ));
     }
 
@@ -92,10 +90,9 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require
         return std::unexpected(std::move(auth_identity_exp.error()));
     }
     if(!permission_util::has_admin_access(auth_identity_exp->permission_level)){
-        return std::unexpected(http_response_util::create_bearer_error(
+        return std::unexpected(http_response_util::create_error(
             request,
-            "admin_bearer_token_required",
-            "admin bearer token required"
+            http_error{http_error_code::admin_bearer_token_required}
         ));
     }
 
@@ -112,10 +109,9 @@ auth_guard::require_superadmin(
         return std::unexpected(std::move(auth_identity_exp.error()));
     }
     if(!permission_util::has_superadmin_access(auth_identity_exp->permission_level)){
-        return std::unexpected(http_response_util::create_bearer_error(
+        return std::unexpected(http_response_util::create_error(
             request,
-            "superadmin_bearer_token_required",
-            "superadmin bearer token required"
+            http_error{http_error_code::superadmin_bearer_token_required}
         ));
     }
 

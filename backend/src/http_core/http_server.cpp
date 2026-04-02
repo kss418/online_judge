@@ -107,9 +107,10 @@ void http_server::async_handle(request_type request, handle_callback callback){
     callback(
         http_response_util::create_error(
             *request_ptr,
-            boost::beast::http::status::internal_server_error,
-            "internal_server_error",
-            "failed to dispatch request: " + to_string(dispatch_error)
+            http_error{
+                http_error_code::internal_server_error,
+                "failed to dispatch request: " + to_string(dispatch_error)
+            }
         )
     );
 }

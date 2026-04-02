@@ -114,8 +114,9 @@ std::expected<void, submission_guard::response_type> submission_guard::require_s
 
     return std::unexpected(http_response_util::create_error(
         request,
-        boost::beast::http::status::forbidden,
-        "forbidden",
-        "submission source access denied"
+        http_error{
+            http_error_code::forbidden,
+            "submission source access denied"
+        }
     ));
 }

@@ -2,7 +2,7 @@
 
 #include "common/query_param.hpp"
 #include "common/submission_status.hpp"
-#include "dto/dto_validation_error.hpp"
+#include "error/http_error.hpp"
 
 #include <boost/json/fwd.hpp>
 
@@ -152,16 +152,16 @@ namespace submission_dto{
     bool is_valid(const status_update& status_update_value);
     bool is_valid(const finalize_request& finalize_request_value);
 
-    std::expected<source, dto_validation_error> make_source_from_json(
+    std::expected<source, http_error> make_source_from_json(
         const boost::json::object& json
     );
-    std::expected<status_batch_request, dto_validation_error> make_status_batch_request_from_json(
+    std::expected<status_batch_request, http_error> make_status_batch_request_from_json(
         const boost::json::object& json
     );
-    std::expected<list_filter, dto_validation_error> make_list_filter_from_query_params(
+    std::expected<list_filter, http_error> make_list_filter_from_query_params(
         const std::vector<query_param>& query_params
     );
-    std::expected<create_request, dto_validation_error> make_create_request_from_json(
+    std::expected<create_request, http_error> make_create_request_from_json(
         const boost::json::object& json,
         std::int64_t user_id,
         std::int64_t problem_id

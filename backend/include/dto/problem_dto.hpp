@@ -2,7 +2,7 @@
 
 #include "common/query_param.hpp"
 #include "dto/problem_content_dto.hpp"
-#include "dto/dto_validation_error.hpp"
+#include "error/http_error.hpp"
 
 #include <boost/json/fwd.hpp>
 
@@ -109,19 +109,19 @@ namespace problem_dto{
     bool is_valid(const update_request& update_request_value);
     bool is_valid(const testcase_ref& testcase_reference_value);
 
-    std::expected<create_request, dto_validation_error> make_create_request_from_json(
+    std::expected<create_request, http_error> make_create_request_from_json(
         const boost::json::object& json
     );
-    std::expected<update_request, dto_validation_error> make_update_request_from_json(
+    std::expected<update_request, http_error> make_update_request_from_json(
         const boost::json::object& json
     );
-    std::expected<list_filter, dto_validation_error> make_list_filter_from_query_params(
+    std::expected<list_filter, http_error> make_list_filter_from_query_params(
         const std::vector<query_param>& query_params
     );
-    std::expected<testcase, dto_validation_error> make_testcase_from_json(
+    std::expected<testcase, http_error> make_testcase_from_json(
         const boost::json::object& json
     );
-    std::expected<testcase_move_request, dto_validation_error> make_testcase_move_request_from_json(
+    std::expected<testcase_move_request, http_error> make_testcase_move_request_from_json(
         const boost::json::object& json
     );
 }
