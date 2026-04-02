@@ -70,7 +70,7 @@ user_handler::response_type user_handler::get_me_submission_ban(
                 std::move(get_submission_ban_status_exp),
                 user_json_serializer::make_submission_ban_status_object,
                 [&]{
-                    return http_response_util::create_user_not_found(request);
+                    return http_response_util::create_not_found(request);
                 }
             );
         },
@@ -301,7 +301,7 @@ user_handler::response_type user_handler::put_user_admin(
                     );
                 },
                 [&]{
-                    return http_response_util::create_user_not_found(request);
+                    return http_response_util::create_not_found(request);
                 }
             );
         },
@@ -334,7 +334,7 @@ user_handler::response_type user_handler::put_user_regular(
                     );
                 },
                 [&]{
-                    return http_response_util::create_user_not_found(request);
+                    return http_response_util::create_not_found(request);
                 }
             );
         },
@@ -361,7 +361,7 @@ user_handler::response_type user_handler::get_user_submission_ban(
                 std::move(get_submission_ban_status_exp),
                 user_json_serializer::make_submission_ban_status_object,
                 [&]{
-                    return http_response_util::create_user_not_found(request);
+                    return http_response_util::create_not_found(request);
                 }
             );
         },
@@ -390,7 +390,7 @@ user_handler::response_type user_handler::post_user_submission_ban(
                 std::move(create_submission_ban_exp),
                 user_json_serializer::make_submission_ban_object,
                 [&]{
-                    return http_response_util::create_user_not_found(request);
+                    return http_response_util::create_not_found(request);
                 },
                 boost::beast::http::status::created
             );
@@ -422,7 +422,7 @@ user_handler::response_type user_handler::delete_user_submission_ban(
                 std::move(clear_submission_banned_until_exp),
                 "user submission ban cleared",
                 [&]{
-                    return http_response_util::create_user_not_found(request);
+                    return http_response_util::create_not_found(request);
                 }
             );
         },

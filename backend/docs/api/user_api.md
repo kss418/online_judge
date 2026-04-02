@@ -765,8 +765,8 @@ Examples:
 ```json
 {
   "error": {
-    "code": "user_not_found",
-    "message": "user not found"
+    "code": "not_found",
+    "message": "not found"
   }
 }
 ```

@@ -187,8 +187,8 @@ Examples:
 ```json
 {
   "error": {
-    "code": "problem_not_found",
-    "message": "problem not found"
+    "code": "not_found",
+    "message": "not found"
   }
 }
 ```

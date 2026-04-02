@@ -37,9 +37,6 @@ enum class http_error_code{
     submission_banned,
     invalid_testcase_zip,
     invalid_sample_delete_request,
-    problem_not_found,
-    user_not_found,
-    testcase_not_found
 };
 
 struct http_error{
@@ -54,7 +51,6 @@ struct http_error{
     );
     http_error(const service_error& error);
 
-    bool operator==(const http_error& other) const;
     boost::beast::http::status status() const;
     std::string_view code_string() const;
     bool requires_bearer_auth() const;
@@ -62,8 +58,4 @@ struct http_error{
     static http_error from_service_error(const service_error& error);
 };
 
-boost::beast::http::status to_status(http_error_code ec);
 std::string_view to_code_string(http_error_code ec);
-bool requires_bearer_auth(http_error_code ec);
-std::string to_string(http_error_code ec);
-std::string to_string(const http_error& ec);

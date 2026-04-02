@@ -1898,7 +1898,7 @@ with open(sys.argv[3], encoding="utf-8") as response_file:
 if unauthorized_response.get("error", {}).get("code") != "admin_bearer_token_required":
     raise SystemExit("unexpected error code for unauthorized problem rejudge response")
 
-if missing_response.get("error", {}).get("code") != "problem_not_found":
+if missing_response.get("error", {}).get("code") != "not_found":
     raise SystemExit("unexpected error code for missing problem rejudge response")
 
 if success_response.get("message") != "problem submissions requeued":

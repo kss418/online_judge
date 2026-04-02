@@ -19,7 +19,7 @@ std::expected<user_dto::summary, user_guard::response_type> user_guard::require_
         ));
     }
     if(!user_summary_exp->has_value()){
-        return std::unexpected(http_response_util::create_user_not_found(request));
+        return std::unexpected(http_response_util::create_not_found(request));
     }
 
     return user_summary_exp->value();
@@ -42,7 +42,7 @@ std::expected<user_dto::summary, user_guard::response_type> user_guard::require_
         ));
     }
     if(!user_summary_exp->has_value()){
-        return std::unexpected(http_response_util::create_user_not_found(request));
+        return std::unexpected(http_response_util::create_not_found(request));
     }
 
     return user_summary_exp->value();

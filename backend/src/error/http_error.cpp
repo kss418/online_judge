@@ -3,6 +3,9 @@
 #include <utility>
 
 namespace{
+    boost::beast::http::status to_status_value(http_error_code ec);
+    bool requires_bearer_auth_value(http_error_code ec);
+
     std::string default_message(http_error_code ec){
         switch(ec){
             case http_error_code::bad_request:
@@ -59,12 +62,6 @@ namespace{
                 return "invalid testcase zip";
             case http_error_code::invalid_sample_delete_request:
                 return "failed to delete sample: invalid argument";
-            case http_error_code::problem_not_found:
-                return "problem not found";
-            case http_error_code::user_not_found:
-                return "user not found";
-            case http_error_code::testcase_not_found:
-                return "testcase not found";
         }
         return "unknown http error";
     }
@@ -107,12 +104,8 @@ http_error::http_error(const service_error& error)
 :
     http_error(from_service_error(error)){}
 
-bool http_error::operator==(const http_error& other) const{
-    return code == other.code;
-}
-
 boost::beast::http::status http_error::status() const{
-    return to_status(code);
+    return to_status_value(code);
 }
 
 std::string_view http_error::code_string() const{
@@ -120,59 +113,58 @@ std::string_view http_error::code_string() const{
 }
 
 bool http_error::requires_bearer_auth() const{
-    return ::requires_bearer_auth(code);
+    return requires_bearer_auth_value(code);
 }
 
 http_error http_error::from_service_error(const service_error& error){
     return http_error{map_service_error_code(error), error.message};
 }
 
-boost::beast::http::status to_status(http_error_code ec){
-    using status = boost::beast::http::status;
+namespace{
+    boost::beast::http::status to_status_value(http_error_code ec){
+        using status = boost::beast::http::status;
 
-    switch(ec){
-        case http_error_code::bad_request:
-        case http_error_code::validation_error:
-        case http_error_code::invalid_json:
-        case http_error_code::invalid_query_string:
-        case http_error_code::duplicate_query_parameter:
-        case http_error_code::invalid_query_parameter:
-        case http_error_code::unsupported_query_parameter:
-        case http_error_code::missing_field:
-        case http_error_code::invalid_field:
-        case http_error_code::invalid_length:
-        case http_error_code::invalid_argument:
-        case http_error_code::invalid_testcase_zip:
-        case http_error_code::invalid_sample_delete_request:
-            return status::bad_request;
-        case http_error_code::payload_too_large:
-            return status::payload_too_large;
-        case http_error_code::method_not_allowed:
-            return status::method_not_allowed;
-        case http_error_code::unauthorized:
-        case http_error_code::missing_or_invalid_bearer_token:
-        case http_error_code::invalid_or_expired_token:
-        case http_error_code::admin_bearer_token_required:
-        case http_error_code::superadmin_bearer_token_required:
-        case http_error_code::invalid_credentials:
-            return status::unauthorized;
-        case http_error_code::forbidden:
-        case http_error_code::submission_banned:
-            return status::forbidden;
-        case http_error_code::not_found:
-        case http_error_code::problem_not_found:
-        case http_error_code::user_not_found:
-        case http_error_code::testcase_not_found:
-            return status::not_found;
-        case http_error_code::conflict:
-            return status::conflict;
-        case http_error_code::service_unavailable:
-            return status::service_unavailable;
-        case http_error_code::internal_server_error:
-            return status::internal_server_error;
+        switch(ec){
+            case http_error_code::bad_request:
+            case http_error_code::validation_error:
+            case http_error_code::invalid_json:
+            case http_error_code::invalid_query_string:
+            case http_error_code::duplicate_query_parameter:
+            case http_error_code::invalid_query_parameter:
+            case http_error_code::unsupported_query_parameter:
+            case http_error_code::missing_field:
+            case http_error_code::invalid_field:
+            case http_error_code::invalid_length:
+            case http_error_code::invalid_argument:
+            case http_error_code::invalid_testcase_zip:
+            case http_error_code::invalid_sample_delete_request:
+                return status::bad_request;
+            case http_error_code::payload_too_large:
+                return status::payload_too_large;
+            case http_error_code::method_not_allowed:
+                return status::method_not_allowed;
+            case http_error_code::unauthorized:
+            case http_error_code::missing_or_invalid_bearer_token:
+            case http_error_code::invalid_or_expired_token:
+            case http_error_code::admin_bearer_token_required:
+            case http_error_code::superadmin_bearer_token_required:
+            case http_error_code::invalid_credentials:
+                return status::unauthorized;
+            case http_error_code::forbidden:
+            case http_error_code::submission_banned:
+                return status::forbidden;
+            case http_error_code::not_found:
+                return status::not_found;
+            case http_error_code::conflict:
+                return status::conflict;
+            case http_error_code::service_unavailable:
+                return status::service_unavailable;
+            case http_error_code::internal_server_error:
+                return status::internal_server_error;
+        }
+
+        return status::internal_server_error;
     }
-
-    return status::internal_server_error;
 }
 
 std::string_view to_code_string(http_error_code ec){
@@ -231,33 +223,21 @@ std::string_view to_code_string(http_error_code ec){
             return "invalid_testcase_zip";
         case http_error_code::invalid_sample_delete_request:
             return "invalid_sample_delete_request";
-        case http_error_code::problem_not_found:
-            return "problem_not_found";
-        case http_error_code::user_not_found:
-            return "user_not_found";
-        case http_error_code::testcase_not_found:
-            return "testcase_not_found";
     }
 
     return "unknown_http_error";
 }
 
-bool requires_bearer_auth(http_error_code ec){
-    switch(ec){
-        case http_error_code::missing_or_invalid_bearer_token:
-        case http_error_code::invalid_or_expired_token:
-        case http_error_code::admin_bearer_token_required:
-        case http_error_code::superadmin_bearer_token_required:
-            return true;
-        default:
-            return false;
+namespace{
+    bool requires_bearer_auth_value(http_error_code ec){
+        switch(ec){
+            case http_error_code::missing_or_invalid_bearer_token:
+            case http_error_code::invalid_or_expired_token:
+            case http_error_code::admin_bearer_token_required:
+            case http_error_code::superadmin_bearer_token_required:
+                return true;
+            default:
+                return false;
+        }
     }
-}
-
-std::string to_string(http_error_code ec){
-    return default_message(ec);
-}
-
-std::string to_string(const http_error& ec){
-    return ec.message;
 }

@@ -39,9 +39,7 @@ testcase_handler::response_type testcase_handler::get_testcase(
                     std::string_view action,
                     const service_error& code) {
                     if(code == service_error::not_found){
-                        return http_response_util::create_testcase_not_found(
-                            error_request
-                        );
+                        return http_response_util::create_not_found(error_request);
                     }
 
                     return http_response_util::create_4xx_or_500(

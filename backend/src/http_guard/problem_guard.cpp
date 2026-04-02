@@ -20,7 +20,7 @@ std::expected<void, problem_guard::response_type> problem_guard::require_exists(
         ));
     }
     if(!exists_problem_exp->exists){
-        return std::unexpected(http_response_util::create_problem_not_found(request));
+        return std::unexpected(http_response_util::create_not_found(request));
     }
 
     return {};
@@ -49,12 +49,12 @@ problem_guard::require_readable_detail(
             );
             if(!problem_detail_exp){
                 if(problem_detail_exp.error() == service_error::not_found){
-                    return std::unexpected(
-                        http_response_util::create_problem_not_found(context.request)
-                    );
+                    return std::unexpected(http_response_util::create_not_found(
+                        context.request
+                    ));
                 }
 
-                return std::unexpected(http_response_util::create_404_or_500(
+                return std::unexpected(http_response_util::create_4xx_or_500(
                     context.request,
                     "get problem detail",
                     problem_detail_exp.error()

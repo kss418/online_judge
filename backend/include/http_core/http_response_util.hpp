@@ -59,11 +59,6 @@ namespace http_response_util{
         }
     }
 
-    response_type create_text(
-        const request_type& request,
-        boost::beast::http::status status,
-        std::string body
-    );
     response_type create_json(
         const request_type& request,
         boost::beast::http::status status,
@@ -76,51 +71,17 @@ namespace http_response_util{
     );
     response_type create_error(
         const request_type& request,
-        boost::beast::http::status status,
-        std::string_view code,
-        std::string_view message,
-        std::optional<std::string> field_opt = std::nullopt
-    );
-    response_type create_error(
-        const request_type& request,
         const http_error& error
-    );
-    response_type create_bearer_error(
-        const request_type& request,
-        std::string_view code,
-        std::string_view message
     );
     response_type create_4xx_or_500(
         const request_type& request,
         std::string_view action,
         const service_error& code
     );
-    response_type create_404_or_500(
-        const request_type& request,
-        std::string_view action,
-        const service_error& code
-    );
-    response_type create_bearer_unauthorized(
-        const request_type& request,
-        std::string body
-    );
     response_type create_method_not_allowed(
         const request_type& request
     );
     response_type create_not_found(
-        const request_type& request
-    );
-    response_type create_resource_not_found(
-        const request_type& request,
-        std::string_view resource_name
-    );
-    response_type create_problem_not_found(
-        const request_type& request
-    );
-    response_type create_user_not_found(
-        const request_type& request
-    );
-    response_type create_testcase_not_found(
         const request_type& request
     );
 
@@ -154,33 +115,6 @@ namespace http_response_util{
             const Error& error_value
         ) -> response_type {
             return create_4xx_or_500(
-                request_value,
-                action_value,
-                error_value
-            );
-        };
-        return create_response_or_error(
-            request,
-            action,
-            std::move(value_exp),
-            error_handler,
-            std::forward<SuccessHandler>(success_handler)
-        );
-    }
-
-    template <typename T, typename Error, typename SuccessHandler>
-    response_type create_response_or_404_or_500(
-        const request_type& request,
-        std::string_view action,
-        std::expected<T, Error> value_exp,
-        SuccessHandler&& success_handler
-    ){
-        auto error_handler = [](
-            const request_type& request_value,
-            std::string_view action_value,
-            const Error& error_value
-        ) -> response_type {
-            return create_404_or_500(
                 request_value,
                 action_value,
                 error_value
@@ -374,84 +308,4 @@ namespace http_response_util{
         );
     }
 
-    template <typename T, typename Serializer>
-    response_type create_json_or_404_or_500(
-        const request_type& request,
-        std::string_view action,
-        std::expected<T, service_error> value_exp,
-        Serializer&& serializer,
-        boost::beast::http::status success_status = boost::beast::http::status::ok
-    ){
-        return detail::create_or_error(
-            request,
-            action,
-            std::move(value_exp),
-            create_404_or_500,
-            [&](auto&&... args) -> response_type {
-                return create_json(
-                    request,
-                    success_status,
-                    std::forward<Serializer>(serializer)(
-                        std::forward<decltype(args)>(args)...
-                    )
-                );
-            }
-        );
-    }
-
-    template <typename T, typename Serializer, typename NulloptHandler>
-    response_type create_json_or_404_or_500(
-        const request_type& request,
-        std::string_view action,
-        std::expected<std::optional<T>, service_error> value_opt_exp,
-        Serializer&& serializer,
-        NulloptHandler&& nullopt_handler,
-        boost::beast::http::status success_status = boost::beast::http::status::ok
-    ){
-        return detail::create_or_error(
-            request,
-            action,
-            std::move(value_opt_exp),
-            create_404_or_500,
-            [&](std::optional<T> value_opt) -> response_type {
-                if(!value_opt.has_value()){
-                    return std::forward<NulloptHandler>(nullopt_handler)();
-                }
-
-                return create_json(
-                    request,
-                    success_status,
-                    std::forward<Serializer>(serializer)(std::move(*value_opt))
-                );
-            }
-        );
-    }
-
-    template <typename Serializer, typename FalseHandler>
-    response_type create_json_or_404_or_500(
-        const request_type& request,
-        std::string_view action,
-        std::expected<bool, service_error> value_exp,
-        Serializer&& serializer,
-        FalseHandler&& false_handler,
-        boost::beast::http::status success_status = boost::beast::http::status::ok
-    ){
-        return detail::create_or_error(
-            request,
-            action,
-            std::move(value_exp),
-            create_404_or_500,
-            [&](bool value) -> response_type {
-                if(!value){
-                    return std::forward<FalseHandler>(false_handler)();
-                }
-
-                return create_json(
-                    request,
-                    success_status,
-                    std::forward<Serializer>(serializer)()
-                );
-            }
-        );
-    }
 }

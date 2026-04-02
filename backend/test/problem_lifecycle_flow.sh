@@ -180,11 +180,11 @@ send_http_request_and_assert_status \
     "get deleted problem"
 assert_json_error_code \
     "${missing_problem_response_file}" \
-    "problem_not_found" \
+    "not_found" \
     "get deleted problem"
 assert_json_error_message \
     "${missing_problem_response_file}" \
-    "problem not found" \
+    "not found" \
     "get deleted problem"
 
 append_log_line "${test_log_temp_file}" "problem lifecycle flow test passed"
