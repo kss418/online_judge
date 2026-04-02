@@ -119,6 +119,20 @@ http_response_util::response_type http_response_util::create_internal_server_err
     return create_error(request, http_error{http_error_code::internal_server_error});
 }
 
+http_response_util::response_type http_response_util::create_service_unavailable(
+    const request_type& request,
+    std::string_view message
+){
+    if(message.empty()){
+        return create_error(request, http_error{http_error_code::service_unavailable});
+    }
+
+    return create_error(
+        request,
+        http_error{http_error_code::service_unavailable, std::string{message}}
+    );
+}
+
 http_response_util::response_type http_response_util::create_method_not_allowed(
     const request_type& request
 ){

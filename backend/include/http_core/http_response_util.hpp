@@ -71,6 +71,10 @@ namespace http_response_util{
         std::string_view context,
         std::string_view detail = {}
     );
+    response_type create_service_unavailable(
+        const request_type& request,
+        std::string_view message = {}
+    );
     response_type create_method_not_allowed(
         const request_type& request
     );

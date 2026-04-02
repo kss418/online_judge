@@ -2,6 +2,7 @@
 
 #include "common/permission_util.hpp"
 #include "db_service/submission_service.hpp"
+#include "error/submission_error.hpp"
 #include "http_guard/auth_guard.hpp"
 
 namespace{
@@ -109,9 +110,6 @@ std::expected<void, submission_guard::response_type> submission_guard::require_s
 
     return std::unexpected(http_response_util::create_error(
         request,
-        http_error{
-            http_error_code::forbidden,
-            "submission source access denied"
-        }
+        submission_error::source_access_denied()
     ));
 }
