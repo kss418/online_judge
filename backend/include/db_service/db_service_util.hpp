@@ -2,6 +2,7 @@
 
 #include "common/db_connection.hpp"
 #include "error/error_code.hpp"
+#include "error/judge_error.hpp"
 #include "error/service_error.hpp"
 #include "db_repository/db_repository.hpp"
 
@@ -22,6 +23,10 @@ namespace db_service_util{
 
     inline error_code map_service_error_to_error_code(service_error service_error_value){
         return error_code::create(http_error::from_service(service_error_value));
+    }
+
+    inline judge_error map_service_error_to_judge_error(service_error service_error_value){
+        return judge_error::from_service(service_error_value);
     }
 
     template <typename T>
@@ -53,6 +58,22 @@ namespace db_service_util{
         }
         else{
             return std::expected<T, error_code>{std::move(*result_exp)};
+        }
+    }
+
+    template <typename T>
+    std::expected<T, judge_error> map_service_error_to_judge_error(
+        std::expected<T, service_error> result_exp
+    ){
+        if(!result_exp){
+            return std::unexpected(map_service_error_to_judge_error(result_exp.error()));
+        }
+
+        if constexpr(std::is_void_v<T>){
+            return {};
+        }
+        else{
+            return std::expected<T, judge_error>{std::move(*result_exp)};
         }
     }
 

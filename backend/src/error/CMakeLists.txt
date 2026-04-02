@@ -4,4 +4,5 @@ target_sources(lib
         repository_error.cpp
         http_error.cpp
         service_error.cpp
+        judge_error.cpp
 )
