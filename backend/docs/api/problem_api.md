@@ -755,8 +755,8 @@ Example:
 ```json
 {
   "error": {
-    "code": "invalid_sample_delete_request",
-    "message": "failed to delete sample: invalid argument"
+    "code": "validation_error",
+    "message": "missing sample to delete"
   }
 }
 ```

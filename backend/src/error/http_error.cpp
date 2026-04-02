@@ -60,8 +60,6 @@ namespace{
                 return "submission is currently banned";
             case http_error_code::invalid_testcase_zip:
                 return "invalid testcase zip";
-            case http_error_code::invalid_sample_delete_request:
-                return "failed to delete sample: invalid argument";
         }
         return "unknown http error";
     }
@@ -137,7 +135,6 @@ namespace{
             case http_error_code::invalid_length:
             case http_error_code::invalid_argument:
             case http_error_code::invalid_testcase_zip:
-            case http_error_code::invalid_sample_delete_request:
                 return status::bad_request;
             case http_error_code::payload_too_large:
                 return status::payload_too_large;
@@ -221,8 +218,6 @@ std::string_view to_code_string(http_error_code ec){
             return "submission_banned";
         case http_error_code::invalid_testcase_zip:
             return "invalid_testcase_zip";
-        case http_error_code::invalid_sample_delete_request:
-            return "invalid_sample_delete_request";
     }
 
     return "unknown_http_error";

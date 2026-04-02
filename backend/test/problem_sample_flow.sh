@@ -36,6 +36,7 @@ test_log_temp_file="$(mktemp)"
 server_log_temp_file="$(mktemp)"
 sign_up_response_file="$(mktemp)"
 create_problem_response_file="$(mktemp)"
+empty_sample_delete_response_file="$(mktemp)"
 create_sample_response_file="$(mktemp)"
 create_empty_sample_response_file="$(mktemp)"
 list_samples_response_file="$(mktemp)"
@@ -59,6 +60,7 @@ cleanup(){
         "${server_log_temp_file}" \
         "${sign_up_response_file}" \
         "${create_problem_response_file}" \
+        "${empty_sample_delete_response_file}" \
         "${create_sample_response_file}" \
         "${create_empty_sample_response_file}" \
         "${list_samples_response_file}" \
@@ -117,6 +119,22 @@ problem_id="$(
         "Problem Sample Flow"
 )"
 missing_problem_id=$((problem_id + 999999))
+
+send_http_request_and_assert_status \
+    "DELETE" \
+    "${base_url}/api/problem/${problem_id}/sample" \
+    "${empty_sample_delete_response_file}" \
+    "400" \
+    "empty sample delete" \
+    "${sign_up_token}"
+assert_json_error_code \
+    "${empty_sample_delete_response_file}" \
+    "validation_error" \
+    "empty sample delete"
+assert_json_error_message \
+    "${empty_sample_delete_response_file}" \
+    "missing sample to delete" \
+    "empty sample delete"
 
 send_http_request_and_assert_status \
     "POST" \

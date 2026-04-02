@@ -36,7 +36,6 @@ enum class http_error_code{
     invalid_credentials,
     submission_banned,
     invalid_testcase_zip,
-    invalid_sample_delete_request,
 };
 
 struct http_error{
