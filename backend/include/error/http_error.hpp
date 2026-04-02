@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/repository_error.hpp"
+#include "error/service_error.hpp"
 
 #include <optional>
 #include <string>
@@ -17,5 +17,5 @@ enum class http_error{
 };
 
 std::string to_string(http_error ec);
-std::optional<http_error> from_repository(repository_error ec);
+std::optional<http_error> from_service(service_error ec);
 std::optional<http_error> from_error_code(const error_code& ec);

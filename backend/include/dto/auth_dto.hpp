@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/error_code.hpp"
+#include "error/error_code.hpp"
 #include "dto/dto_validation_error.hpp"
 
 #include <boost/json/fwd.hpp>

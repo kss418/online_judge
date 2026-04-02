@@ -1,6 +1,6 @@
-#include "common/repository_error.hpp"
+#include "error/repository_error.hpp"
 
-#include "common/error_code.hpp"
+#include "error/error_code.hpp"
 
 std::string to_string(repository_error ec){
     switch(ec){

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/error_code.hpp"
+#include "error/error_code.hpp"
 #include "judge_core/sandbox_runner.hpp"
 #include "judge_core/testcase_snapshot.hpp"
 #include "pl_runner/pl_runner_util.hpp"

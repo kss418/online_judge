@@ -1,4 +1,4 @@
-#include "common/error_code.hpp"
+#include "error/error_code.hpp"
 
 #include <boost/asio/error.hpp>
 #include <boost/beast/http/error.hpp>

@@ -1,5 +1,5 @@
 #pragma once
-#include "common/error_code.hpp"
+#include "error/error_code.hpp"
 
 #include <expected>
 #include <initializer_list>

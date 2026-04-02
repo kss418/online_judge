@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/db_connection_pool.hpp"
-#include "common/error_code.hpp"
+#include "error/error_code.hpp"
 #include "common/worker_pool.hpp"
 #include "http_core/http_dispatcher.hpp"
 

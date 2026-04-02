@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/error_code.hpp"
+#include "error/error_code.hpp"
 #include "common/temp_file.hpp"
 #include "pl_runner/pl_runner_util.hpp"
 

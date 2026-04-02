@@ -1,7 +1,7 @@
 #pragma once
 
 #include "query_builder/assembled_query.hpp"
-#include "common/error_code.hpp"
+#include "error/error_code.hpp"
 #include "dto/problem_dto.hpp"
 
 #include <cstdint>

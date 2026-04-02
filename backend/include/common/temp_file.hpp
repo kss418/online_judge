@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/error_code.hpp"
+#include "error/error_code.hpp"
 #include "common/unique_fd.hpp"
 
 #include <expected>

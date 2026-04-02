@@ -1,6 +1,6 @@
 #pragma once
-#include "common/http_error.hpp"
-#include "common/repository_error.hpp"
+#include "error/http_error.hpp"
+#include "error/repository_error.hpp"
 
 #include <boost/system/error_code.hpp>
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "common/repository_error.hpp"
+#include "error/repository_error.hpp"
 #include "dto/auth_dto.hpp"
 
 #include <pqxx/pqxx>

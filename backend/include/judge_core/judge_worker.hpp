@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/submission_status.hpp"
-#include "common/error_code.hpp"
+#include "error/error_code.hpp"
 #include "common/db_connection.hpp"
 #include "db_event/submission_event_listener.hpp"
 #include "dto/submission_dto.hpp"

@@ -1,5 +1,5 @@
 #pragma once
-#include "common/error_code.hpp"
+#include "error/error_code.hpp"
 #include "judge_core/judge_util.hpp"
 #include "judge_core/testcase_snapshot.hpp"
 

@@ -1,6 +1,6 @@
-#include "common/http_error.hpp"
+#include "error/http_error.hpp"
 
-#include "common/error_code.hpp"
+#include "error/error_code.hpp"
 
 std::string to_string(http_error ec){
     switch(ec){
@@ -20,16 +20,20 @@ std::string to_string(http_error ec){
     return "unknown http error";
 }
 
-std::optional<http_error> from_repository(repository_error ec){
+std::optional<http_error> from_service(service_error ec){
     switch(ec){
-        case repository_error::invalid_reference:
-        case repository_error::invalid_input:
+        case service_error::validation_error:
             return http_error::validation_error;
-        case repository_error::not_found:
+        case service_error::unauthorized:
+            return http_error::unauthorized;
+        case service_error::forbidden:
+            return http_error::forbidden;
+        case service_error::not_found:
             return http_error::not_found;
-        case repository_error::conflict:
+        case service_error::conflict:
             return http_error::conflict;
-        case repository_error::internal:
+        case service_error::unavailable:
+        case service_error::internal:
             return http_error::internal;
     }
     return std::nullopt;
@@ -57,8 +61,8 @@ std::optional<http_error> from_error_code(const error_code& ec){
     if(ec == psql_error::unique_violation){
         return http_error::conflict;
     }
-    if(ec.type_ == error_type::repository_type){
-        return from_repository(static_cast<repository_error>(ec.code_));
+    if(const auto service_error_opt = service_error_util::from_error_code(ec)){
+        return from_service(*service_error_opt);
     }
 
     return std::nullopt;

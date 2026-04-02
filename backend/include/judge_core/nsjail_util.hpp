@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/error_code.hpp"
+#include "error/error_code.hpp"
 #include "common/temp_dir.hpp"
 
 #include <expected>

@@ -4,9 +4,6 @@ target_sources(lib
         db_connection_pool.cpp
         file_util.cpp
         env_util.cpp
-        error_code.cpp
-        repository_error.cpp
-        http_error.cpp
         crypto_util.cpp
         password_util.cpp
         submission_status.cpp

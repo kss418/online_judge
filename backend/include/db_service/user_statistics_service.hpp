@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/db_connection.hpp"
-#include "common/error_code.hpp"
+#include "error/error_code.hpp"
 #include "common/submission_status.hpp"
 #include "dto/user_statistics_dto.hpp"
 

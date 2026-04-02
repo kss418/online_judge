@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/repository_error.hpp"
+#include "error/repository_error.hpp"
 #include "dto/problem_dto.hpp"
 
 #include <cstdint>

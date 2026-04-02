@@ -1,5 +1,6 @@
 add_library(lib STATIC)
 
+add_subdirectory(error)
 add_subdirectory(common)
 add_subdirectory(dto)
 add_subdirectory(serializer)

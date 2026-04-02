@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/repository_error.hpp"
+#include "error/repository_error.hpp"
 #include "common/submission_status.hpp"
 
 #include <cstdint>
