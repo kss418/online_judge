@@ -40,7 +40,7 @@ std::expected<void, repository_error> auth_repository::insert_token(
     return {};
 }
 
-std::expected<bool, repository_error> auth_repository::revoke_token(
+std::expected<void, repository_error> auth_repository::revoke_token(
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_token& hashed_token_value
 ){
@@ -55,10 +55,14 @@ std::expected<bool, repository_error> auth_repository::revoke_token(
         pqxx::params{hashed_token_value.token_hash}
     );
 
-    return revoke_result.affected_rows() > 0;
+    if(revoke_result.affected_rows() == 0){
+        return std::unexpected(repository_error::not_found);
+    }
+
+    return {};
 }
 
-std::expected<std::optional<auth_dto::identity>, repository_error> auth_repository::get_token_identity(
+std::expected<auth_dto::identity, repository_error> auth_repository::get_token_identity(
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_token& hashed_token_value
 ){
@@ -80,7 +84,7 @@ std::expected<std::optional<auth_dto::identity>, repository_error> auth_reposito
     );
 
     if(token_identity_result.empty()){
-        return std::nullopt;
+        return std::unexpected(repository_error::not_found);
     }
 
     auth_dto::identity identity_value;
@@ -90,7 +94,7 @@ std::expected<std::optional<auth_dto::identity>, repository_error> auth_reposito
     return identity_value;
 }
 
-std::expected<bool, repository_error> auth_repository::update_permission_level(
+std::expected<void, repository_error> auth_repository::update_permission_level(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     std::int32_t permission_level
@@ -121,7 +125,11 @@ std::expected<bool, repository_error> auth_repository::update_permission_level(
         pqxx::params{user_id, permission_level}
     );
 
-    return update_result.affected_rows() > 0;
+    if(update_result.affected_rows() == 0){
+        return std::unexpected(repository_error::not_found);
+    }
+
+    return {};
 }
 
 std::expected<auth_dto::user_summary_list, repository_error> auth_repository::get_user_list(
@@ -154,7 +162,7 @@ std::expected<auth_dto::user_summary_list, repository_error> auth_repository::ge
     return user_summary_values;
 }
 
-std::expected<bool, repository_error> auth_repository::update_expires_at(
+std::expected<void, repository_error> auth_repository::update_expires_at(
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_token& hashed_token_value,
     std::chrono::seconds token_ttl
@@ -176,5 +184,9 @@ std::expected<bool, repository_error> auth_repository::update_expires_at(
         pqxx::params{hashed_token_value.token_hash, token_ttl.count()}
     );
 
-    return update_result.affected_rows() > 0;
+    if(update_result.affected_rows() == 0){
+        return std::unexpected(repository_error::not_found);
+    }
+
+    return {};
 }

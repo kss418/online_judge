@@ -2,34 +2,42 @@
 
 #include "error/error_code.hpp"
 
+#include <array>
+#include <string_view>
 #include <utility>
 
 namespace{
-    std::string default_message(db_error_code ec){
-        switch(ec){
-            case db_error_code::invalid_argument:
-                return "invalid database argument";
-            case db_error_code::invalid_connection:
-                return "invalid database connection";
-            case db_error_code::interrupted:
-                return "database operation interrupted";
-            case db_error_code::unique_violation:
-                return "database unique violation";
-            case db_error_code::constraint_violation:
-                return "database constraint violation";
-            case db_error_code::broken_connection:
-                return "database connection broken";
-            case db_error_code::serialization_failure:
-                return "database serialization failure";
-            case db_error_code::deadlock_detected:
-                return "database deadlock detected";
-            case db_error_code::unavailable:
-                return "database unavailable";
-            case db_error_code::internal:
-                return "database internal error";
+    struct db_error_spec{
+        std::string_view default_message;
+        bool is_retryable = false;
+        bool should_reconnect = false;
+        bool is_constraint_violation = false;
+    };
+
+    constexpr db_error_spec unknown_db_error_spec{
+        "unknown database error"
+    };
+
+    constexpr std::array<db_error_spec, 10> db_error_specs{{
+        {"invalid database argument"},
+        {"invalid database connection", true, true},
+        {"database operation interrupted", true},
+        {"database unique violation", false, false, true},
+        {"database constraint violation", false, false, true},
+        {"database connection broken", true, true},
+        {"database serialization failure", true},
+        {"database deadlock detected", true},
+        {"database unavailable"},
+        {"database internal error"},
+    }};
+
+    const db_error_spec& describe_db_error(db_error_code ec){
+        const auto index = static_cast<std::size_t>(ec);
+        if(index >= db_error_specs.size()){
+            return unknown_db_error_spec;
         }
 
-        return "unknown database error";
+        return db_error_specs[index];
     }
 
     db_error map_psql_error(psql_error ec){
@@ -59,7 +67,7 @@ db_error::db_error(
     code(code_value),
     message(
         message_value.empty()
-            ? default_message(code_value)
+            ? std::string{describe_db_error(code_value).default_message}
             : std::move(message_value)
     ){}
 
@@ -68,24 +76,15 @@ bool db_error::operator==(const db_error& other) const{
 }
 
 bool db_error::is_retryable() const{
-    return
-        *this == db_error::invalid_connection ||
-        *this == db_error::interrupted ||
-        *this == db_error::broken_connection ||
-        *this == db_error::serialization_failure ||
-        *this == db_error::deadlock_detected;
+    return describe_db_error(code).is_retryable;
 }
 
 bool db_error::should_reconnect() const{
-    return
-        *this == db_error::invalid_connection ||
-        *this == db_error::broken_connection;
+    return describe_db_error(code).should_reconnect;
 }
 
 bool db_error::is_constraint_violation() const{
-    return
-        *this == db_error::unique_violation ||
-        *this == db_error::constraint_violation;
+    return describe_db_error(code).is_constraint_violation;
 }
 
 const db_error db_error::invalid_argument{
@@ -120,30 +119,7 @@ const db_error db_error::internal{
 };
 
 std::string to_string(db_error_code ec){
-    switch(ec){
-        case db_error_code::invalid_argument:
-            return "invalid database argument";
-        case db_error_code::invalid_connection:
-            return "invalid database connection";
-        case db_error_code::interrupted:
-            return "database operation interrupted";
-        case db_error_code::unique_violation:
-            return "database unique violation";
-        case db_error_code::constraint_violation:
-            return "database constraint violation";
-        case db_error_code::broken_connection:
-            return "database connection broken";
-        case db_error_code::serialization_failure:
-            return "database serialization failure";
-        case db_error_code::deadlock_detected:
-            return "database deadlock detected";
-        case db_error_code::unavailable:
-            return "database unavailable";
-        case db_error_code::internal:
-            return "database internal error";
-    }
-
-    return "unknown database error";
+    return std::string{describe_db_error(ec).default_message};
 }
 
 std::string to_string(const db_error& ec){

@@ -3,22 +3,33 @@
 #include <boost/asio/error.hpp>
 #include <boost/beast/http/error.hpp>
 
+#include <array>
+#include <string_view>
 #include <utility>
 
 namespace{
-    std::string default_message(transport_error_code error){
-        switch(error){
-            case transport_error_code::invalid_argument:
-                return "invalid transport argument";
-            case transport_error_code::bad_descriptor:
-                return "bad transport descriptor";
-            case transport_error_code::unavailable:
-                return "transport unavailable";
-            case transport_error_code::internal:
-                return "transport internal error";
+    struct transport_error_spec{
+        std::string_view default_message;
+    };
+
+    constexpr transport_error_spec unknown_transport_error_spec{
+        "unknown transport error"
+    };
+
+    constexpr std::array<transport_error_spec, 4> transport_error_specs{{
+        {"invalid transport argument"},
+        {"bad transport descriptor"},
+        {"transport unavailable"},
+        {"transport internal error"},
+    }};
+
+    const transport_error_spec& describe_transport_error(transport_error_code error){
+        const auto index = static_cast<std::size_t>(error);
+        if(index >= transport_error_specs.size()){
+            return unknown_transport_error_spec;
         }
 
-        return "unknown transport error";
+        return transport_error_specs[index];
     }
 }
 
@@ -29,7 +40,7 @@ transport_error::transport_error(
     code(code_value),
     message(
         message_value.empty()
-            ? default_message(code_value)
+            ? std::string{describe_transport_error(code_value).default_message}
             : std::move(message_value)
     ){}
 
@@ -55,18 +66,7 @@ const transport_error transport_error::internal{
 };
 
 std::string to_string(transport_error_code error){
-    switch(error){
-        case transport_error_code::invalid_argument:
-            return "invalid transport argument";
-        case transport_error_code::bad_descriptor:
-            return "bad transport descriptor";
-        case transport_error_code::unavailable:
-            return "transport unavailable";
-        case transport_error_code::internal:
-            return "transport internal error";
-    }
-
-    return "unknown transport error";
+    return std::string{describe_transport_error(error).default_message};
 }
 
 std::string to_string(const transport_error& error){

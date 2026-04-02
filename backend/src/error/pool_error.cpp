@@ -2,22 +2,33 @@
 
 #include "error/db_error.hpp"
 
+#include <array>
+#include <string_view>
 #include <utility>
 
 namespace{
-    std::string default_message(pool_error_code error){
-        switch(error){
-            case pool_error_code::invalid_argument:
-                return "invalid connection pool argument";
-            case pool_error_code::timed_out:
-                return "connection pool acquire timed out";
-            case pool_error_code::unavailable:
-                return "connection pool unavailable";
-            case pool_error_code::internal:
-                return "connection pool internal error";
+    struct pool_error_spec{
+        std::string_view default_message;
+    };
+
+    constexpr pool_error_spec unknown_pool_error_spec{
+        "unknown connection pool error"
+    };
+
+    constexpr std::array<pool_error_spec, 4> pool_error_specs{{
+        {"invalid connection pool argument"},
+        {"connection pool acquire timed out"},
+        {"connection pool unavailable"},
+        {"connection pool internal error"},
+    }};
+
+    const pool_error_spec& describe_pool_error(pool_error_code error){
+        const auto index = static_cast<std::size_t>(error);
+        if(index >= pool_error_specs.size()){
+            return unknown_pool_error_spec;
         }
 
-        return "unknown connection pool error";
+        return pool_error_specs[index];
     }
 
     pool_error map_db_error(const db_error& error){
@@ -57,7 +68,7 @@ pool_error::pool_error(
     code(code_value),
     message(
         message_value.empty()
-            ? default_message(code_value)
+            ? std::string{describe_pool_error(code_value).default_message}
             : std::move(message_value)
     ){}
 
@@ -82,18 +93,7 @@ const pool_error pool_error::internal{
 };
 
 std::string to_string(pool_error_code error){
-    switch(error){
-        case pool_error_code::invalid_argument:
-            return "invalid connection pool argument";
-        case pool_error_code::timed_out:
-            return "connection pool acquire timed out";
-        case pool_error_code::unavailable:
-            return "connection pool unavailable";
-        case pool_error_code::internal:
-            return "connection pool internal error";
-    }
-
-    return "unknown connection pool error";
+    return std::string{describe_pool_error(error).default_message};
 }
 
 std::string to_string(const pool_error& error){

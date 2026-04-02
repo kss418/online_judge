@@ -38,11 +38,8 @@ std::expected<user_dto::summary, service_error> user_service::get_summary(
             if(!summary_exp){
                 return std::unexpected(summary_exp.error());
             }
-            if(!summary_exp->has_value()){
-                return std::unexpected(service_error::not_found);
-            }
 
-            return std::move(summary_exp->value());
+            return std::move(*summary_exp);
         }
     );
 }
@@ -67,11 +64,8 @@ user_service::get_summary_by_login_id(
             if(!summary_exp){
                 return std::unexpected(summary_exp.error());
             }
-            if(!summary_exp->has_value()){
-                return std::unexpected(service_error::not_found);
-            }
 
-            return std::move(summary_exp->value());
+            return std::move(*summary_exp);
         }
     );
 }
@@ -99,15 +93,12 @@ user_service::create_submission_ban(
             if(!create_submission_ban_exp){
                 return std::unexpected(create_submission_ban_exp.error());
             }
-            if(!create_submission_ban_exp->has_value()){
-                return std::unexpected(service_error::not_found);
-            }
 
             user_dto::submission_ban submission_ban_value;
             submission_ban_value.user_id = user_id;
             submission_ban_value.duration_minutes = duration_minutes;
             submission_ban_value.submission_banned_until =
-                std::move(create_submission_ban_exp->value());
+                std::move(*create_submission_ban_exp);
             return submission_ban_value;
         }
     );
@@ -133,11 +124,8 @@ user_service::get_submission_ban_status(
             if(!submission_ban_status_exp){
                 return std::unexpected(submission_ban_status_exp.error());
             }
-            if(!submission_ban_status_exp->has_value()){
-                return std::unexpected(service_error::not_found);
-            }
 
-            return std::move(submission_ban_status_exp->value());
+            return std::move(*submission_ban_status_exp);
         }
     );
 }
@@ -163,9 +151,6 @@ std::expected<void, service_error> user_service::update_submission_banned_until(
             if(!update_submission_banned_until_exp){
                 return std::unexpected(update_submission_banned_until_exp.error());
             }
-            if(!*update_submission_banned_until_exp){
-                return std::unexpected(service_error::not_found);
-            }
 
             return {};
         }
@@ -190,9 +175,6 @@ std::expected<void, service_error> user_service::clear_submission_banned_until(
                 );
             if(!clear_submission_banned_until_exp){
                 return std::unexpected(clear_submission_banned_until_exp.error());
-            }
-            if(!*clear_submission_banned_until_exp){
-                return std::unexpected(service_error::not_found);
             }
 
             return {};

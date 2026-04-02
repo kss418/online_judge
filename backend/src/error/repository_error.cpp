@@ -2,23 +2,34 @@
 
 #include "error/db_error.hpp"
 
+#include <array>
+#include <string_view>
 #include <utility>
 
 namespace{
-    std::string default_message(repository_error_code ec){
-        switch(ec){
-            case repository_error_code::invalid_reference:
-                return "invalid reference";
-            case repository_error_code::invalid_input:
-                return "invalid input";
-            case repository_error_code::not_found:
-                return "repository not found";
-            case repository_error_code::conflict:
-                return "repository conflict";
-            case repository_error_code::internal:
-                return "repository internal";
+    struct repository_error_spec{
+        std::string_view default_message;
+    };
+
+    constexpr repository_error_spec unknown_repository_error_spec{
+        "unknown repository error"
+    };
+
+    constexpr std::array<repository_error_spec, 5> repository_error_specs{{
+        {"invalid reference"},
+        {"invalid input"},
+        {"repository not found"},
+        {"repository conflict"},
+        {"repository internal"},
+    }};
+
+    const repository_error_spec& describe_repository_error(repository_error_code ec){
+        const auto index = static_cast<std::size_t>(ec);
+        if(index >= repository_error_specs.size()){
+            return unknown_repository_error_spec;
         }
-        return "unknown repository error";
+
+        return repository_error_specs[index];
     }
 }
 
@@ -29,7 +40,7 @@ repository_error::repository_error(
     code(code_value),
     message(
         message_value.empty()
-            ? default_message(code_value)
+            ? std::string{describe_repository_error(code_value).default_message}
             : std::move(message_value)
     ){}
 
@@ -66,19 +77,7 @@ bool repository_error::should_reconnect_db_error(const db_error& error){
 }
 
 std::string to_string(repository_error_code ec){
-    switch(ec){
-        case repository_error_code::invalid_reference:
-            return "invalid reference";
-        case repository_error_code::invalid_input:
-            return "invalid input";
-        case repository_error_code::not_found:
-            return "repository not found";
-        case repository_error_code::conflict:
-            return "repository conflict";
-        case repository_error_code::internal:
-            return "repository internal";
-    }
-    return "unknown repository error";
+    return std::string{describe_repository_error(ec).default_message};
 }
 
 std::string to_string(const repository_error& ec){

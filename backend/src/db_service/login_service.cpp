@@ -5,6 +5,16 @@
 #include "db_repository/login_repository.hpp"
 #include "common/permission_util.hpp"
 
+namespace{
+    service_error map_login_repository_error(const repository_error& error){
+        if(error == repository_error::not_found){
+            return service_error::unauthorized;
+        }
+
+        return service_error{error};
+    }
+}
+
 std::expected<auth_dto::session, service_error> login_service::sign_up(
     db_connection& connection_value,
     const auth_dto::sign_up_request& sign_up_request_value
@@ -74,10 +84,9 @@ std::expected<auth_dto::session, service_error> login_service::login(
                 *hashed_credentials_exp
             );
             if(!login_identity_exp){
-                return std::unexpected(login_identity_exp.error());
-            }
-            if(!login_identity_exp->has_value()){
-                return std::unexpected(service_error::unauthorized);
+                return std::unexpected(map_login_repository_error(
+                    login_identity_exp.error()
+                ));
             }
 
             const auto issued_token_exp = token_util::issue_token();
@@ -89,7 +98,7 @@ std::expected<auth_dto::session, service_error> login_service::login(
 
             const auto insert_token_exp = auth_repository::insert_token(
                 transaction,
-                login_identity_exp->value().user_id,
+                login_identity_exp->user_id,
                 hashed_token_value,
                 token_util::TOKEN_TTL
             );
@@ -98,9 +107,9 @@ std::expected<auth_dto::session, service_error> login_service::login(
             }
 
             auth_dto::session session_value;
-            session_value.user_id = login_identity_exp->value().user_id;
-            session_value.permission_level = login_identity_exp->value().permission_level;
-            session_value.user_login_id = login_identity_exp->value().user_login_id;
+            session_value.user_id = login_identity_exp->user_id;
+            session_value.permission_level = login_identity_exp->permission_level;
+            session_value.user_login_id = login_identity_exp->user_login_id;
             session_value.token = issued_token_exp->token;
             return session_value;
         }

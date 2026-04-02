@@ -7,6 +7,16 @@
 
 #include <chrono>
 
+namespace{
+    service_error map_auth_token_repository_error(const repository_error& error){
+        if(error == repository_error::not_found){
+            return service_error::unauthorized;
+        }
+
+        return service_error{error};
+    }
+}
+
 std::expected<auth_dto::identity, service_error> auth_service::auth_token(
     db_connection& connection_value,
     const auth_dto::token& token_value
@@ -27,13 +37,12 @@ std::expected<auth_dto::identity, service_error> auth_service::auth_token(
                 hashed_token_value
             );
             if(!get_token_identity_exp){
-                return std::unexpected(get_token_identity_exp.error());
-            }
-            if(!get_token_identity_exp->has_value()){
-                return std::unexpected(service_error::unauthorized);
+                return std::unexpected(map_auth_token_repository_error(
+                    get_token_identity_exp.error()
+                ));
             }
 
-            return std::move(get_token_identity_exp->value());
+            return std::move(*get_token_identity_exp);
         }
     );
 }
@@ -58,10 +67,9 @@ std::expected<void, service_error> auth_service::renew_token(
                 token_util::TOKEN_TTL
             );
             if(!update_expires_at_exp){
-                return std::unexpected(update_expires_at_exp.error());
-            }
-            if(!update_expires_at_exp.value()){
-                return std::unexpected(service_error::unauthorized);
+                return std::unexpected(map_auth_token_repository_error(
+                    update_expires_at_exp.error()
+                ));
             }
 
             return {};
@@ -88,10 +96,9 @@ std::expected<void, service_error> auth_service::revoke_token(
                 hashed_token_value
             );
             if(!revoke_token_exp){
-                return std::unexpected(revoke_token_exp.error());
-            }
-            if(!revoke_token_exp.value()){
-                return std::unexpected(service_error::unauthorized);
+                return std::unexpected(map_auth_token_repository_error(
+                    revoke_token_exp.error()
+                ));
             }
 
             return {};
@@ -122,9 +129,6 @@ std::expected<void, service_error> auth_service::update_permission_level(
                 );
             if(!update_permission_level_exp){
                 return std::unexpected(update_permission_level_exp.error());
-            }
-            if(!*update_permission_level_exp){
-                return std::unexpected(service_error::not_found);
             }
 
             return {};

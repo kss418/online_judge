@@ -3,28 +3,36 @@
 #include "error/db_error.hpp"
 #include "error/infra_error.hpp"
 
+#include <array>
+#include <string_view>
 #include <utility>
 
 namespace{
-    std::string default_message(service_error_code ec){
-        switch(ec){
-            case service_error_code::validation_error:
-                return "validation error";
-            case service_error_code::unauthorized:
-                return "unauthorized";
-            case service_error_code::forbidden:
-                return "forbidden";
-            case service_error_code::not_found:
-                return "not found";
-            case service_error_code::conflict:
-                return "conflict";
-            case service_error_code::unavailable:
-                return "unavailable";
-            case service_error_code::internal:
-                return "internal";
+    struct service_error_spec{
+        std::string_view default_message;
+    };
+
+    constexpr service_error_spec unknown_service_error_spec{
+        "unknown service error"
+    };
+
+    constexpr std::array<service_error_spec, 7> service_error_specs{{
+        {"validation error"},
+        {"unauthorized"},
+        {"forbidden"},
+        {"not found"},
+        {"conflict"},
+        {"unavailable"},
+        {"internal"},
+    }};
+
+    const service_error_spec& describe_service_error(service_error_code ec){
+        const auto index = static_cast<std::size_t>(ec);
+        if(index >= service_error_specs.size()){
+            return unknown_service_error_spec;
         }
 
-        return "unknown service error";
+        return service_error_specs[index];
     }
 }
 
@@ -35,7 +43,7 @@ service_error::service_error(
     code(code_value),
     message(
         message_value.empty()
-            ? default_message(code_value)
+            ? std::string{describe_service_error(code_value).default_message}
             : std::move(message_value)
     ){}
 
@@ -78,24 +86,7 @@ const service_error service_error::internal{
 };
 
 std::string to_string(service_error_code ec){
-    switch(ec){
-        case service_error_code::validation_error:
-            return "validation error";
-        case service_error_code::unauthorized:
-            return "unauthorized";
-        case service_error_code::forbidden:
-            return "forbidden";
-        case service_error_code::not_found:
-            return "not found";
-        case service_error_code::conflict:
-            return "conflict";
-        case service_error_code::unavailable:
-            return "unavailable";
-        case service_error_code::internal:
-            return "internal";
-    }
-
-    return "unknown service error";
+    return std::string{describe_service_error(ec).default_message};
 }
 
 std::string to_string(const service_error& ec){
