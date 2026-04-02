@@ -3,6 +3,7 @@
 #include "common/permission_util.hpp"
 #include "common/string_util.hpp"
 #include "db_service/auth_service.hpp"
+#include "error/auth_error.hpp"
 
 #include <string>
 #include <utility>
@@ -17,7 +18,7 @@ std::expected<auth_dto::token, auth_guard::response_type> auth_guard::parse_bear
     if(!token_opt){
         return std::unexpected(http_response_util::create_error(
             request,
-            http_error{http_error_code::missing_or_invalid_bearer_token}
+            auth_error::missing_or_invalid_bearer_token()
         ));
     }
 
@@ -41,7 +42,7 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require
         if(code == service_error::unauthorized){
             return std::unexpected(http_response_util::create_error(
                 request,
-                http_error{http_error_code::missing_or_invalid_bearer_token}
+                auth_error::missing_or_invalid_bearer_token()
             ));
         }
 
@@ -56,7 +57,7 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require
     if(!auth_identity_exp->has_value()){
         return std::unexpected(http_response_util::create_error(
             request,
-            http_error{http_error_code::invalid_or_expired_token}
+            auth_error::invalid_or_expired_token()
         ));
     }
 
@@ -92,7 +93,7 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require
     if(!permission_util::has_admin_access(auth_identity_exp->permission_level)){
         return std::unexpected(http_response_util::create_error(
             request,
-            http_error{http_error_code::admin_bearer_token_required}
+            auth_error::admin_bearer_token_required()
         ));
     }
 
@@ -111,7 +112,7 @@ auth_guard::require_superadmin(
     if(!permission_util::has_superadmin_access(auth_identity_exp->permission_level)){
         return std::unexpected(http_response_util::create_error(
             request,
-            http_error{http_error_code::superadmin_bearer_token_required}
+            auth_error::superadmin_bearer_token_required()
         ));
     }
 

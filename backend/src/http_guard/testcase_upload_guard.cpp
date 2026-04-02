@@ -1,6 +1,7 @@
 #include "http_guard/testcase_upload_guard.hpp"
 
 #include "common/testcase_zip_service.hpp"
+#include "error/testcase_upload_error.hpp"
 
 namespace{
     testcase_upload_guard::response_type make_testcase_zip_error_response(
@@ -45,7 +46,7 @@ namespace{
             case error_kind::inspect_zip_invalid:
                 return http_response_util::create_error(
                     request,
-                    http_error{http_error_code::invalid_testcase_zip}
+                    testcase_upload_error::invalid_zip()
                 );
             case error_kind::inspect_zip_failed:
                 return http_response_util::create_error(
@@ -58,10 +59,7 @@ namespace{
             case error_kind::invalid_archive_entries:
                 return http_response_util::create_error(
                     request,
-                    http_error{
-                        http_error_code::invalid_testcase_zip,
-                        error_value.detail
-                    }
+                    testcase_upload_error::invalid_zip(error_value.detail)
                 );
             case error_kind::create_extract_directory_failed:
                 return http_response_util::create_error(
@@ -82,7 +80,7 @@ namespace{
             case error_kind::extract_zip_invalid:
                 return http_response_util::create_error(
                     request,
-                    http_error{http_error_code::invalid_testcase_zip}
+                    testcase_upload_error::invalid_zip()
                 );
             case error_kind::extract_zip_failed:
                 return http_response_util::create_error(
@@ -117,10 +115,7 @@ testcase_upload_guard::require_testcase_zip_upload(const request_type& request){
     if(request.body().empty()){
         return std::unexpected(http_response_util::create_error(
             request,
-            http_error{
-                http_error_code::invalid_testcase_zip,
-                "invalid testcase zip: request body is empty"
-            }
+            testcase_upload_error::empty_zip_body()
         ));
     }
 

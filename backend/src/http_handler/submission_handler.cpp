@@ -2,6 +2,7 @@
 #include "common/submission_status.hpp"
 #include "db_service/submission_service.hpp"
 #include "dto/submission_dto.hpp"
+#include "error/submission_error.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/request_guard.hpp"
 #include "http_guard/submission_guard.hpp"
@@ -123,7 +124,7 @@ submission_handler::response_type submission_handler::post_submission(
                     if(is_submission_banned_error(code)){
                         return http_response_util::create_error(
                             error_request,
-                            http_error{http_error_code::submission_banned}
+                            submission_error::submission_banned()
                         );
                     }
 

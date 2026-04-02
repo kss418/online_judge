@@ -2,6 +2,7 @@
 #include "db_service/auth_service.hpp"
 #include "db_service/login_service.hpp"
 #include "dto/auth_dto.hpp"
+#include "error/auth_error.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/request_guard.hpp"
 #include "request_parser/auth_request_parser.hpp"
@@ -55,7 +56,7 @@ auth_handler::response_type auth_handler::post_login(
                 [&]{
                     return http_response_util::create_error(
                         request,
-                        http_error{http_error_code::invalid_credentials}
+                        auth_error::invalid_credentials()
                     );
                 }
             );
@@ -86,7 +87,7 @@ auth_handler::response_type auth_handler::post_token_renew(
                 [&]{
                     return http_response_util::create_error(
                         request,
-                        http_error{http_error_code::invalid_or_expired_token}
+                        auth_error::invalid_or_expired_token()
                     );
                 }
             );
@@ -115,7 +116,7 @@ auth_handler::response_type auth_handler::post_logout(
                 [&]{
                     return http_response_util::create_error(
                         request,
-                        http_error{http_error_code::invalid_or_expired_token}
+                        auth_error::invalid_or_expired_token()
                     );
                 }
             );

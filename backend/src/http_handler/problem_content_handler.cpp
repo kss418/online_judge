@@ -2,6 +2,7 @@
 
 #include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
+#include "error/problem_content_error.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
 #include "http_guard/request_guard.hpp"
@@ -223,10 +224,7 @@ problem_content_handler::response_type problem_content_handler::delete_sample(
                     if(sample_values.empty()){
                         return http_response_util::create_error(
                             request,
-                            http_error{
-                                http_error_code::validation_error,
-                                "missing sample to delete"
-                            }
+                            problem_content_error::missing_sample_to_delete()
                         );
                     }
 

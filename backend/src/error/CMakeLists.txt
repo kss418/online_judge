@@ -1,14 +1,18 @@
 target_sources(lib
     PRIVATE
+        auth_error.cpp
         error_code.cpp
         db_error.cpp
         http_server_error.cpp
         infra_error.cpp
         pool_error.cpp
+        problem_content_error.cpp
         repository_error.cpp
         http_error.cpp
         request_error.cpp
         service_error.cpp
+        submission_error.cpp
+        testcase_upload_error.cpp
         transport_error.cpp
         judge_error.cpp
 )
