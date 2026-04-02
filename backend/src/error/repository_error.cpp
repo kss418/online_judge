@@ -94,26 +94,12 @@ repository_error repository_error::from_error_code(const error_code& ec){
     }
     if(
         ec == errno_error::invalid_argument ||
-        ec == http_error::validation_error ||
         (
             ec.is_constraint_violation_error() &&
             ec != psql_error::unique_violation
         )
     ){
         return repository_error::invalid_input;
-    }
-    if(ec == http_error::not_found){
-        return repository_error::not_found;
-    }
-    if(ec == http_error::conflict){
-        return repository_error::conflict;
-    }
-    if(
-        ec == http_error::internal ||
-        ec == http_error::unauthorized ||
-        ec == http_error::forbidden
-    ){
-        return repository_error::internal;
     }
 
     return repository_error::internal;

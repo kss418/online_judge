@@ -1,5 +1,4 @@
 #pragma once
-#include "error/http_error.hpp"
 #include "error/repository_error.hpp"
 
 #include <boost/system/error_code.hpp>
@@ -112,8 +111,7 @@ enum class error_type{
     limit_type,
     boost_type,
     psql_type,
-    repository_type,
-    http_type
+    repository_type
 };
 
 struct error_code{
@@ -132,13 +130,8 @@ struct error_code{
 
     bool is_bad_request_error() const{
         return
-            *this == http_error::validation_error ||
             *this == errno_error::invalid_argument ||
             is_constraint_violation_error();
-    }
-
-    constexpr bool is_http_error() const{
-        return type_ == error_type::http_type;
     }
 
     constexpr bool is_repository_error() const{
@@ -152,7 +145,6 @@ struct error_code{
     static error_code create(boost_error code);
     static error_code create(psql_error code);
     static error_code create(const repository_error& code);
-    static error_code create(const http_error& code);
     static error_code create(const error_code& code);
 
     static errno_error map_errno(int code);
@@ -229,16 +221,6 @@ struct error_code{
     }
 
     friend bool operator==(const repository_error& left, const error_code& right){
-        return right == left;
-    }
-
-    friend bool operator==(const error_code& left, const http_error& right){
-        return
-            left.type_ == error_type::http_type &&
-            left.code_ == static_cast<int>(right.code);
-    }
-
-    friend bool operator==(const http_error& left, const error_code& right){
         return right == left;
     }
 };

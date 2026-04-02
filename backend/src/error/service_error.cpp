@@ -113,24 +113,6 @@ service_error service_error::from_repository(const repository_error& ec){
 }
 
 service_error service_error::from_error_code(const error_code& ec){
-    if(ec == http_error::validation_error){
-        return service_error::validation_error;
-    }
-    if(ec == http_error::unauthorized){
-        return service_error::unauthorized;
-    }
-    if(ec == http_error::forbidden){
-        return service_error::forbidden;
-    }
-    if(ec == http_error::not_found){
-        return service_error::not_found;
-    }
-    if(ec == http_error::conflict){
-        return service_error::conflict;
-    }
-    if(ec == http_error::internal){
-        return service_error::internal;
-    }
     if(ec == errno_error::permission_denied){
         return service_error::forbidden;
     }

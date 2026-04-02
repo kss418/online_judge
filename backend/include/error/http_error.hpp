@@ -4,8 +4,6 @@
 
 #include <string>
 
-struct error_code;
-
 enum class http_error_code{
     validation_error,
     unauthorized,
