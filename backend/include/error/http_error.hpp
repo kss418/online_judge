@@ -31,7 +31,6 @@ struct http_error{
     static const http_error internal;
 
     static http_error from_service(const service_error& ec);
-    static http_error from_error_code(const error_code& ec);
 };
 
 std::string to_string(http_error_code ec);

@@ -1,7 +1,5 @@
 #include "error/http_error.hpp"
 
-#include "error/error_code.hpp"
-
 #include <utility>
 
 namespace{
@@ -98,30 +96,4 @@ http_error http_error::from_service(const service_error& ec){
     }
 
     return http_error::internal;
-}
-
-http_error http_error::from_error_code(const error_code& ec){
-    if(ec == http_error::validation_error){
-        return http_error::validation_error;
-    }
-    if(ec == http_error::unauthorized){
-        return http_error::unauthorized;
-    }
-    if(ec == http_error::forbidden){
-        return http_error::forbidden;
-    }
-    if(ec == http_error::not_found){
-        return http_error::not_found;
-    }
-    if(ec == http_error::conflict){
-        return http_error::conflict;
-    }
-    if(ec == http_error::internal){
-        return http_error::internal;
-    }
-    if(ec == psql_error::unique_violation){
-        return http_error::conflict;
-    }
-
-    return http_error::from_service(service_error::from_error_code(ec));
 }

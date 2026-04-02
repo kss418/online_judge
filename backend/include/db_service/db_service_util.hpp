@@ -26,10 +26,6 @@ namespace db_service_util{
         return service_error::from_repository(repository_error_value);
     }
 
-    inline error_code map_service_error_to_error_code(service_error service_error_value){
-        return error_code::create(http_error::from_service(service_error_value));
-    }
-
     template <typename T>
     std::expected<T, service_error> map_error_to_service_error(
         std::expected<T, error_code> result_exp
@@ -61,22 +57,6 @@ namespace db_service_util{
         }
         else{
             return std::expected<T, service_error>{std::move(*result_exp)};
-        }
-    }
-
-    template <typename T>
-    std::expected<T, error_code> map_service_error_to_error_code(
-        std::expected<T, service_error> result_exp
-    ){
-        if(!result_exp){
-            return std::unexpected(map_service_error_to_error_code(result_exp.error()));
-        }
-
-        if constexpr(std::is_void_v<T>){
-            return {};
-        }
-        else{
-            return std::expected<T, error_code>{std::move(*result_exp)};
         }
     }
 

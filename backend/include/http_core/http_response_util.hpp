@@ -1,6 +1,5 @@
 #pragma once
 
-#include "error/error_code.hpp"
 #include "error/service_error.hpp"
 
 #include <boost/json.hpp>
@@ -89,17 +88,7 @@ namespace http_response_util{
     response_type create_4xx_or_500(
         const request_type& request,
         std::string_view action,
-        const error_code& code
-    );
-    response_type create_4xx_or_500(
-        const request_type& request,
-        std::string_view action,
         const service_error& code
-    );
-    response_type create_404_or_500(
-        const request_type& request,
-        std::string_view action,
-        const error_code& code
     );
     response_type create_404_or_500(
         const request_type& request,
@@ -334,41 +323,6 @@ namespace http_response_util{
         );
     }
 
-    template <typename FalseHandler>
-    response_type create_message_or_4xx_or_500(
-        const request_type& request,
-        std::string_view action,
-        std::expected<bool, error_code> value_exp,
-        std::string_view message,
-        FalseHandler&& false_handler,
-        boost::beast::http::status success_status = boost::beast::http::status::ok
-    ){
-        auto error_handler = [](
-            const request_type& request_value,
-            std::string_view action_value,
-            const error_code& error_value
-        ) -> response_type {
-            return create_4xx_or_500(
-                request_value,
-                action_value,
-                error_value
-            );
-        };
-        return detail::create_or_error(
-            request,
-            action,
-            std::move(value_exp),
-            error_handler,
-            [&](bool value) -> response_type {
-                if(!value){
-                    return std::forward<FalseHandler>(false_handler)();
-                }
-
-                return create_message(request, success_status, message);
-            }
-        );
-    }
-
     template <typename Serializer, typename FalseHandler>
     response_type create_json_or_4xx_or_500(
         const request_type& request,
@@ -408,50 +362,11 @@ namespace http_response_util{
         );
     }
 
-    template <typename Serializer, typename FalseHandler>
-    response_type create_json_or_4xx_or_500(
-        const request_type& request,
-        std::string_view action,
-        std::expected<bool, error_code> value_exp,
-        Serializer&& serializer,
-        FalseHandler&& false_handler,
-        boost::beast::http::status success_status = boost::beast::http::status::ok
-    ){
-        auto error_handler = [](
-            const request_type& request_value,
-            std::string_view action_value,
-            const error_code& error_value
-        ) -> response_type {
-            return create_4xx_or_500(
-                request_value,
-                action_value,
-                error_value
-            );
-        };
-        return detail::create_or_error(
-            request,
-            action,
-            std::move(value_exp),
-            error_handler,
-            [&](bool value) -> response_type {
-                if(!value){
-                    return std::forward<FalseHandler>(false_handler)();
-                }
-
-                return create_json(
-                    request,
-                    success_status,
-                    std::forward<Serializer>(serializer)()
-                );
-            }
-        );
-    }
-
     template <typename T, typename Serializer>
     response_type create_json_or_404_or_500(
         const request_type& request,
         std::string_view action,
-        std::expected<T, error_code> value_exp,
+        std::expected<T, service_error> value_exp,
         Serializer&& serializer,
         boost::beast::http::status success_status = boost::beast::http::status::ok
     ){
@@ -476,7 +391,7 @@ namespace http_response_util{
     response_type create_json_or_404_or_500(
         const request_type& request,
         std::string_view action,
-        std::expected<std::optional<T>, error_code> value_opt_exp,
+        std::expected<std::optional<T>, service_error> value_opt_exp,
         Serializer&& serializer,
         NulloptHandler&& nullopt_handler,
         boost::beast::http::status success_status = boost::beast::http::status::ok
@@ -504,7 +419,7 @@ namespace http_response_util{
     response_type create_json_or_404_or_500(
         const request_type& request,
         std::string_view action,
-        std::expected<bool, error_code> value_exp,
+        std::expected<bool, service_error> value_exp,
         Serializer&& serializer,
         FalseHandler&& false_handler,
         boost::beast::http::status success_status = boost::beast::http::status::ok

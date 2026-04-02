@@ -1,6 +1,7 @@
 #include "http_core/http_response_util.hpp"
 
 #include "common/string_util.hpp"
+#include "error/http_error.hpp"
 #include "serializer/common_json_serializer.hpp"
 
 #include <utility>
@@ -13,46 +14,6 @@ namespace{
         boost::beast::http::status status;
         std::string_view code;
     };
-
-    mapped_http_error map_http_error(const error_code& code){
-        const auto http_error_value = http_error::from_error_code(code);
-
-        if(http_error_value == http_error::validation_error){
-            return mapped_http_error{
-                .status = boost::beast::http::status::bad_request,
-                .code = "validation_error"
-            };
-        }
-        if(http_error_value == http_error::unauthorized){
-            return mapped_http_error{
-                .status = boost::beast::http::status::unauthorized,
-                .code = "unauthorized"
-            };
-        }
-        if(http_error_value == http_error::forbidden){
-            return mapped_http_error{
-                .status = boost::beast::http::status::forbidden,
-                .code = "forbidden"
-            };
-        }
-        if(http_error_value == http_error::not_found){
-            return mapped_http_error{
-                .status = boost::beast::http::status::not_found,
-                .code = "not_found"
-            };
-        }
-        if(http_error_value == http_error::conflict){
-            return mapped_http_error{
-                .status = boost::beast::http::status::conflict,
-                .code = "conflict"
-            };
-        }
-
-        return mapped_http_error{
-            .status = boost::beast::http::status::internal_server_error,
-            .code = "internal_server_error"
-        };
-    }
 
     mapped_http_error map_http_error(const service_error& code){
         const auto http_error_value = http_error::from_service(code);
@@ -191,25 +152,9 @@ http_response_util::response_type http_response_util::create_bearer_error(
 http_response_util::response_type http_response_util::create_4xx_or_500(
     const request_type& request,
     std::string_view action,
-    const error_code& code
-){
-    return create_mapped_error_response(request, action, code, false);
-}
-
-http_response_util::response_type http_response_util::create_4xx_or_500(
-    const request_type& request,
-    std::string_view action,
     const service_error& code
 ){
     return create_mapped_error_response(request, action, code, false);
-}
-
-http_response_util::response_type http_response_util::create_404_or_500(
-    const request_type& request,
-    std::string_view action,
-    const error_code& code
-){
-    return create_mapped_error_response(request, action, code, true);
 }
 
 http_response_util::response_type http_response_util::create_404_or_500(
