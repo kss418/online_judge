@@ -8,8 +8,8 @@
 #include <string>
 #include <utility>
 
-static bool is_queue_empty_error(const error_code& code){
-    return code == errno_error::resource_temporarily_unavailable;
+static bool is_queue_empty_error(repository_error code){
+    return code == repository_error::not_found;
 }
 
 static bool should_hide_submission_metrics(std::string_view status){
@@ -129,7 +129,13 @@ submission_service::get_submission_status_snapshots(
                     submission_ids
                 );
             if(!snapshot_values_exp){
-                return std::unexpected(snapshot_values_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            snapshot_values_exp.error()
+                        )
+                    )
+                );
             }
 
             return sanitize_submission_metrics(std::move(*snapshot_values_exp));
@@ -146,9 +152,11 @@ submission_service::get_wa_or_ac_submissions(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<submission_dto::summary>, error_code> {
-            return submission_repository::get_wa_or_ac_submissions(
-                transaction,
-                problem_id
+            return db_service_util::map_repository_error_to_http_error(
+                submission_repository::get_wa_or_ac_submissions(
+                    transaction,
+                    problem_id
+                )
             );
         }
     );
@@ -170,7 +178,13 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
                     create_request_value.user_id
                 );
             if(!active_submission_ban_exp){
-                return std::unexpected(active_submission_ban_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            active_submission_ban_exp.error()
+                        )
+                    )
+                );
             }
             if(active_submission_ban_exp->has_value()){
                 return std::unexpected(error_code::create(errno_error::permission_denied));
@@ -181,7 +195,13 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
                 create_request_value
             );
             if(!create_submission_exp){
-                return std::unexpected(create_submission_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            create_submission_exp.error()
+                        )
+                    )
+                );
             }
 
             const auto increase_user_problem_submission_count_exp =
@@ -191,7 +211,13 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
                     create_request_value.problem_id
                 );
             if(!increase_user_problem_submission_count_exp){
-                return std::unexpected(increase_user_problem_submission_count_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            increase_user_problem_submission_count_exp.error()
+                        )
+                    )
+                );
             }
 
             const auto enqueue_submission_exp = submission_repository::enqueue_submission(
@@ -200,7 +226,13 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
                 submission_repository::NORMAL_SUBMISSION_QUEUE_PRIORITY
             );
             if(!enqueue_submission_exp){
-                return std::unexpected(enqueue_submission_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            enqueue_submission_exp.error()
+                        )
+                    )
+                );
             }
 
             const auto increase_submission_count_exp =
@@ -209,7 +241,13 @@ std::expected<submission_dto::created, error_code> submission_service::create_su
                     problem_reference_value
                 );
             if(!increase_submission_count_exp){
-                return std::unexpected(increase_submission_count_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            increase_submission_count_exp.error()
+                        )
+                    )
+                );
             }
 
             return *create_submission_exp;
@@ -224,9 +262,11 @@ std::expected<void, error_code> submission_service::update_submission_status(
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            return submission_repository::update_submission_status(
-                transaction,
-                status_update_value
+            return db_service_util::map_repository_error_to_http_error(
+                submission_repository::update_submission_status(
+                    transaction,
+                    status_update_value
+                )
             );
         }
     );
@@ -263,9 +303,11 @@ std::expected<void, error_code> submission_service::rejudge(
     return db_service_util::with_retry_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-            return submission_repository::rejudge_submission(
-                transaction,
-                submission_id
+            return db_service_util::map_repository_error_to_http_error(
+                submission_repository::rejudge_submission(
+                    transaction,
+                    submission_id
+                )
             );
         }
     );
@@ -284,7 +326,13 @@ std::expected<void, error_code> submission_service::rejudge_problem(
                     problem_id
                 );
             if(!submission_values_exp){
-                return std::unexpected(submission_values_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            submission_values_exp.error()
+                        )
+                    )
+                );
             }
 
             for(const auto& submission_value : *submission_values_exp){
@@ -294,7 +342,13 @@ std::expected<void, error_code> submission_service::rejudge_problem(
                     submission_value.submission_id
                 );
                 if(!rejudge_submission_exp){
-                    return std::unexpected(rejudge_submission_exp.error());
+                    return std::unexpected(
+                        error_code::create(
+                            db_service_util::map_repository_error_to_http_error(
+                                rejudge_submission_exp.error()
+                            )
+                        )
+                    );
                 }
             }
 
@@ -321,7 +375,13 @@ submission_service::lease_submission(
                     return std::optional<submission_dto::queued_submission>{};
                 }
 
-                return std::unexpected(lease_submission_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            lease_submission_exp.error()
+                        )
+                    )
+                );
             }
 
             return std::optional<submission_dto::queued_submission>{
@@ -351,12 +411,20 @@ std::expected<void, error_code> submission_service::requeue_submission_immediate
                 status_update_value
             );
             if(!update_submission_status_exp){
-                return std::unexpected(update_submission_status_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            update_submission_status_exp.error()
+                        )
+                    )
+                );
             }
 
-            return submission_repository::release_submission_lease(
-                transaction,
-                submission_id
+            return db_service_util::map_repository_error_to_http_error(
+                submission_repository::release_submission_lease(
+                    transaction,
+                    submission_id
+                )
             );
         }
     );
@@ -375,7 +443,13 @@ std::expected<void, error_code> submission_service::finalize_submission(
                 finalize_request_value
             );
             if(!finalize_submission_exp){
-                return std::unexpected(finalize_submission_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            finalize_submission_exp.error()
+                        )
+                    )
+                );
             }
 
             problem_dto::reference problem_reference_value{
@@ -388,7 +462,13 @@ std::expected<void, error_code> submission_service::finalize_submission(
                         problem_reference_value
                     );
                 if(!increase_accepted_count_exp){
-                    return std::unexpected(increase_accepted_count_exp.error());
+                    return std::unexpected(
+                        error_code::create(
+                            db_service_util::map_repository_error_to_http_error(
+                                increase_accepted_count_exp.error()
+                            )
+                        )
+                    );
                 }
             }
 
@@ -413,7 +493,13 @@ submission_service::list_submissions(
                 viewer_user_id_opt
             );
             if(!summary_page_exp){
-                return std::unexpected(summary_page_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            summary_page_exp.error()
+                        )
+                    )
+                );
             }
 
             return sanitize_submission_metrics(std::move(*summary_page_exp));

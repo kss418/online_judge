@@ -15,7 +15,7 @@ namespace{
     };
 
     std::optional<mapped_http_error> map_http_error(const error_code& code){
-        const auto http_error_opt = map_error_to_http_error(code);
+        const auto http_error_opt = from_error_code(code);
         if(!http_error_opt){
             return std::nullopt;
         }

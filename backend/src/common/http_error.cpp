@@ -20,7 +20,7 @@ std::string to_string(http_error ec){
     return "unknown http error";
 }
 
-std::optional<http_error> map_error_to_http_error(repository_error ec){
+std::optional<http_error> from_repository(repository_error ec){
     switch(ec){
         case repository_error::invalid_reference:
         case repository_error::invalid_input:
@@ -35,7 +35,7 @@ std::optional<http_error> map_error_to_http_error(repository_error ec){
     return std::nullopt;
 }
 
-std::optional<http_error> map_error_to_http_error(const error_code& ec){
+std::optional<http_error> from_error_code(const error_code& ec){
     if(ec == http_error::validation_error){
         return http_error::validation_error;
     }
@@ -58,7 +58,7 @@ std::optional<http_error> map_error_to_http_error(const error_code& ec){
         return http_error::conflict;
     }
     if(ec.type_ == error_type::repository_type){
-        return map_error_to_http_error(static_cast<repository_error>(ec.code_));
+        return from_repository(static_cast<repository_error>(ec.code_));
     }
 
     return std::nullopt;

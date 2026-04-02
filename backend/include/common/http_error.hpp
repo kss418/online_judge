@@ -17,5 +17,5 @@ enum class http_error{
 };
 
 std::string to_string(http_error ec);
-std::optional<http_error> map_error_to_http_error(repository_error ec);
-std::optional<http_error> map_error_to_http_error(const error_code& ec);
+std::optional<http_error> from_repository(repository_error ec);
+std::optional<http_error> from_error_code(const error_code& ec);

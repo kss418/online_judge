@@ -16,7 +16,7 @@ namespace db_service_util{
     inline constexpr int DB_TRANSACTION_ATTEMPT_COUNT = 5;
 
     inline http_error map_repository_error_to_http_error(repository_error repository_error_value){
-        if(const auto http_error_opt = map_error_to_http_error(repository_error_value)){
+        if(const auto http_error_opt = from_repository(repository_error_value)){
             return *http_error_opt;
         }
 
@@ -24,7 +24,7 @@ namespace db_service_util{
     }
 
     inline error_code map_repository_error_to_http_error(const error_code& error_code_value){
-        if(const auto http_error_opt = map_error_to_http_error(error_code_value)){
+        if(const auto http_error_opt = from_error_code(error_code_value)){
             return error_code::create(*http_error_opt);
         }
 
