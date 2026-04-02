@@ -7,13 +7,13 @@
 #include <memory>
 #include <utility>
 
-std::expected<std::shared_ptr<acceptor>, error_code> acceptor::create(
+std::expected<std::shared_ptr<acceptor>, transport_error> acceptor::create(
     boost::asio::io_context& io_context,
     const tcp::endpoint& endpoint,
     std::shared_ptr<http_server> http_server
 ){
     if(!http_server){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(transport_error::invalid_argument);
     }
 
     auto acceptor_ptr = std::shared_ptr<acceptor>(
@@ -33,45 +33,45 @@ acceptor::acceptor(boost::asio::io_context& io_context, std::shared_ptr<http_ser
     acceptor_(boost::asio::make_strand(io_context_)),
     http_server_(std::move(http_server)){}
 
-std::expected<void, error_code> acceptor::initialize(const tcp::endpoint& endpoint){
+std::expected<void, transport_error> acceptor::initialize(const tcp::endpoint& endpoint){
     boost::system::error_code ec;
     acceptor_.open(endpoint.protocol(), ec);
     if(ec){
-        return std::unexpected(error_code::map_boost_error_code(ec));
+        return std::unexpected(transport_error(ec));
     }
 
     acceptor_.set_option(boost::asio::socket_base::reuse_address(true), ec);
     if(ec){
-        return std::unexpected(error_code::map_boost_error_code(ec));
+        return std::unexpected(transport_error(ec));
     }
 
     acceptor_.bind(endpoint, ec);
     if(ec){
-        return std::unexpected(error_code::map_boost_error_code(ec));
+        return std::unexpected(transport_error(ec));
     }
 
     acceptor_.listen(boost::asio::socket_base::max_listen_connections, ec);
     if(ec){
-        return std::unexpected(error_code::map_boost_error_code(ec));
+        return std::unexpected(transport_error(ec));
     }
 
     return {};
 }
 
-std::expected<void, error_code> acceptor::run(){
+std::expected<void, transport_error> acceptor::run(){
     if(!acceptor_.is_open()){
-        return std::unexpected(error_code::create(boost_error::bad_descriptor));
+        return std::unexpected(transport_error::bad_descriptor);
     }
     
     if(!http_server_){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(transport_error::invalid_argument);
     }
 
     accept();
     return {};
 }
 
-void acceptor::handle_error(error_code code) const{
+void acceptor::handle_error(transport_error code) const{
     logger::cerr()
         .log("acceptor_error")
         .field("code", to_string(code));
@@ -93,11 +93,11 @@ void acceptor::on_accept(boost::system::error_code ec, tcp::socket socket){
             return;
         }
 
-        handle_error(error_code::map_boost_error_code(ec));
+        handle_error(transport_error(ec));
     } 
     else{
         if(!http_server_){
-            handle_error(error_code::create(errno_error::invalid_argument));
+            handle_error(transport_error::invalid_argument);
         }
         else{
             auto session_exp = http_session::create(std::move(socket), http_server_);

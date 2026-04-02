@@ -1,18 +1,22 @@
 #include "common/worker_pool.hpp"
 
-std::expected<std::unique_ptr<worker_pool>, error_code> worker_pool::create(std::size_t worker_count){
+std::expected<std::unique_ptr<worker_pool>, pool_error> worker_pool::create(
+    std::size_t worker_count
+){
     if(worker_count == 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(pool_error::invalid_argument);
     }
 
     try{
         return std::unique_ptr<worker_pool>(new worker_pool(worker_count));
     }
     catch(const std::bad_alloc&){
-        return std::unexpected(error_code::create(errno_error::out_of_memory));
+        return std::unexpected(
+            pool_error{pool_error_code::unavailable, "worker pool out of memory"}
+        );
     }
     catch(...){
-        return std::unexpected(error_code::create(errno_error::unknown_error));
+        return std::unexpected(pool_error::internal);
     }
 }
 

@@ -2,10 +2,12 @@ target_sources(lib
     PRIVATE
         error_code.cpp
         db_error.cpp
+        http_server_error.cpp
         infra_error.cpp
         pool_error.cpp
         repository_error.cpp
         http_error.cpp
         service_error.cpp
+        transport_error.cpp
         judge_error.cpp
 )

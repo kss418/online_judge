@@ -1,6 +1,6 @@
 #pragma once
 
-#include "error/error_code.hpp"
+#include "error/transport_error.hpp"
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/post.hpp>
@@ -23,23 +23,23 @@ public:
     using request_type = boost::beast::http::request<boost::beast::http::string_body>;
     using response_type = boost::beast::http::response<boost::beast::http::string_body>;
 
-    static std::expected<std::shared_ptr<http_session>, error_code> create(
+    static std::expected<std::shared_ptr<http_session>, transport_error> create(
         tcp::socket socket, std::shared_ptr<http_server> http_server
     );
 
-    std::expected<void, error_code> run();
+    std::expected<void, transport_error> run();
 private:
     static constexpr std::uint64_t max_request_body_size_bytes = 32ULL * 1024ULL * 1024ULL;
 
     explicit http_session(tcp::socket socket, std::shared_ptr<http_server> http_server);
 
     static bool should_respond_to_read_error(const boost::system::error_code& ec);
-    void handle_error(error_code code) const;
+    void handle_error(transport_error code) const;
     void read();
     void on_read(boost::system::error_code ec, std::size_t bytes_transferred);
     void on_write(bool should_close, boost::system::error_code ec, std::size_t bytes_transferred);
     void write_response(std::shared_ptr<response_type> response);
-    std::expected<void, error_code> close();
+    std::expected<void, transport_error> close();
 
     response_type create_read_error_response(const boost::system::error_code& ec) const;
 

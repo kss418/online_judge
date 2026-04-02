@@ -1,8 +1,8 @@
 #pragma once
 
 #include "common/db_connection_pool.hpp"
-#include "error/error_code.hpp"
 #include "common/worker_pool.hpp"
+#include "error/http_server_error.hpp"
 #include "http_core/http_dispatcher.hpp"
 
 #include <boost/beast/http/message.hpp>
@@ -23,7 +23,7 @@ public:
     http_server(http_server&&) noexcept = delete;
     http_server& operator=(http_server&&) noexcept = delete;
 
-    static std::expected<std::shared_ptr<http_server>, error_code> create(
+    static std::expected<std::shared_ptr<http_server>, http_server_error> create(
         std::size_t default_http_worker_count
     );
     void async_handle(request_type request, handle_callback callback);

@@ -15,14 +15,14 @@
 #include <memory>
 #include <utility>
 
-std::expected<std::shared_ptr<http_session>, error_code> http_session::create(
+std::expected<std::shared_ptr<http_session>, transport_error> http_session::create(
     tcp::socket socket, std::shared_ptr<http_server> http_server
 ){
     if(!socket.is_open()){
-        return std::unexpected(error_code::create(boost_error::bad_descriptor));
+        return std::unexpected(transport_error::bad_descriptor);
     }
     if(!http_server){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(transport_error::invalid_argument);
     }
 
     auto created_session = std::shared_ptr<http_session>(
@@ -43,16 +43,16 @@ bool http_session::should_respond_to_read_error(const boost::system::error_code&
         ec.category() == http_error_category;
 }
 
-std::expected<void, error_code> http_session::run(){
+std::expected<void, transport_error> http_session::run(){
     if(!socket_.is_open()){
-        return std::unexpected(error_code::create(boost_error::bad_descriptor));
+        return std::unexpected(transport_error::bad_descriptor);
     }
 
     read();
     return {};
 }
 
-void http_session::handle_error(error_code code) const{
+void http_session::handle_error(transport_error code) const{
     logger::cerr()
         .log("http_session_error")
         .field("code", to_string(code));
@@ -90,7 +90,7 @@ void http_session::on_read(boost::system::error_code ec, std::size_t bytes_trans
             return;
         }
 
-        handle_error(error_code::map_boost_error_code(ec));
+        handle_error(transport_error(ec));
         return;
     }
 
@@ -111,10 +111,15 @@ void http_session::on_read(boost::system::error_code ec, std::size_t bytes_trans
                 );
             }
             catch(const std::bad_alloc&){
-                self->handle_error(error_code::create(errno_error::out_of_memory));
+                self->handle_error(
+                    transport_error{
+                        transport_error_code::internal,
+                        "out of memory"
+                    }
+                );
             }
             catch(...){
-                self->handle_error(error_code::create(errno_error::unknown_error));
+                self->handle_error(transport_error::internal);
             }
         }
     );
@@ -124,7 +129,7 @@ void http_session::on_write(
     bool should_close, boost::system::error_code ec, std::size_t bytes_transferred
 ){
     if(ec){
-        handle_error(error_code::map_boost_error_code(ec));
+        handle_error(transport_error(ec));
         return;
     }
 
@@ -152,12 +157,12 @@ void http_session::write_response(std::shared_ptr<response_type> response){
     );
 }
 
-std::expected<void, error_code> http_session::close(){
+std::expected<void, transport_error> http_session::close(){
     boost::system::error_code ec;
     socket_.shutdown(tcp::socket::shutdown_send, ec);
 
     if(ec && ec != boost::asio::error::not_connected){
-        return std::unexpected(error_code::map_boost_error_code(ec));
+        return std::unexpected(transport_error(ec));
     }
 
     return {};
