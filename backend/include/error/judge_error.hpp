@@ -4,7 +4,9 @@
 
 #include <string>
 
+struct db_error;
 struct error_code;
+struct infra_error;
 
 enum class judge_error_code{
     validation_error,
@@ -19,8 +21,10 @@ struct judge_error{
     std::string message;
 
     judge_error(judge_error_code code_value, std::string message_value = {});
+    judge_error(const db_error& ec);
     judge_error(const service_error& ec);
     judge_error(const error_code& ec);
+    judge_error(const infra_error& ec);
 
     bool operator==(const judge_error& other) const;
 
@@ -30,6 +34,8 @@ struct judge_error{
     static const judge_error unavailable;
     static const judge_error internal;
 
+    static judge_error from_db_error(const db_error& ec);
+    static judge_error from_infra_error(const infra_error& ec);
     static judge_error from_service(const service_error& ec);
     static judge_error from_error_code(const error_code& ec);
 };

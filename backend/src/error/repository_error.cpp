@@ -1,5 +1,6 @@
 #include "error/repository_error.hpp"
 
+#include "error/db_error.hpp"
 #include "error/error_code.hpp"
 
 #include <utility>
@@ -32,6 +33,10 @@ repository_error::repository_error(
             ? default_message(code_value)
             : std::move(message_value)
     ){}
+
+repository_error::repository_error(const db_error& ec)
+:
+    repository_error(from_db_error(ec)){}
 
 bool repository_error::operator==(const repository_error& other) const{
     return code == other.code;
@@ -73,34 +78,35 @@ std::string to_string(const repository_error& ec){
     return ec.message;
 }
 
-repository_error repository_error::from_error_code(const error_code& ec){
-    if(ec == repository_error::invalid_reference){
-        return repository_error::invalid_reference;
-    }
-    if(ec == repository_error::invalid_input){
-        return repository_error::invalid_input;
-    }
-    if(ec == repository_error::not_found){
-        return repository_error::not_found;
-    }
-    if(ec == repository_error::conflict){
-        return repository_error::conflict;
-    }
-    if(ec == repository_error::internal){
-        return repository_error::internal;
-    }
-    if(ec == psql_error::unique_violation){
-        return repository_error::conflict;
-    }
-    if(
-        ec == errno_error::invalid_argument ||
-        (
-            ec.is_constraint_violation_error() &&
-            ec != psql_error::unique_violation
-        )
-    ){
-        return repository_error::invalid_input;
+repository_error repository_error::from_db_error(const db_error& ec){
+    switch(ec.code){
+        case db_error_code::invalid_argument:
+        case db_error_code::constraint_violation:
+            return repository_error{
+                repository_error_code::invalid_input,
+                ec.message
+            };
+        case db_error_code::unique_violation:
+            return repository_error{
+                repository_error_code::conflict,
+                ec.message
+            };
+        case db_error_code::invalid_connection:
+        case db_error_code::interrupted:
+        case db_error_code::broken_connection:
+        case db_error_code::serialization_failure:
+        case db_error_code::deadlock_detected:
+        case db_error_code::unavailable:
+        case db_error_code::internal:
+            return repository_error{
+                repository_error_code::internal,
+                ec.message
+            };
     }
 
     return repository_error::internal;
+}
+
+repository_error repository_error::from_error_code(const error_code& ec){
+    return from_db_error(db_error::from_error_code(ec));
 }

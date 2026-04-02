@@ -2,6 +2,7 @@
 
 #include <string>
 
+struct db_error;
 struct error_code;
 
 enum class repository_error_code{
@@ -17,6 +18,7 @@ struct repository_error{
     std::string message;
 
     repository_error(repository_error_code code_value, std::string message_value = {});
+    repository_error(const db_error& ec);
 
     bool operator==(const repository_error& other) const;
 
@@ -26,6 +28,7 @@ struct repository_error{
     static const repository_error conflict;
     static const repository_error internal;
 
+    static repository_error from_db_error(const db_error& ec);
     static repository_error from_error_code(const error_code& ec);
 };
 
