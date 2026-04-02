@@ -3,6 +3,7 @@
 #include "common/string_util.hpp"
 #include "common/json_field_util.hpp"
 #include "common/query_param_util.hpp"
+#include "error/request_error.hpp"
 
 namespace{
     std::optional<std::int64_t> parse_non_negative_int64(std::string_view raw_value){
@@ -172,11 +173,7 @@ std::expected<problem_dto::create_request, http_error>
 problem_dto::make_create_request_from_json(const boost::json::object& json){
     const auto title_opt = json_field_util::get_non_empty_string_field(json, "title");
     if(!title_opt){
-        return std::unexpected(http_error{
-            http_error_code::missing_field,
-            "required field: title",
-            "title"
-        });
+        return std::unexpected(request_error::make_missing_field_error("title"));
     }
 
     create_request create_request_value;
@@ -188,11 +185,7 @@ std::expected<problem_dto::update_request, http_error>
 problem_dto::make_update_request_from_json(const boost::json::object& json){
     const auto title_opt = json_field_util::get_non_empty_string_field(json, "title");
     if(!title_opt){
-        return std::unexpected(http_error{
-            http_error_code::missing_field,
-            "required field: title",
-            "title"
-        });
+        return std::unexpected(request_error::make_missing_field_error("title"));
     }
 
     update_request update_request_value;
@@ -215,20 +208,12 @@ std::expected<problem_dto::testcase, http_error> problem_dto::make_testcase_from
 ){
     const auto input_opt = json_field_util::get_string_field(json, "testcase_input");
     if(!input_opt){
-        return std::unexpected(http_error{
-            http_error_code::missing_field,
-            "required field: testcase_input",
-            "testcase_input"
-        });
+        return std::unexpected(request_error::make_missing_field_error("testcase_input"));
     }
 
     const auto output_opt = json_field_util::get_string_field(json, "testcase_output");
     if(!output_opt){
-        return std::unexpected(http_error{
-            http_error_code::missing_field,
-            "required field: testcase_output",
-            "testcase_output"
-        });
+        return std::unexpected(request_error::make_missing_field_error("testcase_output"));
     }
 
     testcase testcase_value;
@@ -244,11 +229,10 @@ problem_dto::make_testcase_move_request_from_json(const boost::json::object& jso
         "source_testcase_order"
     );
     if(!source_testcase_order_opt){
-        return std::unexpected(http_error{
-            http_error_code::invalid_field,
-            "source_testcase_order must be a positive integer",
-            "source_testcase_order"
-        });
+        return std::unexpected(request_error::make_invalid_field_error(
+            "source_testcase_order",
+            "source_testcase_order must be a positive integer"
+        ));
     }
 
     const auto target_testcase_order_opt = json_field_util::get_positive_int32_field(
@@ -256,11 +240,10 @@ problem_dto::make_testcase_move_request_from_json(const boost::json::object& jso
         "target_testcase_order"
     );
     if(!target_testcase_order_opt){
-        return std::unexpected(http_error{
-            http_error_code::invalid_field,
-            "target_testcase_order must be a positive integer",
-            "target_testcase_order"
-        });
+        return std::unexpected(request_error::make_invalid_field_error(
+            "target_testcase_order",
+            "target_testcase_order must be a positive integer"
+        ));
     }
 
     testcase_move_request testcase_move_request_value;

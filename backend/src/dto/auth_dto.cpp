@@ -2,6 +2,7 @@
 
 #include "common/password_util.hpp"
 #include "common/json_field_util.hpp"
+#include "error/request_error.hpp"
 
 #include <optional>
 #include <string>
@@ -25,11 +26,10 @@ namespace{
             value.size() < credential_min_length ||
             value.size() > credential_max_length
         ){
-            return http_error{
-                http_error_code::invalid_length,
-                std::string{field_name} + " must be between 4 and 15 characters",
-                std::string{field_name}
-            };
+            return request_error::make_invalid_length_error(
+                field_name,
+                std::string{field_name} + " must be between 4 and 15 characters"
+            );
         }
 
         return std::nullopt;
@@ -89,11 +89,7 @@ std::expected<auth_dto::credentials, http_error> auth_dto::make_credentials_from
         "user_login_id"
     );
     if(!user_login_id_opt){
-        return std::unexpected(http_error{
-            http_error_code::missing_field,
-            "required field: user_login_id",
-            "user_login_id"
-        });
+        return std::unexpected(request_error::make_missing_field_error("user_login_id"));
     }
 
     const auto raw_password_opt = json_field_util::get_non_empty_string_field(
@@ -101,11 +97,7 @@ std::expected<auth_dto::credentials, http_error> auth_dto::make_credentials_from
         "raw_password"
     );
     if(!raw_password_opt){
-        return std::unexpected(http_error{
-            http_error_code::missing_field,
-            "required field: raw_password",
-            "raw_password"
-        });
+        return std::unexpected(request_error::make_missing_field_error("raw_password"));
     }
 
     const auto user_login_id_length_error_opt = validate_credential_length(

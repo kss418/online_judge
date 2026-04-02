@@ -4,6 +4,7 @@
 #include "common/query_param_util.hpp"
 #include "common/string_util.hpp"
 #include "common/json_field_util.hpp"
+#include "error/request_error.hpp"
 
 #include <limits>
 
@@ -185,18 +186,13 @@ std::expected<submission_dto::source, http_error> submission_dto::make_source_fr
         "language"
     );
     if(!language_opt){
-        return std::unexpected(http_error{
-            http_error_code::missing_field,
-            "required field: language",
-            "language"
-        });
+        return std::unexpected(request_error::make_missing_field_error("language"));
     }
     if(!language_util::find_supported_language(*language_opt)){
-        return std::unexpected(http_error{
-            http_error_code::invalid_field,
-            "unsupported language: " + std::string{*language_opt},
-            "language"
-        });
+        return std::unexpected(request_error::make_invalid_field_error(
+            "language",
+            "unsupported language: " + std::string{*language_opt}
+        ));
     }
 
     const auto source_code_opt = json_field_util::get_non_empty_string_field(
@@ -204,11 +200,7 @@ std::expected<submission_dto::source, http_error> submission_dto::make_source_fr
         "source_code"
     );
     if(!source_code_opt){
-        return std::unexpected(http_error{
-            http_error_code::missing_field,
-            "required field: source_code",
-            "source_code"
-        });
+        return std::unexpected(request_error::make_missing_field_error("source_code"));
     }
 
     source source_value;
@@ -233,18 +225,13 @@ submission_dto::make_status_batch_request_from_json(
 ){
     const auto* submission_ids_value = json.if_contains("submission_ids");
     if(submission_ids_value == nullptr){
-        return std::unexpected(http_error{
-            http_error_code::missing_field,
-            "required field: submission_ids",
-            "submission_ids"
-        });
+        return std::unexpected(request_error::make_missing_field_error("submission_ids"));
     }
     if(!submission_ids_value->is_array()){
-        return std::unexpected(http_error{
-            http_error_code::invalid_field,
-            "submission_ids must be an array of positive integers",
-            "submission_ids"
-        });
+        return std::unexpected(request_error::make_invalid_field_error(
+            "submission_ids",
+            "submission_ids must be an array of positive integers"
+        ));
     }
 
     status_batch_request request_value;
@@ -253,11 +240,10 @@ submission_dto::make_status_batch_request_from_json(
     for(const auto& submission_id_value : submission_ids){
         const auto submission_id_opt = parse_positive_json_int64(submission_id_value);
         if(!submission_id_opt){
-            return std::unexpected(http_error{
-                http_error_code::invalid_field,
-                "submission_ids must be an array of positive integers",
-                "submission_ids"
-            });
+            return std::unexpected(request_error::make_invalid_field_error(
+                "submission_ids",
+                "submission_ids must be an array of positive integers"
+            ));
         }
 
         request_value.submission_ids.push_back(*submission_id_opt);
@@ -273,18 +259,16 @@ submission_dto::make_create_request_from_json(
     std::int64_t problem_id
 ){
     if(user_id <= 0){
-        return std::unexpected(http_error{
-            http_error_code::invalid_argument,
+        return std::unexpected(request_error::make_invalid_argument_error(
             "user_id must be positive",
             "user_id"
-        });
+        ));
     }
     if(problem_id <= 0){
-        return std::unexpected(http_error{
-            http_error_code::invalid_argument,
+        return std::unexpected(request_error::make_invalid_argument_error(
             "problem_id must be positive",
             "problem_id"
-        });
+        ));
     }
 
     const auto source_exp = make_source_from_json(json);

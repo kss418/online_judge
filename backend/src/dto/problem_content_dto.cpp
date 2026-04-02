@@ -1,6 +1,7 @@
 #include "dto/problem_content_dto.hpp"
 
 #include "common/json_field_util.hpp"
+#include "error/request_error.hpp"
 
 bool problem_content_dto::is_valid(const limits& limits_value){
     return limits_value.memory_mb > 0 && limits_value.time_ms > 0;
@@ -24,11 +25,10 @@ problem_content_dto::make_limits_from_json(const boost::json::object& json){
         "memory_limit_mb"
     );
     if(!memory_limit_mb_opt){
-        return std::unexpected(http_error{
-            http_error_code::invalid_field,
-            "memory_limit_mb must be a positive integer",
-            "memory_limit_mb"
-        });
+        return std::unexpected(request_error::make_invalid_field_error(
+            "memory_limit_mb",
+            "memory_limit_mb must be a positive integer"
+        ));
     }
 
     const auto time_limit_ms_opt = json_field_util::get_positive_int32_field(
@@ -36,11 +36,10 @@ problem_content_dto::make_limits_from_json(const boost::json::object& json){
         "time_limit_ms"
     );
     if(!time_limit_ms_opt){
-        return std::unexpected(http_error{
-            http_error_code::invalid_field,
-            "time_limit_ms must be a positive integer",
-            "time_limit_ms"
-        });
+        return std::unexpected(request_error::make_invalid_field_error(
+            "time_limit_ms",
+            "time_limit_ms must be a positive integer"
+        ));
     }
 
     limits limits_value;
@@ -56,11 +55,7 @@ problem_content_dto::make_statement_from_json(const boost::json::object& json){
         "description"
     );
     if(!description_opt){
-        return std::unexpected(http_error{
-            http_error_code::missing_field,
-            "required field: description",
-            "description"
-        });
+        return std::unexpected(request_error::make_missing_field_error("description"));
     }
 
     const auto input_format_opt = json_field_util::get_non_empty_string_field(
@@ -68,11 +63,7 @@ problem_content_dto::make_statement_from_json(const boost::json::object& json){
         "input_format"
     );
     if(!input_format_opt){
-        return std::unexpected(http_error{
-            http_error_code::missing_field,
-            "required field: input_format",
-            "input_format"
-        });
+        return std::unexpected(request_error::make_missing_field_error("input_format"));
     }
 
     const auto output_format_opt = json_field_util::get_non_empty_string_field(
@@ -80,11 +71,7 @@ problem_content_dto::make_statement_from_json(const boost::json::object& json){
         "output_format"
     );
     if(!output_format_opt){
-        return std::unexpected(http_error{
-            http_error_code::missing_field,
-            "required field: output_format",
-            "output_format"
-        });
+        return std::unexpected(request_error::make_missing_field_error("output_format"));
     }
 
     statement statement_value;
@@ -102,11 +89,10 @@ problem_content_dto::make_statement_from_json(const boost::json::object& json){
             statement_value.note = std::string{note_string.data(), note_string.size()};
         }
         else{
-            return std::unexpected(http_error{
-                http_error_code::invalid_field,
-                "note must be a string or null",
-                "note"
-            });
+            return std::unexpected(request_error::make_invalid_field_error(
+                "note",
+                "note must be a string or null"
+            ));
         }
     }
 
@@ -117,20 +103,12 @@ std::expected<problem_content_dto::sample, http_error>
 problem_content_dto::make_sample_from_json(const boost::json::object& json){
     const auto input_opt = json_field_util::get_string_field(json, "sample_input");
     if(!input_opt){
-        return std::unexpected(http_error{
-            http_error_code::missing_field,
-            "required field: sample_input",
-            "sample_input"
-        });
+        return std::unexpected(request_error::make_missing_field_error("sample_input"));
     }
 
     const auto output_opt = json_field_util::get_string_field(json, "sample_output");
     if(!output_opt){
-        return std::unexpected(http_error{
-            http_error_code::missing_field,
-            "required field: sample_output",
-            "sample_output"
-        });
+        return std::unexpected(request_error::make_missing_field_error("sample_output"));
     }
 
     sample sample_value;

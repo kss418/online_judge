@@ -7,6 +7,7 @@ target_sources(lib
         pool_error.cpp
         repository_error.cpp
         http_error.cpp
+        request_error.cpp
         service_error.cpp
         transport_error.cpp
         judge_error.cpp

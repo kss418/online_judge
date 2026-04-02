@@ -2,6 +2,7 @@
 
 #include "common/json_field_util.hpp"
 #include "common/query_param_util.hpp"
+#include "error/request_error.hpp"
 
 namespace{
     const std::array<
@@ -37,11 +38,10 @@ user_dto::make_submission_ban_request_from_json(const boost::json::object& json)
         "duration_minutes"
     );
     if(!duration_minutes_opt){
-        return std::unexpected(http_error{
-            http_error_code::invalid_field,
-            "duration_minutes must be a positive integer",
-            "duration_minutes"
-        });
+        return std::unexpected(request_error::make_invalid_field_error(
+            "duration_minutes",
+            "duration_minutes must be a positive integer"
+        ));
     }
 
     submission_ban_request request_value;

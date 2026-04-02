@@ -1,5 +1,6 @@
 #include "http_core/http_session.hpp"
 #include "common/logger.hpp"
+#include "error/request_error.hpp"
 #include "http_core/http_server.hpp"
 #include "http_core/http_response_util.hpp"
 #include "serializer/common_json_serializer.hpp"
@@ -171,21 +172,15 @@ std::expected<void, transport_error> http_session::close(){
 http_session::response_type http_session::create_read_error_response(
     const boost::system::error_code& ec
 ) const{
-    const auto status = ec == boost::beast::http::error::body_limit
-        ? boost::beast::http::status::payload_too_large
-        : boost::beast::http::status::bad_request;
-    const auto error_code_text = ec == boost::beast::http::error::body_limit
-        ? to_code_string(http_error_code::payload_too_large)
-        : to_code_string(http_error_code::bad_request);
-    const std::string error_message = ec == boost::beast::http::error::body_limit
-        ? "request body too large"
-        : "bad request: " + ec.message();
+    const auto error = ec == boost::beast::http::error::body_limit
+        ? request_error::make_payload_too_large_error()
+        : request_error::make_bad_request_error("bad request: " + ec.message());
     const unsigned http_version =
         request_parser_ && request_parser_->get().version() != 0
             ? request_parser_->get().version()
             : 11;
 
-    response_type response{status, http_version};
+    response_type response{error.status(), http_version};
     response.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
     response.set(
         boost::beast::http::field::content_type,
@@ -193,7 +188,7 @@ http_session::response_type http_session::create_read_error_response(
     );
     response.keep_alive(false);
     response.body() = boost::json::serialize(
-        common_json_serializer::make_error_object(error_code_text, error_message)
+        common_json_serializer::make_error_object(error.code_string(), error.message)
     ) + "\n";
     response.prepare_payload();
     return response;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/query_param.hpp"
-#include "error/http_error.hpp"
+#include "error/request_error.hpp"
 
 #include <algorithm>
 #include <array>
@@ -15,16 +15,6 @@
 #include <vector>
 
 namespace query_param_util{
-    http_error make_duplicate_query_parameter_error(
-        std::string_view key
-    );
-    http_error make_invalid_query_parameter_error(
-        std::string_view key
-    );
-    http_error make_unsupported_query_parameter_error(
-        std::string_view key
-    );
-
     template <typename filter_type>
     struct query_param_binding{
         std::string_view key;
@@ -43,7 +33,7 @@ namespace query_param_util{
         parse_fn&& parse
     ){
         if(out){
-            return std::unexpected(make_duplicate_query_parameter_error(key));
+            return std::unexpected(request_error::make_duplicate_query_parameter_error(key));
         }
 
         auto parsed_value_opt = std::invoke(
@@ -51,7 +41,7 @@ namespace query_param_util{
             raw_value
         );
         if(!parsed_value_opt){
-            return std::unexpected(make_invalid_query_parameter_error(key));
+            return std::unexpected(request_error::make_invalid_query_parameter_error(key));
         }
 
         out = std::move(*parsed_value_opt);
@@ -75,7 +65,9 @@ namespace query_param_util{
             );
             if(binding_it == bindings.end()){
                 return std::unexpected(
-                    make_unsupported_query_parameter_error(current_query_param.key)
+                    request_error::make_unsupported_query_parameter_error(
+                        current_query_param.key
+                    )
                 );
             }
 

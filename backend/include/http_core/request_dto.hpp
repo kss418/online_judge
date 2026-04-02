@@ -1,5 +1,6 @@
 #pragma once
 
+#include "error/request_error.hpp"
 #include "http_core/http_response_util.hpp"
 #include "http_core/request_parser.hpp"
 
@@ -22,7 +23,7 @@ namespace request_dto{
         if(!request_object_opt){
             return std::unexpected(http_response_util::create_error(
                 request,
-                http_error{http_error_code::invalid_json}
+                request_error::make_invalid_json_error()
             ));
         }
 
@@ -69,7 +70,7 @@ namespace request_dto{
         if(!query_params_opt){
             return std::unexpected(http_response_util::create_error(
                 request,
-                http_error{http_error_code::invalid_query_string}
+                request_error::make_invalid_query_string_error()
             ));
         }
 

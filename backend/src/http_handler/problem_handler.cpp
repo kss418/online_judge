@@ -6,6 +6,7 @@
 
 #include "db_service/problem_core_service.hpp"
 #include "db_service/submission_service.hpp"
+#include "error/request_error.hpp"
 #include "serializer/problem_json_serializer.hpp"
 
 problem_handler::response_type problem_handler::get_problems(
@@ -24,11 +25,7 @@ problem_handler::response_type problem_handler::get_problems(
             if(filter_value.state_opt && !viewer_user_id_opt){
                 return http_response_util::create_error(
                     request,
-                    http_error{
-                        http_error_code::invalid_query_parameter,
-                        "invalid query parameter: state",
-                        "state"
-                    }
+                    request_error::make_invalid_query_parameter_error("state")
                 );
             }
 
