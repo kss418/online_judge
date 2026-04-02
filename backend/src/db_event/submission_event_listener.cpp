@@ -1,7 +1,6 @@
 #include "db_event/submission_event_listener.hpp"
 
 #include "common/submission_status.hpp"
-#include "error/error_code.hpp"
 
 #include <pqxx/pqxx>
 
@@ -38,9 +37,7 @@ std::expected<void, db_error> submission_event_listener::listen_submission_queue
         return {};
     }
     catch(const std::exception& exception){
-        return std::unexpected(
-            db_error::from_error_code(error_code::map_psql_error_code(exception))
-        );
+        return std::unexpected(db_error::from_psql_exception(exception));
     }
 }
 
@@ -67,8 +64,6 @@ std::expected<bool, db_error> submission_event_listener::wait_submission_notific
         return notification_count > 0;
     }
     catch(const std::exception& exception){
-        return std::unexpected(
-            db_error::from_error_code(error_code::map_psql_error_code(exception))
-        );
+        return std::unexpected(db_error::from_psql_exception(exception));
     }
 }

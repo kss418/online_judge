@@ -1,5 +1,6 @@
 #pragma once
 
+#include <exception>
 #include <string>
 
 struct error_code;
@@ -41,6 +42,7 @@ struct db_error{
     static const db_error internal;
 
     static db_error from_error_code(const error_code& ec);
+    static db_error from_psql_exception(const std::exception& exception);
 };
 
 std::string to_string(db_error_code ec);

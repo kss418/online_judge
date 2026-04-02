@@ -1,8 +1,6 @@
 #include "common/db_connection.hpp"
 #include "common/env_util.hpp"
 
-#include "error/error_code.hpp"
-
 #include <charconv>
 #include <cstdint>
 #include <cstdlib>
@@ -87,9 +85,7 @@ std::expected<void, db_error> db_connection::connect(
     }
     catch(const std::exception& exception){
         connection_.reset();
-        return std::unexpected(
-            db_error::from_error_code(error_code::map_psql_error_code(exception))
-        );
+        return std::unexpected(db_error::from_psql_exception(exception));
     }
 }
 

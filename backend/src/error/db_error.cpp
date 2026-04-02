@@ -31,6 +31,25 @@ namespace{
 
         return "unknown database error";
     }
+
+    db_error map_psql_error(psql_error ec){
+        switch(ec){
+            case psql_error::serialization_failure:
+                return db_error::serialization_failure;
+            case psql_error::deadlock_detected:
+                return db_error::deadlock_detected;
+            case psql_error::unique_violation:
+                return db_error::unique_violation;
+            case psql_error::foreign_key_violation:
+            case psql_error::not_null_violation:
+            case psql_error::check_violation:
+                return db_error::constraint_violation;
+            case psql_error::broken_connection:
+                return db_error::broken_connection;
+            default:
+                return db_error::internal;
+        }
+    }
 }
 
 db_error::db_error(
@@ -169,4 +188,8 @@ db_error db_error::from_error_code(const error_code& ec){
     }
 
     return db_error::internal;
+}
+
+db_error db_error::from_psql_exception(const std::exception& exception){
+    return map_psql_error(error_code::map_psql_error(exception));
 }
