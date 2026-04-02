@@ -26,15 +26,15 @@ namespace{
         return response;
     }
 
-    template <typename error_type>
     http_response_util::response_type create_mapped_error_response(
         const http_response_util::request_type& request,
-        std::string_view action,
-        const error_type& code
+        std::string_view,
+        const service_error& code
     ){
-        auto mapped_error = http_error::from_service_error(code);
-        mapped_error.message = "failed to " + std::string{action} + ": " + to_string(code);
-        return http_response_util::create_error(request, mapped_error);
+        return http_response_util::create_error(
+            request,
+            http_error::from_service_error(code)
+        );
     }
 }
 

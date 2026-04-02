@@ -97,8 +97,8 @@ Examples:
 ```json
 {
   "error": {
-    "code": "bad_request",
-    "message": "failed to create submission: invalid argument"
+    "code": "validation_error",
+    "message": "validation error"
   }
 }
 ```
@@ -173,7 +173,7 @@ Example:
 {
   "error": {
     "code": "not_found",
-    "message": "failed to get submission detail: invalid argument"
+    "message": "not found"
   }
 }
 ```
@@ -396,7 +396,7 @@ Example:
 {
   "error": {
     "code": "not_found",
-    "message": "failed to get submission history: invalid argument"
+    "message": "not found"
   }
 }
 ```

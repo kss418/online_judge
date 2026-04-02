@@ -98,7 +98,7 @@ Examples:
 {
   "error": {
     "code": "conflict",
-    "message": "failed to sign up: database unique violation"
+    "message": "conflict"
   }
 }
 ```

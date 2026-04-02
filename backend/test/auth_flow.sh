@@ -597,7 +597,7 @@ assert_json_error_code \
     "duplicate user_login_id sign-up"
 assert_json_error_message \
     "${duplicate_user_login_id_response_file}" \
-    "failed to sign up: database unique violation" \
+    "conflict" \
     "duplicate user_login_id sign-up"
 print_success_log "duplicate user_login_id failure success"
 

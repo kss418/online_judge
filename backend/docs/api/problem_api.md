@@ -1100,7 +1100,7 @@ Examples:
 {
   "error": {
     "code": "not_found",
-    "message": "failed to delete testcase: repository not found"
+    "message": "not found"
   }
 }
 ```

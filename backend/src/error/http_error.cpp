@@ -117,7 +117,7 @@ bool http_error::requires_bearer_auth() const{
 }
 
 http_error http_error::from_service_error(const service_error& error){
-    return http_error{map_service_error_code(error), error.message};
+    return http_error{map_service_error_code(error)};
 }
 
 namespace{
