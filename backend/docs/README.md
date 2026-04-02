@@ -15,6 +15,10 @@
 - PostgreSQL profiling helpers for `pg_stat_statements`, `log_lock_waits`, and
   `deadlock_timeout` are documented in
   [`db_performance_debugging.md`](./db_performance_debugging.md).
+- Public HTTP error handling rules are documented in
+  [`error_policy.md`](./error_policy.md).
+- A basic backend regression flow suite can be run with
+  [`../test/run_basic_flow_tests.sh`](../test/run_basic_flow_tests.sh).
 
 ## structure
 
@@ -22,6 +26,7 @@
 - [`api/auth_api.md`](./api/auth_api.md)
 - [`api/submission_api.md`](./api/submission_api.md)
 - [`api/problem_api.md`](./api/problem_api.md)
+- [`error_policy.md`](./error_policy.md)
 - [`db_performance_debugging.md`](./db_performance_debugging.md)
 - [`schema/user_schema.md`](./schema/user_schema.md)
 - [`schema/auth_schema.md`](./schema/auth_schema.md)

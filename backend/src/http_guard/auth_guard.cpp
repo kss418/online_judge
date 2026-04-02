@@ -39,10 +39,11 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require
     const auto auth_identity_exp = auth_service::auth_token(db_connection, *token_exp);
     if(!auth_identity_exp){
         const auto code = auth_identity_exp.error();
-        if(code == service_error::unauthorized){
+        const auto mapped_error_opt = auth_error::map_token_service_error(code);
+        if(mapped_error_opt){
             return std::unexpected(http_response_util::create_error(
                 request,
-                auth_error::invalid_or_expired_token()
+                *mapped_error_opt
             ));
         }
 

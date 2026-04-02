@@ -352,6 +352,37 @@ print(
 PY
 )"
 
+missing_field_sign_up_request_body="$(
+    python3 <<'PY'
+import json
+
+print(
+    json.dumps(
+        {
+            "raw_password": "password123",
+        },
+        separators=(",", ":")
+    )
+)
+PY
+)"
+
+invalid_length_sign_up_request_body="$(
+    python3 <<'PY'
+import json
+
+print(
+    json.dumps(
+        {
+            "user_login_id": "abc",
+            "raw_password": "password123",
+        },
+        separators=(",", ":")
+    )
+)
+PY
+)"
+
 submission_ban_request_body="$(
     python3 <<'PY'
 import json
@@ -359,6 +390,17 @@ import json
 print(json.dumps({"duration_minutes": 60}, separators=(",", ":")))
 PY
 )"
+
+request_contract_cases="$(cat <<EOF
+invalid json sign-up|POST|${base_url}/api/auth/sign-up||{"user_login_id":"broken"|400|invalid_json|invalid json|
+missing field sign-up|POST|${base_url}/api/auth/sign-up||${missing_field_sign_up_request_body}|400|missing_field|required field: user_login_id|user_login_id
+invalid length sign-up|POST|${base_url}/api/auth/sign-up||${invalid_length_sign_up_request_body}|400|invalid_length|user_login_id must be between 4 and 15 characters|user_login_id
+invalid submission language|POST|${base_url}/api/submission/${problem_id}|${user_token}|${invalid_submission_request_body}|400|invalid_field|unsupported language: ruby|language
+invalid anonymous problem state query|GET|${base_url}/api/problem?state=solved|||400|invalid_query_parameter|invalid query parameter: state|state
+unsupported problem query parameter|GET|${base_url}/api/problem?unsupported=value|||400|unsupported_query_parameter|unsupported query parameter: unsupported|unsupported
+EOF
+)"
+run_error_contract_table "request contract" "${request_contract_cases}"
 
 auth_contract_cases="$(cat <<EOF
 invalid credentials login|POST|${base_url}/api/auth/login||${invalid_login_request_body}|401|invalid_credentials|invalid credentials|
@@ -407,7 +449,6 @@ submission_id="$(
 print_success_log "contract submission fixture ready"
 
 submission_contract_cases="$(cat <<EOF
-invalid submission language|POST|${base_url}/api/submission/${problem_id}|${user_token}|${invalid_submission_request_body}|400|invalid_field|unsupported language: ruby|language
 missing problem submission create|POST|${base_url}/api/submission/${missing_problem_id}|${user_token}|${valid_submission_request_body}|404|not_found|not found|
 queued submission rejudge|POST|${base_url}/api/submission/${submission_id}/rejudge|${admin_user_token}||409|conflict|conflict|
 EOF

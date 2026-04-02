@@ -48,10 +48,13 @@ auth_handler::response_type auth_handler::post_login(
                 credentials_value
             );
             if(!login_exp){
-                if(login_exp.error() == service_error::unauthorized){
+                const auto mapped_error_opt = auth_error::map_login_service_error(
+                    login_exp.error()
+                );
+                if(mapped_error_opt){
                     return http_response_util::create_error(
                         request,
-                        auth_error::invalid_credentials()
+                        *mapped_error_opt
                     );
                 }
 
@@ -86,10 +89,13 @@ auth_handler::response_type auth_handler::post_token_renew(
                 token_value
             );
             if(!renew_token_exp){
-                if(renew_token_exp.error() == service_error::unauthorized){
+                const auto mapped_error_opt = auth_error::map_token_service_error(
+                    renew_token_exp.error()
+                );
+                if(mapped_error_opt){
                     return http_response_util::create_error(
                         request,
-                        auth_error::invalid_or_expired_token()
+                        *mapped_error_opt
                     );
                 }
 
@@ -122,10 +128,13 @@ auth_handler::response_type auth_handler::post_logout(
                 token_value
             );
             if(!revoke_token_exp){
-                if(revoke_token_exp.error() == service_error::unauthorized){
+                const auto mapped_error_opt = auth_error::map_token_service_error(
+                    revoke_token_exp.error()
+                );
+                if(mapped_error_opt){
                     return http_response_util::create_error(
                         request,
-                        auth_error::invalid_or_expired_token()
+                        *mapped_error_opt
                     );
                 }
 
