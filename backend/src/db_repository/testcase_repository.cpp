@@ -281,6 +281,11 @@ std::expected<void, repository_error> testcase_repository::move_testcase(
         return {};
     }
 
+    const auto testcase_exp = get_testcase(transaction, testcase_reference_value);
+    if(!testcase_exp){
+        return std::unexpected(testcase_exp.error());
+    }
+
     transaction.exec(
         "SET CONSTRAINTS problem_testcases_problem_id_testcase_order_unique DEFERRED"
     );

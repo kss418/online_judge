@@ -67,7 +67,8 @@ problem_content_handler::response_type problem_content_handler::put_limits(
         auth_guard::make_admin_guard(),
         request_guard::make_json_guard<problem_content_dto::limits>(
             problem_content_request_parser::parse_limits
-        )
+        ),
+        problem_guard::make_exists_guard(problem_reference_value)
     );
 }
 
@@ -96,7 +97,8 @@ problem_content_handler::response_type problem_content_handler::put_statement(
         auth_guard::make_admin_guard(),
         request_guard::make_json_guard<problem_content_dto::statement>(
             problem_content_request_parser::parse_statement
-        )
+        ),
+        problem_guard::make_exists_guard(problem_reference_value)
     );
 }
 
@@ -149,7 +151,8 @@ problem_content_handler::response_type problem_content_handler::post_sample(
                 boost::beast::http::status::created
             );
         },
-        auth_guard::make_admin_guard()
+        auth_guard::make_admin_guard(),
+        problem_guard::make_exists_guard(problem_reference_value)
     );
 }
 
@@ -236,6 +239,7 @@ problem_content_handler::response_type problem_content_handler::delete_sample(
                 }
             );
         },
-        auth_guard::make_admin_guard()
+        auth_guard::make_admin_guard(),
+        problem_guard::make_exists_guard(problem_reference_value)
     );
 }

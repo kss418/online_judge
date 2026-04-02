@@ -66,7 +66,8 @@ Example:
 - invalid or empty request body: `400 Bad Request`
 - missing required fields: `400 Bad Request`
 - unsupported `language`: `400 Bad Request`
-- invalid `problem_id` or unknown problem: `400 Bad Request`
+- invalid `problem_id`: `400 Bad Request`
+- unknown problem: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.

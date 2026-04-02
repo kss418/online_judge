@@ -5,6 +5,7 @@
 #include "http_core/request_dto.hpp"
 #include "http_core/request_list_filter_dto.hpp"
 #include "http_guard/guard_runner.hpp"
+#include "http_guard/problem_guard.hpp"
 #include "request_parser/submission_request_parser.hpp"
 
 #include <cstdint>
@@ -74,12 +75,27 @@ namespace request_guard{
             [problem_id](const http_guard::guard_context& composite_context,
                 const auth_dto::identity& auth_identity_value)
                 -> std::expected<submission_dto::create_request, http_guard::response_type> {
-                return request_dto::parse_json_or_400<submission_dto::create_request>(
+                auto create_request_exp =
+                    request_dto::parse_json_or_400<submission_dto::create_request>(
                     composite_context.request,
                     submission_request_parser::parse_create_request,
                     auth_identity_value.user_id,
                     problem_id
                 );
+                if(!create_request_exp){
+                    return std::unexpected(std::move(create_request_exp.error()));
+                }
+
+                auto problem_exists_exp = problem_guard::require_exists(
+                    composite_context.request,
+                    composite_context.db_connection_value,
+                    problem_dto::reference{problem_id}
+                );
+                if(!problem_exists_exp){
+                    return std::unexpected(std::move(problem_exists_exp.error()));
+                }
+
+                return create_request_exp;
             },
             auth_guard::make_auth_guard()
         );

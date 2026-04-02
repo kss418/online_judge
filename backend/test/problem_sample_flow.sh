@@ -46,6 +46,9 @@ updated_problem_response_file="$(mktemp)"
 delete_sample_response_file="$(mktemp)"
 remaining_samples_response_file="$(mktemp)"
 deleted_problem_response_file="$(mktemp)"
+missing_problem_sample_response_file="$(mktemp)"
+missing_sample_update_response_file="$(mktemp)"
+missing_sample_delete_response_file="$(mktemp)"
 
 cleanup(){
     cleanup_http_server
@@ -65,7 +68,10 @@ cleanup(){
         "${updated_problem_response_file}" \
         "${delete_sample_response_file}" \
         "${remaining_samples_response_file}" \
-        "${deleted_problem_response_file}"
+        "${deleted_problem_response_file}" \
+        "${missing_problem_sample_response_file}" \
+        "${missing_sample_update_response_file}" \
+        "${missing_sample_delete_response_file}"
 }
 
 print_success_log(){
@@ -110,6 +116,19 @@ problem_id="$(
         "problem sample flow" \
         "Problem Sample Flow"
 )"
+missing_problem_id=$((problem_id + 999999))
+
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/problem/${missing_problem_id}/sample" \
+    "${missing_problem_sample_response_file}" \
+    "404" \
+    "missing problem sample create" \
+    "${sign_up_token}"
+assert_json_error_code \
+    "${missing_problem_sample_response_file}" \
+    "not_found" \
+    "missing problem sample create"
 
 send_http_request_and_assert_status \
     "POST" \
@@ -277,6 +296,19 @@ PY
 
 send_http_request_and_assert_status \
     "PUT" \
+    "${base_url}/api/problem/${problem_id}/sample/999" \
+    "${missing_sample_update_response_file}" \
+    "404" \
+    "missing sample update" \
+    "${sign_up_token}" \
+    "${update_sample_request_body}"
+assert_json_error_code \
+    "${missing_sample_update_response_file}" \
+    "not_found" \
+    "missing sample update"
+
+send_http_request_and_assert_status \
+    "PUT" \
     "${base_url}/api/problem/${problem_id}/sample/1" \
     "${update_sample_response_file}" \
     "200" \
@@ -389,6 +421,18 @@ then
     publish_failure_logs
     exit 1
 fi
+
+send_http_request_and_assert_status \
+    "DELETE" \
+    "${base_url}/api/problem/${missing_problem_id}/sample" \
+    "${missing_sample_delete_response_file}" \
+    "404" \
+    "missing problem sample delete" \
+    "${sign_up_token}"
+assert_json_error_code \
+    "${missing_sample_delete_response_file}" \
+    "not_found" \
+    "missing problem sample delete"
 
 send_http_request_and_assert_status \
     "DELETE" \

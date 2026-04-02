@@ -32,30 +32,11 @@ testcase_handler::response_type testcase_handler::get_testcase(
                 db_connection_value,
                 testcase_reference_value
             );
-            return http_response_util::create_response_or_error(
+            return http_response_util::create_json_or_4xx_or_500(
                 request,
                 "get testcase",
                 std::move(testcase_exp),
-                [&](const request_type& error_request,
-                    std::string_view action,
-                    const service_error& code) {
-                    if(code == service_error::not_found){
-                        return http_response_util::create_not_found(error_request);
-                    }
-
-                    return http_response_util::create_4xx_or_500(
-                        error_request,
-                        action,
-                        code
-                    );
-                },
-                [&](const problem_dto::testcase& testcase_value) {
-                    return http_response_util::create_json(
-                        request,
-                        boost::beast::http::status::ok,
-                        problem_json_serializer::make_testcase_object(testcase_value)
-                    );
-                }
+                problem_json_serializer::make_testcase_object
             );
         },
         auth_guard::make_admin_guard(),
@@ -115,7 +96,8 @@ testcase_handler::response_type testcase_handler::post_testcase(
         auth_guard::make_admin_guard(),
         request_guard::make_json_guard<problem_dto::testcase>(
             problem_request_parser::parse_testcase
-        )
+        ),
+        problem_guard::make_exists_guard(problem_reference_value)
     );
 }
 

@@ -478,7 +478,7 @@ Example:
 - authenticated but not admin: `401 Unauthorized`
 - invalid json: `400 Bad Request`
 - missing required fields: `400 Bad Request`
-- unknown `problem_id`: `400 Bad Request`
+- unknown `problem_id`: `404 Not Found`
 - invalid limit values: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
@@ -560,7 +560,7 @@ Example:
 - authenticated but not admin: `401 Unauthorized`
 - invalid json: `400 Bad Request`
 - missing required fields: `400 Bad Request`
-- unknown `problem_id`: `400 Bad Request`
+- unknown `problem_id`: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
@@ -648,7 +648,7 @@ Example:
 - missing or malformed bearer token: `401 Unauthorized`
 - invalid, expired, or revoked token: `401 Unauthorized`
 - authenticated but not admin: `401 Unauthorized`
-- unknown `problem_id`: `400 Bad Request`
+- unknown `problem_id`: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
@@ -700,7 +700,8 @@ Replace one public sample of an existing problem. This endpoint is admin-only an
 - authenticated but not admin: `401 Unauthorized`
 - invalid json: `400 Bad Request`
 - missing required fields: `400 Bad Request`
-- unknown `problem_id` or `sample_order`: `400 Bad Request`
+- invalid `sample_order`: `400 Bad Request`
+- unknown `problem_id` or `sample_order`: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 
 ### `DELETE /api/problem/{problem_id}/sample`
@@ -745,7 +746,8 @@ Example:
 - missing or malformed bearer token: `401 Unauthorized`
 - invalid, expired, or revoked token: `401 Unauthorized`
 - authenticated but not admin: `401 Unauthorized`
-- unknown `problem_id` or missing sample to delete: `400 Bad Request`
+- unknown `problem_id`: `404 Not Found`
+- missing sample to delete: `400 Bad Request`
 - unexpected internal failure: `500 Internal Server Error`
 
 Example:
@@ -868,7 +870,7 @@ Example:
 - authenticated but not admin: `401 Unauthorized`
 - invalid json: `400 Bad Request`
 - missing required fields: `400 Bad Request`
-- unknown `problem_id`: `400 Bad Request`
+- unknown `problem_id`: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.
@@ -976,7 +978,8 @@ Replace one hidden testcase of an existing problem. This endpoint is admin-only.
 - authenticated but not admin: `401 Unauthorized`
 - invalid json: `400 Bad Request`
 - missing required fields: `400 Bad Request`
-- unknown `problem_id` or `testcase_order`: `400 Bad Request`
+- invalid `testcase_order`: `400 Bad Request`
+- unknown `problem_id` or `testcase_order`: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 
 ### `POST /api/problem/{problem_id}/testcase/move`
@@ -1040,7 +1043,8 @@ Example:
 - invalid json: `400 Bad Request`
 - invalid body fields: `400 Bad Request`
 - unknown `problem_id`: `404 Not Found`
-- invalid testcase move request such as unknown testcase order: `400 Bad Request`
+- unknown `source_testcase_order`: `404 Not Found`
+- invalid `target_testcase_order` for the current testcase set: `409 Conflict`
 - unexpected internal failure: `500 Internal Server Error`
 
 ### `DELETE /api/problem/{problem_id}/testcase/{testcase_order}`
@@ -1086,7 +1090,8 @@ Example:
 - missing or malformed bearer token: `401 Unauthorized`
 - invalid, expired, or revoked token: `401 Unauthorized`
 - authenticated but not admin: `401 Unauthorized`
-- invalid `problem_id` or `testcase_order`, or no testcase exists at the requested order: `400 Bad Request`
+- invalid `testcase_order`: `400 Bad Request`
+- unknown `problem_id` or `testcase_order`: `404 Not Found`
 - unexpected internal failure: `500 Internal Server Error`
 
 Examples:
@@ -1094,8 +1099,8 @@ Examples:
 ```json
 {
   "error": {
-    "code": "invalid_testcase_delete_request",
-    "message": "failed to delete testcase: invalid argument"
+    "code": "not_found",
+    "message": "failed to delete testcase: repository not found"
   }
 }
 ```

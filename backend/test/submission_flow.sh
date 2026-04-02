@@ -87,6 +87,7 @@ register_temp_file server_log_temp_file
 register_temp_file sign_up_response_file
 register_temp_file submission_response_file
 register_temp_file invalid_language_response_file
+register_temp_file missing_problem_submission_response_file
 
 trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
 
@@ -126,6 +127,7 @@ promote_admin_user "${admin_user_id}" "submission flow" >/dev/null
 print_success_log "admin user promote success"
 
 problem_id="$(create_problem_in_db "submission flow")"
+missing_problem_id=$((problem_id + 999999))
 print_success_log "problem create success"
 
 invalid_language_request_body="$(
@@ -186,6 +188,25 @@ print(
 )
 PY
 )"
+
+missing_problem_submission_status_code="$(
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${missing_problem_id}" \
+        "${missing_problem_submission_response_file}" \
+        "${sign_up_token}" \
+        "${submission_request_body}"
+)"
+assert_status_code \
+    "${missing_problem_submission_status_code}" \
+    "404" \
+    "${missing_problem_submission_response_file}" \
+    "missing problem submission create"
+assert_json_error_code \
+    "${missing_problem_submission_response_file}" \
+    "not_found" \
+    "missing problem submission create"
+print_success_log "missing problem submission create validation success"
 
 submission_status_code="$(
     send_http_request \

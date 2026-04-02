@@ -40,6 +40,8 @@ set_statement_response_file="$(mktemp)"
 get_problem_response_file="$(mktemp)"
 clear_statement_response_file="$(mktemp)"
 updated_problem_response_file="$(mktemp)"
+missing_statement_response_file="$(mktemp)"
+missing_limits_response_file="$(mktemp)"
 
 cleanup(){
     cleanup_http_server
@@ -53,7 +55,9 @@ cleanup(){
         "${set_statement_response_file}" \
         "${get_problem_response_file}" \
         "${clear_statement_response_file}" \
-        "${updated_problem_response_file}"
+        "${updated_problem_response_file}" \
+        "${missing_statement_response_file}" \
+        "${missing_limits_response_file}"
 
 }
 
@@ -99,6 +103,7 @@ problem_id="$(
         "problem statement flow" \
         "Problem Statement Flow"
 )"
+missing_problem_id=$((problem_id + 999999))
 
 statement_request_body="$(
     python3 <<'PY'
@@ -116,6 +121,47 @@ print(
 )
 PY
 )"
+
+limits_request_body="$(
+    python3 <<'PY'
+import json
+
+print(
+    json.dumps(
+        {
+            "memory_limit_mb": 512,
+            "time_limit_ms": 2000,
+        }
+    )
+)
+PY
+)"
+
+send_http_request_and_assert_status \
+    "PUT" \
+    "${base_url}/api/problem/${missing_problem_id}/statement" \
+    "${missing_statement_response_file}" \
+    "404" \
+    "missing problem statement update" \
+    "${sign_up_token}" \
+    "${statement_request_body}"
+assert_json_error_code \
+    "${missing_statement_response_file}" \
+    "not_found" \
+    "missing problem statement update"
+
+send_http_request_and_assert_status \
+    "PUT" \
+    "${base_url}/api/problem/${missing_problem_id}/limits" \
+    "${missing_limits_response_file}" \
+    "404" \
+    "missing problem limits update" \
+    "${sign_up_token}" \
+    "${limits_request_body}"
+assert_json_error_code \
+    "${missing_limits_response_file}" \
+    "not_found" \
+    "missing problem limits update"
 
 send_http_request_and_assert_status \
     "PUT" \

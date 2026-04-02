@@ -63,6 +63,10 @@ updated_problem_response_file="$(mktemp)"
 deleted_problem_response_file="$(mktemp)"
 cleared_problem_response_file="$(mktemp)"
 final_problem_response_file="$(mktemp)"
+missing_problem_testcase_response_file="$(mktemp)"
+missing_testcase_update_response_file="$(mktemp)"
+missing_testcase_delete_response_file="$(mktemp)"
+missing_testcase_move_response_file="$(mktemp)"
 valid_testcase_zip_path="$(mktemp)"
 replace_testcase_zip_path="$(mktemp)"
 invalid_unpaired_zip_path="$(mktemp)"
@@ -105,6 +109,10 @@ cleanup(){
         "${deleted_problem_response_file}" \
         "${cleared_problem_response_file}" \
         "${final_problem_response_file}" \
+        "${missing_problem_testcase_response_file}" \
+        "${missing_testcase_update_response_file}" \
+        "${missing_testcase_delete_response_file}" \
+        "${missing_testcase_move_response_file}" \
         "${valid_testcase_zip_path}" \
         "${replace_testcase_zip_path}" \
         "${invalid_unpaired_zip_path}" \
@@ -225,6 +233,7 @@ problem_id="$(
         "problem testcase flow" \
         "Problem Testcase Flow"
 )"
+missing_problem_id=$((problem_id + 999999))
 
 testcase_request_body="$(
     python3 <<'PY'
@@ -240,6 +249,19 @@ print(
 )
 PY
 )"
+
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/problem/${missing_problem_id}/testcase" \
+    "${missing_problem_testcase_response_file}" \
+    "404" \
+    "missing problem testcase create" \
+    "${sign_up_token}" \
+    "${testcase_request_body}"
+assert_json_error_code \
+    "${missing_problem_testcase_response_file}" \
+    "not_found" \
+    "missing problem testcase create"
 
 send_http_request_and_assert_status \
     "POST" \
@@ -360,6 +382,57 @@ print_success_log "problem testcase list success"
 
 fetch_testcase_detail_and_assert "${problem_id}" "1" $'1 2\n' $'3\n' "${sign_up_token}"
 fetch_testcase_detail_and_assert "${problem_id}" "2" "" "" "${sign_up_token}"
+
+send_http_request_and_assert_status \
+    "PUT" \
+    "${base_url}/api/problem/${problem_id}/testcase/999" \
+    "${missing_testcase_update_response_file}" \
+    "404" \
+    "missing testcase update" \
+    "${sign_up_token}" \
+    "${testcase_request_body}"
+assert_json_error_code \
+    "${missing_testcase_update_response_file}" \
+    "not_found" \
+    "missing testcase update"
+
+send_http_request_and_assert_status \
+    "DELETE" \
+    "${base_url}/api/problem/${problem_id}/testcase/999" \
+    "${missing_testcase_delete_response_file}" \
+    "404" \
+    "missing testcase delete" \
+    "${sign_up_token}"
+assert_json_error_code \
+    "${missing_testcase_delete_response_file}" \
+    "not_found" \
+    "missing testcase delete"
+
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/problem/${problem_id}/testcase/move" \
+    "${missing_testcase_move_response_file}" \
+    "404" \
+    "missing testcase move" \
+    "${sign_up_token}" \
+    "$(
+        python3 <<'PY'
+import json
+
+print(
+    json.dumps(
+        {
+            "source_testcase_order": 999,
+            "target_testcase_order": 1,
+        }
+    )
+)
+PY
+    )"
+assert_json_error_code \
+    "${missing_testcase_move_response_file}" \
+    "not_found" \
+    "missing testcase move"
 
 send_http_request_and_assert_status \
     "GET" \
