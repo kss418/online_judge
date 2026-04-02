@@ -3,7 +3,7 @@
 
 #include "common/permission_util.hpp"
 
-std::expected<void, error_code> auth_repository::insert_token(
+std::expected<void, repository_error> auth_repository::insert_token(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     const auth_dto::hashed_token& hashed_token_value,
@@ -40,7 +40,7 @@ std::expected<void, error_code> auth_repository::insert_token(
     return {};
 }
 
-std::expected<bool, error_code> auth_repository::revoke_token(
+std::expected<bool, repository_error> auth_repository::revoke_token(
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_token& hashed_token_value
 ){
@@ -58,7 +58,7 @@ std::expected<bool, error_code> auth_repository::revoke_token(
     return revoke_result.affected_rows() > 0;
 }
 
-std::expected<std::optional<auth_dto::identity>, error_code> auth_repository::get_token_identity(
+std::expected<std::optional<auth_dto::identity>, repository_error> auth_repository::get_token_identity(
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_token& hashed_token_value
 ){
@@ -90,7 +90,7 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_repository::ge
     return identity_value;
 }
 
-std::expected<bool, error_code> auth_repository::update_permission_level(
+std::expected<bool, repository_error> auth_repository::update_permission_level(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     std::int32_t permission_level
@@ -124,7 +124,7 @@ std::expected<bool, error_code> auth_repository::update_permission_level(
     return update_result.affected_rows() > 0;
 }
 
-std::expected<auth_dto::user_summary_list, error_code> auth_repository::get_user_list(
+std::expected<auth_dto::user_summary_list, repository_error> auth_repository::get_user_list(
     pqxx::transaction_base& transaction
 ){
     const auto user_list_result = transaction.exec(
@@ -154,7 +154,7 @@ std::expected<auth_dto::user_summary_list, error_code> auth_repository::get_user
     return user_summary_values;
 }
 
-std::expected<bool, error_code> auth_repository::update_expires_at(
+std::expected<bool, repository_error> auth_repository::update_expires_at(
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_token& hashed_token_value,
     std::chrono::seconds token_ttl

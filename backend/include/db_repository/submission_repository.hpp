@@ -1,5 +1,5 @@
 #pragma once
-#include "common/error_code.hpp"
+#include "common/repository_error.hpp"
 #include "common/submission_status.hpp"
 #include "dto/submission_dto.hpp"
 
@@ -24,38 +24,38 @@ namespace submission_repository{
     inline constexpr std::int16_t NORMAL_SUBMISSION_QUEUE_PRIORITY = 100;
     inline constexpr std::int16_t REJUDGE_SUBMISSION_QUEUE_PRIORITY = 0;
 
-    std::expected<submission_dto::history_list, error_code> get_submission_history(
+    std::expected<submission_dto::history_list, repository_error> get_submission_history(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id
     );
-    std::expected<submission_dto::source_detail, error_code> get_submission_source(
+    std::expected<submission_dto::source_detail, repository_error> get_submission_source(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id
     );
 
-    std::expected<submission_dto::detail, error_code> get_submission_detail(
+    std::expected<submission_dto::detail, repository_error> get_submission_detail(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id
     );
-    std::expected<std::vector<submission_dto::status_snapshot>, error_code>
+    std::expected<std::vector<submission_dto::status_snapshot>, repository_error>
     get_submission_status_snapshots(
         pqxx::transaction_base& transaction,
         const std::vector<std::int64_t>& submission_ids
     );
-    std::expected<std::vector<submission_dto::summary>, error_code> get_wa_or_ac_submissions(
+    std::expected<std::vector<submission_dto::summary>, repository_error> get_wa_or_ac_submissions(
         pqxx::transaction_base& transaction,
         std::int64_t problem_id
     );
 
-    std::expected<submission_status, error_code> get_submission_status(
+    std::expected<submission_status, repository_error> get_submission_status(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id
     );
-    std::expected<locked_submission_context, error_code> get_locked_submission_context(
+    std::expected<locked_submission_context, repository_error> get_locked_submission_context(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id
     );
-    std::expected<void, error_code> persist_submission_status_transition(
+    std::expected<void, repository_error> persist_submission_status_transition(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id,
         submission_status from_status,
@@ -63,47 +63,47 @@ namespace submission_repository{
         const std::optional<std::string>& reason_opt
     );
 
-    std::expected<submission_dto::created, error_code> create_submission(
+    std::expected<submission_dto::created, repository_error> create_submission(
         pqxx::transaction_base& transaction,
         const submission_dto::create_request& create_request_value
     );
 
-    std::expected<void, error_code> enqueue_submission(
+    std::expected<void, repository_error> enqueue_submission(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id,
         std::int16_t priority = NORMAL_SUBMISSION_QUEUE_PRIORITY
     );
 
-    std::expected<void, error_code> update_submission_status(
+    std::expected<void, repository_error> update_submission_status(
         pqxx::transaction_base& transaction,
         const submission_dto::status_update& status_update_value
     );
 
-    std::expected<void, error_code> clear_submission_result(
+    std::expected<void, repository_error> clear_submission_result(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id
     );
 
-    std::expected<void, error_code> rejudge_submission(
+    std::expected<void, repository_error> rejudge_submission(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id
     );
 
-    std::expected<submission_dto::queued_submission, error_code> lease_submission(
+    std::expected<submission_dto::queued_submission, repository_error> lease_submission(
         pqxx::transaction_base& transaction,
         const submission_dto::lease_request& lease_request_value
     );
-    std::expected<void, error_code> release_submission_lease(
+    std::expected<void, repository_error> release_submission_lease(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id
     );
 
-    std::expected<submission_dto::finalize_result, error_code> finalize_submission(
+    std::expected<submission_dto::finalize_result, repository_error> finalize_submission(
         pqxx::transaction_base& transaction,
         const submission_dto::finalize_request& finalize_request_value
     );
 
-    std::expected<submission_dto::summary_page, error_code> list_submissions(
+    std::expected<submission_dto::summary_page, repository_error> list_submissions(
         pqxx::transaction_base& transaction,
         const submission_dto::list_filter& filter_value,
         std::optional<std::int64_t> viewer_user_id_opt = std::nullopt

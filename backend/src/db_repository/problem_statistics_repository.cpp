@@ -3,7 +3,7 @@
 
 #include <pqxx/pqxx>
 
-std::expected<problem_content_dto::statistics, error_code>
+std::expected<problem_content_dto::statistics, repository_error>
 problem_statistics_repository::get_statistics(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
@@ -30,7 +30,7 @@ problem_statistics_repository::get_statistics(
     return statistics_value;
 }
 
-std::expected<void, error_code> problem_statistics_repository::create_problem_statistics(
+std::expected<void, repository_error> problem_statistics_repository::create_problem_statistics(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -45,13 +45,13 @@ std::expected<void, error_code> problem_statistics_repository::create_problem_st
         pqxx::params{problem_id}
     );
     if(create_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::unknown_error));
+        return std::unexpected(db_repository::internal_error());
     }
 
     return {};
 }
 
-std::expected<void, error_code> problem_statistics_repository::increase_submission_count(
+std::expected<void, repository_error> problem_statistics_repository::increase_submission_count(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -76,7 +76,7 @@ std::expected<void, error_code> problem_statistics_repository::increase_submissi
     return {};
 }
 
-std::expected<void, error_code> problem_statistics_repository::increase_accepted_count(
+std::expected<void, repository_error> problem_statistics_repository::increase_accepted_count(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -101,7 +101,7 @@ std::expected<void, error_code> problem_statistics_repository::increase_accepted
     return {};
 }
 
-std::expected<void, error_code> problem_statistics_repository::decrease_accepted_count(
+std::expected<void, repository_error> problem_statistics_repository::decrease_accepted_count(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){

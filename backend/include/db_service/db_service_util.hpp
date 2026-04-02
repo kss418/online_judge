@@ -15,12 +15,40 @@
 namespace db_service_util{
     inline constexpr int DB_TRANSACTION_ATTEMPT_COUNT = 5;
 
+    inline http_error map_repository_error_to_http_error(repository_error repository_error_value){
+        if(const auto http_error_opt = map_error_to_http_error(repository_error_value)){
+            return *http_error_opt;
+        }
+
+        return http_error::internal;
+    }
+
     inline error_code map_repository_error_to_http_error(const error_code& error_code_value){
         if(const auto http_error_opt = map_error_to_http_error(error_code_value)){
             return error_code::create(*http_error_opt);
         }
 
         return error_code_value;
+    }
+
+    template <typename T>
+    std::expected<T, error_code> map_repository_error_to_http_error(
+        std::expected<T, repository_error> result_exp
+    ){
+        if(!result_exp){
+            return std::unexpected(
+                error_code::create(
+                    map_repository_error_to_http_error(result_exp.error())
+                )
+            );
+        }
+
+        if constexpr(std::is_void_v<T>){
+            return {};
+        }
+        else{
+            return std::expected<T, error_code>{std::move(*result_exp)};
+        }
     }
 
     template <typename result_type>

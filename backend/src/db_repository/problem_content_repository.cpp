@@ -6,7 +6,7 @@
 #include <string>
 #include <utility>
 
-std::expected<void, error_code> problem_content_repository::ensure_statement_row(
+std::expected<void, repository_error> problem_content_repository::ensure_statement_row(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -26,7 +26,7 @@ std::expected<void, error_code> problem_content_repository::ensure_statement_row
     return {};
 }
 
-std::expected<problem_content_dto::statement, error_code> problem_content_repository::get_statement(
+std::expected<problem_content_dto::statement, repository_error> problem_content_repository::get_statement(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -66,7 +66,7 @@ std::expected<problem_content_dto::statement, error_code> problem_content_reposi
     return statement_value;
 }
 
-std::expected<void, error_code> problem_content_repository::set_statement(
+std::expected<void, repository_error> problem_content_repository::set_statement(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value,
     const problem_content_dto::statement& statement_value
@@ -103,7 +103,7 @@ std::expected<void, error_code> problem_content_repository::set_statement(
     return {};
 }
 
-std::expected<std::vector<problem_content_dto::sample>, error_code>
+std::expected<std::vector<problem_content_dto::sample>, repository_error>
 problem_content_repository::list_samples(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
@@ -135,7 +135,7 @@ problem_content_repository::list_samples(
     return sample_values;
 }
 
-std::expected<problem_content_dto::sample, error_code> problem_content_repository::get_sample(
+std::expected<problem_content_dto::sample, repository_error> problem_content_repository::get_sample(
     pqxx::transaction_base& transaction,
     const problem_content_dto::sample_ref& sample_reference_value
 ){
@@ -164,7 +164,7 @@ std::expected<problem_content_dto::sample, error_code> problem_content_repositor
     return sample_value;
 }
 
-std::expected<problem_content_dto::sample_count, error_code>
+std::expected<problem_content_dto::sample_count, repository_error>
 problem_content_repository::increase_sample_count(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
@@ -191,7 +191,7 @@ problem_content_repository::increase_sample_count(
     return sample_count_value;
 }
 
-std::expected<problem_content_dto::sample_count, error_code>
+std::expected<problem_content_dto::sample_count, repository_error>
 problem_content_repository::decrease_sample_count(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
@@ -217,7 +217,7 @@ problem_content_repository::decrease_sample_count(
     return sample_count_value;
 }
 
-std::expected<problem_content_dto::sample, error_code> problem_content_repository::create_sample(
+std::expected<problem_content_dto::sample, repository_error> problem_content_repository::create_sample(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value,
     const problem_content_dto::sample& sample_value
@@ -246,7 +246,7 @@ std::expected<problem_content_dto::sample, error_code> problem_content_repositor
     );
 
     if(create_sample_result.empty()){
-        return std::unexpected(error_code::create(errno_error::unknown_error));
+        return std::unexpected(db_repository::internal_error());
     }
 
     problem_content_dto::sample created_sample_value = sample_value;
@@ -255,7 +255,7 @@ std::expected<problem_content_dto::sample, error_code> problem_content_repositor
     return created_sample_value;
 }
 
-std::expected<void, error_code> problem_content_repository::set_sample(
+std::expected<void, repository_error> problem_content_repository::set_sample(
     pqxx::transaction_base& transaction,
     const problem_content_dto::sample_ref& sample_reference_value,
     const problem_content_dto::sample& sample_value
@@ -287,7 +287,7 @@ std::expected<void, error_code> problem_content_repository::set_sample(
     return {};
 }
 
-std::expected<void, error_code> problem_content_repository::delete_sample(
+std::expected<void, repository_error> problem_content_repository::delete_sample(
     pqxx::transaction_base& transaction,
     const problem_content_dto::sample_ref& sample_reference_value
 ){

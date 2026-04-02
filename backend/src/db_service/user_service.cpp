@@ -11,9 +11,11 @@ std::expected<user_dto::list, error_code> user_service::get_public_list(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<user_dto::list, error_code> {
-            return user_repository::get_public_list(
-                transaction,
-                filter_value
+            return db_service_util::map_repository_error_to_http_error(
+                user_repository::get_public_list(
+                    transaction,
+                    filter_value
+                )
             );
         }
     );

@@ -31,7 +31,13 @@ std::expected<auth_dto::session, error_code> login_service::sign_up(
                 *hashed_sign_up_request_exp
             );
             if(!user_id_exp){
-                return std::unexpected(user_id_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            user_id_exp.error()
+                        )
+                    )
+                );
             }
 
             const auto insert_token_exp = auth_repository::insert_token(
@@ -41,7 +47,13 @@ std::expected<auth_dto::session, error_code> login_service::sign_up(
                 token_util::TOKEN_TTL
             );
             if(!insert_token_exp){
-                return std::unexpected(insert_token_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            insert_token_exp.error()
+                        )
+                    )
+                );
             }
 
             auth_dto::session session_value;
@@ -74,7 +86,13 @@ std::expected<std::optional<auth_dto::session>, error_code> login_service::login
                 *hashed_credentials_exp
             );
             if(!login_identity_exp){
-                return std::unexpected(login_identity_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            login_identity_exp.error()
+                        )
+                    )
+                );
             }
             if(!login_identity_exp->has_value()){
                 return std::nullopt;
@@ -94,7 +112,13 @@ std::expected<std::optional<auth_dto::session>, error_code> login_service::login
                 token_util::TOKEN_TTL
             );
             if(!insert_token_exp){
-                return std::unexpected(insert_token_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            insert_token_exp.error()
+                        )
+                    )
+                );
             }
 
             auth_dto::session session_value;

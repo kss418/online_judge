@@ -1,5 +1,5 @@
 #pragma once
-#include "common/error_code.hpp"
+#include "common/repository_error.hpp"
 #include "dto/auth_dto.hpp"
 
 #include <expected>
@@ -10,16 +10,16 @@ namespace pqxx{
 }
 
 namespace login_repository{
-    std::expected<std::int64_t, error_code> create_user(
+    std::expected<std::int64_t, repository_error> create_user(
         pqxx::transaction_base& transaction,
         const auth_dto::hashed_sign_up_request& sign_up_request_value
     );
 
-    std::expected<bool, error_code> verify_user(
+    std::expected<bool, repository_error> verify_user(
         pqxx::transaction_base& transaction,
         const auth_dto::hashed_credentials& credentials_value
     );
-    std::expected<std::optional<auth_dto::identity>, error_code> get_login_identity(
+    std::expected<std::optional<auth_dto::identity>, repository_error> get_login_identity(
         pqxx::transaction_base& transaction,
         const auth_dto::hashed_credentials& credentials_value
     );

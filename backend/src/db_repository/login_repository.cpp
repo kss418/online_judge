@@ -3,7 +3,7 @@
 
 #include <pqxx/pqxx>
 
-std::expected<std::int64_t, error_code> login_repository::create_user(
+std::expected<std::int64_t, repository_error> login_repository::create_user(
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_sign_up_request& sign_up_request_value
 ){
@@ -29,7 +29,7 @@ std::expected<std::int64_t, error_code> login_repository::create_user(
     return create_user_result[0][0].as<std::int64_t>();
 }
 
-std::expected<bool, error_code> login_repository::verify_user(
+std::expected<bool, repository_error> login_repository::verify_user(
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_credentials& credentials_value
 ){
@@ -50,7 +50,7 @@ std::expected<bool, error_code> login_repository::verify_user(
     return !verify_result.empty();
 }
 
-std::expected<std::optional<auth_dto::identity>, error_code> login_repository::get_login_identity(
+std::expected<std::optional<auth_dto::identity>, repository_error> login_repository::get_login_identity(
     pqxx::transaction_base& transaction,
     const auth_dto::hashed_credentials& credentials_value
 ){

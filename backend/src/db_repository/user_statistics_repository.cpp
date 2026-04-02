@@ -7,7 +7,7 @@
 #include <string_view>
 
 namespace{
-    std::expected<std::string_view, error_code> get_status_count_column(submission_status status){
+    std::expected<std::string_view, repository_error> get_status_count_column(submission_status status){
         switch(status){
             case submission_status::queued:
                 return "queued_submission_count";
@@ -33,7 +33,7 @@ namespace{
     }
 }
 
-std::expected<user_statistics_dto::submission_statistics, error_code>
+std::expected<user_statistics_dto::submission_statistics, repository_error>
 user_statistics_repository::get_submission_statistics(
     pqxx::transaction_base& transaction,
     std::int64_t user_id
@@ -67,12 +67,12 @@ user_statistics_repository::get_submission_statistics(
         return std::unexpected(db_repository::not_found_error());
     }
 
-    return user_statistics_dto::make_submission_statistics_from_row(
+    return db_repository::map_error(user_statistics_dto::make_submission_statistics_from_row(
         statistics_query_result[0]
-    );
+    ));
 }
 
-std::expected<void, error_code> user_statistics_repository::touch_timestamp_column(
+std::expected<void, repository_error> user_statistics_repository::touch_timestamp_column(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     std::string_view column_name
@@ -98,7 +98,7 @@ std::expected<void, error_code> user_statistics_repository::touch_timestamp_colu
     return {};
 }
 
-std::expected<void, error_code> user_statistics_repository::create_user_submission_statistics(
+std::expected<void, repository_error> user_statistics_repository::create_user_submission_statistics(
     pqxx::transaction_base& transaction,
     std::int64_t user_id
 ){
@@ -113,13 +113,13 @@ std::expected<void, error_code> user_statistics_repository::create_user_submissi
     );
 
     if(create_result.affected_rows() == 0){
-        return std::unexpected(error_code::create(errno_error::unknown_error));
+        return std::unexpected(db_repository::internal_error());
     }
 
     return {};
 }
 
-std::expected<void, error_code> user_statistics_repository::ensure_user_submission_statistics(
+std::expected<void, repository_error> user_statistics_repository::ensure_user_submission_statistics(
     pqxx::transaction_base& transaction,
     std::int64_t user_id
 ){
@@ -137,7 +137,7 @@ std::expected<void, error_code> user_statistics_repository::ensure_user_submissi
     return {};
 }
 
-std::expected<void, error_code> user_statistics_repository::increase_submission_count(
+std::expected<void, repository_error> user_statistics_repository::increase_submission_count(
     pqxx::transaction_base& transaction,
     std::int64_t user_id
 ){
@@ -161,7 +161,7 @@ std::expected<void, error_code> user_statistics_repository::increase_submission_
     return {};
 }
 
-std::expected<void, error_code> user_statistics_repository::increase_status_count(
+std::expected<void, repository_error> user_statistics_repository::increase_status_count(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     submission_status status
@@ -193,7 +193,7 @@ std::expected<void, error_code> user_statistics_repository::increase_status_coun
     return {};
 }
 
-std::expected<void, error_code> user_statistics_repository::decrease_status_count(
+std::expected<void, repository_error> user_statistics_repository::decrease_status_count(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     submission_status status
@@ -225,7 +225,7 @@ std::expected<void, error_code> user_statistics_repository::decrease_status_coun
     return {};
 }
 
-std::expected<void, error_code> user_statistics_repository::touch_last_submission_at(
+std::expected<void, repository_error> user_statistics_repository::touch_last_submission_at(
     pqxx::transaction_base& transaction,
     std::int64_t user_id
 ){
@@ -236,7 +236,7 @@ std::expected<void, error_code> user_statistics_repository::touch_last_submissio
     );
 }
 
-std::expected<void, error_code> user_statistics_repository::touch_last_accepted_at(
+std::expected<void, repository_error> user_statistics_repository::touch_last_accepted_at(
     pqxx::transaction_base& transaction,
     std::int64_t user_id
 ){

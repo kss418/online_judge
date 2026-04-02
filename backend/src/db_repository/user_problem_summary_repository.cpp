@@ -14,7 +14,7 @@ namespace{
             status == submission_status::output_exceeded;
     }
 
-    std::expected<void, error_code> validate_summary_counts(
+    std::expected<void, repository_error> validate_summary_counts(
         std::int64_t user_id,
         std::int64_t problem_id,
         std::int64_t submission_count,
@@ -35,7 +35,7 @@ namespace{
         return {};
     }
 
-    std::expected<void, error_code> validate_summary_key(
+    std::expected<void, repository_error> validate_summary_key(
         std::int64_t user_id,
         std::int64_t problem_id
     ){
@@ -47,7 +47,7 @@ namespace{
     }
 }
 
-std::expected<void, error_code> user_problem_summary_repository::upsert_summary_counts(
+std::expected<void, repository_error> user_problem_summary_repository::upsert_summary_counts(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     std::int64_t problem_id,
@@ -94,7 +94,7 @@ std::expected<void, error_code> user_problem_summary_repository::upsert_summary_
     return {};
 }
 
-std::expected<void, error_code> user_problem_summary_repository::increase_submission_count(
+std::expected<void, repository_error> user_problem_summary_repository::increase_submission_count(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     std::int64_t problem_id
@@ -124,7 +124,7 @@ std::expected<void, error_code> user_problem_summary_repository::increase_submis
     return {};
 }
 
-std::expected<void, error_code> user_problem_summary_repository::increase_accepted_submission_count(
+std::expected<void, repository_error> user_problem_summary_repository::increase_accepted_submission_count(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     std::int64_t problem_id
@@ -152,7 +152,7 @@ std::expected<void, error_code> user_problem_summary_repository::increase_accept
     return {};
 }
 
-std::expected<void, error_code> user_problem_summary_repository::decrease_accepted_submission_count(
+std::expected<void, repository_error> user_problem_summary_repository::decrease_accepted_submission_count(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     std::int64_t problem_id
@@ -180,7 +180,7 @@ std::expected<void, error_code> user_problem_summary_repository::decrease_accept
     return {};
 }
 
-std::expected<void, error_code> user_problem_summary_repository::increase_failed_submission_count(
+std::expected<void, repository_error> user_problem_summary_repository::increase_failed_submission_count(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     std::int64_t problem_id
@@ -208,7 +208,7 @@ std::expected<void, error_code> user_problem_summary_repository::increase_failed
     return {};
 }
 
-std::expected<void, error_code> user_problem_summary_repository::decrease_failed_submission_count(
+std::expected<void, repository_error> user_problem_summary_repository::decrease_failed_submission_count(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     std::int64_t problem_id
@@ -236,7 +236,7 @@ std::expected<void, error_code> user_problem_summary_repository::decrease_failed
     return {};
 }
 
-std::expected<void, error_code> user_problem_summary_repository::apply_submission_status_transition(
+std::expected<void, repository_error> user_problem_summary_repository::apply_submission_status_transition(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     std::int64_t problem_id,

@@ -5,7 +5,7 @@
 
 #include <pqxx/pqxx>
 
-std::expected<user_dto::list, error_code> user_repository::get_public_list(
+std::expected<user_dto::list, repository_error> user_repository::get_public_list(
     pqxx::transaction_base& transaction,
     const user_dto::list_filter& filter_value
 ){
@@ -16,10 +16,10 @@ std::expected<user_dto::list, error_code> user_repository::get_public_list(
         query_value.sql,
         std::move(query_value.params)
     );
-    return user_dto::make_list_from_result(user_list_result);
+    return db_repository::map_error(user_dto::make_list_from_result(user_list_result));
 }
 
-std::expected<std::optional<user_dto::summary>, error_code> user_repository::get_summary(
+std::expected<std::optional<user_dto::summary>, repository_error> user_repository::get_summary(
     pqxx::transaction_base& transaction,
     std::int64_t user_id
 ){
@@ -43,10 +43,17 @@ std::expected<std::optional<user_dto::summary>, error_code> user_repository::get
         return std::nullopt;
     }
 
-    return user_dto::make_summary_from_row(user_summary_result[0]);
+    const auto summary_exp = db_repository::map_error(
+        user_dto::make_summary_from_row(user_summary_result[0])
+    );
+    if(!summary_exp){
+        return std::unexpected(summary_exp.error());
+    }
+
+    return std::optional<user_dto::summary>{std::move(*summary_exp)};
 }
 
-std::expected<std::optional<user_dto::summary>, error_code>
+std::expected<std::optional<user_dto::summary>, repository_error>
 user_repository::get_summary_by_login_id(
     pqxx::transaction_base& transaction,
     std::string_view user_login_id
@@ -71,10 +78,17 @@ user_repository::get_summary_by_login_id(
         return std::nullopt;
     }
 
-    return user_dto::make_summary_from_row(user_summary_result[0]);
+    const auto summary_exp = db_repository::map_error(
+        user_dto::make_summary_from_row(user_summary_result[0])
+    );
+    if(!summary_exp){
+        return std::unexpected(summary_exp.error());
+    }
+
+    return std::optional<user_dto::summary>{std::move(*summary_exp)};
 }
 
-std::expected<std::optional<std::string>, error_code> user_repository::create_submission_ban(
+std::expected<std::optional<std::string>, repository_error> user_repository::create_submission_ban(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     std::int32_t duration_minutes
@@ -104,7 +118,7 @@ std::expected<std::optional<std::string>, error_code> user_repository::create_su
     return update_result[0][0].as<std::string>();
 }
 
-std::expected<std::optional<user_dto::submission_ban_status>, error_code>
+std::expected<std::optional<user_dto::submission_ban_status>, repository_error>
 user_repository::get_submission_ban_status(
     pqxx::transaction_base& transaction,
     std::int64_t user_id
@@ -134,7 +148,7 @@ user_repository::get_submission_ban_status(
     return submission_ban_status_value;
 }
 
-std::expected<std::optional<std::string>, error_code>
+std::expected<std::optional<std::string>, repository_error>
 user_repository::get_active_submission_banned_until(
     pqxx::transaction_base& transaction,
     std::int64_t user_id
@@ -165,7 +179,7 @@ user_repository::get_active_submission_banned_until(
     return user_info_result[0][0].as<std::string>();
 }
 
-std::expected<bool, error_code> user_repository::update_submission_banned_until(
+std::expected<bool, repository_error> user_repository::update_submission_banned_until(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
     std::string_view submission_banned_until
@@ -190,7 +204,7 @@ std::expected<bool, error_code> user_repository::update_submission_banned_until(
     return update_result.affected_rows() > 0;
 }
 
-std::expected<bool, error_code> user_repository::clear_submission_banned_until(
+std::expected<bool, repository_error> user_repository::clear_submission_banned_until(
     pqxx::transaction_base& transaction,
     std::int64_t user_id
 ){

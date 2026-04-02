@@ -27,7 +27,13 @@ std::expected<std::optional<auth_dto::identity>, error_code> auth_service::auth_
                 hashed_token_value
             );
             if(!get_token_identity_exp){
-                return std::unexpected(get_token_identity_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            get_token_identity_exp.error()
+                        )
+                    )
+                );
             }
             if(!get_token_identity_exp->has_value()){
                 return std::nullopt;
@@ -58,7 +64,13 @@ std::expected<bool, error_code> auth_service::renew_token(
                 token_util::TOKEN_TTL
             );
             if(!update_expires_at_exp){
-                return std::unexpected(update_expires_at_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            update_expires_at_exp.error()
+                        )
+                    )
+                );
             }
             if(!update_expires_at_exp.value()){
                 return false;
@@ -88,7 +100,13 @@ std::expected<bool, error_code> auth_service::revoke_token(
                 hashed_token_value
             );
             if(!revoke_token_exp){
-                return std::unexpected(revoke_token_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            revoke_token_exp.error()
+                        )
+                    )
+                );
             }
             if(!revoke_token_exp.value()){
                 return false;
@@ -120,7 +138,13 @@ std::expected<bool, error_code> auth_service::update_permission_level(
                 permission_level
             );
             if(!update_permission_level_exp){
-                return std::unexpected(update_permission_level_exp.error());
+                return std::unexpected(
+                    error_code::create(
+                        db_service_util::map_repository_error_to_http_error(
+                            update_permission_level_exp.error()
+                        )
+                    )
+                );
             }
 
             return *update_permission_level_exp;
@@ -135,7 +159,9 @@ std::expected<auth_dto::user_summary_list, error_code> auth_service::get_user_li
         connection_value,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<auth_dto::user_summary_list, error_code> {
-            return auth_repository::get_user_list(transaction);
+            return db_service_util::map_repository_error_to_http_error(
+                auth_repository::get_user_list(transaction)
+            );
         }
     );
 }

@@ -15,18 +15,30 @@ bool db_repository::should_reconnect_db_error(const error_code& error_code_value
         error_code_value == psql_error::broken_connection;
 }
 
-error_code db_repository::invalid_reference_error(){
-    return error_code::create(repository_error::invalid_reference);
+repository_error db_repository::invalid_reference_error(){
+    return repository_error::invalid_reference;
 }
 
-error_code db_repository::invalid_input_error(){
-    return error_code::create(repository_error::invalid_input);
+repository_error db_repository::invalid_input_error(){
+    return repository_error::invalid_input;
 }
 
-error_code db_repository::not_found_error(){
-    return error_code::create(repository_error::not_found);
+repository_error db_repository::not_found_error(){
+    return repository_error::not_found;
 }
 
-error_code db_repository::conflict_error(){
-    return error_code::create(repository_error::conflict);
+repository_error db_repository::conflict_error(){
+    return repository_error::conflict;
+}
+
+repository_error db_repository::internal_error(){
+    return repository_error::internal;
+}
+
+repository_error db_repository::map_error(const error_code& error_code_value){
+    if(const auto repository_error_opt = map_error_to_repository_error(error_code_value)){
+        return *repository_error_opt;
+    }
+
+    return internal_error();
 }

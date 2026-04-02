@@ -7,24 +7,24 @@
 #include <utility>
 
 namespace{
-    std::expected<std::vector<problem_dto::summary>, error_code> map_problem_summary_rows(
+    std::expected<std::vector<problem_dto::summary>, repository_error> map_problem_summary_rows(
         const pqxx::result& query_result
     ){
-        return problem_dto::make_summary_list_from_result(query_result);
+        return db_repository::map_error(problem_dto::make_summary_list_from_result(query_result));
     }
 
-    std::expected<std::int64_t, error_code> map_problem_count_row(
+    std::expected<std::int64_t, repository_error> map_problem_count_row(
         const pqxx::result& query_result
     ){
         if(query_result.empty()){
-            return std::unexpected(error_code::create(errno_error::unknown_error));
+            return std::unexpected(db_repository::internal_error());
         }
 
         return query_result[0][0].as<std::int64_t>();
     }
 }
 
-std::expected<problem_dto::existence, error_code> problem_core_repository::exists_problem(
+std::expected<problem_dto::existence, repository_error> problem_core_repository::exists_problem(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -43,7 +43,7 @@ std::expected<problem_dto::existence, error_code> problem_core_repository::exist
     );
 
     if(exists_query_result.empty()){
-        return std::unexpected(error_code::create(errno_error::unknown_error));
+        return std::unexpected(db_repository::internal_error());
     }
 
     problem_dto::existence existence_value;
@@ -51,7 +51,7 @@ std::expected<problem_dto::existence, error_code> problem_core_repository::exist
     return existence_value;
 }
 
-std::expected<problem_dto::title, error_code> problem_core_repository::get_title(
+std::expected<problem_dto::title, repository_error> problem_core_repository::get_title(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -76,7 +76,7 @@ std::expected<problem_dto::title, error_code> problem_core_repository::get_title
     return title_value;
 }
 
-std::expected<problem_dto::version, error_code> problem_core_repository::get_version(
+std::expected<problem_dto::version, repository_error> problem_core_repository::get_version(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -101,7 +101,7 @@ std::expected<problem_dto::version, error_code> problem_core_repository::get_ver
     return version_value;
 }
 
-std::expected<std::optional<std::string>, error_code> problem_core_repository::get_user_problem_state(
+std::expected<std::optional<std::string>, repository_error> problem_core_repository::get_user_problem_state(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value,
     std::int64_t user_id
@@ -137,7 +137,7 @@ std::expected<std::optional<std::string>, error_code> problem_core_repository::g
     return std::optional<std::string>{};
 }
 
-std::expected<problem_dto::created, error_code> problem_core_repository::create_problem(
+std::expected<problem_dto::created, repository_error> problem_core_repository::create_problem(
     pqxx::transaction_base& transaction,
     const problem_dto::create_request& create_request_value
 ){
@@ -153,7 +153,7 @@ std::expected<problem_dto::created, error_code> problem_core_repository::create_
     );
 
     if(create_problem_result.empty()){
-        return std::unexpected(error_code::create(errno_error::unknown_error));
+        return std::unexpected(db_repository::internal_error());
     }
 
     problem_dto::created created_value;
@@ -161,7 +161,7 @@ std::expected<problem_dto::created, error_code> problem_core_repository::create_
     return created_value;
 }
 
-std::expected<void, error_code> problem_core_repository::set_title(
+std::expected<void, repository_error> problem_core_repository::set_title(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value,
     const problem_dto::title& title_value
@@ -188,7 +188,7 @@ std::expected<void, error_code> problem_core_repository::set_title(
     return {};
 }
 
-std::expected<void, error_code> problem_core_repository::delete_problem(
+std::expected<void, repository_error> problem_core_repository::delete_problem(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -210,7 +210,7 @@ std::expected<void, error_code> problem_core_repository::delete_problem(
     return {};
 }
 
-std::expected<std::vector<problem_dto::summary>, error_code> problem_core_repository::list_problems(
+std::expected<std::vector<problem_dto::summary>, repository_error> problem_core_repository::list_problems(
     pqxx::transaction_base& transaction,
     const problem_dto::list_filter& filter_value,
     std::optional<std::int64_t> viewer_user_id_opt
@@ -220,7 +220,7 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_reposi
         viewer_user_id_opt
     }.build_list_query();
     if(!query_exp){
-        return std::unexpected(query_exp.error());
+        return std::unexpected(db_repository::map_error(query_exp.error()));
     }
     const auto problem_summary_query = transaction.exec(
         query_exp->sql,
@@ -230,7 +230,7 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_reposi
     return map_problem_summary_rows(problem_summary_query);
 }
 
-std::expected<std::int64_t, error_code> problem_core_repository::count_problems(
+std::expected<std::int64_t, repository_error> problem_core_repository::count_problems(
     pqxx::transaction_base& transaction,
     const problem_dto::list_filter& filter_value,
     std::optional<std::int64_t> viewer_user_id_opt
@@ -240,7 +240,7 @@ std::expected<std::int64_t, error_code> problem_core_repository::count_problems(
         viewer_user_id_opt
     }.build_count_query();
     if(!query_exp){
-        return std::unexpected(query_exp.error());
+        return std::unexpected(db_repository::map_error(query_exp.error()));
     }
     const auto problem_count_result = transaction.exec(
         query_exp->sql,
@@ -249,7 +249,7 @@ std::expected<std::int64_t, error_code> problem_core_repository::count_problems(
     return map_problem_count_row(problem_count_result);
 }
 
-std::expected<std::vector<problem_dto::summary>, error_code>
+std::expected<std::vector<problem_dto::summary>, repository_error>
 problem_core_repository::list_user_solved_problems(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
@@ -260,7 +260,7 @@ problem_core_repository::list_user_solved_problems(
         viewer_user_id_opt
     }.build_solved_query();
     if(!query_exp){
-        return std::unexpected(query_exp.error());
+        return std::unexpected(db_repository::map_error(query_exp.error()));
     }
     const auto problem_summary_query = transaction.exec(
         query_exp->sql,
@@ -270,7 +270,7 @@ problem_core_repository::list_user_solved_problems(
     return map_problem_summary_rows(problem_summary_query);
 }
 
-std::expected<std::vector<problem_dto::summary>, error_code>
+std::expected<std::vector<problem_dto::summary>, repository_error>
 problem_core_repository::list_user_wrong_problems(
     pqxx::transaction_base& transaction,
     std::int64_t user_id,
@@ -281,7 +281,7 @@ problem_core_repository::list_user_wrong_problems(
         viewer_user_id_opt
     }.build_wrong_query();
     if(!query_exp){
-        return std::unexpected(query_exp.error());
+        return std::unexpected(db_repository::map_error(query_exp.error()));
     }
     const auto problem_summary_query = transaction.exec(
         query_exp->sql,
@@ -291,7 +291,7 @@ problem_core_repository::list_user_wrong_problems(
     return map_problem_summary_rows(problem_summary_query);
 }
 
-std::expected<problem_content_dto::limits, error_code> problem_core_repository::get_limits(
+std::expected<problem_content_dto::limits, repository_error> problem_core_repository::get_limits(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -317,7 +317,7 @@ std::expected<problem_content_dto::limits, error_code> problem_core_repository::
     return limits_value;
 }
 
-std::expected<void, error_code> problem_core_repository::set_limits(
+std::expected<void, repository_error> problem_core_repository::set_limits(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value,
     const problem_content_dto::limits& limits_value
@@ -348,7 +348,7 @@ std::expected<void, error_code> problem_core_repository::set_limits(
     return {};
 }
 
-std::expected<void, error_code> problem_core_repository::increase_version(
+std::expected<void, repository_error> problem_core_repository::increase_version(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){

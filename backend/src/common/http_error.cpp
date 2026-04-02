@@ -14,8 +14,25 @@ std::string to_string(http_error ec){
             return "not found";
         case http_error::conflict:
             return "conflict";
+        case http_error::internal:
+            return "internal";
     }
     return "unknown http error";
+}
+
+std::optional<http_error> map_error_to_http_error(repository_error ec){
+    switch(ec){
+        case repository_error::invalid_reference:
+        case repository_error::invalid_input:
+            return http_error::validation_error;
+        case repository_error::not_found:
+            return http_error::not_found;
+        case repository_error::conflict:
+            return http_error::conflict;
+        case repository_error::internal:
+            return http_error::internal;
+    }
+    return std::nullopt;
 }
 
 std::optional<http_error> map_error_to_http_error(const error_code& ec){
@@ -34,17 +51,14 @@ std::optional<http_error> map_error_to_http_error(const error_code& ec){
     if(ec == http_error::conflict){
         return http_error::conflict;
     }
-    if(
-        ec == repository_error::invalid_reference ||
-        ec == repository_error::invalid_input
-    ){
-        return http_error::validation_error;
+    if(ec == http_error::internal){
+        return http_error::internal;
     }
-    if(ec == repository_error::not_found){
-        return http_error::not_found;
-    }
-    if(ec == repository_error::conflict || ec == psql_error::unique_violation){
+    if(ec == psql_error::unique_violation){
         return http_error::conflict;
+    }
+    if(ec.type_ == error_type::repository_type){
+        return map_error_to_http_error(static_cast<repository_error>(ec.code_));
     }
 
     return std::nullopt;

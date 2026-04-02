@@ -4,7 +4,7 @@
 #include <pqxx/pqxx>
 #include <utility>
 
-std::expected<problem_dto::testcase, error_code> testcase_repository::create_testcase(
+std::expected<problem_dto::testcase, repository_error> testcase_repository::create_testcase(
     pqxx::transaction_base& transaction,
     const problem_dto::testcase_ref& testcase_reference_value,
     const problem_dto::testcase& testcase_value
@@ -38,7 +38,7 @@ std::expected<problem_dto::testcase, error_code> testcase_repository::create_tes
     );
 
     if(create_testcase_result.empty()){
-        return std::unexpected(error_code::create(errno_error::unknown_error));
+        return std::unexpected(db_repository::internal_error());
     }
 
     problem_dto::testcase created_testcase_value = testcase_value;
@@ -47,7 +47,7 @@ std::expected<problem_dto::testcase, error_code> testcase_repository::create_tes
     return created_testcase_value;
 }
 
-std::expected<problem_dto::testcase, error_code> testcase_repository::get_testcase(
+std::expected<problem_dto::testcase, repository_error> testcase_repository::get_testcase(
     pqxx::transaction_base& transaction,
     const problem_dto::testcase_ref& testcase_reference_value
 ){
@@ -76,7 +76,7 @@ std::expected<problem_dto::testcase, error_code> testcase_repository::get_testca
     return testcase_value;
 }
 
-std::expected<problem_dto::testcase_count, error_code> testcase_repository::get_testcase_count(
+std::expected<problem_dto::testcase_count, repository_error> testcase_repository::get_testcase_count(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -93,7 +93,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_repository::get_
     );
 
     if(testcase_count_query_result.empty()){
-        return std::unexpected(error_code::create(errno_error::unknown_error));
+        return std::unexpected(db_repository::internal_error());
     }
 
     problem_dto::testcase_count testcase_count_value;
@@ -101,7 +101,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_repository::get_
     return testcase_count_value;
 }
 
-std::expected<problem_dto::testcase_count, error_code> testcase_repository::increase_testcase_count(
+std::expected<problem_dto::testcase_count, repository_error> testcase_repository::increase_testcase_count(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -127,7 +127,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_repository::incr
     return testcase_count_value;
 }
 
-std::expected<problem_dto::testcase_count, error_code> testcase_repository::decrease_testcase_count(
+std::expected<problem_dto::testcase_count, repository_error> testcase_repository::decrease_testcase_count(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -152,7 +152,7 @@ std::expected<problem_dto::testcase_count, error_code> testcase_repository::decr
     return testcase_count_value;
 }
 
-std::expected<std::vector<problem_dto::testcase>, error_code> testcase_repository::list_testcases(
+std::expected<std::vector<problem_dto::testcase>, repository_error> testcase_repository::list_testcases(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -183,7 +183,7 @@ std::expected<std::vector<problem_dto::testcase>, error_code> testcase_repositor
     return testcase_values;
 }
 
-std::expected<std::vector<problem_dto::testcase_summary>, error_code>
+std::expected<std::vector<problem_dto::testcase_summary>, repository_error>
 testcase_repository::list_testcase_summaries(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
@@ -223,7 +223,7 @@ testcase_repository::list_testcase_summaries(
     return testcase_summary_values;
 }
 
-std::expected<void, error_code> testcase_repository::set_testcase(
+std::expected<void, repository_error> testcase_repository::set_testcase(
     pqxx::transaction_base& transaction,
     const problem_dto::testcase_ref& testcase_reference_value,
     const problem_dto::testcase& testcase_value
@@ -261,7 +261,7 @@ std::expected<void, error_code> testcase_repository::set_testcase(
     return {};
 }
 
-std::expected<void, error_code> testcase_repository::move_testcase(
+std::expected<void, repository_error> testcase_repository::move_testcase(
     pqxx::transaction_base& transaction,
     const problem_dto::testcase_ref& testcase_reference_value,
     std::int32_t target_testcase_order
@@ -326,7 +326,7 @@ std::expected<void, error_code> testcase_repository::move_testcase(
     return {};
 }
 
-std::expected<void, error_code> testcase_repository::delete_testcase(
+std::expected<void, repository_error> testcase_repository::delete_testcase(
     pqxx::transaction_base& transaction,
     const problem_dto::testcase_ref& testcase_reference_value
 ){
@@ -349,7 +349,7 @@ std::expected<void, error_code> testcase_repository::delete_testcase(
     return {};
 }
 
-std::expected<void, error_code> testcase_repository::decrease_order(
+std::expected<void, repository_error> testcase_repository::decrease_order(
     pqxx::transaction_base& transaction,
     const problem_dto::testcase_ref& testcase_reference_value
 ){
@@ -373,7 +373,7 @@ std::expected<void, error_code> testcase_repository::decrease_order(
     return {};
 }
 
-std::expected<void, error_code> testcase_repository::delete_testcase_and_shift_after(
+std::expected<void, repository_error> testcase_repository::delete_testcase_and_shift_after(
     pqxx::transaction_base& transaction,
     const problem_dto::testcase_ref& testcase_reference_value
 ){
@@ -407,7 +407,7 @@ std::expected<void, error_code> testcase_repository::delete_testcase_and_shift_a
     return {};
 }
 
-std::expected<void, error_code> testcase_repository::delete_all_testcases(
+std::expected<void, repository_error> testcase_repository::delete_all_testcases(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -425,7 +425,7 @@ std::expected<void, error_code> testcase_repository::delete_all_testcases(
     return {};
 }
 
-std::expected<problem_dto::testcase_count, error_code> testcase_repository::clear_testcase_count(
+std::expected<problem_dto::testcase_count, repository_error> testcase_repository::clear_testcase_count(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){

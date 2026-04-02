@@ -12,10 +12,26 @@
 namespace db_repository{
     bool should_retry_db_error(const error_code& error_code_value);
     bool should_reconnect_db_error(const error_code& error_code_value);
-    error_code invalid_reference_error();
-    error_code invalid_input_error();
-    error_code not_found_error();
-    error_code conflict_error();
+    repository_error invalid_reference_error();
+    repository_error invalid_input_error();
+    repository_error not_found_error();
+    repository_error conflict_error();
+    repository_error internal_error();
+    repository_error map_error(const error_code& error_code_value);
+
+    template <typename T>
+    std::expected<T, repository_error> map_error(std::expected<T, error_code> value_exp){
+        if(!value_exp){
+            return std::unexpected(map_error(value_exp.error()));
+        }
+
+        if constexpr(std::is_void_v<T>){
+            return {};
+        }
+        else{
+            return std::expected<T, repository_error>{std::move(*value_exp)};
+        }
+    }
 
     template <typename result_type>
     concept expected_error_result = requires{

@@ -11,9 +11,11 @@ problem_statistics_service::get_statistics(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_content_dto::statistics, error_code> {
-            return problem_statistics_repository::get_statistics(
-                transaction,
-                problem_reference_value
+            return db_service_util::map_repository_error_to_http_error(
+                problem_statistics_repository::get_statistics(
+                    transaction,
+                    problem_reference_value
+                )
             );
         }
     );

@@ -314,10 +314,12 @@ std::expected<std::vector<problem_dto::summary>, error_code> problem_core_servic
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_dto::summary>, error_code> {
-            return problem_core_repository::list_problems(
-                transaction,
-                filter_value,
-                viewer_user_id_opt
+            return db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::list_problems(
+                    transaction,
+                    filter_value,
+                    viewer_user_id_opt
+                )
             );
         }
     );
@@ -332,10 +334,12 @@ std::expected<std::int64_t, error_code> problem_core_service::count_problems(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::int64_t, error_code> {
-            return problem_core_repository::count_problems(
-                transaction,
-                filter_value,
-                viewer_user_id_opt
+            return db_service_util::map_repository_error_to_http_error(
+                problem_core_repository::count_problems(
+                    transaction,
+                    filter_value,
+                    viewer_user_id_opt
+                )
             );
         }
     );
