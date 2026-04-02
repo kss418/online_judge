@@ -300,7 +300,8 @@ Example:
 - missing or malformed bearer token: `401 Unauthorized`
 - invalid, expired, or revoked token: `401 Unauthorized`
 - non-admin token: `401 Unauthorized`
-- unknown `submission_id`, or submission already `queued` / `judging`: `400 Bad Request`
+- unknown `submission_id`: `404 Not Found`
+- submission already `queued` / `judging`: `409 Conflict`
 - unexpected internal failure: `500 Internal Server Error`
 
 Error bodies are returned as JSON with an `error` object containing `code`, `message`, and an optional `field`.

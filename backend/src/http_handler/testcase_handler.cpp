@@ -7,6 +7,7 @@
 #include "http_guard/testcase_upload_guard.hpp"
 
 #include "db_service/testcase_service.hpp"
+#include "request_parser/problem_request_parser.hpp"
 #include "serializer/common_json_serializer.hpp"
 #include "serializer/problem_json_serializer.hpp"
 
@@ -113,7 +114,7 @@ testcase_handler::response_type testcase_handler::post_testcase(
         },
         auth_guard::make_admin_guard(),
         request_guard::make_json_guard<problem_dto::testcase>(
-            problem_dto::make_testcase_from_json
+            problem_request_parser::parse_testcase
         )
     );
 }
@@ -156,7 +157,7 @@ testcase_handler::response_type testcase_handler::put_testcase(
         },
         auth_guard::make_admin_guard(),
         request_guard::make_json_guard<problem_dto::testcase>(
-            problem_dto::make_testcase_from_json
+            problem_request_parser::parse_testcase
         )
     );
 }
@@ -227,7 +228,7 @@ testcase_handler::response_type testcase_handler::move_testcase(
         auth_guard::make_admin_guard(),
         problem_guard::make_exists_guard(problem_reference_value),
         request_guard::make_json_guard<problem_dto::testcase_move_request>(
-            problem_dto::make_testcase_move_request_from_json
+            problem_request_parser::parse_testcase_move_request
         )
     );
 }

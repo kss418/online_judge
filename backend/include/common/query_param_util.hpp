@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/query_param.hpp"
-#include "error/request_error.hpp"
+#include "error/http_error.hpp"
 
 #include <algorithm>
 #include <array>
@@ -25,15 +25,24 @@ namespace query_param_util{
         );
     };
 
-    template <typename value_type, typename parse_fn>
+    template <
+        typename value_type,
+        typename parse_fn,
+        typename duplicate_error_fn,
+        typename invalid_error_fn
+    >
     std::expected<void, http_error> parse_unique_query_param(
         std::optional<value_type>& out,
         std::string_view key,
         std::string_view raw_value,
-        parse_fn&& parse
+        parse_fn&& parse,
+        duplicate_error_fn&& make_duplicate_error,
+        invalid_error_fn&& make_invalid_error
     ){
         if(out){
-            return std::unexpected(request_error::make_duplicate_query_parameter_error(key));
+            return std::unexpected(
+                std::invoke(std::forward<duplicate_error_fn>(make_duplicate_error), key)
+            );
         }
 
         auto parsed_value_opt = std::invoke(
@@ -41,17 +50,20 @@ namespace query_param_util{
             raw_value
         );
         if(!parsed_value_opt){
-            return std::unexpected(request_error::make_invalid_query_parameter_error(key));
+            return std::unexpected(
+                std::invoke(std::forward<invalid_error_fn>(make_invalid_error), key)
+            );
         }
 
         out = std::move(*parsed_value_opt);
         return {};
     }
 
-    template <typename filter_type, std::size_t binding_count>
+    template <typename filter_type, std::size_t binding_count, typename unsupported_error_fn>
     std::expected<filter_type, http_error> make_filter_from_query_params(
         const std::vector<query_param>& query_params,
-        const std::array<query_param_binding<filter_type>, binding_count>& bindings
+        const std::array<query_param_binding<filter_type>, binding_count>& bindings,
+        unsupported_error_fn&& make_unsupported_error
     ){
         filter_type filter_value;
 
@@ -65,7 +77,8 @@ namespace query_param_util{
             );
             if(binding_it == bindings.end()){
                 return std::unexpected(
-                    request_error::make_unsupported_query_parameter_error(
+                    std::invoke(
+                        std::forward<unsupported_error_fn>(make_unsupported_error),
                         current_query_param.key
                     )
                 );

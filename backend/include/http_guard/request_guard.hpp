@@ -5,6 +5,7 @@
 #include "http_core/request_dto.hpp"
 #include "http_core/request_list_filter_dto.hpp"
 #include "http_guard/guard_runner.hpp"
+#include "request_parser/submission_request_parser.hpp"
 
 #include <cstdint>
 #include <tuple>
@@ -75,7 +76,7 @@ namespace request_guard{
                 -> std::expected<submission_dto::create_request, http_guard::response_type> {
                 return request_dto::parse_json_or_400<submission_dto::create_request>(
                     composite_context.request,
-                    submission_dto::make_create_request_from_json,
+                    submission_request_parser::parse_create_request,
                     auth_identity_value.user_id,
                     problem_id
                 );

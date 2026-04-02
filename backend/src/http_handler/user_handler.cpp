@@ -8,6 +8,7 @@
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/request_guard.hpp"
 #include "http_guard/user_guard.hpp"
+#include "request_parser/user_request_parser.hpp"
 #include "serializer/user_json_serializer.hpp"
 
 user_handler::response_type user_handler::get_me(
@@ -148,7 +149,7 @@ user_handler::response_type user_handler::get_public_user_list(
             );
         },
         request_guard::make_query_guard<user_dto::list_filter>(
-            user_dto::make_list_filter_from_query_params
+            user_request_parser::parse_list_filter
         )
     );
 }
@@ -397,7 +398,7 @@ user_handler::response_type user_handler::post_user_submission_ban(
         },
         auth_guard::make_admin_guard(),
         request_guard::make_json_guard<user_dto::submission_ban_request>(
-            user_dto::make_submission_ban_request_from_json
+            user_request_parser::parse_submission_ban_request
         )
     );
 }

@@ -6,7 +6,7 @@
 
 #include "db_service/problem_core_service.hpp"
 #include "db_service/submission_service.hpp"
-#include "error/request_error.hpp"
+#include "request_parser/problem_request_parser.hpp"
 #include "serializer/problem_json_serializer.hpp"
 
 problem_handler::response_type problem_handler::get_problems(
@@ -22,10 +22,15 @@ problem_handler::response_type problem_handler::get_problems(
                 auth_identity_opt
             );
 
-            if(filter_value.state_opt && !viewer_user_id_opt){
+            const auto filter_validation_exp =
+                problem_request_parser::validate_list_filter_for_viewer(
+                    filter_value,
+                    viewer_user_id_opt.has_value()
+                );
+            if(!filter_validation_exp){
                 return http_response_util::create_error(
                     request,
-                    request_error::make_invalid_query_parameter_error("state")
+                    filter_validation_exp.error()
                 );
             }
 
@@ -115,7 +120,7 @@ problem_handler::response_type problem_handler::post_problem(
         },
         auth_guard::make_admin_guard(),
         request_guard::make_json_guard<problem_dto::create_request>(
-            problem_dto::make_create_request_from_json
+            problem_request_parser::parse_create_request
         )
     );
 }
@@ -145,7 +150,7 @@ problem_handler::response_type problem_handler::put_problem(
         auth_guard::make_admin_guard(),
         problem_guard::make_exists_guard(problem_reference_value),
         request_guard::make_json_guard<problem_dto::update_request>(
-            problem_dto::make_update_request_from_json
+            problem_request_parser::parse_update_request
         )
     );
 }

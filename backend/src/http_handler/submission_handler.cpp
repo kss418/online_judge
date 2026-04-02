@@ -5,6 +5,7 @@
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/request_guard.hpp"
 #include "http_guard/submission_guard.hpp"
+#include "request_parser/submission_request_parser.hpp"
 #include "serializer/submission_json_serializer.hpp"
 
 namespace{
@@ -94,7 +95,7 @@ submission_handler::response_type submission_handler::post_submission_status_bat
             );
         },
         request_guard::make_json_guard<submission_dto::status_batch_request>(
-            submission_dto::make_status_batch_request_from_json
+            submission_request_parser::parse_status_batch_request
         )
     );
 }

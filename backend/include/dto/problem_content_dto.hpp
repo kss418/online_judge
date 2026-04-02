@@ -1,11 +1,6 @@
 #pragma once
 
-#include "error/http_error.hpp"
-
-#include <boost/json/fwd.hpp>
-
 #include <cstdint>
-#include <expected>
 #include <optional>
 #include <string>
 
@@ -46,14 +41,4 @@ namespace problem_content_dto{
     bool is_valid(const limits& limits_value);
     bool is_valid(const statement& statement_value);
     bool is_valid(const sample_ref& sample_reference_value);
-
-    std::expected<limits, http_error> make_limits_from_json(
-        const boost::json::object& json
-    );
-    std::expected<statement, http_error> make_statement_from_json(
-        const boost::json::object& json
-    );
-    std::expected<sample, http_error> make_sample_from_json(
-        const boost::json::object& json
-    );
 }

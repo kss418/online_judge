@@ -682,7 +682,7 @@ rejudge_invalid_status_code="$(
         "${rejudge_invalid_response_file}" \
         "${admin_user_token}"
 )"
-assert_status_code "${rejudge_invalid_status_code}" "400" "${rejudge_invalid_response_file}" "queued submission rejudge"
+assert_status_code "${rejudge_invalid_status_code}" "409" "${rejudge_invalid_response_file}" "queued submission rejudge"
 print_success_log "queued submission rejudge success"
 
 rejudge_status_code="$(
@@ -730,7 +730,7 @@ expected_submission_id = int(sys.argv[5])
 if unauthorized_response.get("error", {}).get("code") != "admin_bearer_token_required":
     raise SystemExit("unexpected error code for unauthorized rejudge response")
 
-if invalid_response.get("error", {}).get("code") != "bad_request":
+if invalid_response.get("error", {}).get("code") != "conflict":
     raise SystemExit("unexpected error code for queued rejudge response")
 
 if rejudge_response.get("submission_id") != expected_submission_id:

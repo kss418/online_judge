@@ -4,6 +4,7 @@
 #include "dto/auth_dto.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/request_guard.hpp"
+#include "request_parser/auth_request_parser.hpp"
 #include "serializer/auth_json_serializer.hpp"
 
 #include <string>
@@ -29,7 +30,7 @@ auth_handler::response_type auth_handler::post_sign_up(
             );
         },
         request_guard::make_json_guard<auth_dto::sign_up_request>(
-            auth_dto::make_sign_up_request_from_json
+            auth_request_parser::parse_sign_up_request
         )
     );
 }
@@ -60,7 +61,7 @@ auth_handler::response_type auth_handler::post_login(
             );
         },
         request_guard::make_json_guard<auth_dto::credentials>(
-            auth_dto::make_credentials_from_json
+            auth_request_parser::parse_credentials
         )
     );
 }

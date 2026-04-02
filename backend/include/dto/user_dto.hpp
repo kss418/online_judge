@@ -1,15 +1,8 @@
 #pragma once
 
-#include "common/query_param.hpp"
-#include "error/http_error.hpp"
-
-#include <boost/json/fwd.hpp>
-
 #include <cstdint>
-#include <expected>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <vector>
 
 namespace user_dto{
@@ -48,10 +41,4 @@ namespace user_dto{
     };
 
     using list = std::vector<list_item>;
-
-    std::expected<submission_ban_request, http_error>
-    make_submission_ban_request_from_json(const boost::json::object& json);
-    std::expected<list_filter, http_error> make_list_filter_from_query_params(
-        const std::vector<query_param>& query_params
-    );
 }

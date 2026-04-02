@@ -1,13 +1,8 @@
 #pragma once
 
-#include "common/query_param.hpp"
 #include "dto/problem_content_dto.hpp"
-#include "error/http_error.hpp"
-
-#include <boost/json/fwd.hpp>
 
 #include <cstdint>
-#include <expected>
 #include <optional>
 #include <string>
 #include <vector>
@@ -108,20 +103,4 @@ namespace problem_dto{
     bool is_valid(const create_request& create_request_value);
     bool is_valid(const update_request& update_request_value);
     bool is_valid(const testcase_ref& testcase_reference_value);
-
-    std::expected<create_request, http_error> make_create_request_from_json(
-        const boost::json::object& json
-    );
-    std::expected<update_request, http_error> make_update_request_from_json(
-        const boost::json::object& json
-    );
-    std::expected<list_filter, http_error> make_list_filter_from_query_params(
-        const std::vector<query_param>& query_params
-    );
-    std::expected<testcase, http_error> make_testcase_from_json(
-        const boost::json::object& json
-    );
-    std::expected<testcase_move_request, http_error> make_testcase_move_request_from_json(
-        const boost::json::object& json
-    );
 }

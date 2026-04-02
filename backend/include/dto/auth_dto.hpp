@@ -1,13 +1,9 @@
 #pragma once
 
 #include "error/infra_error.hpp"
-#include "error/http_error.hpp"
-
-#include <boost/json/fwd.hpp>
 
 #include <cstdint>
 #include <expected>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -68,14 +64,6 @@ namespace auth_dto{
     bool is_valid(const credentials& credentials_value);
     bool is_valid(const hashed_sign_up_request& hashed_sign_up_request_value);
     bool is_valid(const hashed_credentials& hashed_credentials_value);
-
-    std::expected<sign_up_request, http_error> make_sign_up_request_from_json(
-        const boost::json::object& json
-    );
-
-    std::expected<credentials, http_error> make_credentials_from_json(
-        const boost::json::object& json
-    );
     std::expected<hashed_sign_up_request, infra_error> hash_sign_up_request(
         const sign_up_request& sign_up_request_value
     );
