@@ -112,7 +112,6 @@ problem_handler::response_type problem_handler::post_problem(
             );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "create problem",
                 std::move(create_problem_exp),
                 problem_json_serializer::make_created_object,
                 boost::beast::http::status::created
@@ -142,7 +141,6 @@ problem_handler::response_type problem_handler::put_problem(
             );
             return http_response_util::create_message_or_4xx_or_500(
                 request,
-                "update problem",
                 std::move(update_problem_exp),
                 "problem updated"
             );
@@ -171,7 +169,6 @@ problem_handler::response_type problem_handler::delete_problem(
             );
             return http_response_util::create_message_or_4xx_or_500(
                 request,
-                "delete problem",
                 std::move(delete_problem_exp),
                 "problem deleted"
             );
@@ -197,7 +194,6 @@ problem_handler::response_type problem_handler::post_problem_rejudge(
             );
             return http_response_util::create_message_or_4xx_or_500(
                 request,
-                "rejudge problem",
                 std::move(rejudge_problem_exp),
                 "problem submissions requeued"
             );

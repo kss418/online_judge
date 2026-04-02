@@ -28,7 +28,6 @@ namespace{
 
     http_response_util::response_type create_mapped_error_response(
         const http_response_util::request_type& request,
-        std::string_view,
         const service_error& code
     ){
         return http_response_util::create_error(
@@ -85,10 +84,9 @@ http_response_util::response_type http_response_util::create_error(
 
 http_response_util::response_type http_response_util::create_4xx_or_500(
     const request_type& request,
-    std::string_view action,
     const service_error& code
 ){
-    return create_mapped_error_response(request, action, code);
+    return create_mapped_error_response(request, code);
 }
 
 http_response_util::response_type http_response_util::create_method_not_allowed(

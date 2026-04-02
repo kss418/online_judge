@@ -54,7 +54,7 @@ std::expected<auth_dto::session, service_error> login_service::sign_up(
     );
 }
 
-std::expected<std::optional<auth_dto::session>, service_error> login_service::login(
+std::expected<auth_dto::session, service_error> login_service::login(
     db_connection& connection_value,
     const auth_dto::credentials& credentials_value
 ){
@@ -68,7 +68,7 @@ std::expected<std::optional<auth_dto::session>, service_error> login_service::lo
     return db_service_util::with_retry_service_write_transaction(
         connection_value,
         [&](pqxx::work& transaction)
-            -> std::expected<std::optional<auth_dto::session>, service_error> {
+            -> std::expected<auth_dto::session, service_error> {
             const auto login_identity_exp = login_repository::get_login_identity(
                 transaction,
                 *hashed_credentials_exp
@@ -77,7 +77,7 @@ std::expected<std::optional<auth_dto::session>, service_error> login_service::lo
                 return std::unexpected(login_identity_exp.error());
             }
             if(!login_identity_exp->has_value()){
-                return std::optional<auth_dto::session>{};
+                return std::unexpected(service_error::unauthorized);
             }
 
             const auto issued_token_exp = token_util::issue_token();
@@ -102,7 +102,7 @@ std::expected<std::optional<auth_dto::session>, service_error> login_service::lo
             session_value.permission_level = login_identity_exp->value().permission_level;
             session_value.user_login_id = login_identity_exp->value().user_login_id;
             session_value.token = issued_token_exp->token;
-            return std::optional<auth_dto::session>{std::move(session_value)};
+            return session_value;
         }
     );
 }

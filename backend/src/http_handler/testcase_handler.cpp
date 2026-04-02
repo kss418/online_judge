@@ -34,7 +34,6 @@ testcase_handler::response_type testcase_handler::get_testcase(
             );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "get testcase",
                 std::move(testcase_exp),
                 problem_json_serializer::make_testcase_object
             );
@@ -60,7 +59,6 @@ testcase_handler::response_type testcase_handler::get_testcases(
             );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "list testcases",
                 std::move(testcase_summary_values_exp),
                 problem_json_serializer::make_testcase_summary_list_object
             );
@@ -87,7 +85,6 @@ testcase_handler::response_type testcase_handler::post_testcase(
             );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "create testcase",
                 std::move(create_testcase_exp),
                 problem_json_serializer::make_testcase_created_object,
                 boost::beast::http::status::created
@@ -122,12 +119,10 @@ testcase_handler::response_type testcase_handler::put_testcase(
             );
             return http_response_util::create_response_or_4xx_or_500(
                 request,
-                "set testcase",
                 std::move(set_testcase_exp),
                 [&]() -> response_type {
                     return http_response_util::create_json_or_4xx_or_500(
                         request,
-                        "get testcase",
                         testcase_service::get_testcase(
                             db_connection_value,
                             testcase_reference_value
@@ -162,7 +157,6 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
             );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "replace testcases",
                 std::move(replace_testcases_exp),
                 [](const problem_dto::testcase_count& testcase_count) {
                     boost::json::object response_object =
@@ -202,7 +196,6 @@ testcase_handler::response_type testcase_handler::move_testcase(
             );
             return http_response_util::create_message_or_4xx_or_500(
                 request,
-                "move testcase",
                 std::move(move_testcase_exp),
                 "problem testcase moved"
             );
@@ -235,7 +228,6 @@ testcase_handler::response_type testcase_handler::delete_testcase(
             );
             return http_response_util::create_message_or_4xx_or_500(
                 request,
-                "delete testcase",
                 std::move(delete_testcase_exp),
                 "problem testcase deleted"
             );
@@ -260,7 +252,6 @@ testcase_handler::response_type testcase_handler::delete_all_testcases(
             );
             return http_response_util::create_message_or_4xx_or_500(
                 request,
-                "delete all testcases",
                 std::move(delete_all_testcases_exp),
                 "problem testcases deleted"
             );

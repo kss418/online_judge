@@ -8,13 +8,11 @@ namespace{
     template <typename value_type>
     std::expected<value_type, submission_guard::response_type> require_submission_value(
         const submission_guard::request_type& request,
-        std::string_view action,
         std::expected<value_type, service_error> value_exp
     ){
         if(!value_exp){
             return std::unexpected(http_response_util::create_4xx_or_500(
                 request,
-                action,
                 value_exp.error()
             ));
         }
@@ -31,7 +29,6 @@ submission_guard::require_history(
 ){
     return require_submission_value(
         request,
-        "get submission history",
         submission_service::get_submission_history(
             db_connection,
             submission_id
@@ -47,7 +44,6 @@ submission_guard::require_detail(
 ){
     return require_submission_value(
         request,
-        "get submission detail",
         submission_service::get_submission_detail(
             db_connection,
             submission_id
@@ -63,7 +59,6 @@ submission_guard::require_source_detail(
 ){
     return require_submission_value(
         request,
-        "get submission source",
         submission_service::get_submission_source(
             db_connection,
             submission_id

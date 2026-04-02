@@ -87,7 +87,6 @@ submission_handler::response_type submission_handler::post_submission_status_bat
         [&](const submission_dto::status_batch_request& batch_request) -> response_type {
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "get submission status batch",
                 submission_service::get_submission_status_snapshots(
                     db_connection_value,
                     batch_request.submission_ids
@@ -116,10 +115,8 @@ submission_handler::response_type submission_handler::post_submission(
             );
             return http_response_util::create_response_or_error(
                 request,
-                "create submission",
                 std::move(create_submission_exp),
                 [&](const request_type& error_request,
-                    std::string_view action,
                     const service_error& code) {
                     if(is_submission_banned_error(code)){
                         return http_response_util::create_error(
@@ -130,7 +127,6 @@ submission_handler::response_type submission_handler::post_submission(
 
                     return http_response_util::create_4xx_or_500(
                         error_request,
-                        action,
                         code
                     );
                 },
@@ -158,7 +154,6 @@ submission_handler::response_type submission_handler::post_submission_rejudge(
         [&](const auth_dto::identity&) -> response_type {
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "rejudge submission",
                 submission_service::rejudge(
                     db_connection_value,
                     submission_id
@@ -190,7 +185,6 @@ submission_handler::response_type submission_handler::get_submissions(
 
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "list submissions",
                 submission_service::list_submissions(
                     db_connection_value,
                     filter_value,

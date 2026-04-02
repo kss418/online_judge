@@ -13,7 +13,7 @@ namespace problem_core_service{
     inline constexpr std::int32_t INITIAL_MEMORY_LIMIT_MB = 256;
     inline constexpr std::int32_t INITIAL_TIME_LIMIT_MS = 1000;
 
-    std::expected<problem_dto::existence, service_error> exists_problem(
+    std::expected<void, service_error> ensure_problem_exists(
         db_connection& connection,
         const problem_dto::reference& problem_reference_value
     );

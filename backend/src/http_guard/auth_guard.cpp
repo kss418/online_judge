@@ -42,7 +42,7 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require
         if(code == service_error::unauthorized){
             return std::unexpected(http_response_util::create_error(
                 request,
-                auth_error::missing_or_invalid_bearer_token()
+                auth_error::invalid_or_expired_token()
             ));
         }
 
@@ -54,14 +54,8 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require
             }
         ));
     }
-    if(!auth_identity_exp->has_value()){
-        return std::unexpected(http_response_util::create_error(
-            request,
-            auth_error::invalid_or_expired_token()
-        ));
-    }
 
-    return auth_identity_exp->value();
+    return std::move(*auth_identity_exp);
 }
 
 std::expected<std::optional<auth_dto::identity>, auth_guard::response_type>

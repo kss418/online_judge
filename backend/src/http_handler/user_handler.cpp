@@ -44,7 +44,6 @@ user_handler::response_type user_handler::get_me_submission_statistics(
                 );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "get user submission statistics",
                 std::move(get_submission_statistics_exp),
                 user_json_serializer::make_submission_statistics_object
             );
@@ -67,12 +66,8 @@ user_handler::response_type user_handler::get_me_submission_ban(
             );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "get current user submission ban",
                 std::move(get_submission_ban_status_exp),
-                user_json_serializer::make_submission_ban_status_object,
-                [&]{
-                    return http_response_util::create_not_found(request);
-                }
+                user_json_serializer::make_submission_ban_status_object
             );
         },
         auth_guard::make_auth_guard()
@@ -95,7 +90,6 @@ user_handler::response_type user_handler::get_me_solved_problems(
                 );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "get current user solved problems",
                 std::move(list_user_solved_problems_exp),
                 user_json_serializer::make_solved_problem_list_object
             );
@@ -120,7 +114,6 @@ user_handler::response_type user_handler::get_me_wrong_problems(
                 );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "get current user wrong problems",
                 std::move(list_user_wrong_problems_exp),
                 user_json_serializer::make_wrong_problem_list_object
             );
@@ -143,7 +136,6 @@ user_handler::response_type user_handler::get_public_user_list(
             );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "get public user list",
                 std::move(get_public_list_exp),
                 user_json_serializer::make_public_list_object
             );
@@ -208,7 +200,6 @@ user_handler::response_type user_handler::get_user_submission_statistics(
                 );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "get user submission statistics",
                 std::move(get_submission_statistics_exp),
                 user_json_serializer::make_submission_statistics_object
             );
@@ -237,7 +228,6 @@ user_handler::response_type user_handler::get_user_solved_problems(
                 );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "get user solved problems",
                 std::move(list_user_solved_problems_exp),
                 user_json_serializer::make_solved_problem_list_object
             );
@@ -267,7 +257,6 @@ user_handler::response_type user_handler::get_user_wrong_problems(
                 );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "get user wrong problems",
                 std::move(list_user_wrong_problems_exp),
                 user_json_serializer::make_wrong_problem_list_object
             );
@@ -291,18 +280,18 @@ user_handler::response_type user_handler::put_user_admin(
                 user_id,
                 permission_util::ADMIN
             );
-            return http_response_util::create_json_or_4xx_or_500(
+            return http_response_util::create_response_or_4xx_or_500(
                 request,
-                "update permission level",
                 std::move(update_permission_level_exp),
-                [&]{
-                    return user_json_serializer::make_permission_object(
-                        user_id,
-                        permission_util::ADMIN
+                [&]() -> response_type {
+                    return http_response_util::create_json(
+                        request,
+                        boost::beast::http::status::ok,
+                        user_json_serializer::make_permission_object(
+                            user_id,
+                            permission_util::ADMIN
+                        )
                     );
-                },
-                [&]{
-                    return http_response_util::create_not_found(request);
                 }
             );
         },
@@ -324,18 +313,18 @@ user_handler::response_type user_handler::put_user_regular(
                 user_id,
                 permission_util::USER
             );
-            return http_response_util::create_json_or_4xx_or_500(
+            return http_response_util::create_response_or_4xx_or_500(
                 request,
-                "update permission level",
                 std::move(update_permission_level_exp),
-                [&]{
-                    return user_json_serializer::make_permission_object(
-                        user_id,
-                        permission_util::USER
+                [&]() -> response_type {
+                    return http_response_util::create_json(
+                        request,
+                        boost::beast::http::status::ok,
+                        user_json_serializer::make_permission_object(
+                            user_id,
+                            permission_util::USER
+                        )
                     );
-                },
-                [&]{
-                    return http_response_util::create_not_found(request);
                 }
             );
         },
@@ -358,12 +347,8 @@ user_handler::response_type user_handler::get_user_submission_ban(
             );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "get user submission ban",
                 std::move(get_submission_ban_status_exp),
-                user_json_serializer::make_submission_ban_status_object,
-                [&]{
-                    return http_response_util::create_not_found(request);
-                }
+                user_json_serializer::make_submission_ban_status_object
             );
         },
         auth_guard::make_admin_guard()
@@ -387,12 +372,8 @@ user_handler::response_type user_handler::post_user_submission_ban(
             );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "create user submission ban",
                 std::move(create_submission_ban_exp),
                 user_json_serializer::make_submission_ban_object,
-                [&]{
-                    return http_response_util::create_not_found(request);
-                },
                 boost::beast::http::status::created
             );
         },
@@ -419,12 +400,8 @@ user_handler::response_type user_handler::delete_user_submission_ban(
                 );
             return http_response_util::create_message_or_4xx_or_500(
                 request,
-                "clear user submission ban",
                 std::move(clear_submission_banned_until_exp),
-                "user submission ban cleared",
-                [&]{
-                    return http_response_util::create_not_found(request);
-                }
+                "user submission ban cleared"
             );
         },
         auth_guard::make_admin_guard()
@@ -442,7 +419,6 @@ user_handler::response_type user_handler::get_user_list(
             const auto user_list_exp = auth_service::get_user_list(db_connection_value);
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "get user list",
                 std::move(user_list_exp),
                 user_json_serializer::make_list_object
             );

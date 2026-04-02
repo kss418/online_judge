@@ -24,7 +24,6 @@ auth_handler::response_type auth_handler::post_sign_up(
             );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "sign up",
                 std::move(sign_up_exp),
                 auth_json_serializer::make_session_object,
                 boost::beast::http::status::created
@@ -48,17 +47,24 @@ auth_handler::response_type auth_handler::post_login(
                 db_connection_value,
                 credentials_value
             );
-            return http_response_util::create_json_or_4xx_or_500(
-                request,
-                "login",
-                std::move(login_exp),
-                auth_json_serializer::make_session_object,
-                [&]{
+            if(!login_exp){
+                if(login_exp.error() == service_error::unauthorized){
                     return http_response_util::create_error(
                         request,
                         auth_error::invalid_credentials()
                     );
                 }
+
+                return http_response_util::create_4xx_or_500(
+                    request,
+                    login_exp.error()
+                );
+            }
+
+            return http_response_util::create_json(
+                request,
+                boost::beast::http::status::ok,
+                auth_json_serializer::make_session_object(*login_exp)
             );
         },
         request_guard::make_json_guard<auth_dto::credentials>(
@@ -79,17 +85,24 @@ auth_handler::response_type auth_handler::post_token_renew(
                 db_connection_value,
                 token_value
             );
-            return http_response_util::create_message_or_4xx_or_500(
-                request,
-                "renew token",
-                std::move(renew_token_exp),
-                "token renewed",
-                [&]{
+            if(!renew_token_exp){
+                if(renew_token_exp.error() == service_error::unauthorized){
                     return http_response_util::create_error(
                         request,
                         auth_error::invalid_or_expired_token()
                     );
                 }
+
+                return http_response_util::create_4xx_or_500(
+                    request,
+                    renew_token_exp.error()
+                );
+            }
+
+            return http_response_util::create_message(
+                request,
+                boost::beast::http::status::ok,
+                "token renewed"
             );
         },
         auth_guard::make_bearer_token_guard()
@@ -108,17 +121,24 @@ auth_handler::response_type auth_handler::post_logout(
                 db_connection_value,
                 token_value
             );
-            return http_response_util::create_message_or_4xx_or_500(
-                request,
-                "logout",
-                std::move(revoke_token_exp),
-                "logged out",
-                [&]{
+            if(!revoke_token_exp){
+                if(revoke_token_exp.error() == service_error::unauthorized){
                     return http_response_util::create_error(
                         request,
                         auth_error::invalid_or_expired_token()
                     );
                 }
+
+                return http_response_util::create_4xx_or_500(
+                    request,
+                    revoke_token_exp.error()
+                );
+            }
+
+            return http_response_util::create_message(
+                request,
+                boost::beast::http::status::ok,
+                "logged out"
             );
         },
         auth_guard::make_bearer_token_guard()

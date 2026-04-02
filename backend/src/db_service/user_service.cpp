@@ -19,7 +19,7 @@ std::expected<user_dto::list, service_error> user_service::get_public_list(
     );
 }
 
-std::expected<std::optional<user_dto::summary>, service_error> user_service::get_summary(
+std::expected<user_dto::summary, service_error> user_service::get_summary(
     db_connection& connection,
     std::int64_t user_id
 ){
@@ -30,16 +30,24 @@ std::expected<std::optional<user_dto::summary>, service_error> user_service::get
     return db_service_util::with_retry_service_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<std::optional<user_dto::summary>, service_error> {
-            return user_repository::get_summary(
+            -> std::expected<user_dto::summary, service_error> {
+            const auto summary_exp = user_repository::get_summary(
                 transaction,
                 user_id
             );
+            if(!summary_exp){
+                return std::unexpected(summary_exp.error());
+            }
+            if(!summary_exp->has_value()){
+                return std::unexpected(service_error::not_found);
+            }
+
+            return std::move(summary_exp->value());
         }
     );
 }
 
-std::expected<std::optional<user_dto::summary>, service_error>
+std::expected<user_dto::summary, service_error>
 user_service::get_summary_by_login_id(
     db_connection& connection,
     std::string_view user_login_id
@@ -51,16 +59,24 @@ user_service::get_summary_by_login_id(
     return db_service_util::with_retry_service_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<std::optional<user_dto::summary>, service_error> {
-            return user_repository::get_summary_by_login_id(
+            -> std::expected<user_dto::summary, service_error> {
+            const auto summary_exp = user_repository::get_summary_by_login_id(
                 transaction,
                 user_login_id
             );
+            if(!summary_exp){
+                return std::unexpected(summary_exp.error());
+            }
+            if(!summary_exp->has_value()){
+                return std::unexpected(service_error::not_found);
+            }
+
+            return std::move(summary_exp->value());
         }
     );
 }
 
-std::expected<std::optional<user_dto::submission_ban>, service_error>
+std::expected<user_dto::submission_ban, service_error>
 user_service::create_submission_ban(
     db_connection& connection,
     std::int64_t user_id,
@@ -73,7 +89,7 @@ user_service::create_submission_ban(
     return db_service_util::with_retry_service_write_transaction(
         connection,
         [&](pqxx::work& transaction)
-            -> std::expected<std::optional<user_dto::submission_ban>, service_error> {
+            -> std::expected<user_dto::submission_ban, service_error> {
             const auto create_submission_ban_exp =
                 user_repository::create_submission_ban(
                     transaction,
@@ -84,7 +100,7 @@ user_service::create_submission_ban(
                 return std::unexpected(create_submission_ban_exp.error());
             }
             if(!create_submission_ban_exp->has_value()){
-                return std::optional<user_dto::submission_ban>{std::nullopt};
+                return std::unexpected(service_error::not_found);
             }
 
             user_dto::submission_ban submission_ban_value;
@@ -97,7 +113,7 @@ user_service::create_submission_ban(
     );
 }
 
-std::expected<std::optional<user_dto::submission_ban_status>, service_error>
+std::expected<user_dto::submission_ban_status, service_error>
 user_service::get_submission_ban_status(
     db_connection& connection,
     std::int64_t user_id
@@ -109,16 +125,24 @@ user_service::get_submission_ban_status(
     return db_service_util::with_retry_service_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<std::optional<user_dto::submission_ban_status>, service_error> {
-            return user_repository::get_submission_ban_status(
+            -> std::expected<user_dto::submission_ban_status, service_error> {
+            const auto submission_ban_status_exp = user_repository::get_submission_ban_status(
                 transaction,
                 user_id
             );
+            if(!submission_ban_status_exp){
+                return std::unexpected(submission_ban_status_exp.error());
+            }
+            if(!submission_ban_status_exp->has_value()){
+                return std::unexpected(service_error::not_found);
+            }
+
+            return std::move(submission_ban_status_exp->value());
         }
     );
 }
 
-std::expected<bool, service_error> user_service::update_submission_banned_until(
+std::expected<void, service_error> user_service::update_submission_banned_until(
     db_connection& connection,
     std::int64_t user_id,
     std::string_view submission_banned_until
@@ -129,7 +153,7 @@ std::expected<bool, service_error> user_service::update_submission_banned_until(
 
     return db_service_util::with_retry_service_write_transaction(
         connection,
-        [&](pqxx::work& transaction) -> std::expected<bool, service_error> {
+        [&](pqxx::work& transaction) -> std::expected<void, service_error> {
             const auto update_submission_banned_until_exp =
                 user_repository::update_submission_banned_until(
                     transaction,
@@ -139,13 +163,16 @@ std::expected<bool, service_error> user_service::update_submission_banned_until(
             if(!update_submission_banned_until_exp){
                 return std::unexpected(update_submission_banned_until_exp.error());
             }
+            if(!*update_submission_banned_until_exp){
+                return std::unexpected(service_error::not_found);
+            }
 
-            return *update_submission_banned_until_exp;
+            return {};
         }
     );
 }
 
-std::expected<bool, service_error> user_service::clear_submission_banned_until(
+std::expected<void, service_error> user_service::clear_submission_banned_until(
     db_connection& connection,
     std::int64_t user_id
 ){
@@ -155,7 +182,7 @@ std::expected<bool, service_error> user_service::clear_submission_banned_until(
 
     return db_service_util::with_retry_service_write_transaction(
         connection,
-        [&](pqxx::work& transaction) -> std::expected<bool, service_error> {
+        [&](pqxx::work& transaction) -> std::expected<void, service_error> {
             const auto clear_submission_banned_until_exp =
                 user_repository::clear_submission_banned_until(
                     transaction,
@@ -164,8 +191,11 @@ std::expected<bool, service_error> user_service::clear_submission_banned_until(
             if(!clear_submission_banned_until_exp){
                 return std::unexpected(clear_submission_banned_until_exp.error());
             }
+            if(!*clear_submission_banned_until_exp){
+                return std::unexpected(service_error::not_found);
+            }
 
-            return *clear_submission_banned_until_exp;
+            return {};
         }
     );
 }

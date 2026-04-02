@@ -7,7 +7,7 @@
 
 #include <chrono>
 
-std::expected<std::optional<auth_dto::identity>, service_error> auth_service::auth_token(
+std::expected<auth_dto::identity, service_error> auth_service::auth_token(
     db_connection& connection_value,
     const auth_dto::token& token_value
 ){
@@ -21,7 +21,7 @@ std::expected<std::optional<auth_dto::identity>, service_error> auth_service::au
     return db_service_util::with_retry_service_read_transaction(
         connection_value,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<std::optional<auth_dto::identity>, service_error> {
+            -> std::expected<auth_dto::identity, service_error> {
             const auto get_token_identity_exp = auth_repository::get_token_identity(
                 transaction,
                 hashed_token_value
@@ -30,15 +30,15 @@ std::expected<std::optional<auth_dto::identity>, service_error> auth_service::au
                 return std::unexpected(get_token_identity_exp.error());
             }
             if(!get_token_identity_exp->has_value()){
-                return std::optional<auth_dto::identity>{};
+                return std::unexpected(service_error::unauthorized);
             }
 
-            return get_token_identity_exp->value();
+            return std::move(get_token_identity_exp->value());
         }
     );
 }
 
-std::expected<bool, service_error> auth_service::renew_token(
+std::expected<void, service_error> auth_service::renew_token(
     db_connection& connection_value,
     const auth_dto::token& token_value
 ){
@@ -51,7 +51,7 @@ std::expected<bool, service_error> auth_service::renew_token(
 
     return db_service_util::with_retry_service_write_transaction(
         connection_value,
-        [&](pqxx::work& transaction) -> std::expected<bool, service_error> {
+        [&](pqxx::work& transaction) -> std::expected<void, service_error> {
             const auto update_expires_at_exp = auth_repository::update_expires_at(
                 transaction,
                 hashed_token_value,
@@ -61,15 +61,15 @@ std::expected<bool, service_error> auth_service::renew_token(
                 return std::unexpected(update_expires_at_exp.error());
             }
             if(!update_expires_at_exp.value()){
-                return false;
+                return std::unexpected(service_error::unauthorized);
             }
 
-            return true;
+            return {};
         }
     );
 }
 
-std::expected<bool, service_error> auth_service::revoke_token(
+std::expected<void, service_error> auth_service::revoke_token(
     db_connection& connection_value,
     const auth_dto::token& token_value
 ){
@@ -82,7 +82,7 @@ std::expected<bool, service_error> auth_service::revoke_token(
 
     return db_service_util::with_retry_service_write_transaction(
         connection_value,
-        [&](pqxx::work& transaction) -> std::expected<bool, service_error> {
+        [&](pqxx::work& transaction) -> std::expected<void, service_error> {
             const auto revoke_token_exp = auth_repository::revoke_token(
                 transaction,
                 hashed_token_value
@@ -91,15 +91,15 @@ std::expected<bool, service_error> auth_service::revoke_token(
                 return std::unexpected(revoke_token_exp.error());
             }
             if(!revoke_token_exp.value()){
-                return false;
+                return std::unexpected(service_error::unauthorized);
             }
 
-            return true;
+            return {};
         }
     );
 }
 
-std::expected<bool, service_error> auth_service::update_permission_level(
+std::expected<void, service_error> auth_service::update_permission_level(
     db_connection& connection_value,
     std::int64_t user_id,
     std::int32_t permission_level
@@ -113,7 +113,7 @@ std::expected<bool, service_error> auth_service::update_permission_level(
 
     return db_service_util::with_retry_service_write_transaction(
         connection_value,
-        [&](pqxx::work& transaction) -> std::expected<bool, service_error> {
+        [&](pqxx::work& transaction) -> std::expected<void, service_error> {
             const auto update_permission_level_exp =
                 auth_repository::update_permission_level(
                     transaction,
@@ -123,8 +123,11 @@ std::expected<bool, service_error> auth_service::update_permission_level(
             if(!update_permission_level_exp){
                 return std::unexpected(update_permission_level_exp.error());
             }
+            if(!*update_permission_level_exp){
+                return std::unexpected(service_error::not_found);
+            }
 
-            return *update_permission_level_exp;
+            return {};
         }
     );
 }

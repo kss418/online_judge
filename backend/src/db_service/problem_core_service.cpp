@@ -7,18 +7,26 @@
 
 #include <utility>
 
-std::expected<problem_dto::existence, service_error> problem_core_service::exists_problem(
+std::expected<void, service_error> problem_core_service::ensure_problem_exists(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
     return db_service_util::with_retry_service_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<problem_dto::existence, service_error> {
-            return problem_core_repository::exists_problem(
+            -> std::expected<void, service_error> {
+            const auto existence_exp = problem_core_repository::exists_problem(
                 transaction,
                 problem_reference_value
             );
+            if(!existence_exp){
+                return std::unexpected(existence_exp.error());
+            }
+            if(!existence_exp->exists){
+                return std::unexpected(service_error::not_found);
+            }
+
+            return {};
         }
     );
 }

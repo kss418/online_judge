@@ -8,19 +8,15 @@ std::expected<void, problem_guard::response_type> problem_guard::require_exists(
     db_connection& db_connection,
     const problem_dto::reference& problem_reference_value
 ){
-    const auto exists_problem_exp = problem_core_service::exists_problem(
+    const auto ensure_problem_exists_exp = problem_core_service::ensure_problem_exists(
         db_connection,
         problem_reference_value
     );
-    if(!exists_problem_exp){
+    if(!ensure_problem_exists_exp){
         return std::unexpected(http_response_util::create_4xx_or_500(
             request,
-            "check problem",
-            exists_problem_exp.error()
+            ensure_problem_exists_exp.error()
         ));
-    }
-    if(!exists_problem_exp->exists){
-        return std::unexpected(http_response_util::create_not_found(request));
     }
 
     return {};
@@ -48,15 +44,8 @@ problem_guard::require_readable_detail(
                 viewer_user_id_opt
             );
             if(!problem_detail_exp){
-                if(problem_detail_exp.error() == service_error::not_found){
-                    return std::unexpected(http_response_util::create_not_found(
-                        context.request
-                    ));
-                }
-
                 return std::unexpected(http_response_util::create_4xx_or_500(
                     context.request,
-                    "get problem detail",
                     problem_detail_exp.error()
                 ));
             }

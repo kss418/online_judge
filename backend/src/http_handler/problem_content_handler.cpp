@@ -29,7 +29,6 @@ problem_content_handler::response_type problem_content_handler::get_limits(
             );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "get problem limits",
                 std::move(limits_exp),
                 [](const auto& limits_value){
                     boost::json::object response_object;
@@ -60,7 +59,6 @@ problem_content_handler::response_type problem_content_handler::put_limits(
             );
             return http_response_util::create_message_or_4xx_or_500(
                 request,
-                "set problem limits",
                 std::move(set_limits_exp),
                 "problem limits updated"
             );
@@ -90,7 +88,6 @@ problem_content_handler::response_type problem_content_handler::put_statement(
             );
             return http_response_util::create_message_or_4xx_or_500(
                 request,
-                "set problem statement",
                 std::move(set_statement_exp),
                 "problem statement updated"
             );
@@ -119,7 +116,6 @@ problem_content_handler::response_type problem_content_handler::get_samples(
             );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "list problem samples",
                 std::move(sample_values_exp),
                 problem_json_serializer::make_sample_list_object
             );
@@ -146,7 +142,6 @@ problem_content_handler::response_type problem_content_handler::post_sample(
             );
             return http_response_util::create_json_or_4xx_or_500(
                 request,
-                "create problem sample",
                 std::move(create_sample_exp),
                 problem_json_serializer::make_sample_created_object,
                 boost::beast::http::status::created
@@ -178,12 +173,10 @@ problem_content_handler::response_type problem_content_handler::put_sample(
             );
             return http_response_util::create_response_or_4xx_or_500(
                 request,
-                "set problem sample",
                 std::move(set_sample_exp),
                 [&]() -> response_type {
                     return http_response_util::create_json_or_4xx_or_500(
                         request,
-                        "get problem sample",
                         problem_content_service::get_sample(
                             db_connection_value,
                             sample_reference_value
@@ -216,7 +209,6 @@ problem_content_handler::response_type problem_content_handler::delete_sample(
             );
             return http_response_util::create_response_or_4xx_or_500(
                 request,
-                "list problem samples",
                 std::move(sample_values_exp),
                 [&](
                     const std::vector<problem_content_dto::sample>& sample_values
@@ -230,7 +222,6 @@ problem_content_handler::response_type problem_content_handler::delete_sample(
 
                     return http_response_util::create_message_or_4xx_or_500(
                         request,
-                        "delete problem sample",
                         problem_content_service::delete_sample(
                             db_connection_value,
                             problem_reference_value

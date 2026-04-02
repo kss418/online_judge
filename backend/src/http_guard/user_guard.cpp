@@ -12,17 +12,10 @@ std::expected<user_dto::summary, user_guard::response_type> user_guard::require_
         user_id
     );
     if(!user_summary_exp){
-        return std::unexpected(http_response_util::create_4xx_or_500(
-            request,
-            "get user summary",
-            user_summary_exp.error()
-        ));
-    }
-    if(!user_summary_exp->has_value()){
-        return std::unexpected(http_response_util::create_not_found(request));
+        return std::unexpected(http_response_util::create_4xx_or_500(request, user_summary_exp.error()));
     }
 
-    return user_summary_exp->value();
+    return std::move(*user_summary_exp);
 }
 
 std::expected<user_dto::summary, user_guard::response_type> user_guard::require_summary_by_login_id(
@@ -35,15 +28,8 @@ std::expected<user_dto::summary, user_guard::response_type> user_guard::require_
         user_login_id
     );
     if(!user_summary_exp){
-        return std::unexpected(http_response_util::create_4xx_or_500(
-            request,
-            "get user summary by login id",
-            user_summary_exp.error()
-        ));
-    }
-    if(!user_summary_exp->has_value()){
-        return std::unexpected(http_response_util::create_not_found(request));
+        return std::unexpected(http_response_util::create_4xx_or_500(request, user_summary_exp.error()));
     }
 
-    return user_summary_exp->value();
+    return std::move(*user_summary_exp);
 }

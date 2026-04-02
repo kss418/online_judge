@@ -206,6 +206,10 @@ print_success_log "contract admin sign-up success"
 promote_admin_user "${admin_user_id}" "http error contract flow" >/dev/null
 print_success_log "contract admin promote success"
 
+missing_user_id=$((admin_user_id + 999999))
+missing_user_login_id="${HTTP_ERROR_CONTRACT_FLOW_TEST_MISSING_LOGIN_ID:-$(make_test_login_id ecm)}"
+invalid_token="${HTTP_ERROR_CONTRACT_FLOW_TEST_INVALID_TOKEN:-definitely-invalid-token}"
+
 problem_id="$(
     create_problem_via_api \
         "${admin_user_token}" \
@@ -330,6 +334,49 @@ print(
 )
 PY
 )"
+
+invalid_login_request_body="$(
+    python3 - "${user_login_id}" <<'PY'
+import json
+import sys
+
+print(
+    json.dumps(
+        {
+            "user_login_id": sys.argv[1],
+            "raw_password": "wrongpass1",
+        },
+        separators=(",", ":")
+    )
+)
+PY
+)"
+
+submission_ban_request_body="$(
+    python3 <<'PY'
+import json
+
+print(json.dumps({"duration_minutes": 60}, separators=(",", ":")))
+PY
+)"
+
+auth_contract_cases="$(cat <<EOF
+invalid credentials login|POST|${base_url}/api/auth/login||${invalid_login_request_body}|401|invalid_credentials|invalid credentials|
+invalid token renew|POST|${base_url}/api/auth/token/renew|${invalid_token}||401|invalid_or_expired_token|invalid, expired, or revoked token|
+invalid token logout|POST|${base_url}/api/auth/logout|${invalid_token}||401|invalid_or_expired_token|invalid, expired, or revoked token|
+EOF
+)"
+run_error_contract_table "auth contract" "${auth_contract_cases}"
+
+user_contract_cases="$(cat <<EOF
+missing public user summary by login id|GET|${base_url}/api/user/id/${missing_user_login_id}|||404|not_found|not found|
+missing user statistics by id|GET|${base_url}/api/user/${missing_user_id}/statistics|||404|not_found|not found|
+missing user submission ban get|GET|${base_url}/api/user/${missing_user_id}/submission-ban|${admin_user_token}||404|not_found|not found|
+missing user submission ban create|POST|${base_url}/api/user/${missing_user_id}/submission-ban|${admin_user_token}|${submission_ban_request_body}|404|not_found|not found|
+missing user submission ban delete|DELETE|${base_url}/api/user/${missing_user_id}/submission-ban|${admin_user_token}||404|not_found|not found|
+EOF
+)"
+run_error_contract_table "user contract" "${user_contract_cases}"
 
 sample_contract_cases="$(cat <<EOF
 empty sample delete|DELETE|${base_url}/api/problem/${problem_id}/sample|${admin_user_token}||400|validation_error|missing sample to delete|
