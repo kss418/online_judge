@@ -1,5 +1,6 @@
 #include "http_core/http_response_util.hpp"
 
+#include "common/logger.hpp"
 #include "error/http_error.hpp"
 #include "serializer/common_json_serializer.hpp"
 
@@ -87,6 +88,35 @@ http_response_util::response_type http_response_util::create_4xx_or_500(
     const service_error& code
 ){
     return create_mapped_error_response(request, code);
+}
+
+http_response_util::response_type http_response_util::create_internal_server_error(
+    const request_type& request,
+    std::string_view context,
+    std::string_view detail
+){
+    auto log_record = logger::cerr().log("http_internal_server_error");
+    log_record
+        .field("context", context)
+        .field(
+            "method",
+            std::string_view{
+                request.method_string().data(),
+                request.method_string().size()
+            }
+        )
+        .field(
+            "target",
+            std::string_view{
+                request.target().data(),
+                request.target().size()
+            }
+        );
+    if(!detail.empty()){
+        log_record.field("detail", detail);
+    }
+
+    return create_error(request, http_error{http_error_code::internal_server_error});
 }
 
 http_response_util::response_type http_response_util::create_method_not_allowed(

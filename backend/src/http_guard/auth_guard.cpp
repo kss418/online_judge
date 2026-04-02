@@ -46,12 +46,10 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require
             ));
         }
 
-        return std::unexpected(http_response_util::create_error(
+        return std::unexpected(http_response_util::create_internal_server_error(
             request,
-            http_error{
-                http_error_code::internal_server_error,
-                "failed to authenticate token: " + to_string(code)
-            }
+            "authenticate_token",
+            to_string(code)
         ));
     }
 

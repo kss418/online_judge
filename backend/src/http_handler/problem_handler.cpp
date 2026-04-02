@@ -40,12 +40,10 @@ problem_handler::response_type problem_handler::get_problems(
                 viewer_user_id_opt
             );
             if(!summary_values_exp){
-                return http_response_util::create_error(
+                return http_response_util::create_internal_server_error(
                     request,
-                    http_error{
-                        http_error_code::internal_server_error,
-                        "failed to list problems: " + to_string(summary_values_exp.error())
-                    }
+                    "list_problems",
+                    to_string(summary_values_exp.error())
                 );
             }
 
@@ -55,12 +53,10 @@ problem_handler::response_type problem_handler::get_problems(
                 viewer_user_id_opt
             );
             if(!total_problem_count_exp){
-                return http_response_util::create_error(
+                return http_response_util::create_internal_server_error(
                     request,
-                    http_error{
-                        http_error_code::internal_server_error,
-                        "failed to count problems: " + to_string(total_problem_count_exp.error())
-                    }
+                    "count_problems",
+                    to_string(total_problem_count_exp.error())
                 );
             }
 

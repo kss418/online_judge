@@ -66,6 +66,11 @@ namespace http_response_util{
         const request_type& request,
         const service_error& code
     );
+    response_type create_internal_server_error(
+        const request_type& request,
+        std::string_view context,
+        std::string_view detail = {}
+    );
     response_type create_method_not_allowed(
         const request_type& request
     );

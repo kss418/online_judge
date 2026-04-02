@@ -105,12 +105,10 @@ void http_server::async_handle(request_type request, handle_callback callback){
 
     const http_server_error dispatch_error(post_exp.error());
     callback(
-        http_response_util::create_error(
+        http_response_util::create_internal_server_error(
             *request_ptr,
-            http_error{
-                http_error_code::internal_server_error,
-                "failed to dispatch request: " + to_string(dispatch_error)
-            }
+            "dispatch_request",
+            to_string(dispatch_error)
         )
     );
 }

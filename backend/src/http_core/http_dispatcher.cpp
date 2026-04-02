@@ -100,21 +100,19 @@ http_dispatcher::response_type http_dispatcher::handle(const request_type& reque
     auto db_connection_lease_exp = db_connection_pool_.acquire_for(DB_CONNECTION_ACQUIRE_TIMEOUT);
     if(!db_connection_lease_exp){
         if(db_connection_lease_exp.error() == pool_error::timed_out){
-            return http_response_util::create_error(
-                request,
-                http_error{
-                    http_error_code::service_unavailable,
-                    "db connection pool is busy, retry later"
+        return http_response_util::create_error(
+            request,
+            http_error{
+                http_error_code::service_unavailable,
+                "db connection pool is busy, retry later"
                 }
             );
         }
 
-        return http_response_util::create_error(
+        return http_response_util::create_internal_server_error(
             request,
-            http_error{
-                http_error_code::internal_server_error,
-                "failed to acquire db connection: " + to_string(db_connection_lease_exp.error())
-            }
+            "acquire_db_connection",
+            to_string(db_connection_lease_exp.error())
         );
     }
 
