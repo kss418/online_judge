@@ -2,6 +2,7 @@
 
 #include "db_repository/user_repository.hpp"
 #include "db_service/db_service_util.hpp"
+#include "db_service/service_error_bridge.hpp"
 
 std::expected<user_dto::list, service_error> user_service::get_public_list(
     db_connection& connection,
@@ -12,7 +13,7 @@ std::expected<user_dto::list, service_error> user_service::get_public_list(
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<user_dto::list, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     user_repository::get_public_list(
                         transaction,
                         filter_value
@@ -36,7 +37,7 @@ std::expected<std::optional<user_dto::summary>, service_error> user_service::get
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<std::optional<user_dto::summary>, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     user_repository::get_summary(
                         transaction,
                         user_id
@@ -61,7 +62,7 @@ user_service::get_summary_by_login_id(
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<std::optional<user_dto::summary>, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     user_repository::get_summary_by_login_id(
                         transaction,
                         user_login_id
@@ -88,7 +89,7 @@ user_service::create_submission_ban(
             [&](pqxx::work& transaction)
                 -> std::expected<std::optional<user_dto::submission_ban>, error_code> {
                 const auto create_submission_ban_exp =
-                    db_service_util::map_repository_error_to_http_error(
+                    db_service_error_bridge::map_repository_error(
                         user_repository::create_submission_ban(
                             transaction,
                             user_id,
@@ -127,7 +128,7 @@ user_service::get_submission_ban_status(
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<std::optional<user_dto::submission_ban_status>, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     user_repository::get_submission_ban_status(
                         transaction,
                         user_id
@@ -152,7 +153,7 @@ std::expected<bool, service_error> user_service::update_submission_banned_until(
             connection,
             [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
                 const auto update_submission_banned_until_exp =
-                    db_service_util::map_repository_error_to_http_error(
+                    db_service_error_bridge::map_repository_error(
                         user_repository::update_submission_banned_until(
                             transaction,
                             user_id,
@@ -182,7 +183,7 @@ std::expected<bool, service_error> user_service::clear_submission_banned_until(
             connection,
             [&](pqxx::work& transaction) -> std::expected<bool, error_code> {
                 const auto clear_submission_banned_until_exp =
-                    db_service_util::map_repository_error_to_http_error(
+                    db_service_error_bridge::map_repository_error(
                         user_repository::clear_submission_banned_until(
                             transaction,
                             user_id

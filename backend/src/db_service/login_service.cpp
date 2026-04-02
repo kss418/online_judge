@@ -1,5 +1,6 @@
 #include "db_service/login_service.hpp"
 #include "db_service/db_service_util.hpp"
+#include "db_service/service_error_bridge.hpp"
 #include "common/token_util.hpp"
 #include "db_repository/auth_repository.hpp"
 #include "db_repository/login_repository.hpp"
@@ -40,7 +41,7 @@ std::expected<auth_dto::session, service_error> login_service::sign_up(
                 if(!user_id_exp){
                     return std::unexpected(
                         error_code::create(
-                            db_service_util::map_repository_error_to_http_error(
+                            db_service_error_bridge::map_repository_error(
                                 user_id_exp.error()
                             )
                         )
@@ -56,7 +57,7 @@ std::expected<auth_dto::session, service_error> login_service::sign_up(
                 if(!insert_token_exp){
                     return std::unexpected(
                         error_code::create(
-                            db_service_util::map_repository_error_to_http_error(
+                            db_service_error_bridge::map_repository_error(
                                 insert_token_exp.error()
                             )
                         )
@@ -99,7 +100,7 @@ std::expected<std::optional<auth_dto::session>, service_error> login_service::lo
                 if(!login_identity_exp){
                     return std::unexpected(
                         error_code::create(
-                            db_service_util::map_repository_error_to_http_error(
+                            db_service_error_bridge::map_repository_error(
                                 login_identity_exp.error()
                             )
                         )
@@ -125,7 +126,7 @@ std::expected<std::optional<auth_dto::session>, service_error> login_service::lo
                 if(!insert_token_exp){
                     return std::unexpected(
                         error_code::create(
-                            db_service_util::map_repository_error_to_http_error(
+                            db_service_error_bridge::map_repository_error(
                                 insert_token_exp.error()
                             )
                         )

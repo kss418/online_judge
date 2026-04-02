@@ -1,5 +1,6 @@
 #include "db_service/problem_core_service.hpp"
 #include "db_service/db_service_util.hpp"
+#include "db_service/service_error_bridge.hpp"
 #include "dto/problem_content_dto.hpp"
 #include "db_repository/problem_content_repository.hpp"
 #include "db_repository/problem_core_repository.hpp"
@@ -16,7 +17,7 @@ std::expected<problem_dto::existence, service_error> problem_core_service::exist
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<problem_dto::existence, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     problem_core_repository::exists_problem(
                         transaction,
                         problem_reference_value
@@ -36,7 +37,7 @@ std::expected<problem_dto::title, service_error> problem_core_service::get_title
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<problem_dto::title, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     problem_core_repository::get_title(
                         transaction,
                         problem_reference_value
@@ -56,7 +57,7 @@ std::expected<problem_dto::version, service_error> problem_core_service::get_ver
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<problem_dto::version, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     problem_core_repository::get_version(
                         transaction,
                         problem_reference_value
@@ -81,7 +82,7 @@ std::expected<std::optional<std::string>, service_error> problem_core_service::g
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<std::optional<std::string>, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     problem_core_repository::get_user_problem_state(
                         transaction,
                         problem_reference_value,
@@ -112,7 +113,7 @@ std::expected<problem_dto::detail, service_error> problem_core_service::get_prob
                 problem_dto::detail detail_value;
                 detail_value.problem_reference_value = problem_reference_value;
 
-                const auto title_exp = db_service_util::map_repository_error_to_http_error(
+                const auto title_exp = db_service_error_bridge::map_repository_error(
                     problem_core_repository::get_title(
                         transaction,
                         problem_reference_value
@@ -123,7 +124,7 @@ std::expected<problem_dto::detail, service_error> problem_core_service::get_prob
                 }
                 detail_value.title_value = *title_exp;
 
-                const auto version_exp = db_service_util::map_repository_error_to_http_error(
+                const auto version_exp = db_service_error_bridge::map_repository_error(
                     problem_core_repository::get_version(
                         transaction,
                         problem_reference_value
@@ -134,7 +135,7 @@ std::expected<problem_dto::detail, service_error> problem_core_service::get_prob
                 }
                 detail_value.version_value = *version_exp;
 
-                const auto limits_exp = db_service_util::map_repository_error_to_http_error(
+                const auto limits_exp = db_service_error_bridge::map_repository_error(
                     problem_core_repository::get_limits(
                         transaction,
                         problem_reference_value
@@ -145,7 +146,7 @@ std::expected<problem_dto::detail, service_error> problem_core_service::get_prob
                 }
                 detail_value.limits_value = *limits_exp;
 
-                const auto statement_exp = db_service_util::map_repository_error_to_http_error(
+                const auto statement_exp = db_service_error_bridge::map_repository_error(
                     problem_content_repository::get_statement(
                         transaction,
                         problem_reference_value
@@ -158,7 +159,7 @@ std::expected<problem_dto::detail, service_error> problem_core_service::get_prob
                     return std::unexpected(statement_exp.error());
                 }
 
-                const auto sample_values_exp = db_service_util::map_repository_error_to_http_error(
+                const auto sample_values_exp = db_service_error_bridge::map_repository_error(
                     problem_content_repository::list_samples(
                         transaction,
                         problem_reference_value
@@ -169,7 +170,7 @@ std::expected<problem_dto::detail, service_error> problem_core_service::get_prob
                 }
                 detail_value.sample_values = std::move(*sample_values_exp);
 
-                const auto statistics_exp = db_service_util::map_repository_error_to_http_error(
+                const auto statistics_exp = db_service_error_bridge::map_repository_error(
                     problem_statistics_repository::get_statistics(
                         transaction,
                         problem_reference_value
@@ -182,7 +183,7 @@ std::expected<problem_dto::detail, service_error> problem_core_service::get_prob
 
                 if(viewer_user_id_opt){
                     const auto user_problem_state_exp =
-                        db_service_util::map_repository_error_to_http_error(
+                        db_service_error_bridge::map_repository_error(
                             problem_core_repository::get_user_problem_state(
                                 transaction,
                                 problem_reference_value,
@@ -210,7 +211,7 @@ std::expected<problem_dto::created, service_error> problem_core_service::create_
             connection,
             [&](pqxx::work& transaction)
                 -> std::expected<problem_dto::created, error_code> {
-                const auto created_exp = db_service_util::map_repository_error_to_http_error(
+                const auto created_exp = db_service_error_bridge::map_repository_error(
                     problem_core_repository::create_problem(
                         transaction,
                         create_request_value
@@ -225,7 +226,7 @@ std::expected<problem_dto::created, service_error> problem_core_service::create_
                 initial_limits_value.memory_mb = problem_core_service::INITIAL_MEMORY_LIMIT_MB;
                 initial_limits_value.time_ms = problem_core_service::INITIAL_TIME_LIMIT_MS;
 
-                const auto set_limits_exp = db_service_util::map_repository_error_to_http_error(
+                const auto set_limits_exp = db_service_error_bridge::map_repository_error(
                     problem_core_repository::set_limits(
                         transaction,
                         problem_reference_value,
@@ -237,7 +238,7 @@ std::expected<problem_dto::created, service_error> problem_core_service::create_
                 }
 
                 const auto create_problem_statistics_exp =
-                    db_service_util::map_repository_error_to_http_error(
+                    db_service_error_bridge::map_repository_error(
                         problem_statistics_repository::create_problem_statistics(
                             transaction,
                             problem_reference_value
@@ -247,7 +248,7 @@ std::expected<problem_dto::created, service_error> problem_core_service::create_
                     return std::unexpected(create_problem_statistics_exp.error());
                 }
 
-                const auto ensure_statement_exp = db_service_util::map_repository_error_to_http_error(
+                const auto ensure_statement_exp = db_service_error_bridge::map_repository_error(
                     problem_content_repository::ensure_statement_row(
                         transaction,
                         problem_reference_value
@@ -275,7 +276,7 @@ std::expected<void, service_error> problem_core_service::update_problem(
                 problem_dto::title title_value;
                 title_value.value = update_request_value.title;
 
-                const auto set_title_exp = db_service_util::map_repository_error_to_http_error(
+                const auto set_title_exp = db_service_error_bridge::map_repository_error(
                     problem_core_repository::set_title(
                         transaction,
                         problem_reference_value,
@@ -286,7 +287,7 @@ std::expected<void, service_error> problem_core_service::update_problem(
                     return std::unexpected(set_title_exp.error());
                 }
 
-                const auto version_exp = db_service_util::map_repository_error_to_http_error(
+                const auto version_exp = db_service_error_bridge::map_repository_error(
                     problem_core_repository::increase_version(
                         transaction,
                         problem_reference_value
@@ -310,7 +311,7 @@ std::expected<void, service_error> problem_core_service::delete_problem(
         db_service_util::with_retry_write_transaction(
             connection,
             [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     problem_core_repository::delete_problem(
                         transaction,
                         problem_reference_value
@@ -331,7 +332,7 @@ std::expected<std::vector<problem_dto::summary>, service_error> problem_core_ser
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<std::vector<problem_dto::summary>, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     problem_core_repository::list_problems(
                         transaction,
                         filter_value,
@@ -353,7 +354,7 @@ std::expected<std::int64_t, service_error> problem_core_service::count_problems(
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<std::int64_t, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     problem_core_repository::count_problems(
                         transaction,
                         filter_value,
@@ -380,7 +381,7 @@ problem_core_service::list_user_solved_problems(
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<std::vector<problem_dto::summary>, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     problem_core_repository::list_user_solved_problems(
                         transaction,
                         user_id,
@@ -407,7 +408,7 @@ problem_core_service::list_user_wrong_problems(
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<std::vector<problem_dto::summary>, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     problem_core_repository::list_user_wrong_problems(
                         transaction,
                         user_id,

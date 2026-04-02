@@ -17,70 +17,11 @@ namespace db_service_util{
     inline constexpr int DB_TRANSACTION_ATTEMPT_COUNT = 5;
 
     inline service_error map_error_to_service_error(const error_code& error_code_value){
-        if(const auto service_error_opt = service_error::from_error_code(error_code_value)){
-            return *service_error_opt;
-        }
-
-        return service_error::internal;
-    }
-
-    inline service_error map_repository_error_to_service_error(
-        repository_error repository_error_value
-    ){
-        if(const auto service_error_opt = service_error::from_repository(
-            repository_error_value
-        )){
-            return *service_error_opt;
-        }
-
-        return service_error::internal;
+        return service_error::from_error_code(error_code_value);
     }
 
     inline error_code map_service_error_to_error_code(service_error service_error_value){
-        if(const auto http_error_opt = http_error::from_service(service_error_value)){
-            return error_code::create(*http_error_opt);
-        }
-
-        return error_code::create(http_error::internal);
-    }
-
-    inline http_error map_repository_error_to_http_error(repository_error repository_error_value){
-        const auto service_error_opt = service_error::from_repository(repository_error_value);
-        if(service_error_opt){
-            if(const auto http_error_opt = http_error::from_service(*service_error_opt)){
-                return *http_error_opt;
-            }
-        }
-
-        return http_error::internal;
-    }
-
-    inline error_code map_repository_error_to_http_error(const error_code& error_code_value){
-        if(const auto http_error_opt = http_error::from_error_code(error_code_value)){
-            return error_code::create(*http_error_opt);
-        }
-
-        return error_code_value;
-    }
-
-    template <typename T>
-    std::expected<T, error_code> map_repository_error_to_http_error(
-        std::expected<T, repository_error> result_exp
-    ){
-        if(!result_exp){
-            return std::unexpected(
-                error_code::create(
-                    map_repository_error_to_http_error(result_exp.error())
-                )
-            );
-        }
-
-        if constexpr(std::is_void_v<T>){
-            return {};
-        }
-        else{
-            return std::expected<T, error_code>{std::move(*result_exp)};
-        }
+        return error_code::create(http_error::from_service(service_error_value));
     }
 
     template <typename T>
@@ -89,24 +30,6 @@ namespace db_service_util{
     ){
         if(!result_exp){
             return std::unexpected(map_error_to_service_error(result_exp.error()));
-        }
-
-        if constexpr(std::is_void_v<T>){
-            return {};
-        }
-        else{
-            return std::expected<T, service_error>{std::move(*result_exp)};
-        }
-    }
-
-    template <typename T>
-    std::expected<T, service_error> map_repository_error_to_service_error(
-        std::expected<T, repository_error> result_exp
-    ){
-        if(!result_exp){
-            return std::unexpected(
-                map_repository_error_to_service_error(result_exp.error())
-            );
         }
 
         if constexpr(std::is_void_v<T>){
@@ -138,18 +61,6 @@ namespace db_service_util{
         typename result_type::value_type;
         typename result_type::error_type;
     } && std::same_as<typename result_type::error_type, error_code>;
-
-    template <typename result_type>
-        requires expected_error_result<result_type>
-    result_type map_repository_error_to_http_error(result_type result_exp){
-        if(!result_exp){
-            return std::unexpected(
-                map_repository_error_to_http_error(result_exp.error())
-            );
-        }
-
-        return result_exp;
-    }
 
     template <typename callback_type>
     using write_transaction_result = std::invoke_result_t<callback_type, pqxx::work&>;

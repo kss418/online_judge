@@ -243,6 +243,10 @@ error_code error_code::create(const http_error& code){
     return error_code{error_type::http_type, static_cast<int>(code.code)};
 }
 
+error_code error_code::create(const error_code& code){
+    return code;
+}
+
 errno_error error_code::map_errno(int code){
     switch(code){
         case E2BIG:

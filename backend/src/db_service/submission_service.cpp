@@ -1,5 +1,6 @@
 #include "db_service/submission_service.hpp"
 #include "db_service/db_service_util.hpp"
+#include "db_service/service_error_bridge.hpp"
 #include "db_repository/problem_statistics_repository.hpp"
 #include "db_repository/submission_repository.hpp"
 #include "db_repository/user_problem_summary_repository.hpp"
@@ -62,7 +63,7 @@ std::expected<submission_dto::history_list, service_error> submission_service::g
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<submission_dto::history_list, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     submission_repository::get_submission_history(transaction, submission_id)
                 );
             }
@@ -83,7 +84,7 @@ std::expected<submission_dto::source_detail, service_error> submission_service::
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<submission_dto::source_detail, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     submission_repository::get_submission_source(transaction, submission_id)
                 );
             }
@@ -104,7 +105,7 @@ std::expected<submission_dto::detail, service_error> submission_service::get_sub
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<submission_dto::detail, error_code> {
-                auto submission_detail_exp = db_service_util::map_repository_error_to_http_error(
+                auto submission_detail_exp = db_service_error_bridge::map_repository_error(
                     submission_repository::get_submission_detail(
                         transaction,
                         submission_id
@@ -138,7 +139,7 @@ submission_service::get_submission_status_snapshots(
                 if(!snapshot_values_exp){
                     return std::unexpected(
                         error_code::create(
-                            db_service_util::map_repository_error_to_http_error(
+                            db_service_error_bridge::map_repository_error(
                                 snapshot_values_exp.error()
                             )
                         )
@@ -161,7 +162,7 @@ submission_service::get_wa_or_ac_submissions(
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<std::vector<submission_dto::summary>, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     submission_repository::get_wa_or_ac_submissions(
                         transaction,
                         problem_id
@@ -191,7 +192,7 @@ std::expected<submission_dto::created, service_error> submission_service::create
             if(!active_submission_ban_exp){
                 return std::unexpected(
                     error_code::create(
-                        db_service_util::map_repository_error_to_http_error(
+                        db_service_error_bridge::map_repository_error(
                             active_submission_ban_exp.error()
                         )
                     )
@@ -208,7 +209,7 @@ std::expected<submission_dto::created, service_error> submission_service::create
             if(!create_submission_exp){
                 return std::unexpected(
                     error_code::create(
-                        db_service_util::map_repository_error_to_http_error(
+                        db_service_error_bridge::map_repository_error(
                             create_submission_exp.error()
                         )
                     )
@@ -224,7 +225,7 @@ std::expected<submission_dto::created, service_error> submission_service::create
             if(!increase_user_problem_submission_count_exp){
                 return std::unexpected(
                     error_code::create(
-                        db_service_util::map_repository_error_to_http_error(
+                        db_service_error_bridge::map_repository_error(
                             increase_user_problem_submission_count_exp.error()
                         )
                     )
@@ -239,7 +240,7 @@ std::expected<submission_dto::created, service_error> submission_service::create
             if(!enqueue_submission_exp){
                 return std::unexpected(
                     error_code::create(
-                        db_service_util::map_repository_error_to_http_error(
+                        db_service_error_bridge::map_repository_error(
                             enqueue_submission_exp.error()
                         )
                     )
@@ -254,7 +255,7 @@ std::expected<submission_dto::created, service_error> submission_service::create
             if(!increase_submission_count_exp){
                 return std::unexpected(
                     error_code::create(
-                        db_service_util::map_repository_error_to_http_error(
+                        db_service_error_bridge::map_repository_error(
                             increase_submission_count_exp.error()
                         )
                     )
@@ -275,7 +276,7 @@ std::expected<void, service_error> submission_service::update_submission_status(
         db_service_util::with_retry_write_transaction(
             connection,
             [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     submission_repository::update_submission_status(
                         transaction,
                         status_update_value
@@ -318,7 +319,7 @@ std::expected<void, service_error> submission_service::rejudge(
         db_service_util::with_retry_write_transaction(
             connection,
             [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     submission_repository::rejudge_submission(
                         transaction,
                         submission_id
@@ -345,7 +346,7 @@ std::expected<void, service_error> submission_service::rejudge_problem(
             if(!submission_values_exp){
                 return std::unexpected(
                     error_code::create(
-                        db_service_util::map_repository_error_to_http_error(
+                        db_service_error_bridge::map_repository_error(
                             submission_values_exp.error()
                         )
                     )
@@ -361,7 +362,7 @@ std::expected<void, service_error> submission_service::rejudge_problem(
                 if(!rejudge_submission_exp){
                     return std::unexpected(
                         error_code::create(
-                            db_service_util::map_repository_error_to_http_error(
+                            db_service_error_bridge::map_repository_error(
                                 rejudge_submission_exp.error()
                             )
                         )
@@ -396,7 +397,7 @@ submission_service::lease_submission(
 
                 return std::unexpected(
                     error_code::create(
-                        db_service_util::map_repository_error_to_http_error(
+                        db_service_error_bridge::map_repository_error(
                             lease_submission_exp.error()
                         )
                     )
@@ -434,14 +435,14 @@ std::expected<void, service_error> submission_service::requeue_submission_immedi
             if(!update_submission_status_exp){
                 return std::unexpected(
                     error_code::create(
-                        db_service_util::map_repository_error_to_http_error(
+                        db_service_error_bridge::map_repository_error(
                             update_submission_status_exp.error()
                         )
                     )
                 );
             }
 
-            return db_service_util::map_repository_error_to_http_error(
+            return db_service_error_bridge::map_repository_error(
                 submission_repository::release_submission_lease(
                     transaction,
                     submission_id
@@ -468,7 +469,7 @@ std::expected<void, service_error> submission_service::finalize_submission(
             if(!finalize_submission_exp){
                 return std::unexpected(
                     error_code::create(
-                        db_service_util::map_repository_error_to_http_error(
+                        db_service_error_bridge::map_repository_error(
                             finalize_submission_exp.error()
                         )
                     )
@@ -487,7 +488,7 @@ std::expected<void, service_error> submission_service::finalize_submission(
                 if(!increase_accepted_count_exp){
                     return std::unexpected(
                         error_code::create(
-                            db_service_util::map_repository_error_to_http_error(
+                            db_service_error_bridge::map_repository_error(
                                 increase_accepted_count_exp.error()
                             )
                         )
@@ -520,7 +521,7 @@ submission_service::list_submissions(
                 if(!summary_page_exp){
                     return std::unexpected(
                         error_code::create(
-                            db_service_util::map_repository_error_to_http_error(
+                            db_service_error_bridge::map_repository_error(
                                 summary_page_exp.error()
                             )
                         )

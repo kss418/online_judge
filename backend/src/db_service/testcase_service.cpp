@@ -1,5 +1,6 @@
 #include "db_service/testcase_service.hpp"
 #include "db_service/db_service_util.hpp"
+#include "db_service/service_error_bridge.hpp"
 
 #include "db_repository/problem_content_repository.hpp"
 #include "db_repository/problem_core_repository.hpp"
@@ -10,7 +11,7 @@ namespace{
     std::expected<T, error_code> map_repository_result(
         std::expected<T, repository_error> result_exp
     ){
-        return db_service_util::map_repository_error_to_http_error(std::move(result_exp));
+        return db_service_error_bridge::map_repository_error(std::move(result_exp));
     }
 }
 
@@ -83,7 +84,7 @@ std::expected<problem_dto::testcase, service_error> testcase_service::get_testca
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<problem_dto::testcase, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     testcase_repository::get_testcase(
                         transaction,
                         testcase_reference_value
@@ -103,7 +104,7 @@ std::expected<problem_dto::testcase_count, service_error> testcase_service::get_
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<problem_dto::testcase_count, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     testcase_repository::get_testcase_count(
                         transaction,
                         problem_reference_value
@@ -123,7 +124,7 @@ std::expected<std::vector<problem_dto::testcase>, service_error> testcase_servic
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<std::vector<problem_dto::testcase>, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     testcase_repository::list_testcases(
                         transaction,
                         problem_reference_value
@@ -144,7 +145,7 @@ testcase_service::list_testcase_summaries(
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<std::vector<problem_dto::testcase_summary>, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     testcase_repository::list_testcase_summaries(
                         transaction,
                         problem_reference_value

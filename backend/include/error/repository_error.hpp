@@ -1,6 +1,5 @@
 #pragma once
 
-#include <optional>
 #include <string>
 
 struct error_code;
@@ -27,7 +26,7 @@ struct repository_error{
     static const repository_error conflict;
     static const repository_error internal;
 
-    static std::optional<repository_error> from_error_code(const error_code& ec);
+    static repository_error from_error_code(const error_code& ec);
 };
 
 std::string to_string(repository_error_code ec);

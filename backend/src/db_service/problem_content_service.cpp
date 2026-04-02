@@ -1,5 +1,6 @@
 #include "db_service/problem_content_service.hpp"
 #include "db_service/db_service_util.hpp"
+#include "db_service/service_error_bridge.hpp"
 #include "db_repository/problem_content_repository.hpp"
 #include "db_repository/problem_core_repository.hpp"
 
@@ -14,7 +15,7 @@ std::expected<problem_content_dto::limits, service_error> problem_content_servic
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<problem_content_dto::limits, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     problem_core_repository::get_limits(
                         transaction,
                         problem_reference_value
@@ -34,7 +35,7 @@ std::expected<void, service_error> problem_content_service::set_limits(
         db_service_util::with_retry_write_transaction(
             connection,
             [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-                const auto set_limits_exp = db_service_util::map_repository_error_to_http_error(
+                const auto set_limits_exp = db_service_error_bridge::map_repository_error(
                     problem_core_repository::set_limits(
                         transaction,
                         problem_reference_value,
@@ -45,7 +46,7 @@ std::expected<void, service_error> problem_content_service::set_limits(
                     return std::unexpected(set_limits_exp.error());
                 }
 
-                const auto version_exp = db_service_util::map_repository_error_to_http_error(
+                const auto version_exp = db_service_error_bridge::map_repository_error(
                     problem_core_repository::increase_version(
                         transaction,
                         problem_reference_value
@@ -70,7 +71,7 @@ std::expected<problem_content_dto::statement, service_error> problem_content_ser
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<problem_content_dto::statement, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     problem_content_repository::get_statement(
                         transaction,
                         problem_reference_value
@@ -90,7 +91,7 @@ std::expected<void, service_error> problem_content_service::set_statement(
         db_service_util::with_retry_write_transaction(
             connection,
             [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-                const auto set_statement_exp = db_service_util::map_repository_error_to_http_error(
+                const auto set_statement_exp = db_service_error_bridge::map_repository_error(
                     problem_content_repository::set_statement(
                         transaction,
                         problem_reference_value,
@@ -101,7 +102,7 @@ std::expected<void, service_error> problem_content_service::set_statement(
                     return std::unexpected(set_statement_exp.error());
                 }
 
-                const auto version_exp = db_service_util::map_repository_error_to_http_error(
+                const auto version_exp = db_service_error_bridge::map_repository_error(
                     problem_core_repository::increase_version(
                         transaction,
                         problem_reference_value
@@ -128,7 +129,7 @@ std::expected<problem_content_dto::sample, service_error> problem_content_servic
             [&](pqxx::work& transaction)
                 -> std::expected<problem_content_dto::sample, error_code> {
                 const auto created_sample_exp =
-                    db_service_util::map_repository_error_to_http_error(
+                    db_service_error_bridge::map_repository_error(
                         problem_content_repository::create_sample(
                             transaction,
                             problem_reference_value,
@@ -154,7 +155,7 @@ std::expected<problem_content_dto::sample, service_error> problem_content_servic
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<problem_content_dto::sample, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     problem_content_repository::get_sample(
                         transaction,
                         sample_reference_value
@@ -175,7 +176,7 @@ problem_content_service::list_samples(
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<std::vector<problem_content_dto::sample>, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     problem_content_repository::list_samples(
                         transaction,
                         problem_reference_value
@@ -195,7 +196,7 @@ std::expected<void, service_error> problem_content_service::set_sample(
         db_service_util::with_retry_write_transaction(
             connection,
             [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-                const auto set_sample_exp = db_service_util::map_repository_error_to_http_error(
+                const auto set_sample_exp = db_service_error_bridge::map_repository_error(
                     problem_content_repository::set_sample(
                         transaction,
                         sample_reference_value,
@@ -209,7 +210,7 @@ std::expected<void, service_error> problem_content_service::set_sample(
                 problem_dto::reference problem_reference_value{
                     sample_reference_value.problem_id
                 };
-                const auto version_exp = db_service_util::map_repository_error_to_http_error(
+                const auto version_exp = db_service_error_bridge::map_repository_error(
                     problem_core_repository::increase_version(
                         transaction,
                         problem_reference_value
@@ -233,7 +234,7 @@ std::expected<void, service_error> problem_content_service::delete_sample(
         db_service_util::with_retry_write_transaction(
             connection,
             [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-                const auto sample_values_exp = db_service_util::map_repository_error_to_http_error(
+                const auto sample_values_exp = db_service_error_bridge::map_repository_error(
                     problem_content_repository::list_samples(
                         transaction,
                         problem_reference_value
@@ -250,7 +251,7 @@ std::expected<void, service_error> problem_content_service::delete_sample(
                     .problem_id = problem_reference_value.problem_id,
                     .sample_order = sample_values_exp->back().order
                 };
-                const auto delete_sample_exp = db_service_util::map_repository_error_to_http_error(
+                const auto delete_sample_exp = db_service_error_bridge::map_repository_error(
                     problem_content_repository::delete_sample(
                         transaction,
                         sample_reference_value
@@ -260,7 +261,7 @@ std::expected<void, service_error> problem_content_service::delete_sample(
                     return std::unexpected(delete_sample_exp.error());
                 }
 
-                const auto version_exp = db_service_util::map_repository_error_to_http_error(
+                const auto version_exp = db_service_error_bridge::map_repository_error(
                     problem_core_repository::increase_version(
                         transaction,
                         problem_reference_value

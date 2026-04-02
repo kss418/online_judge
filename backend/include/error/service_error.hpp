@@ -2,7 +2,6 @@
 
 #include "error/repository_error.hpp"
 
-#include <optional>
 #include <string>
 
 struct error_code;
@@ -33,10 +32,8 @@ struct service_error{
     static const service_error unavailable;
     static const service_error internal;
 
-    static std::optional<service_error> from_repository(
-        const repository_error& ec
-    );
-    static std::optional<service_error> from_error_code(const error_code& ec);
+    static service_error from_repository(const repository_error& ec);
+    static service_error from_error_code(const error_code& ec);
 };
 
 std::string to_string(service_error_code ec);

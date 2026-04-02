@@ -89,13 +89,14 @@ std::string to_string(const service_error& ec){
     return ec.message;
 }
 
-std::optional<service_error> service_error::from_repository(
-    const repository_error& ec
-){
+service_error service_error::from_repository(const repository_error& ec){
     switch(ec.code){
         case repository_error_code::invalid_reference:
         case repository_error_code::invalid_input:
-            return service_error{service_error_code::validation_error, ec.message};
+            return service_error{
+                service_error_code::validation_error,
+                ec.message
+            };
         case repository_error_code::not_found:
             return service_error{service_error_code::not_found, ec.message};
         case repository_error_code::conflict:
@@ -104,10 +105,10 @@ std::optional<service_error> service_error::from_repository(
             return service_error{service_error_code::internal, ec.message};
     }
 
-    return std::nullopt;
+    return service_error::internal;
 }
 
-std::optional<service_error> service_error::from_error_code(const error_code& ec){
+service_error service_error::from_error_code(const error_code& ec){
     if(ec == http_error::validation_error){
         return service_error::validation_error;
     }
@@ -149,5 +150,5 @@ std::optional<service_error> service_error::from_error_code(const error_code& ec
         );
     }
 
-    return std::nullopt;
+    return service_error::internal;
 }

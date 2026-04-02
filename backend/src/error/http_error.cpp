@@ -80,7 +80,7 @@ std::string to_string(const http_error& ec){
     return ec.message;
 }
 
-std::optional<http_error> http_error::from_service(const service_error& ec){
+http_error http_error::from_service(const service_error& ec){
     switch(ec.code){
         case service_error_code::validation_error:
             return http_error{http_error_code::validation_error, ec.message};
@@ -96,10 +96,11 @@ std::optional<http_error> http_error::from_service(const service_error& ec){
         case service_error_code::internal:
             return http_error{http_error_code::internal, ec.message};
     }
-    return std::nullopt;
+
+    return http_error::internal;
 }
 
-std::optional<http_error> http_error::from_error_code(const error_code& ec){
+http_error http_error::from_error_code(const error_code& ec){
     if(ec == http_error::validation_error){
         return http_error::validation_error;
     }
@@ -121,9 +122,6 @@ std::optional<http_error> http_error::from_error_code(const error_code& ec){
     if(ec == psql_error::unique_violation){
         return http_error::conflict;
     }
-    if(const auto service_error_opt = service_error::from_error_code(ec)){
-        return http_error::from_service(*service_error_opt);
-    }
 
-    return std::nullopt;
+    return http_error::from_service(service_error::from_error_code(ec));
 }

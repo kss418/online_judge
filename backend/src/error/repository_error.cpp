@@ -73,7 +73,7 @@ std::string to_string(const repository_error& ec){
     return ec.message;
 }
 
-std::optional<repository_error> repository_error::from_error_code(const error_code& ec){
+repository_error repository_error::from_error_code(const error_code& ec){
     if(ec == repository_error::invalid_reference){
         return repository_error::invalid_reference;
     }
@@ -116,5 +116,5 @@ std::optional<repository_error> repository_error::from_error_code(const error_co
         return repository_error::internal;
     }
 
-    return std::nullopt;
+    return repository_error::internal;
 }

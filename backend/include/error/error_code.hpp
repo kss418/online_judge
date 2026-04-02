@@ -153,6 +153,7 @@ struct error_code{
     static error_code create(psql_error code);
     static error_code create(const repository_error& code);
     static error_code create(const http_error& code);
+    static error_code create(const error_code& code);
 
     static errno_error map_errno(int code);
     static boost_error map_boost_error(const boost::system::error_code& ec);

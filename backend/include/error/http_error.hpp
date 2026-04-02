@@ -2,7 +2,6 @@
 
 #include "error/service_error.hpp"
 
-#include <optional>
 #include <string>
 
 struct error_code;
@@ -31,8 +30,8 @@ struct http_error{
     static const http_error conflict;
     static const http_error internal;
 
-    static std::optional<http_error> from_service(const service_error& ec);
-    static std::optional<http_error> from_error_code(const error_code& ec);
+    static http_error from_service(const service_error& ec);
+    static http_error from_error_code(const error_code& ec);
 };
 
 std::string to_string(http_error_code ec);

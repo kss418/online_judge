@@ -2,6 +2,7 @@
 
 #include "db_repository/user_statistics_repository.hpp"
 #include "db_service/db_service_util.hpp"
+#include "db_service/service_error_bridge.hpp"
 
 std::expected<user_statistics_dto::submission_statistics, service_error>
 user_statistics_service::get_submission_statistics(
@@ -13,7 +14,7 @@ user_statistics_service::get_submission_statistics(
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<user_statistics_dto::submission_statistics, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     user_statistics_repository::get_submission_statistics(
                         transaction,
                         user_id
@@ -33,7 +34,7 @@ std::expected<void, service_error> user_statistics_service::create_user_submissi
             connection,
             db_service_util::DB_TRANSACTION_ATTEMPT_COUNT,
             [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     user_statistics_repository::create_user_submission_statistics(
                         transaction,
                         user_id
@@ -53,7 +54,7 @@ std::expected<void, service_error> user_statistics_service::ensure_user_submissi
             connection,
             db_service_util::DB_TRANSACTION_ATTEMPT_COUNT,
             [&](pqxx::work& transaction) -> std::expected<void, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     user_statistics_repository::ensure_user_submission_statistics(
                         transaction,
                         user_id
@@ -78,7 +79,7 @@ std::expected<void, service_error> user_statistics_service::record_submission_cr
             db_service_util::DB_TRANSACTION_ATTEMPT_COUNT,
             [&](pqxx::work& transaction) -> std::expected<void, error_code> {
                 const auto ensure_statistics_exp =
-                    db_service_util::map_repository_error_to_http_error(
+                    db_service_error_bridge::map_repository_error(
                         user_statistics_repository::ensure_user_submission_statistics(
                             transaction,
                             user_id
@@ -89,7 +90,7 @@ std::expected<void, service_error> user_statistics_service::record_submission_cr
                 }
 
                 const auto increase_submission_count_exp =
-                    db_service_util::map_repository_error_to_http_error(
+                    db_service_error_bridge::map_repository_error(
                         user_statistics_repository::increase_submission_count(
                             transaction,
                             user_id
@@ -100,7 +101,7 @@ std::expected<void, service_error> user_statistics_service::record_submission_cr
                 }
 
                 const auto increase_queued_count_exp =
-                    db_service_util::map_repository_error_to_http_error(
+                    db_service_error_bridge::map_repository_error(
                         user_statistics_repository::increase_status_count(
                             transaction,
                             user_id,
@@ -111,7 +112,7 @@ std::expected<void, service_error> user_statistics_service::record_submission_cr
                     return std::unexpected(increase_queued_count_exp.error());
                 }
 
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     user_statistics_repository::touch_last_submission_at(
                         transaction,
                         user_id
@@ -138,7 +139,7 @@ std::expected<void, service_error> user_statistics_service::record_submission_st
             db_service_util::DB_TRANSACTION_ATTEMPT_COUNT,
             [&](pqxx::work& transaction) -> std::expected<void, error_code> {
                 const auto ensure_statistics_exp =
-                    db_service_util::map_repository_error_to_http_error(
+                    db_service_error_bridge::map_repository_error(
                         user_statistics_repository::ensure_user_submission_statistics(
                             transaction,
                             user_id
@@ -150,7 +151,7 @@ std::expected<void, service_error> user_statistics_service::record_submission_st
 
                 if(from_status_opt && *from_status_opt != to_status){
                     const auto decrease_from_status_exp =
-                        db_service_util::map_repository_error_to_http_error(
+                        db_service_error_bridge::map_repository_error(
                             user_statistics_repository::decrease_status_count(
                                 transaction,
                                 user_id,
@@ -164,7 +165,7 @@ std::expected<void, service_error> user_statistics_service::record_submission_st
 
                 if(!from_status_opt || *from_status_opt != to_status){
                     const auto increase_to_status_exp =
-                        db_service_util::map_repository_error_to_http_error(
+                        db_service_error_bridge::map_repository_error(
                             user_statistics_repository::increase_status_count(
                                 transaction,
                                 user_id,
@@ -178,7 +179,7 @@ std::expected<void, service_error> user_statistics_service::record_submission_st
 
                 if(to_status == submission_status::accepted){
                     const auto touch_last_accepted_at_exp =
-                        db_service_util::map_repository_error_to_http_error(
+                        db_service_error_bridge::map_repository_error(
                             user_statistics_repository::touch_last_accepted_at(
                                 transaction,
                                 user_id

@@ -1,6 +1,7 @@
 #include "db_service/auth_service.hpp"
 #include "common/permission_util.hpp"
 #include "db_service/db_service_util.hpp"
+#include "db_service/service_error_bridge.hpp"
 #include "db_repository/auth_repository.hpp"
 #include "common/crypto_util.hpp"
 #include "common/token_util.hpp"
@@ -32,7 +33,7 @@ std::expected<std::optional<auth_dto::identity>, service_error> auth_service::au
                 if(!get_token_identity_exp){
                     return std::unexpected(
                         error_code::create(
-                            db_service_util::map_repository_error_to_http_error(
+                            db_service_error_bridge::map_repository_error(
                                 get_token_identity_exp.error()
                             )
                         )
@@ -73,7 +74,7 @@ std::expected<bool, service_error> auth_service::renew_token(
                 if(!update_expires_at_exp){
                     return std::unexpected(
                         error_code::create(
-                            db_service_util::map_repository_error_to_http_error(
+                            db_service_error_bridge::map_repository_error(
                                 update_expires_at_exp.error()
                             )
                         )
@@ -113,7 +114,7 @@ std::expected<bool, service_error> auth_service::revoke_token(
                 if(!revoke_token_exp){
                     return std::unexpected(
                         error_code::create(
-                            db_service_util::map_repository_error_to_http_error(
+                            db_service_error_bridge::map_repository_error(
                                 revoke_token_exp.error()
                             )
                         )
@@ -153,7 +154,7 @@ std::expected<bool, service_error> auth_service::update_permission_level(
                 if(!update_permission_level_exp){
                     return std::unexpected(
                         error_code::create(
-                            db_service_util::map_repository_error_to_http_error(
+                            db_service_error_bridge::map_repository_error(
                                 update_permission_level_exp.error()
                             )
                         )
@@ -174,7 +175,7 @@ std::expected<auth_dto::user_summary_list, service_error> auth_service::get_user
             connection_value,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<auth_dto::user_summary_list, error_code> {
-                return db_service_util::map_repository_error_to_http_error(
+                return db_service_error_bridge::map_repository_error(
                     auth_repository::get_user_list(transaction)
                 );
             }
