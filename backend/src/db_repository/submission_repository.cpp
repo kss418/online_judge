@@ -1,9 +1,9 @@
 #include "db_repository/submission_repository.hpp"
-#include "db_repository/db_repository_util.hpp"
 #include "error/repository_error.hpp"
 #include "db_repository/problem_statistics_repository.hpp"
 #include "query_builder/submission_query_builder.hpp"
 #include "db_repository/user_problem_summary_repository.hpp"
+#include "row_mapper/submission_row_mapper.hpp"
 
 #include <pqxx/pqxx>
 
@@ -37,14 +37,12 @@ submission_repository::get_locked_submission_context(
         return std::unexpected(repository_error::not_found);
     }
 
-    const auto submission_status_exp = submission_dto::make_submission_status_from_row(
+    const auto submission_status_exp = submission_row_mapper::map_submission_status_row(
         submission_result[0],
         2
     );
     if(!submission_status_exp){
-        return std::unexpected(
-            repository_error::from_error_code(submission_status_exp.error())
-        );
+        return std::unexpected(submission_status_exp.error());
     }
 
     locked_submission_context context_value;
@@ -110,7 +108,7 @@ std::expected<submission_dto::history_list, repository_error> submission_reposit
         return std::unexpected(repository_error::not_found);
     }
 
-    return submission_dto::make_history_list_from_result(submission_history_query);
+    return submission_row_mapper::map_history_result(submission_history_query);
 }
 
 std::expected<submission_dto::source_detail, repository_error> submission_repository::get_submission_source(
@@ -138,7 +136,7 @@ std::expected<submission_dto::source_detail, repository_error> submission_reposi
         return std::unexpected(repository_error::not_found);
     }
 
-    return submission_dto::make_source_detail_from_row(submission_source_query[0]);
+    return submission_row_mapper::map_source_detail_row(submission_source_query[0]);
 }
 
 std::expected<submission_dto::detail, repository_error> submission_repository::get_submission_detail(
@@ -171,7 +169,7 @@ std::expected<submission_dto::detail, repository_error> submission_repository::g
         return std::unexpected(repository_error::not_found);
     }
 
-    return submission_dto::make_detail_from_row(submission_detail_result[0]);
+    return submission_row_mapper::map_detail_row(submission_detail_result[0]);
 }
 
 std::expected<std::vector<submission_dto::status_snapshot>, repository_error>
@@ -187,16 +185,14 @@ submission_repository::get_submission_status_snapshots(
         submission_ids
     );
     if(!query_exp){
-        return std::unexpected(
-            repository_error::from_error_code(query_exp.error())
-        );
+        return std::unexpected(query_exp.error());
     }
 
     const auto submission_status_result = transaction.exec(
         query_exp->sql,
         std::move(query_exp->params)
     );
-    return submission_dto::make_status_snapshot_list_from_result(submission_status_result);
+    return submission_row_mapper::map_status_snapshot_result(submission_status_result);
 }
 
 std::expected<std::vector<submission_dto::summary>, repository_error>
@@ -242,7 +238,7 @@ submission_repository::get_wa_or_ac_submissions(
         }
     );
 
-    return submission_dto::make_summary_list_from_result(submission_summary_query);
+    return submission_row_mapper::map_summary_result(submission_summary_query);
 }
 
 std::expected<submission_status, repository_error> submission_repository::get_submission_status(
@@ -263,10 +259,10 @@ std::expected<submission_status, repository_error> submission_repository::get_su
         return std::unexpected(repository_error::not_found);
     }
 
-    return db_repository_util::map_exp(submission_dto::make_submission_status_from_row(
+    return submission_row_mapper::map_submission_status_row(
         submission_status_result[0],
         0
-    ));
+    );
 }
 
 std::expected<submission_dto::created, repository_error> submission_repository::create_submission(
@@ -506,7 +502,7 @@ std::expected<submission_dto::queued_submission, repository_error> submission_re
     }
 
     submission_dto::queued_submission queued_submission_value =
-        submission_dto::make_queued_submission_from_row(
+        submission_row_mapper::map_queued_submission_row(
             lease_candidate_result[0]
         );
 
@@ -631,9 +627,7 @@ std::expected<submission_dto::summary_page, repository_error> submission_reposit
         viewer_user_id_opt
     }.build_list_query();
     if(!query_exp){
-        return std::unexpected(
-            repository_error::from_error_code(query_exp.error())
-        );
+        return std::unexpected(query_exp.error());
     }
 
     const auto submission_summary_query = transaction.exec(
@@ -642,7 +636,7 @@ std::expected<submission_dto::summary_page, repository_error> submission_reposit
     );
 
     auto summary_values =
-        submission_dto::make_summary_list_from_result(submission_summary_query);
+        submission_row_mapper::map_summary_result(submission_summary_query);
     submission_dto::summary_page summary_page_value;
     summary_page_value.has_more =
         summary_values.size() >

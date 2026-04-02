@@ -1,11 +1,8 @@
 #include "dto/problem_dto.hpp"
 
-#include "common/row_util.hpp"
 #include "common/string_util.hpp"
 #include "common/json_field_util.hpp"
 #include "common/query_param_util.hpp"
-
-#include <pqxx/pqxx>
 
 namespace{
     std::optional<std::int64_t> parse_non_negative_int64(std::string_view raw_value){
@@ -270,30 +267,4 @@ problem_dto::make_testcase_move_request_from_json(const boost::json::object& jso
     testcase_move_request_value.source_testcase_order = *source_testcase_order_opt;
     testcase_move_request_value.target_testcase_order = *target_testcase_order_opt;
     return testcase_move_request_value;
-}
-
-problem_dto::summary problem_dto::make_summary_from_row(
-    const pqxx::row& problem_summary_row
-){
-    summary summary_value;
-    summary_value.problem_id = row_util::get_required<std::int64_t>(problem_summary_row, 0);
-    summary_value.title = row_util::get_required<std::string>(problem_summary_row, 1);
-    summary_value.version = row_util::get_required<std::int32_t>(problem_summary_row, 2);
-    summary_value.time_limit_ms = row_util::get_required<std::int32_t>(problem_summary_row, 3);
-    summary_value.memory_limit_mb = row_util::get_required<std::int32_t>(problem_summary_row, 4);
-    summary_value.submission_count = row_util::get_required<std::int64_t>(problem_summary_row, 5);
-    summary_value.accepted_count = row_util::get_required<std::int64_t>(problem_summary_row, 6);
-    summary_value.user_problem_state_opt = row_util::get_optional<std::string>(problem_summary_row, 7);
-    return summary_value;
-}
-
-std::vector<problem_dto::summary> problem_dto::make_summary_list_from_result(
-    const pqxx::result& problem_summary_result
-){
-    std::vector<summary> summary_values;
-    summary_values.reserve(problem_summary_result.size());
-    for(const auto& problem_summary_row : problem_summary_result){
-        summary_values.push_back(make_summary_from_row(problem_summary_row));
-    }
-    return summary_values;
 }

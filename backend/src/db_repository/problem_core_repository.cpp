@@ -1,6 +1,7 @@
 #include "db_repository/problem_core_repository.hpp"
 #include "error/repository_error.hpp"
 #include "query_builder/problem_core_query_builder.hpp"
+#include "row_mapper/problem_row_mapper.hpp"
 
 #include <pqxx/pqxx>
 
@@ -10,7 +11,7 @@ namespace{
     std::expected<std::vector<problem_dto::summary>, repository_error> map_problem_summary_rows(
         const pqxx::result& query_result
     ){
-        return problem_dto::make_summary_list_from_result(query_result);
+        return problem_row_mapper::map_summary_result(query_result);
     }
 
     std::expected<std::int64_t, repository_error> map_problem_count_row(
@@ -220,9 +221,7 @@ std::expected<std::vector<problem_dto::summary>, repository_error> problem_core_
         viewer_user_id_opt
     }.build_list_query();
     if(!query_exp){
-        return std::unexpected(
-            repository_error::from_error_code(query_exp.error())
-        );
+        return std::unexpected(query_exp.error());
     }
     const auto problem_summary_query = transaction.exec(
         query_exp->sql,
@@ -242,9 +241,7 @@ std::expected<std::int64_t, repository_error> problem_core_repository::count_pro
         viewer_user_id_opt
     }.build_count_query();
     if(!query_exp){
-        return std::unexpected(
-            repository_error::from_error_code(query_exp.error())
-        );
+        return std::unexpected(query_exp.error());
     }
     const auto problem_count_result = transaction.exec(
         query_exp->sql,
@@ -264,9 +261,7 @@ problem_core_repository::list_user_solved_problems(
         viewer_user_id_opt
     }.build_solved_query();
     if(!query_exp){
-        return std::unexpected(
-            repository_error::from_error_code(query_exp.error())
-        );
+        return std::unexpected(query_exp.error());
     }
     const auto problem_summary_query = transaction.exec(
         query_exp->sql,
@@ -287,9 +282,7 @@ problem_core_repository::list_user_wrong_problems(
         viewer_user_id_opt
     }.build_wrong_query();
     if(!query_exp){
-        return std::unexpected(
-            repository_error::from_error_code(query_exp.error())
-        );
+        return std::unexpected(query_exp.error());
     }
     const auto problem_summary_query = transaction.exec(
         query_exp->sql,

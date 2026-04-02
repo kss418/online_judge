@@ -1,6 +1,5 @@
 #pragma once
 
-#include "error/error_code.hpp"
 #include "common/query_param.hpp"
 #include "common/submission_status.hpp"
 #include "dto/dto_validation_error.hpp"
@@ -14,11 +13,6 @@
 #include <optional>
 #include <string>
 #include <vector>
-
-namespace pqxx{
-    class result;
-    class row;
-}
 
 namespace submission_dto{
     inline constexpr std::int32_t DEFAULT_LIST_LIMIT = 50;
@@ -172,28 +166,11 @@ namespace submission_dto{
         std::int64_t user_id,
         std::int64_t problem_id
     );
-    history make_history_from_row(const pqxx::row& submission_history_row);
-    history_list make_history_list_from_result(const pqxx::result& submission_history_result);
-    source_detail make_source_detail_from_row(const pqxx::row& submission_source_row);
-    detail make_detail_from_row(const pqxx::row& submission_detail_row);
-    status_snapshot make_status_snapshot_from_row(const pqxx::row& submission_status_row);
-    std::vector<status_snapshot> make_status_snapshot_list_from_result(
-        const pqxx::result& submission_status_result
-    );
     created make_created(
         std::int64_t submission_id,
         submission_status submission_status_value
     );
-    std::expected<submission_status, error_code> make_submission_status(
-        std::string_view submission_status_string
-    );
-    std::expected<submission_status, error_code> make_submission_status_from_row(
-        const pqxx::row& submission_row,
-        std::size_t status_column_index
-    );
-    summary make_summary_from_row(const pqxx::row& submission_summary_row);
-    std::vector<summary> make_summary_list_from_result(const pqxx::result& submission_summary_result);
-    queued_submission make_queued_submission_from_row(const pqxx::row& submission_queue_row);
+    std::optional<submission_status> make_submission_status(std::string_view submission_status_string);
     status_update make_status_update(
         std::int64_t submission_id,
         submission_status to_status,

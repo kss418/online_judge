@@ -12,11 +12,6 @@
 #include <string_view>
 #include <vector>
 
-namespace pqxx{
-    class result;
-    class row;
-}
-
 namespace user_dto{
     struct summary{
         std::int64_t user_id = 0;
@@ -59,7 +54,4 @@ namespace user_dto{
     std::expected<list_filter, dto_validation_error> make_list_filter_from_query_params(
         const std::vector<query_param>& query_params
     );
-    summary make_summary_from_row(const pqxx::row& user_summary_row);
-    list_item make_list_item_from_row(const pqxx::row& user_list_row);
-    list make_list_from_result(const pqxx::result& user_list_result);
 }

@@ -5,7 +5,6 @@
 #include <string>
 
 struct db_error;
-struct error_code;
 struct infra_error;
 
 enum class service_error_code{
@@ -40,7 +39,6 @@ struct service_error{
     static service_error from_db_error(const db_error& ec);
     static service_error from_infra_error(const infra_error& ec);
     static service_error from_repository(const repository_error& ec);
-    static service_error from_error_code(const error_code& ec);
 };
 
 std::string to_string(service_error_code ec);

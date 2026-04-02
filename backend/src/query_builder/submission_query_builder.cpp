@@ -14,7 +14,7 @@ namespace{
         sql_filter_builder predicates;
     };
 
-    std::expected<submission_list_query_context, error_code> make_submission_list_query_context(
+    std::expected<submission_list_query_context, repository_error> make_submission_list_query_context(
         const submission_dto::list_filter& filter_value,
         std::optional<std::int64_t> viewer_user_id_opt
     ){
@@ -34,7 +34,7 @@ namespace{
             (filter_value.status_opt && !parse_submission_status(*filter_value.status_opt)) ||
             (viewer_user_id_opt && *viewer_user_id_opt <= 0);
         if(is_invalid){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(repository_error::invalid_input);
         }
 
         return submission_list_query_context{
@@ -101,7 +101,7 @@ submission_query_builder::submission_list_query_builder::submission_list_query_b
     filter_value_(filter_value),
     viewer_user_id_opt_(viewer_user_id_opt){}
 
-std::expected<assembled_query, error_code>
+std::expected<assembled_query, repository_error>
 submission_query_builder::submission_list_query_builder::build_list_query() const{
     auto context_exp = make_submission_list_query_context(
         filter_value_,
@@ -153,7 +153,7 @@ submission_query_builder::submission_list_query_builder::build_list_query() cons
     };
 }
 
-std::expected<assembled_query, error_code>
+std::expected<assembled_query, repository_error>
 submission_query_builder::build_status_snapshot_query(
     const std::vector<std::int64_t>& submission_ids
 ){
@@ -170,7 +170,7 @@ submission_query_builder::build_status_snapshot_query(
 
     for(std::size_t index = 0; index < submission_ids.size(); ++index){
         if(submission_ids[index] <= 0){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(repository_error::invalid_input);
         }
 
         if(index > 0){

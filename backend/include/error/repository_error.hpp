@@ -3,7 +3,6 @@
 #include <string>
 
 struct db_error;
-struct error_code;
 
 enum class repository_error_code{
     invalid_reference,
@@ -31,7 +30,6 @@ struct repository_error{
     static bool should_retry_db_error(const db_error& error);
     static bool should_reconnect_db_error(const db_error& error);
     static repository_error from_db_error(const db_error& ec);
-    static repository_error from_error_code(const error_code& ec);
 };
 
 std::string to_string(repository_error_code ec);

@@ -1,5 +1,6 @@
 #include "db_repository/user_statistics_repository.hpp"
 #include "error/repository_error.hpp"
+#include "row_mapper/user_statistics_row_mapper.hpp"
 
 #include <pqxx/pqxx>
 
@@ -67,7 +68,7 @@ user_statistics_repository::get_submission_statistics(
         return std::unexpected(repository_error::not_found);
     }
 
-    return user_statistics_dto::make_submission_statistics_from_row(
+    return user_statistics_row_mapper::map_submission_statistics_row(
         statistics_query_result[0]
     );
 }

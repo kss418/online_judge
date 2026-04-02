@@ -4,10 +4,6 @@
 #include <optional>
 #include <string>
 
-namespace pqxx{
-    class row;
-}
-
 namespace user_statistics_dto{
     struct submission_statistics{
         std::int64_t user_id = 0;
@@ -26,7 +22,4 @@ namespace user_statistics_dto{
         std::string updated_at;
     };
 
-    submission_statistics make_submission_statistics_from_row(
-        const pqxx::row& user_submission_statistics_row
-    );
 }

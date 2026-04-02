@@ -1,7 +1,6 @@
 #include "error/repository_error.hpp"
 
 #include "error/db_error.hpp"
-#include "error/error_code.hpp"
 
 #include <utility>
 
@@ -113,8 +112,4 @@ repository_error repository_error::from_db_error(const db_error& ec){
     }
 
     return repository_error::internal;
-}
-
-repository_error repository_error::from_error_code(const error_code& ec){
-    return from_db_error(db_error::from_error_code(ec));
 }

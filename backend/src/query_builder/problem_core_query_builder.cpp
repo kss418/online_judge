@@ -12,7 +12,7 @@ namespace{
         sql_filter_builder predicates;
     };
 
-    std::expected<problem_list_query_context, error_code> make_problem_list_query_context(
+    std::expected<problem_list_query_context, repository_error> make_problem_list_query_context(
         const problem_dto::list_filter& filter_value,
         std::optional<std::int64_t> viewer_user_id_opt
     ){
@@ -24,7 +24,7 @@ namespace{
             (filter_value.state_opt && !viewer_user_id_opt) ||
             (viewer_user_id_opt && *viewer_user_id_opt <= 0);
         if(is_invalid){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(repository_error::invalid_input);
         }
 
         return problem_list_query_context{
@@ -143,7 +143,7 @@ namespace{
         }
     }
 
-    std::expected<assembled_query, error_code> build_problem_list_query(
+    std::expected<assembled_query, repository_error> build_problem_list_query(
         const problem_dto::list_filter& filter_value,
         std::optional<std::int64_t> viewer_user_id_opt,
         bool include_limit_offset,
@@ -211,12 +211,12 @@ namespace{
         sql_filter_builder predicates;
     };
 
-    std::expected<user_problem_list_query_context, error_code> make_user_problem_list_query_context(
+    std::expected<user_problem_list_query_context, repository_error> make_user_problem_list_query_context(
         std::int64_t user_id,
         std::optional<std::int64_t> viewer_user_id_opt
     ){
         if(user_id <= 0 || (viewer_user_id_opt && *viewer_user_id_opt <= 0)){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(repository_error::invalid_input);
         }
 
         return user_problem_list_query_context{
@@ -233,7 +233,7 @@ namespace{
         query += context_value.predicates.sql();
     }
 
-    std::expected<assembled_query, error_code>
+    std::expected<assembled_query, repository_error>
     build_user_problem_list_query(
         std::int64_t user_id,
         std::optional<std::int64_t> viewer_user_id_opt,
@@ -298,7 +298,7 @@ problem_core_query_builder::problem_list_query_builder::problem_list_query_build
     filter_value_(filter_value),
     viewer_user_id_opt_(viewer_user_id_opt){}
 
-std::expected<assembled_query, error_code>
+std::expected<assembled_query, repository_error>
 problem_core_query_builder::problem_list_query_builder::build_list_query() const{
     return build_problem_list_query(
         filter_value_,
@@ -308,7 +308,7 @@ problem_core_query_builder::problem_list_query_builder::build_list_query() const
     );
 }
 
-std::expected<assembled_query, error_code>
+std::expected<assembled_query, repository_error>
 problem_core_query_builder::problem_list_query_builder::build_count_query() const{
     return build_problem_list_query(
         filter_value_,
@@ -325,7 +325,7 @@ problem_core_query_builder::user_problem_list_query_builder::user_problem_list_q
     user_id_(user_id),
     viewer_user_id_opt_(viewer_user_id_opt){}
 
-std::expected<assembled_query, error_code>
+std::expected<assembled_query, repository_error>
 problem_core_query_builder::user_problem_list_query_builder::build_solved_query() const{
     return build_user_problem_list_query(
         user_id_,
@@ -334,7 +334,7 @@ problem_core_query_builder::user_problem_list_query_builder::build_solved_query(
     );
 }
 
-std::expected<assembled_query, error_code>
+std::expected<assembled_query, repository_error>
 problem_core_query_builder::user_problem_list_query_builder::build_wrong_query() const{
     return build_user_problem_list_query(
         user_id_,

@@ -1,7 +1,6 @@
 #include "error/service_error.hpp"
 
 #include "error/db_error.hpp"
-#include "error/error_code.hpp"
 #include "error/infra_error.hpp"
 
 #include <utility>
@@ -190,19 +189,4 @@ service_error service_error::from_repository(const repository_error& ec){
     }
 
     return service_error::internal;
-}
-
-service_error service_error::from_error_code(const error_code& ec){
-    if(ec.type_ == error_type::repository_type){
-        return service_error::from_repository(
-            repository_error{static_cast<repository_error_code>(ec.code_)}
-        );
-    }
-
-    const auto mapped_db_error = db_error::from_error_code(ec);
-    if(mapped_db_error != db_error::internal){
-        return service_error::from_db_error(mapped_db_error);
-    }
-
-    return service_error::from_infra_error(infra_error::from_error_code(ec));
 }

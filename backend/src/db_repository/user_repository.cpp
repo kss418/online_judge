@@ -1,7 +1,7 @@
 #include "db_repository/user_repository.hpp"
 #include "error/repository_error.hpp"
-
 #include "query_builder/user_query_builder.hpp"
+#include "row_mapper/user_row_mapper.hpp"
 
 #include <pqxx/pqxx>
 
@@ -16,7 +16,7 @@ std::expected<user_dto::list, repository_error> user_repository::get_public_list
         query_value.sql,
         std::move(query_value.params)
     );
-    return user_dto::make_list_from_result(user_list_result);
+    return user_row_mapper::map_list_result(user_list_result);
 }
 
 std::expected<std::optional<user_dto::summary>, repository_error> user_repository::get_summary(
@@ -44,7 +44,7 @@ std::expected<std::optional<user_dto::summary>, repository_error> user_repositor
     }
 
     return std::optional<user_dto::summary>{
-        user_dto::make_summary_from_row(user_summary_result[0])
+        user_row_mapper::map_summary_row(user_summary_result[0])
     };
 }
 
@@ -74,7 +74,7 @@ user_repository::get_summary_by_login_id(
     }
 
     return std::optional<user_dto::summary>{
-        user_dto::make_summary_from_row(user_summary_result[0])
+        user_row_mapper::map_summary_row(user_summary_result[0])
     };
 }
 
