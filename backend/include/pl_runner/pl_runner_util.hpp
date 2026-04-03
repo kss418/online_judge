@@ -1,40 +1,62 @@
 #pragma once
 
 #include "error/sandbox_error.hpp"
-#include "common/temp_file.hpp"
 #include "judge_core/sandbox_runner.hpp"
 
-#include <mutex>
-#include <expected>
 #include <filesystem>
+#include <expected>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
 
 class pl_runner_util{
 public:
-    struct prepared_source{
-        std::filesystem::path workspace_host_path_;
-        std::vector<std::string> run_command_args_;
+    enum class source_language{
+        cpp,
+        python,
+        java
+    };
+
+    struct build_artifact{
+        source_language language_ = source_language::cpp;
+        std::filesystem::path entry_host_path_;
+        std::string entry_name_;
         std::optional<sandbox_runner::run_result> compile_failed_run_result_;
-        sandbox_runner::mount_profile mount_profile_ =
-            sandbox_runner::mount_profile::default_profile;
 
         bool is_runnable() const noexcept{
             return !compile_failed_run_result_.has_value();
         }
     };
 
+    struct execution_plan{
+        std::filesystem::path workspace_host_path_;
+        std::vector<std::string> run_command_args_;
+        sandbox_runner::mount_profile mount_profile_ =
+            sandbox_runner::mount_profile::default_profile;
+    };
+
     static pl_runner_util& instance();
 
-    prepared_source make_compile_failed_prepared_source(
+    build_artifact make_compile_failed_artifact(
+        source_language language,
         int exit_code,
         std::string stderr_text
     );
 
-    std::expected<prepared_source, sandbox_error> prepare_source(
+    std::expected<build_artifact, sandbox_error> build_source(
         const std::filesystem::path& source_file_path
     );
+
+    std::expected<execution_plan, sandbox_error> make_execution_plan(
+        const build_artifact& build_artifact_value
+    );
+
+    sandbox_runner::run_options make_compile_run_options(
+        const std::filesystem::path& workspace_host_path,
+        sandbox_runner::mount_profile mount_profile =
+            sandbox_runner::mount_profile::default_profile
+    ) const;
 
 private:
     pl_runner_util() = default;

@@ -3,12 +3,7 @@
 #include "judge_core/judge_workspace.hpp"
 #include "judge_core/sandbox_runner.hpp"
 
-namespace{
-    constexpr std::chrono::milliseconds COMPILE_TIME_LIMIT{30000};
-    constexpr std::int64_t COMPILE_MEMORY_LIMIT_MB = 1024;
-}
-
-std::expected<cpp_runner::compile_result, sandbox_error> cpp_runner::compile(
+std::expected<pl_runner_util::build_artifact, sandbox_error> cpp_runner::build(
     const path& source_file_path,
     const path& compiler_path
 ){
@@ -26,11 +21,8 @@ std::expected<cpp_runner::compile_result, sandbox_error> cpp_runner::compile(
         return std::unexpected(sandbox_error::invalid_argument);
     }
 
-    sandbox_runner::run_options run_options_value;
-    run_options_value.workspace_host_path = workspace_host_path;
-    run_options_value.time_limit = COMPILE_TIME_LIMIT;
-    run_options_value.memory_limit_mb = COMPILE_MEMORY_LIMIT_MB;
-    run_options_value.policy = sandbox_runner::policy_profile::compile;
+    const auto run_options_value =
+        pl_runner_util::instance().make_compile_run_options(workspace_host_path);
 
     const auto compile_run_exp = sandbox_runner::run(
         {
@@ -48,32 +40,16 @@ std::expected<cpp_runner::compile_result, sandbox_error> cpp_runner::compile(
         return std::unexpected(compile_run_exp.error());
     }
 
-    compile_result compile_result_value;
-    compile_result_value.workspace_host_path_ = workspace_host_path;
-    compile_result_value.run_command_args_.push_back(binary_sandbox_path.string());
-    compile_result_value.exit_code_ = compile_run_exp->exit_code_;
-    compile_result_value.stderr_text_ = std::move(compile_run_exp->stderr_text_);
-    return compile_result_value;
-}
-
-std::expected<pl_runner_util::prepared_source, sandbox_error> cpp_runner::prepare(
-    const path& source_file_path,
-    const path& compiler_path
-){
-    auto compile_cpp_exp = compile(source_file_path, compiler_path);
-    if(!compile_cpp_exp){
-        return std::unexpected(compile_cpp_exp.error());
-    }
-
-    if(!compile_cpp_exp->is_success()){
-        return pl_runner_util::instance().make_compile_failed_prepared_source(
-            compile_cpp_exp->exit_code_,
-            std::move(compile_cpp_exp->stderr_text_)
+    if(compile_run_exp->exit_code_ != 0){
+        return pl_runner_util::instance().make_compile_failed_artifact(
+            pl_runner_util::source_language::cpp,
+            compile_run_exp->exit_code_,
+            std::move(compile_run_exp->stderr_text_)
         );
     }
 
-    pl_runner_util::prepared_source prepared_source_value;
-    prepared_source_value.workspace_host_path_ = compile_cpp_exp->workspace_host_path_;
-    prepared_source_value.run_command_args_ = std::move(compile_cpp_exp->run_command_args_);
-    return prepared_source_value;
+    pl_runner_util::build_artifact build_artifact_value;
+    build_artifact_value.language_ = pl_runner_util::source_language::cpp;
+    build_artifact_value.entry_host_path_ = binary_host_path;
+    return build_artifact_value;
 }
