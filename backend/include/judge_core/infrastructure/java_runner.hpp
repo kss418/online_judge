@@ -1,11 +1,16 @@
 #pragma once
 
+#include "error/sandbox_error.hpp"
+#include "judge_core/infrastructure/program_build_types.hpp"
+
+#include <expected>
 #include <filesystem>
-#include <memory>
 
-class program_handler;
+namespace java_runner{
+    using path = std::filesystem::path;
 
-std::unique_ptr<program_handler> make_java_program_handler(
-    std::filesystem::path java_compiler_path,
-    std::filesystem::path java_runtime_path
-);
+    std::expected<program_build::build_artifact, sandbox_error> build(
+        const path& source_file_path,
+        const path& java_compiler_path
+    );
+}

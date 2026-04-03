@@ -3,7 +3,6 @@
 #include "common/timer.hpp"
 #include "judge_core/infrastructure/judge_workspace.hpp"
 #include "judge_core/infrastructure/launch_planner.hpp"
-#include "judge_core/infrastructure/program_handler_factory.hpp"
 #include "judge_core/infrastructure/program_builder.hpp"
 #include "judge_core/infrastructure/testcase_runner.hpp"
 #include "judge_core/infrastructure/toolchain_config.hpp"
@@ -42,12 +41,15 @@ submission_execution_service::create(
     const toolchain_config& toolchain_config_value,
     testcase_snapshot_service testcase_snapshot_service
 ){
-    const auto handler_registry = make_program_handler_registry(
-        toolchain_config_value
-    );
     return submission_execution_service{
-        std::make_unique<program_builder>(handler_registry),
-        std::make_unique<launch_planner>(handler_registry),
+        std::make_unique<program_builder>(
+            toolchain_config_value.cpp_compiler_path,
+            toolchain_config_value.java_compiler_path
+        ),
+        std::make_unique<launch_planner>(
+            toolchain_config_value.python_path,
+            toolchain_config_value.java_runtime_path
+        ),
         std::move(testcase_snapshot_service)
     };
 }

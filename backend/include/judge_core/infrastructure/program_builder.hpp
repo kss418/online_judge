@@ -4,14 +4,12 @@
 #include "judge_core/infrastructure/program_build_types.hpp"
 
 #include <expected>
-#include <memory>
-
-class program_handler_registry;
 
 class program_builder{
 public:
-    explicit program_builder(
-        std::shared_ptr<const program_handler_registry> handler_registry
+    program_builder(
+        std::filesystem::path cpp_compiler_path,
+        std::filesystem::path java_compiler_path
     );
 
     std::expected<program_build::build_artifact, sandbox_error> build_source(
@@ -19,5 +17,6 @@ public:
     );
 
 private:
-    std::shared_ptr<const program_handler_registry> handler_registry_;
+    std::filesystem::path cpp_compiler_path_;
+    std::filesystem::path java_compiler_path_;
 };

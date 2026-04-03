@@ -5,14 +5,12 @@
 #include "judge_core/infrastructure/program_build_types.hpp"
 
 #include <expected>
-#include <memory>
-
-class program_handler_registry;
 
 class launch_planner{
 public:
-    explicit launch_planner(
-        std::shared_ptr<const program_handler_registry> handler_registry
+    launch_planner(
+        std::filesystem::path python_path,
+        std::filesystem::path java_runtime_path
     );
 
     std::expected<program_launch::execution_plan, sandbox_error> make_execution_plan(
@@ -20,5 +18,6 @@ public:
     );
 
 private:
-    std::shared_ptr<const program_handler_registry> handler_registry_;
+    std::filesystem::path python_path_;
+    std::filesystem::path java_runtime_path_;
 };
