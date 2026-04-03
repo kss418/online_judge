@@ -1,8 +1,13 @@
 #pragma once
-#include "error/error_code.hpp"
+
+#include "error/io_error.hpp"
+
+#include <cstddef>
+#include <expected>
+#include <string>
 
 namespace blocking_io{
-    std::expected <size_t, error_code> write_all(int fd, const std::string& text);
-    std::expected <std::string, error_code> read_all(int fd);
-    std::expected<std::string, error_code> read_all_from_start(int fd);
+    std::expected<size_t, io_error> write_all(int fd, const std::string& text);
+    std::expected<std::string, io_error> read_all(int fd);
+    std::expected<std::string, io_error> read_all_from_start(int fd);
 };

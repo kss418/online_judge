@@ -2,6 +2,7 @@
 
 #include "common/unique_fd.hpp"
 #include "common/blocking_io.hpp"
+#include "error/io_error_bridge.hpp"
 #include "judge_core/judge_util.hpp"
 
 #include <cerrno>
@@ -19,7 +20,7 @@ std::expected<bool, error_code> checker::check(
 
     auto answer_text_exp = blocking_io::read_all(answer_fd.get());
     if(!answer_text_exp){
-        return std::unexpected(answer_text_exp.error());
+        return std::unexpected(io_error_bridge::to_error_code(answer_text_exp.error()));
     }
 
     auto answer_text = std::move(*answer_text_exp);

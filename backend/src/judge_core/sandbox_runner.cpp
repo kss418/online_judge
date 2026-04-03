@@ -4,6 +4,7 @@
 #include "common/logger.hpp"
 #include "common/temp_file.hpp"
 #include "common/unique_fd.hpp"
+#include "error/io_error_bridge.hpp"
 #include "judge_core/judge_util.hpp"
 #include "judge_core/nsjail_util.hpp"
 
@@ -40,12 +41,12 @@ namespace{
         if(!scratch_files_opt.has_value()){
             auto stdout_temp_exp = temp_file::create("/tmp/oj_stdout_XXXXXX");
             if(!stdout_temp_exp){
-                return std::unexpected(stdout_temp_exp.error());
+                return std::unexpected(io_error_bridge::to_error_code(stdout_temp_exp.error()));
             }
 
             auto stderr_temp_exp = temp_file::create("/tmp/oj_stderr_XXXXXX");
             if(!stderr_temp_exp){
-                return std::unexpected(stderr_temp_exp.error());
+                return std::unexpected(io_error_bridge::to_error_code(stderr_temp_exp.error()));
             }
 
             scratch_files_opt.emplace(
@@ -84,7 +85,7 @@ std::expected<void, error_code> sandbox_runner::startup_self_check(){
 
     auto workspace_exp = temp_dir::create("/tmp/oj_sandbox_check_XXXXXX");
     if(!workspace_exp){
-        return std::unexpected(workspace_exp.error());
+        return std::unexpected(io_error_bridge::to_error_code(workspace_exp.error()));
     }
 
     run_options run_options_value;
@@ -280,14 +281,14 @@ std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
         scratch_files_value.stdout_temp.get_fd()
     );
     if(!stdout_text_exp){
-        return std::unexpected(stdout_text_exp.error());
+        return std::unexpected(io_error_bridge::to_error_code(stdout_text_exp.error()));
     }
 
     auto stderr_text_exp = blocking_io::read_all_from_start(
         scratch_files_value.stderr_temp.get_fd()
     );
     if(!stderr_text_exp){
-        return std::unexpected(stderr_text_exp.error());
+        return std::unexpected(io_error_bridge::to_error_code(stderr_text_exp.error()));
     }
 
     run_result result;

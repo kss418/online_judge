@@ -1,5 +1,6 @@
 #include "common/temp_file.hpp"
 
+#include <cerrno>
 #include <cstdlib>
 #include <utility>
 #include <vector>
@@ -26,13 +27,13 @@ temp_file::~temp_file() noexcept{
     remove_file();
 }
 
-std::expected<temp_file, error_code> temp_file::create(std::string_view pattern){
+std::expected<temp_file, io_error> temp_file::create(std::string_view pattern){
     std::vector<char> temp(pattern.begin(), pattern.end());
     temp.push_back('\0');
 
     int fd = mkstemp(temp.data());
     if(fd < 0){
-        return std::unexpected(error_code::create(error_code::map_errno(errno)));
+        return std::unexpected(io_error::from_errno(errno));
     }
 
     return temp_file(unique_fd(fd), std::filesystem::path(temp.data()));
@@ -42,7 +43,7 @@ void temp_file::close_fd() noexcept{
     fd_.close();
 }
 
-std::expected<void, error_code> temp_file::close_fd_checked() noexcept{
+std::expected<void, io_error> temp_file::close_fd_checked() noexcept{
     return fd_.close_checked();
 }
 

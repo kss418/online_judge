@@ -2,6 +2,7 @@
 
 #include "common/blocking_io.hpp"
 #include "common/unique_fd.hpp"
+#include "error/io_error_bridge.hpp"
 
 #include <cerrno>
 #include <string_view>
@@ -63,10 +64,10 @@ namespace zip_util_internal{
         const auto output_exp = blocking_io::read_all(read_fd.get());
         const auto close_read_fd_exp = read_fd.close_checked();
         if(!output_exp){
-            return std::unexpected(output_exp.error());
+            return std::unexpected(io_error_bridge::to_error_code(output_exp.error()));
         }
         if(!close_read_fd_exp){
-            return std::unexpected(close_read_fd_exp.error());
+            return std::unexpected(io_error_bridge::to_error_code(close_read_fd_exp.error()));
         }
 
         int wait_status = 0;

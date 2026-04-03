@@ -1,6 +1,6 @@
 #pragma once
 
-#include "error/error_code.hpp"
+#include "error/io_error.hpp"
 
 #include <expected>
 
@@ -19,7 +19,7 @@ public:
 
     ~unique_fd() noexcept;
     void close(int new_fd = -1) noexcept;
-    std::expected<void, error_code> close_checked() noexcept;
+    std::expected<void, io_error> close_checked() noexcept;
     int get() const noexcept;
     explicit operator bool() const noexcept;
 };

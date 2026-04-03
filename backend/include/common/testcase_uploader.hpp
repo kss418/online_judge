@@ -1,6 +1,6 @@
 #pragma once
 
-#include "error/error_code.hpp"
+#include "error/io_error.hpp"
 #include "dto/problem_dto.hpp"
 
 #include <cstdint>
@@ -22,7 +22,7 @@ namespace testcase_uploader{
         const std::vector<std::string>& entry_names
     );
 
-    std::expected<std::vector<problem_dto::testcase>, error_code> load_testcases_from_directory(
+    std::expected<std::vector<problem_dto::testcase>, io_error> load_testcases_from_directory(
         const std::filesystem::path& directory_path,
         const archive_entry_map& archive_entries
     );

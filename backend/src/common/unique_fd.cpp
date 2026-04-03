@@ -28,7 +28,7 @@ void unique_fd::close(int new_fd) noexcept{
     fd_ = new_fd;
 }
 
-std::expected<void, error_code> unique_fd::close_checked() noexcept{
+std::expected<void, io_error> unique_fd::close_checked() noexcept{
     if(fd_ == -1){
         return {};
     }
@@ -41,7 +41,7 @@ std::expected<void, error_code> unique_fd::close_checked() noexcept{
             return {};
         }
 
-        return std::unexpected(error_code::create(error_code::map_errno(close_errno)));
+        return std::unexpected(io_error::from_errno(close_errno));
     }
 
     return {};

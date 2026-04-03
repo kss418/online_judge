@@ -26,22 +26,20 @@ namespace{
         return std::filesystem::path(testcase_root_path);
     }
 
-    std::expected<void, error_code> rename_directory(
+    std::expected<void, io_error> rename_directory(
         const std::filesystem::path& source_path,
         const std::filesystem::path& destination_path
     ){
         return file_util::retry_file_operation(
             FILE_OPERATION_ATTEMPT_COUNT,
-            [&]() -> std::expected<void, error_code> {
+            [&]() -> std::expected<void, io_error> {
                 std::error_code rename_ec;
                 std::filesystem::rename(source_path, destination_path, rename_ec);
                 if(rename_ec){
-                    return std::unexpected(
-                        error_code::create(error_code::map_errno(rename_ec.value()))
-                    );
+                    return std::unexpected(io_error::from_error_code(rename_ec));
                 }
 
-                return std::expected<void, error_code>{};
+                return std::expected<void, io_error>{};
             }
         );
     }

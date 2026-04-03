@@ -4,6 +4,7 @@
 #include "common/env_util.hpp"
 #include "common/file_util.hpp"
 #include "common/unique_fd.hpp"
+#include "error/io_error_bridge.hpp"
 #include "judge_core/sandbox_runner.hpp"
 
 #include <array>
@@ -182,14 +183,22 @@ namespace nsjail_util::detail{
         }
 
         if(is_directory){
-            return file_util::create_directories(full_target_path);
+            const auto create_directories_exp = file_util::create_directories(full_target_path);
+            if(!create_directories_exp){
+                return std::unexpected(
+                    io_error_bridge::to_error_code(create_directories_exp.error())
+                );
+            }
+            return {};
         }
 
         const auto create_parent_dirs_exp = file_util::create_directories(
             full_target_path.parent_path()
         );
         if(!create_parent_dirs_exp){
-            return std::unexpected(create_parent_dirs_exp.error());
+            return std::unexpected(
+                io_error_bridge::to_error_code(create_parent_dirs_exp.error())
+            );
         }
 
         return create_empty_file(full_target_path);
@@ -269,7 +278,7 @@ namespace nsjail_util::detail{
         const std::filesystem::path rootfs_path = sandbox_dir.get_path() / "rootfs";
         const auto create_rootfs_exp = file_util::create_directories(rootfs_path);
         if(!create_rootfs_exp){
-            return std::unexpected(create_rootfs_exp.error());
+            return std::unexpected(io_error_bridge::to_error_code(create_rootfs_exp.error()));
         }
 
         for(const std::filesystem::path& relative_dir : {
@@ -280,7 +289,9 @@ namespace nsjail_util::detail{
             }){
             const auto create_directory_exp = file_util::create_directories(rootfs_path / relative_dir);
             if(!create_directory_exp){
-                return std::unexpected(create_directory_exp.error());
+                return std::unexpected(
+                    io_error_bridge::to_error_code(create_directory_exp.error())
+                );
             }
         }
 
@@ -297,7 +308,7 @@ namespace nsjail_util::detail{
             make_seccomp_policy_text(policy_profile_value)
         );
         if(!write_policy_exp){
-            return std::unexpected(write_policy_exp.error());
+            return std::unexpected(io_error_bridge::to_error_code(write_policy_exp.error()));
         }
 
         return policy_path;
@@ -389,7 +400,7 @@ namespace nsjail_util::detail{
     ){
         auto sandbox_dir_exp = temp_dir::create("/tmp/oj_nsjail_XXXXXX");
         if(!sandbox_dir_exp){
-            return std::unexpected(sandbox_dir_exp.error());
+            return std::unexpected(io_error_bridge::to_error_code(sandbox_dir_exp.error()));
         }
 
         const auto rootfs_path_exp = prepare_rootfs_layout(*sandbox_dir_exp);
@@ -521,7 +532,7 @@ std::expected<void, error_code> nsjail_util::check_user_namespace_support(){
     int error_number = 0;
     const auto read_error_exp = blocking_io::read_all(read_fd.get());
     if(!read_error_exp){
-        return std::unexpected(read_error_exp.error());
+        return std::unexpected(io_error_bridge::to_error_code(read_error_exp.error()));
     }
     if(read_error_exp->size() == sizeof(error_number)){
         std::memcpy(&error_number, read_error_exp->data(), sizeof(error_number));

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "error/error_code.hpp"
+#include "error/io_error.hpp"
 
 #include <expected>
 #include <filesystem>
@@ -22,7 +22,7 @@ public:
 
     ~temp_dir() noexcept;
 
-    static std::expected<temp_dir, error_code> create(std::string_view pattern);
+    static std::expected<temp_dir, io_error> create(std::string_view pattern);
 
     const std::filesystem::path& get_path() const noexcept;
     explicit operator bool() const noexcept;

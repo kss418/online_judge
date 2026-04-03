@@ -3,6 +3,7 @@
 #include "error/db_error.hpp"
 #include "error/error_code.hpp"
 #include "error/infra_error.hpp"
+#include "error/io_error.hpp"
 
 #include <array>
 #include <cstddef>
@@ -73,6 +74,24 @@ namespace{
                 return judge_error_code::unavailable;
             case infra_error_code::permission_denied:
             case infra_error_code::internal:
+                return judge_error_code::internal;
+        }
+
+        return judge_error_code::internal;
+    }
+
+    judge_error_code map_io_error_code(const io_error& ec){
+        switch(ec.code){
+            case io_error_code::invalid_argument:
+                return judge_error_code::validation_error;
+            case io_error_code::not_found:
+                return judge_error_code::not_found;
+            case io_error_code::conflict:
+                return judge_error_code::conflict;
+            case io_error_code::unavailable:
+                return judge_error_code::unavailable;
+            case io_error_code::permission_denied:
+            case io_error_code::internal:
                 return judge_error_code::internal;
         }
 
@@ -162,6 +181,9 @@ judge_error::judge_error(const error_code& ec) :
 
 judge_error::judge_error(const infra_error& ec) :
     judge_error(map_infra_error_code(ec), ec.message){}
+
+judge_error::judge_error(const io_error& ec) :
+    judge_error(map_io_error_code(ec), ec.message){}
 
 bool judge_error::operator==(const judge_error& other) const{
     return code == other.code;

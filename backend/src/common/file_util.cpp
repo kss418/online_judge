@@ -31,23 +31,16 @@ static bool should_retry_fsync_errno(int error_number){
     return error_number == EINTR;
 }
 
-bool file_util::should_retry_file_error(const error_code& error_code_value){
-    return
-        error_code_value == errno_error::interrupted_system_call ||
-        error_code_value == errno_error::resource_temporarily_unavailable ||
-        error_code_value == errno_error::operation_would_block ||
-        error_code_value == errno_error::too_many_open_files_process ||
-        error_code_value == errno_error::too_many_open_files_system ||
-        error_code_value == errno_error::busy_resource ||
-        error_code_value == errno_error::text_file_busy;
+bool file_util::should_retry_file_error(const io_error& error_code_value){
+    return error_code_value.is_retryable();
 }
 
-std::expected<std::string, error_code> file_util::read_file_content(
+std::expected<std::string, io_error> file_util::read_file_content(
     const std::filesystem::path& file_path
 ){
     unique_fd file_descriptor(::open(file_path.c_str(), O_RDONLY));
     if(!file_descriptor){
-        return std::unexpected(error_code::create(error_code::map_errno(errno)));
+        return std::unexpected(io_error::from_errno(errno));
     }
 
     std::string file_content;
@@ -62,7 +55,7 @@ std::expected<std::string, error_code> file_util::read_file_content(
             if(should_retry_read_errno(errno)){
                 continue;
             }
-            return std::unexpected(error_code::create(error_code::map_errno(errno)));
+            return std::unexpected(io_error::from_errno(errno));
         }
 
         file_content.append(buffer, static_cast<std::size_t>(read_count));
@@ -76,7 +69,7 @@ std::expected<std::string, error_code> file_util::read_file_content(
     return file_content;
 }
 
-static std::expected<void, error_code> write_all(
+static std::expected<void, io_error> write_all(
     int file_descriptor,
     std::string_view file_content
 ){
@@ -91,11 +84,11 @@ static std::expected<void, error_code> write_all(
             if(should_retry_write_errno(errno)){
                 continue;
             }
-            return std::unexpected(error_code::create(error_code::map_errno(errno)));
+            return std::unexpected(io_error::from_errno(errno));
         }
 
         if(written_count == 0){
-            return std::unexpected(error_code::create(errno_error::io_error));
+            return std::unexpected(io_error::internal);
         }
 
         written_size += static_cast<std::size_t>(written_count);
@@ -104,75 +97,69 @@ static std::expected<void, error_code> write_all(
     return {};
 }
 
-std::expected<bool, error_code> file_util::exists(const std::filesystem::path& file_path){
+std::expected<bool, io_error> file_util::exists(const std::filesystem::path& file_path){
     std::error_code exists_ec;
     const bool exists_value = std::filesystem::exists(file_path, exists_ec);
     if(exists_ec){
-        return std::unexpected(error_code::create(error_code::map_errno(exists_ec.value())));
+        return std::unexpected(io_error::from_error_code(exists_ec));
     }
 
     return exists_value;
 }
 
-std::expected<void, error_code> file_util::create_directories(
+std::expected<void, io_error> file_util::create_directories(
     const std::filesystem::path& directory_path
 ){
     return retry_file_operation(
         FILE_OPERATION_ATTEMPT_COUNT,
-        [&]() -> std::expected<void, error_code> {
+        [&]() -> std::expected<void, io_error> {
             std::error_code create_directories_ec;
             std::filesystem::create_directories(directory_path, create_directories_ec);
             if(create_directories_ec){
-                return std::unexpected(
-                    error_code::create(error_code::map_errno(create_directories_ec.value()))
-                );
+                return std::unexpected(io_error::from_error_code(create_directories_ec));
             }
 
-            return std::expected<void, error_code>{};
+            return std::expected<void, io_error>{};
         }
     );
 }
 
-std::expected<void, error_code> file_util::remove_file(const std::filesystem::path& file_path){
+std::expected<void, io_error> file_util::remove_file(const std::filesystem::path& file_path){
     return retry_file_operation(
         FILE_OPERATION_ATTEMPT_COUNT,
-        [&]() -> std::expected<void, error_code> {
+        [&]() -> std::expected<void, io_error> {
             std::error_code remove_ec;
             std::filesystem::remove(file_path, remove_ec);
             if(remove_ec){
-                return std::unexpected(
-                    error_code::create(error_code::map_errno(remove_ec.value()))
-                );
+                return std::unexpected(io_error::from_error_code(remove_ec));
             }
 
-            return std::expected<void, error_code>{};
+            return std::expected<void, io_error>{};
         }
     );
 }
 
-std::expected<void, error_code> file_util::remove_all(const std::filesystem::path& file_path){
+std::expected<void, io_error> file_util::remove_all(const std::filesystem::path& file_path){
     return retry_file_operation(
         FILE_OPERATION_ATTEMPT_COUNT,
-        [&]() -> std::expected<void, error_code> {
+        [&]() -> std::expected<void, io_error> {
             std::error_code remove_ec;
             std::filesystem::remove_all(file_path, remove_ec);
             if(remove_ec){
-                return std::unexpected(
-                    error_code::create(error_code::map_errno(remove_ec.value()))
-                );
+                return std::unexpected(io_error::from_error_code(remove_ec));
             }
 
-            return std::expected<void, error_code>{};
+            return std::expected<void, io_error>{};
         }
     );
 }
 
-std::expected<std::int32_t, error_code> file_util::read_int32_file(
+std::expected<std::int32_t, io_error> file_util::read_int32_file(
     const std::filesystem::path& file_path
 ){
     return retry_file_operation(
         FILE_OPERATION_ATTEMPT_COUNT,
-        [&]() -> std::expected<std::int32_t, error_code> {
+        [&]() -> std::expected<std::int32_t, io_error> {
             const auto file_content_exp = read_file_content(file_path);
             if(!file_content_exp){
                 return std::unexpected(file_content_exp.error());
@@ -187,13 +174,13 @@ std::expected<std::int32_t, error_code> file_util::read_int32_file(
             }
 
             if(file_begin == file_end){
-                return std::unexpected(error_code::create(errno_error::invalid_argument));
+                return std::unexpected(io_error::invalid_argument);
             }
 
             std::int32_t value = 0;
             const auto [parse_end, parse_ec] = std::from_chars(file_begin, file_end, value);
             if(parse_ec != std::errc{}){
-                return std::unexpected(error_code::create(errno_error::invalid_argument));
+                return std::unexpected(io_error::invalid_argument);
             }
 
             const char* trailing_begin = parse_end;
@@ -202,21 +189,21 @@ std::expected<std::int32_t, error_code> file_util::read_int32_file(
             }
 
             if(trailing_begin != file_end){
-                return std::unexpected(error_code::create(errno_error::invalid_argument));
+                return std::unexpected(io_error::invalid_argument);
             }
 
-            return std::expected<std::int32_t, error_code>{value};
+            return std::expected<std::int32_t, io_error>{value};
         }
     );
 }
 
-std::expected<void, error_code> file_util::create_file(
+std::expected<void, io_error> file_util::create_file(
     const std::filesystem::path& file_path,
     std::string_view file_content
 ){
     return retry_file_operation(
         FILE_OPERATION_ATTEMPT_COUNT,
-        [&]() -> std::expected<void, error_code> {
+        [&]() -> std::expected<void, io_error> {
             std::string temp_file_pattern = file_path.string();
             temp_file_pattern += ".tmp.XXXXXX";
 
@@ -237,7 +224,7 @@ std::expected<void, error_code> file_util::create_file(
                     continue;
                 }
 
-                return std::unexpected(error_code::create(error_code::map_errno(fsync_errno)));
+                return std::unexpected(io_error::from_errno(fsync_errno));
             }
 
             const auto close_fd_exp = temporary_file.close_fd_checked();
@@ -248,12 +235,10 @@ std::expected<void, error_code> file_util::create_file(
             std::error_code rename_ec;
             std::filesystem::rename(temporary_file.get_path(), file_path, rename_ec);
             if(rename_ec){
-                return std::unexpected(
-                    error_code::create(error_code::map_errno(rename_ec.value()))
-                );
+                return std::unexpected(io_error::from_error_code(rename_ec));
             }
 
-            return std::expected<void, error_code>{};
+            return std::expected<void, io_error>{};
         }
     );
 }

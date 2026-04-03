@@ -26,13 +26,13 @@ temp_dir::~temp_dir() noexcept{
     remove_directory();
 }
 
-std::expected<temp_dir, error_code> temp_dir::create(std::string_view pattern){
+std::expected<temp_dir, io_error> temp_dir::create(std::string_view pattern){
     std::vector<char> temp(pattern.begin(), pattern.end());
     temp.push_back('\0');
 
     char* created_path = mkdtemp(temp.data());
     if(created_path == nullptr){
-        return std::unexpected(error_code::create(error_code::map_errno(errno)));
+        return std::unexpected(io_error::from_errno(errno));
     }
 
     return temp_dir(std::filesystem::path(created_path));

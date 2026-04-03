@@ -5,6 +5,8 @@ target_sources(lib
         db_error.cpp
         http_server_error.cpp
         infra_error.cpp
+        io_error.cpp
+        io_error_bridge.cpp
         pool_error.cpp
         problem_content_error.cpp
         repository_error.cpp

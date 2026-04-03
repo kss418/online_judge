@@ -158,7 +158,7 @@ testcase_uploader::parse_testcase_archive_entries(
     return archive_entries;
 }
 
-std::expected<std::vector<problem_dto::testcase>, error_code>
+std::expected<std::vector<problem_dto::testcase>, io_error>
 testcase_uploader::load_testcases_from_directory(
     const std::filesystem::path& directory_path,
     const testcase_uploader::archive_entry_map& archive_entries
