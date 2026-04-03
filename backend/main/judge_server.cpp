@@ -4,7 +4,6 @@
 #include "common/string_util.hpp"
 #include "db_event/submission_event_listener.hpp"
 #include "error/judge_error.hpp"
-#include "error/error_code.hpp"
 #include "judge_core/problem_lock_registry.hpp"
 #include "judge_core/judge_worker.hpp"
 #include "judge_core/sandbox_runner.hpp"

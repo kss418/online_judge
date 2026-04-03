@@ -1,7 +1,6 @@
 target_sources(lib
     PRIVATE
         auth_error.cpp
-        error_code.cpp
         db_error.cpp
         http_server_error.cpp
         infra_error.cpp

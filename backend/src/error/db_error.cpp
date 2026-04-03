@@ -1,6 +1,6 @@
 #include "error/db_error.hpp"
 
-#include "error/error_code.hpp"
+#include <pqxx/pqxx>
 
 #include <array>
 #include <string_view>
@@ -40,23 +40,28 @@ namespace{
         return db_error_specs[index];
     }
 
-    db_error map_psql_error(psql_error ec){
-        switch(ec){
-            case psql_error::serialization_failure:
-                return db_error::serialization_failure;
-            case psql_error::deadlock_detected:
-                return db_error::deadlock_detected;
-            case psql_error::unique_violation:
-                return db_error::unique_violation;
-            case psql_error::foreign_key_violation:
-            case psql_error::not_null_violation:
-            case psql_error::check_violation:
-                return db_error::constraint_violation;
-            case psql_error::broken_connection:
-                return db_error::broken_connection;
-            default:
-                return db_error::internal;
+    db_error map_psql_exception(const std::exception& exception){
+        if(dynamic_cast<const pqxx::serialization_failure*>(&exception) != nullptr){
+            return db_error::serialization_failure;
         }
+        if(dynamic_cast<const pqxx::deadlock_detected*>(&exception) != nullptr){
+            return db_error::deadlock_detected;
+        }
+        if(dynamic_cast<const pqxx::unique_violation*>(&exception) != nullptr){
+            return db_error::unique_violation;
+        }
+        if(
+            dynamic_cast<const pqxx::foreign_key_violation*>(&exception) != nullptr ||
+            dynamic_cast<const pqxx::not_null_violation*>(&exception) != nullptr ||
+            dynamic_cast<const pqxx::check_violation*>(&exception) != nullptr
+        ){
+            return db_error::constraint_violation;
+        }
+        if(dynamic_cast<const pqxx::broken_connection*>(&exception) != nullptr){
+            return db_error::broken_connection;
+        }
+
+        return db_error::internal;
     }
 }
 
@@ -127,5 +132,5 @@ std::string to_string(const db_error& ec){
 }
 
 db_error db_error::from_psql_exception(const std::exception& exception){
-    return map_psql_error(error_code::map_psql_error(exception));
+    return map_psql_exception(exception);
 }
