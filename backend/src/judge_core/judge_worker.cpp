@@ -1,12 +1,13 @@
 #include "judge_core/judge_worker.hpp"
 
+#include "common/env_util.hpp"
 #include "common/file_util.hpp"
 #include "common/logger.hpp"
 #include "common/timer.hpp"
 #include "db_service/submission_service.hpp"
 #include "judge_core/judge_service.hpp"
 #include "judge_core/checker.hpp"
-#include "judge_core/judge_util.hpp"
+#include "judge_core/judge_workspace.hpp"
 #include "judge_core/testcase_runner.hpp"
 
 #include <algorithm>
@@ -53,7 +54,7 @@ namespace{
             .field("testcase_count", submission_stage_metrics_value.testcase_count)
             .optional_field("error", submission_stage_metrics_value.error_message_opt);
     }
-}
+} // namespace
 
 std::expected<judge_worker, judge_error> judge_worker::create(
     submission_event_listener submission_event_listener,
@@ -68,13 +69,23 @@ std::expected<judge_worker, judge_error> judge_worker::create(
         );
     }
 
-    const auto source_directory_path_exp = judge_util::instance().make_source_directory_path();
-    if(!source_directory_path_exp){
-        return std::unexpected(source_directory_path_exp.error());
+    const auto source_root_path_text_exp = env_util::require_env("JUDGE_SOURCE_ROOT");
+    if(!source_root_path_text_exp){
+        return std::unexpected(source_root_path_text_exp.error());
+    }
+
+    const std::filesystem::path source_root_path(*source_root_path_text_exp);
+    if(source_root_path.empty()){
+        return std::unexpected(
+            judge_error{
+                judge_error_code::validation_error,
+                "judge source root is not configured"
+            }
+        );
     }
 
     const auto create_directories_exp = file_util::create_directories(
-        *source_directory_path_exp
+        source_root_path
     );
     if(!create_directories_exp){
         return std::unexpected(create_directories_exp.error());
@@ -104,6 +115,7 @@ std::expected<judge_worker, judge_error> judge_worker::create(
         std::move(submission_event_listener),
         std::move(*db_connection_exp),
         std::move(*testcase_downloader_connection_exp),
+        source_root_path,
         std::move(problem_lock_registry)
     );
 }
@@ -112,11 +124,13 @@ judge_worker::judge_worker(
     submission_event_listener submission_event_listener,
     db_connection submission_db_connection,
     db_connection testcase_downloader_connection,
+    std::filesystem::path source_root_path,
     std::shared_ptr<problem_lock_registry> problem_lock_registry
 ) :
     submission_event_listener_(std::move(submission_event_listener)),
     db_connection_(std::move(submission_db_connection)),
     testcase_downloader_connection_(std::move(testcase_downloader_connection)),
+    source_root_path_(std::move(source_root_path)),
     problem_lock_registry_(std::move(problem_lock_registry)){}
 
 submission_status judge_worker::to_submission_status(judge_result result){
@@ -251,8 +265,8 @@ std::expected<judge_result, judge_error> judge_worker::check_result(
     const testcase_snapshot& testcase_snapshot_value,
     const testcase_runner::run_batch& run_batch_value
 ){
-    std::vector<std::vector<std::string>> output_lines;
-    output_lines.reserve(run_batch_value.run_results.size());
+    std::vector<std::string> output_texts;
+    output_texts.reserve(run_batch_value.run_results.size());
 
     if(run_batch_value.compile_failed){
         return judge_result::compile_error;
@@ -272,10 +286,10 @@ std::expected<judge_result, judge_error> judge_worker::check_result(
             return judge_result::runtime_error;
         }
 
-        output_lines.push_back(run_result.output_lines_);
+        output_texts.push_back(run_result.stdout_text_);
     }
 
-    return checker::check_all(output_lines, testcase_snapshot_value);
+    return checker::check_all(output_texts, testcase_snapshot_value);
 }
 
 std::expected<void, judge_error> judge_worker::run(){
@@ -296,9 +310,18 @@ std::expected<void, judge_error> judge_worker::run(){
 
         const submission_dto::queued_submission& queued_submission_value =
             queued_submission_opt_exp->value();
+        const auto workspace_path_exp = judge_workspace::make_submission_workspace_path(
+            source_root_path_,
+            queued_submission_value.submission_id
+        );
+        if(!workspace_path_exp){
+            return std::unexpected(workspace_path_exp.error());
+        }
+
         timer processing_timer;
         const auto process_submission_exp = process_submission(
-            queued_submission_value
+            queued_submission_value,
+            *workspace_path_exp
         );
 
         submission_stage_metrics submission_stage_metrics_value;
@@ -314,10 +337,15 @@ std::expected<void, judge_error> judge_worker::run(){
 
         const auto cleanup_workspace_exp = timer::measure_elapsed_ms(
             submission_stage_metrics_value.cleanup_elapsed_ms,
-            [this, &queued_submission_value]{
-                return cleanup_submission_workspace(
-                    queued_submission_value.submission_id
+            [&workspace_path_exp]() -> std::expected<void, judge_error> {
+                const auto cleanup_workspace_exp = judge_workspace::cleanup(
+                    *workspace_path_exp
                 );
+                if(!cleanup_workspace_exp){
+                    return std::unexpected(judge_error{cleanup_workspace_exp.error()});
+                }
+
+                return {};
             }
         );
         if(!cleanup_workspace_exp){
@@ -344,7 +372,8 @@ std::expected<void, judge_error> judge_worker::run(){
 
 std::expected<judge_worker::submission_stage_metrics, judge_error>
 judge_worker::process_submission(
-    const submission_dto::queued_submission& queued_submission_value
+    const submission_dto::queued_submission& queued_submission_value,
+    const std::filesystem::path& workspace_path
 ){
     submission_stage_metrics submission_stage_metrics_value = make_submission_stage_metrics(
         queued_submission_value
@@ -352,8 +381,22 @@ judge_worker::process_submission(
 
     const auto source_file_path_exp = timer::measure_elapsed_ms(
         submission_stage_metrics_value.prepare_workspace_elapsed_ms,
-        [this, &queued_submission_value]{
-            return prepare_submission(queued_submission_value);
+        [&workspace_path, &queued_submission_value]() -> std::expected<std::filesystem::path, judge_error> {
+            const auto reset_workspace_exp = judge_workspace::reset(workspace_path);
+            if(!reset_workspace_exp){
+                return std::unexpected(judge_error{reset_workspace_exp.error()});
+            }
+
+            const auto source_file_path_exp = judge_workspace::write_source_file(
+                workspace_path,
+                queued_submission_value.language,
+                queued_submission_value.source_code
+            );
+            if(!source_file_path_exp){
+                return std::unexpected(judge_error{source_file_path_exp.error()});
+            }
+
+            return *source_file_path_exp;
         }
     );
     if(!source_file_path_exp){
@@ -475,58 +518,6 @@ std::expected<void, judge_error> judge_worker::finalize_submission(
     }
 
     return {};
-}
-
-std::expected<std::filesystem::path, judge_error> judge_worker::prepare_submission(
-    const submission_dto::queued_submission& queued_submission_value
-){
-    const auto workspace_path_exp = judge_util::instance().make_submission_workspace_path(
-        queued_submission_value.submission_id
-    );
-    if(!workspace_path_exp){
-        return std::unexpected(workspace_path_exp.error());
-    }
-
-    const auto cleanup_workspace_exp = file_util::remove_all(*workspace_path_exp);
-    if(!cleanup_workspace_exp){
-        return std::unexpected(cleanup_workspace_exp.error());
-    }
-
-    const auto create_workspace_exp = file_util::create_directories(*workspace_path_exp);
-    if(!create_workspace_exp){
-        return std::unexpected(create_workspace_exp.error());
-    }
-
-    const auto source_file_path_exp = judge_util::instance().make_source_file_path(
-        queued_submission_value.submission_id,
-        queued_submission_value.language
-    );
-    if(!source_file_path_exp){
-        return std::unexpected(source_file_path_exp.error());
-    }
-
-    auto create_file_exp = file_util::create_file(
-        *source_file_path_exp,
-        queued_submission_value.source_code
-    );
-    if(!create_file_exp){
-        return std::unexpected(create_file_exp.error());
-    }
-
-    return *source_file_path_exp;
-}
-
-std::expected<void, judge_error> judge_worker::cleanup_submission_workspace(
-    std::int64_t submission_id
-){
-    const auto workspace_path_exp = judge_util::instance().make_submission_workspace_path(
-        submission_id
-    );
-    if(!workspace_path_exp){
-        return std::unexpected(workspace_path_exp.error());
-    }
-
-    return file_util::remove_all(*workspace_path_exp);
 }
 
 std::expected<void, judge_error> judge_worker::requeue_submission(

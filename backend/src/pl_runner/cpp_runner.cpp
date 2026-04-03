@@ -1,6 +1,6 @@
 #include "pl_runner/cpp_runner.hpp"
 
-#include "judge_core/judge_util.hpp"
+#include "judge_core/judge_workspace.hpp"
 #include "judge_core/sandbox_runner.hpp"
 
 namespace{
@@ -14,11 +14,11 @@ std::expected<cpp_runner::compile_result, sandbox_error> cpp_runner::compile(
 ){
     const path workspace_host_path = source_file_path.parent_path();
     const path binary_host_path = workspace_host_path / "program.out";
-    const path binary_sandbox_path = judge_util::instance().make_sandbox_path(
+    const path binary_sandbox_path = judge_workspace::make_sandbox_path(
         workspace_host_path,
         binary_host_path
     );
-    const path source_sandbox_path = judge_util::instance().make_sandbox_path(
+    const path source_sandbox_path = judge_workspace::make_sandbox_path(
         workspace_host_path,
         source_file_path
     );

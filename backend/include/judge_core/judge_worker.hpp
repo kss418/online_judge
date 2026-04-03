@@ -9,7 +9,7 @@
 #include "judge_core/testcase_snapshot.hpp"
 #include "judge_core/testcase_downloader.hpp"
 #include "judge_core/testcase_runner.hpp"
-#include "judge_core/judge_util.hpp"
+#include "judge_core/judge_workspace.hpp"
 #include "judge_core/sandbox_runner.hpp"
 
 #include <chrono>
@@ -64,6 +64,7 @@ private:
         submission_event_listener submission_event_listener,
         db_connection submission_db_connection,
         db_connection testcase_downloader_connection,
+        std::filesystem::path source_root_path,
         std::shared_ptr<problem_lock_registry> problem_lock_registry
     );
 
@@ -93,12 +94,9 @@ private:
         const std::vector<sandbox_runner::run_result>& run_results
     );
     std::expected<submission_stage_metrics, judge_error> process_submission(
-        const submission_dto::queued_submission& queued_submission_value
+        const submission_dto::queued_submission& queued_submission_value,
+        const std::filesystem::path& workspace_path
     );
-    std::expected<std::filesystem::path, judge_error> prepare_submission(
-        const submission_dto::queued_submission& queued_submission_value
-    );
-    std::expected<void, judge_error> cleanup_submission_workspace(std::int64_t submission_id);
     std::expected<void, judge_error> requeue_submission(
         std::int64_t submission_id,
         std::string reason
@@ -117,5 +115,6 @@ private:
     submission_event_listener submission_event_listener_;
     db_connection db_connection_;
     db_connection testcase_downloader_connection_;
+    std::filesystem::path source_root_path_;
     std::shared_ptr<problem_lock_registry> problem_lock_registry_;
 };

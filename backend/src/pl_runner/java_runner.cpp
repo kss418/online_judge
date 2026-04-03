@@ -1,6 +1,6 @@
 #include "pl_runner/java_runner.hpp"
 
-#include "judge_core/judge_util.hpp"
+#include "judge_core/judge_workspace.hpp"
 #include "judge_core/sandbox_runner.hpp"
 
 namespace{
@@ -14,7 +14,7 @@ std::expected<java_runner::compile_result, sandbox_error> java_runner::compile(
     const path& java_runtime_path
 ){
     const path workspace_host_path = source_file_path.parent_path();
-    const path source_sandbox_path = judge_util::instance().make_sandbox_path(
+    const path source_sandbox_path = judge_workspace::make_sandbox_path(
         workspace_host_path,
         source_file_path
     );
@@ -33,7 +33,7 @@ std::expected<java_runner::compile_result, sandbox_error> java_runner::compile(
         {
             java_compiler_path.string(),
             "-d",
-            judge_util::instance().sandbox_workspace_path().string(),
+            judge_workspace::sandbox_workspace_path().string(),
             source_sandbox_path.string()
         },
         run_options_value
@@ -50,7 +50,7 @@ std::expected<java_runner::compile_result, sandbox_error> java_runner::compile(
     compile_result_value.run_command_args_.push_back("-XX:-UsePerfData");
     compile_result_value.run_command_args_.push_back("-cp");
     compile_result_value.run_command_args_.push_back(
-        judge_util::instance().sandbox_workspace_path().string()
+        judge_workspace::sandbox_workspace_path().string()
     );
     compile_result_value.run_command_args_.push_back("Main");
     return compile_result_value;

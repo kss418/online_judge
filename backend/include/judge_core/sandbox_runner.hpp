@@ -36,7 +36,7 @@ namespace sandbox_runner{
 
     struct run_result{
         int exit_code_ = 0;
-        std::vector<std::string> output_lines_;
+        std::string stdout_text_;
         std::string stderr_text_;
         std::size_t max_rss_kb_ = 0;
         std::size_t elapsed_ms_ = 0;

@@ -5,7 +5,7 @@ target_sources(lib
         nsjail_util.cpp
         judge_service.cpp
         judge_worker.cpp
-        judge_util.cpp
+        judge_workspace.cpp
         testcase_util.cpp
         checker.cpp
         testcase_downloader.cpp

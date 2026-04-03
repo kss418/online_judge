@@ -1,6 +1,6 @@
 #include "pl_runner/python_runner.hpp"
 
-#include "judge_core/judge_util.hpp"
+#include "judge_core/judge_workspace.hpp"
 
 std::expected<python_runner::compile_result, sandbox_error> python_runner::compile(
     const path& source_file_path,
@@ -8,7 +8,7 @@ std::expected<python_runner::compile_result, sandbox_error> python_runner::compi
 ){
     compile_result compile_result_value;
     compile_result_value.workspace_host_path_ = source_file_path.parent_path();
-    const auto source_sandbox_path = judge_util::instance().make_sandbox_path(
+    const auto source_sandbox_path = judge_workspace::make_sandbox_path(
         compile_result_value.workspace_host_path_,
         source_file_path
     );

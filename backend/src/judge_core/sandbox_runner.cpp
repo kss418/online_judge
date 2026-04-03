@@ -4,7 +4,6 @@
 #include "common/logger.hpp"
 #include "common/temp_file.hpp"
 #include "common/unique_fd.hpp"
-#include "judge_core/judge_util.hpp"
 #include "judge_core/nsjail_util.hpp"
 
 #include <cerrno>
@@ -316,7 +315,7 @@ std::expected<sandbox_runner::run_result, sandbox_error> sandbox_runner::run(
         result.memory_limit_exceeded_ = true;
     }
 
-    result.output_lines_ = judge_util::instance().normalize_output(*stdout_text_exp);
+    result.stdout_text_ = std::move(*stdout_text_exp);
 
     if(WIFEXITED(wait_result.status_)){
         result.exit_code_ = WEXITSTATUS(wait_result.status_);

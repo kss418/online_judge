@@ -2,14 +2,45 @@
 
 #include "common/blocking_io.hpp"
 #include "common/unique_fd.hpp"
-#include "judge_core/judge_util.hpp"
 
 #include <cerrno>
 #include <fcntl.h>
 #include <unistd.h>
 
+namespace{
+    bool is_blank(char c){
+        return (c == ' ' || c == '\t' || c == '\r');
+    }
+}
+
+std::vector<std::string> checker::normalize_output(std::string_view output){
+    std::vector<std::string> ret;
+    std::string tmp;
+    for(char c : output){
+        if(c == '\n'){
+            while(!tmp.empty() && is_blank(tmp.back())) tmp.pop_back();
+            ret.push_back(tmp);
+            tmp.clear();
+        }
+        else{
+            tmp.push_back(c);
+        }
+    }
+
+    if(!output.empty() && output.back() != '\n'){
+        while(!tmp.empty() && is_blank(tmp.back())) tmp.pop_back();
+        ret.push_back(tmp);
+    }
+
+    while(!ret.empty() && ret.back().empty()){
+        ret.pop_back();
+    }
+
+    return ret;
+}
+
 std::expected<bool, io_error> checker::check(
-    const std::vector<std::string>& output,
+    std::string_view output,
     const path& answer_path
 ){
     unique_fd answer_fd = unique_fd(open(answer_path.c_str(), O_RDONLY));
@@ -23,11 +54,11 @@ std::expected<bool, io_error> checker::check(
     }
 
     auto answer_text = std::move(*answer_text_exp);
-    return output == judge_util::instance().normalize_output(answer_text);
+    return normalize_output(output) == normalize_output(answer_text);
 }
 
 std::expected<judge_result, io_error> checker::check_all(
-    const std::vector<std::vector<std::string>>& output,
+    const std::vector<std::string>& output,
     const testcase_snapshot& testcase_snapshot_value
 ){
     if(output.size() != static_cast<std::size_t>(testcase_snapshot_value.testcase_count)){
