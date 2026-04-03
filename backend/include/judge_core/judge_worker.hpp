@@ -62,8 +62,8 @@ private:
 
     judge_worker(
         submission_event_listener submission_event_listener,
-        db_connection db_connection,
-        testcase_downloader testcase_downloader,
+        db_connection submission_db_connection,
+        db_connection testcase_downloader_connection,
         std::shared_ptr<problem_lock_registry> problem_lock_registry
     );
 
@@ -116,6 +116,6 @@ private:
 
     submission_event_listener submission_event_listener_;
     db_connection db_connection_;
-    testcase_downloader testcase_downloader_;
+    db_connection testcase_downloader_connection_;
     std::shared_ptr<problem_lock_registry> problem_lock_registry_;
 };

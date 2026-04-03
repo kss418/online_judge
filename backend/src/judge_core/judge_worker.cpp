@@ -95,13 +95,6 @@ std::expected<judge_worker, judge_error> judge_worker::create(
         return std::unexpected(testcase_downloader_connection_exp.error());
     }
 
-    auto testcase_downloader_exp = testcase_downloader::create(
-        std::move(*testcase_downloader_connection_exp)
-    );
-    if(!testcase_downloader_exp){
-        return std::unexpected(testcase_downloader_exp.error());
-    }
-
     auto db_connection_exp = db_connection::create(*db_config_exp);
     if(!db_connection_exp){
         return std::unexpected(db_connection_exp.error());
@@ -110,20 +103,20 @@ std::expected<judge_worker, judge_error> judge_worker::create(
     return judge_worker(
         std::move(submission_event_listener),
         std::move(*db_connection_exp),
-        std::move(*testcase_downloader_exp),
+        std::move(*testcase_downloader_connection_exp),
         std::move(problem_lock_registry)
     );
 }
 
 judge_worker::judge_worker(
     submission_event_listener submission_event_listener,
-    db_connection db_connection,
-    testcase_downloader testcase_downloader,
+    db_connection submission_db_connection,
+    db_connection testcase_downloader_connection,
     std::shared_ptr<problem_lock_registry> problem_lock_registry
 ) :
     submission_event_listener_(std::move(submission_event_listener)),
-    db_connection_(std::move(db_connection)),
-    testcase_downloader_(std::move(testcase_downloader)),
+    db_connection_(std::move(submission_db_connection)),
+    testcase_downloader_connection_(std::move(testcase_downloader_connection)),
     problem_lock_registry_(std::move(problem_lock_registry)){}
 
 submission_status judge_worker::to_submission_status(judge_result result){
@@ -385,7 +378,8 @@ judge_worker::process_submission(
                 return std::unexpected(problem_lock_exp.error());
             }
 
-            return testcase_downloader_.ensure_testcase_snapshot(
+            return testcase_downloader::ensure_testcase_snapshot(
+                testcase_downloader_connection_,
                 queued_submission_value.problem_id
             );
         }
