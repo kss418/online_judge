@@ -4,10 +4,10 @@
 #include "common/logger.hpp"
 #include "common/string_util.hpp"
 #include "error/infra_error.hpp"
-#include "judge_core/problem_lock_registry.hpp"
-#include "judge_core/judge_worker.hpp"
-#include "judge_core/sandbox_runner.hpp"
-#include "judge_core/submission_execution_service.hpp"
+#include "judge_core/application/judge_worker.hpp"
+#include "judge_core/application/submission_execution_service.hpp"
+#include "judge_core/infrastructure/sandbox_runner.hpp"
+#include "judge_core/infrastructure/problem_lock_registry.hpp"
 
 #include <chrono>
 #include <cstdint>

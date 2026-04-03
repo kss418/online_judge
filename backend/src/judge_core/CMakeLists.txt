@@ -1,19 +1,4 @@
-target_sources(lib
-    PRIVATE
-        testcase_runner.cpp
-        sandbox_runner.cpp
-        nsjail_util.cpp
-        judge_expectation_loader.cpp
-        judge_policy.cpp
-        judge_service.cpp
-        judge_submission_data.cpp
-        submission_execution_service.cpp
-        submission_queue_source.cpp
-        judge_worker.cpp
-        judge_workspace.cpp
-        testcase_snapshot_service.cpp
-        testcase_util.cpp
-        checker.cpp
-        testcase_downloader.cpp
-        problem_lock_registry.cpp
-)
+add_subdirectory(infrastructure)
+add_subdirectory(application)
+add_subdirectory(policy)
+add_subdirectory(types)

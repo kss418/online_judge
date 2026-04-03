@@ -1,0 +1,15 @@
+target_sources(lib
+    PRIVATE
+        cpp_runner.cpp
+        python_runner.cpp
+        java_runner.cpp
+        problem_lock_registry.cpp
+        program_builder.cpp
+        nsjail_util.cpp
+        judge_workspace.cpp
+        sandbox_runner.cpp
+        submission_queue_source.cpp
+        testcase_downloader.cpp
+        testcase_runner.cpp
+        testcase_util.cpp
+)

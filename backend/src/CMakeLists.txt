@@ -15,7 +15,6 @@ add_subdirectory(http_router)
 add_subdirectory(http_core)
 add_subdirectory(http_guard)
 add_subdirectory(judge_core)
-add_subdirectory(pl_runner)
 
 target_include_directories(lib
     PUBLIC
