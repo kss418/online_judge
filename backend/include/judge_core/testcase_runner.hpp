@@ -3,7 +3,7 @@
 #include "error/judge_error.hpp"
 #include "judge_core/execution_report.hpp"
 #include "judge_core/testcase_snapshot.hpp"
-#include "pl_runner/pl_runner_util.hpp"
+#include "pl_runner/program_build_types.hpp"
 
 #include <cstdint>
 #include <expected>
@@ -12,7 +12,7 @@
 
 namespace testcase_runner{
     std::expected<execution_report::batch, judge_error> run_all_testcases(
-        const std::filesystem::path& source_file_path,
+        const program_build::execution_plan& execution_plan_value,
         const testcase_snapshot& testcase_snapshot_value
     );
 }

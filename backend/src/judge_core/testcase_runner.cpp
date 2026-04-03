@@ -42,7 +42,7 @@ namespace{
     }
 
     sandbox_runner::run_options make_base_run_options(
-        const pl_runner_util::execution_plan& execution_plan_value,
+        const program_build::execution_plan& execution_plan_value,
         const problem_content_dto::limits& problem_limits_value
     ){
         sandbox_runner::run_options run_options_value;
@@ -66,7 +66,7 @@ namespace{
 }
 
 std::expected<execution_report::batch, judge_error> testcase_runner::run_all_testcases(
-    const std::filesystem::path& source_file_path,
+    const program_build::execution_plan& execution_plan_value,
     const testcase_snapshot& testcase_snapshot_value
 ){
     const auto validated_testcase_count_exp = testcase_snapshot_value.validate_testcase_layout();
@@ -77,38 +77,12 @@ std::expected<execution_report::batch, judge_error> testcase_runner::run_all_tes
     execution_report::batch execution_report_value;
     execution_report_value.testcase_count = *validated_testcase_count_exp;
 
-    const auto build_source_exp = timer::measure_elapsed_ms(
-        execution_report_value.prepare_elapsed_ms,
-        [&source_file_path]{
-            return pl_runner_util::instance().build_source(source_file_path);
-        }
-    );
-    if(!build_source_exp){
-        return std::unexpected(build_source_exp.error());
-    }
-
-    if(!build_source_exp->is_runnable()){
-        execution_report_value.compile_failed = true;
-        execution_report_value.executions.push_back(
-            make_testcase_execution(
-                *build_source_exp->compile_failed_run_result_
-            )
-        );
-        return execution_report_value;
-    }
-
-    const auto execution_plan_exp =
-        pl_runner_util::instance().make_execution_plan(*build_source_exp);
-    if(!execution_plan_exp){
-        return std::unexpected(execution_plan_exp.error());
-    }
-
     execution_report_value.executions.reserve(
         static_cast<std::size_t>(*validated_testcase_count_exp)
     );
 
     const auto base_run_options_value = make_base_run_options(
-        *execution_plan_exp,
+        execution_plan_value,
         testcase_snapshot_value.limits_value
     );
 
@@ -127,7 +101,7 @@ std::expected<execution_report::batch, judge_error> testcase_runner::run_all_tes
                 );
 
                 const auto run_one_testcase_exp = run_one_testcase(
-                    execution_plan_exp->run_command_args_,
+                    execution_plan_value.run_command_args_,
                     run_options_value
                 );
                 if(!run_one_testcase_exp){

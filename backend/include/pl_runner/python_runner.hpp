@@ -1,7 +1,7 @@
 #pragma once
 
 #include "error/sandbox_error.hpp"
-#include "pl_runner/pl_runner_util.hpp"
+#include "pl_runner/program_build_types.hpp"
 
 #include <expected>
 #include <filesystem>
@@ -9,7 +9,7 @@
 namespace python_runner{
     using path = std::filesystem::path;
 
-    std::expected<pl_runner_util::build_artifact, sandbox_error> build(
+    std::expected<program_build::runner_build_result, sandbox_error> build(
         const path& source_file_path
     );
 }
