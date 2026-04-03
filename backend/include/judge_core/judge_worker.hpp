@@ -29,8 +29,6 @@ public:
     );
 
     std::expected<void, judge_error> run();
-    std::expected<std::optional<submission_dto::queued_submission>, judge_error>
-    lease_submission();
 
     struct submission_stage_metrics{
         std::string event = "completed";

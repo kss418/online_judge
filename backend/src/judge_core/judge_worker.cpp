@@ -4,6 +4,7 @@
 #include "common/logger.hpp"
 #include "common/timer.hpp"
 #include "db_service/submission_service.hpp"
+#include "judge_core/judge_service.hpp"
 #include "judge_core/checker.hpp"
 #include "judge_core/judge_util.hpp"
 #include "judge_core/testcase_runner.hpp"
@@ -286,19 +287,17 @@ std::expected<judge_result, judge_error> judge_worker::check_result(
 
 std::expected<void, judge_error> judge_worker::run(){
     while(true){
-        auto queued_submission_opt_exp = lease_submission();
+        auto queued_submission_opt_exp = judge_service::poll_next_submission(
+            db_connection_,
+            submission_event_listener_,
+            LEASE_DURATION,
+            NOTIFICATION_WAIT_TIMEOUT
+        );
         if(!queued_submission_opt_exp){
             return std::unexpected(queued_submission_opt_exp.error());
         }
 
         if(!queued_submission_opt_exp->has_value()){
-            auto wait_submission_notification_exp =
-                submission_event_listener_.wait_submission_notification(
-                    NOTIFICATION_WAIT_TIMEOUT
-                );
-            if(!wait_submission_notification_exp){
-                return std::unexpected(wait_submission_notification_exp.error());
-            }
             continue;
         }
 
@@ -544,15 +543,5 @@ std::expected<void, judge_error> judge_worker::requeue_submission(
         db_connection_,
         submission_id,
         std::move(reason)
-    );
-}
-
-std::expected<std::optional<submission_dto::queued_submission>, judge_error>
-judge_worker::lease_submission(){
-    submission_dto::lease_request lease_request_value;
-    lease_request_value.lease_duration = LEASE_DURATION;
-    return submission_service::lease_submission(
-        db_connection_,
-        lease_request_value
     );
 }

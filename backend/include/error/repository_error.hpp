@@ -27,8 +27,6 @@ struct repository_error{
     static const repository_error conflict;
     static const repository_error internal;
 
-    static bool should_retry_db_error(const db_error& error);
-    static bool should_reconnect_db_error(const db_error& error);
     static repository_error from_db_error(const db_error& ec);
 };
 

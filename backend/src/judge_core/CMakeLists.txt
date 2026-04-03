@@ -3,6 +3,7 @@ target_sources(lib
         testcase_runner.cpp
         sandbox_runner.cpp
         nsjail_util.cpp
+        judge_service.cpp
         judge_worker.cpp
         judge_util.cpp
         testcase_util.cpp

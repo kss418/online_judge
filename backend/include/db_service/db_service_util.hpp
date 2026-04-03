@@ -17,22 +17,6 @@ namespace db_service_util{
     inline constexpr int DB_TRANSACTION_ATTEMPT_COUNT = 5;
 
     template <typename T>
-    std::expected<T, service_error> map_db_error_to_service_error(
-        std::expected<T, db_error> result_exp
-    ){
-        if(!result_exp){
-            return std::unexpected(service_error(result_exp.error()));
-        }
-
-        if constexpr(std::is_void_v<T>){
-            return {};
-        }
-        else{
-            return std::expected<T, service_error>{std::move(*result_exp)};
-        }
-    }
-
-    template <typename T>
     std::expected<T, service_error> map_repository_error_to_service_error(
         std::expected<T, repository_error> result_exp
     ){
@@ -78,6 +62,39 @@ namespace db_service_util{
     using operation_result = std::invoke_result_t<callback_type>;
 
     namespace detail{
+        inline service_error map_service_db_error(const db_error& raw_error){
+            switch(raw_error.code){
+                case db_error_code::invalid_argument:
+                case db_error_code::constraint_violation:
+                    return service_error{
+                        service_error_code::validation_error,
+                        raw_error.message
+                    };
+                case db_error_code::unique_violation:
+                    return service_error{
+                        service_error_code::conflict,
+                        raw_error.message
+                    };
+                case db_error_code::invalid_connection:
+                case db_error_code::interrupted:
+                case db_error_code::broken_connection:
+                case db_error_code::serialization_failure:
+                case db_error_code::deadlock_detected:
+                case db_error_code::unavailable:
+                    return service_error{
+                        service_error_code::unavailable,
+                        raw_error.message
+                    };
+                case db_error_code::internal:
+                    return service_error{
+                        service_error_code::internal,
+                        raw_error.message
+                    };
+            }
+
+            return service_error::internal;
+        }
+
         inline std::expected<void, service_error> handle_service_db_error(
             db_connection& connection,
             int attempt,
@@ -86,20 +103,20 @@ namespace db_service_util{
         ){
             if(
                 attempt == retry_count ||
-                !repository_error::should_retry_db_error(raw_error)
+                !raw_error.is_retryable()
             ){
-                return std::unexpected(service_error(raw_error));
+                return std::unexpected(map_service_db_error(raw_error));
             }
 
-            if(repository_error::should_reconnect_db_error(raw_error)){
+            if(raw_error.should_reconnect()){
                 const auto reconnect_exp = connection.reconnect();
                 if(!reconnect_exp){
                     const auto reconnect_error = reconnect_exp.error();
                     if(
                         attempt == retry_count ||
-                        !repository_error::should_retry_db_error(reconnect_error)
+                        !reconnect_error.is_retryable()
                     ){
-                        return std::unexpected(service_error(reconnect_error));
+                        return std::unexpected(map_service_db_error(reconnect_error));
                     }
                 }
             }
@@ -131,12 +148,12 @@ namespace db_service_util{
             last_error = callback_error;
             if(
                 attempt == retry_count ||
-                !repository_error::should_retry_db_error(callback_error)
+                !callback_error.is_retryable()
             ){
                 return std::unexpected(callback_error);
             }
 
-            if(repository_error::should_reconnect_db_error(callback_error)){
+            if(callback_error.should_reconnect()){
                 const auto reconnect_exp = db_connection_value.reconnect();
                 if(!reconnect_exp){
                     last_error = reconnect_exp.error();
@@ -211,7 +228,7 @@ namespace db_service_util{
         callback_type&& callback
     ) -> service_write_transaction_result<callback_type> {
         if(!connection.is_connected()){
-            return std::unexpected(service_error(db_error::invalid_connection));
+            return std::unexpected(detail::map_service_db_error(db_error::invalid_connection));
         }
 
         try{
@@ -229,7 +246,7 @@ namespace db_service_util{
         }
         catch(const std::exception& exception){
             return std::unexpected(
-                service_error(db_error::from_psql_exception(exception))
+                detail::map_service_db_error(db_error::from_psql_exception(exception))
             );
         }
     }
@@ -242,7 +259,7 @@ namespace db_service_util{
         callback_type&& callback
     ) -> service_write_transaction_result<callback_type> {
         if(retry_count <= 0){
-            return std::unexpected(service_error(db_error::invalid_argument));
+            return std::unexpected(detail::map_service_db_error(db_error::invalid_argument));
         }
 
         for(int attempt = 1; attempt <= retry_count; ++attempt){
@@ -353,7 +370,7 @@ namespace db_service_util{
         callback_type&& callback
     ) -> service_read_transaction_result<callback_type> {
         if(!connection.is_connected()){
-            return std::unexpected(service_error(db_error::invalid_connection));
+            return std::unexpected(detail::map_service_db_error(db_error::invalid_connection));
         }
 
         try{
@@ -362,7 +379,7 @@ namespace db_service_util{
         }
         catch(const std::exception& exception){
             return std::unexpected(
-                service_error(db_error::from_psql_exception(exception))
+                detail::map_service_db_error(db_error::from_psql_exception(exception))
             );
         }
     }
@@ -375,7 +392,7 @@ namespace db_service_util{
         callback_type&& callback
     ) -> service_read_transaction_result<callback_type> {
         if(retry_count <= 0){
-            return std::unexpected(service_error(db_error::invalid_argument));
+            return std::unexpected(detail::map_service_db_error(db_error::invalid_argument));
         }
 
         for(int attempt = 1; attempt <= retry_count; ++attempt){
