@@ -18,11 +18,11 @@ namespace judge_submission_data{
         const process_submission_data& process_submission_data_value
     ){
         submission_stage_metrics_value.testcase_count =
-            process_submission_data_value.testcase_count;
+            process_submission_data_value.execution_report_value.testcase_count;
         submission_stage_metrics_value.compile_prepare_elapsed_ms =
-            process_submission_data_value.compile_prepare_elapsed_ms;
+            process_submission_data_value.execution_report_value.prepare_elapsed_ms;
         submission_stage_metrics_value.testcase_execution_elapsed_ms =
-            process_submission_data_value.testcase_execution_elapsed_ms;
+            process_submission_data_value.execution_report_value.testcase_execution_elapsed_ms;
         submission_stage_metrics_value.final_submission_status =
             judge_policy::to_submission_status(
                 process_submission_data_value.judge_result_value
@@ -44,16 +44,12 @@ namespace judge_submission_data{
 
     process_submission_data make_process_submission_data(
         judge_result judge_result_value,
-        testcase_runner::run_batch&& run_batch_value
+        execution_report::batch&& execution_report_value
     ){
         process_submission_data process_submission_data_value;
         process_submission_data_value.judge_result_value = judge_result_value;
-        process_submission_data_value.testcase_count = run_batch_value.testcase_count;
-        process_submission_data_value.compile_prepare_elapsed_ms =
-            run_batch_value.prepare_elapsed_ms;
-        process_submission_data_value.testcase_execution_elapsed_ms =
-            run_batch_value.testcase_execution_elapsed_ms;
-        process_submission_data_value.run_results = std::move(run_batch_value.run_results);
+        process_submission_data_value.execution_report_value =
+            std::move(execution_report_value);
         return process_submission_data_value;
     }
 }

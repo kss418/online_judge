@@ -7,18 +7,6 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
-#include <vector>
-
-enum class judge_result{
-    accepted,
-    wrong_answer,
-    time_limit_exceeded,
-    memory_limit_exceeded,
-    runtime_error,
-    compile_error,
-    output_exceeded,
-    invalid_output
-};
 
 namespace judge_workspace{
     std::expected<std::filesystem::path, io_error> make_submission_workspace_path(

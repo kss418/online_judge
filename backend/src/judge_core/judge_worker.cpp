@@ -288,7 +288,7 @@ judge_worker::process_submission(
             return finalize_submission(
                 queued_submission_value.submission_id,
                 judge_submission_exp->judge_result_value,
-                judge_submission_exp->run_results
+                judge_submission_exp->execution_report_value
             );
         }
     );
@@ -329,14 +329,14 @@ judge_worker::judge_submission(
 std::expected<void, judge_error> judge_worker::finalize_submission(
     std::int64_t submission_id,
     judge_result result,
-    const std::vector<sandbox_runner::run_result>& run_results
+    const execution_report::batch& execution_report_value
 ){
     const submission_status submission_status_value =
         judge_policy::to_submission_status(result);
     const auto finalize_submission_data_value =
         judge_policy::make_finalize_submission_data(
             submission_status_value,
-            run_results
+            execution_report_value
         );
     const submission_dto::finalize_request finalize_request_value =
         submission_dto::make_finalize_request(

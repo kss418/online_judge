@@ -4,6 +4,7 @@
 #include "common/submission_status.hpp"
 #include "dto/submission_dto.hpp"
 #include "error/judge_error.hpp"
+#include "judge_core/execution_report.hpp"
 #include "judge_core/judge_policy.hpp"
 #include "judge_core/judge_submission_data.hpp"
 #include "judge_core/problem_lock_registry.hpp"
@@ -11,17 +12,13 @@
 #include "judge_core/testcase_snapshot.hpp"
 #include "judge_core/testcase_snapshot_service.hpp"
 #include "judge_core/testcase_runner.hpp"
-#include "judge_core/judge_workspace.hpp"
-#include "judge_core/sandbox_runner.hpp"
 
 #include <chrono>
 #include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <memory>
-#include <optional>
 #include <string>
-#include <vector>
 
 class judge_worker{
 public:
@@ -41,7 +38,7 @@ private:
     std::expected<void, judge_error> finalize_submission(
         std::int64_t submission_id,
         judge_result result,
-        const std::vector<sandbox_runner::run_result>& run_results
+        const execution_report::batch& execution_report_value
     );
     std::expected<judge_submission_data::submission_stage_metrics, judge_error> process_submission(
         const submission_dto::queued_submission& queued_submission_value,

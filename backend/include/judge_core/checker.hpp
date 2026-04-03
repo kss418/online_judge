@@ -1,6 +1,6 @@
 #pragma once
 #include "error/io_error.hpp"
-#include "judge_core/judge_workspace.hpp"
+#include "judge_core/judge_result.hpp"
 #include "judge_core/testcase_snapshot.hpp"
 
 #include <filesystem>
