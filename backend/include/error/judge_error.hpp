@@ -5,7 +5,6 @@
 #include <string>
 
 struct db_error;
-struct error_code;
 struct infra_error;
 struct io_error;
 struct sandbox_error;
@@ -25,7 +24,6 @@ struct judge_error{
     judge_error(judge_error_code code_value, std::string message_value = {});
     judge_error(const db_error& ec);
     judge_error(const service_error& ec);
-    judge_error(const error_code& ec);
     judge_error(const infra_error& ec);
     judge_error(const io_error& ec);
     judge_error(const sandbox_error& ec);

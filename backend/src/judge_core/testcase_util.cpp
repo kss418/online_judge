@@ -9,17 +9,21 @@
 #include <vector>
 
 namespace{
-    std::expected<std::filesystem::path, error_code> validate_testcase_base_path(
+    io_error make_invalid_argument_error(const char* message){
+        return io_error{io_error_code::invalid_argument, message};
+    }
+
+    std::expected<std::filesystem::path, io_error> validate_testcase_base_path(
         const std::filesystem::path& testcase_base_path
     ){
         if(testcase_base_path.empty()){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(make_invalid_argument_error("invalid testcase base path"));
         }
 
         return testcase_base_path;
     }
 
-    std::expected<std::filesystem::path, error_code> make_validated_testcase_path(
+    std::expected<std::filesystem::path, io_error> make_validated_testcase_path(
         const std::filesystem::path& testcase_base_path,
         std::filesystem::path relative_path
     ){
@@ -44,12 +48,12 @@ namespace{
 
 }
 
-std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_problem_directory_path(
+std::expected<std::filesystem::path, io_error> testcase_util::make_testcase_problem_directory_path(
     const std::filesystem::path& testcase_root_path,
     std::int64_t problem_id
 ){
     if(problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(make_invalid_argument_error("invalid problem id"));
     }
 
     return make_validated_testcase_path(
@@ -58,13 +62,13 @@ std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_pr
     );
 }
 
-std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_version_directory_path(
+std::expected<std::filesystem::path, io_error> testcase_util::make_testcase_version_directory_path(
     const std::filesystem::path& testcase_root_path,
     std::int64_t problem_id,
     std::int32_t version
 ){
     if(version <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(make_invalid_argument_error("invalid testcase version"));
     }
 
     const auto problem_directory_path_exp = make_testcase_problem_directory_path(
@@ -81,12 +85,12 @@ std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_ve
     );
 }
 
-std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_input_path(
+std::expected<std::filesystem::path, io_error> testcase_util::make_testcase_input_path(
     const std::filesystem::path& testcase_directory_path,
     std::int32_t order
 ){
     if(order <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(make_invalid_argument_error("invalid testcase order"));
     }
 
     return make_validated_testcase_path(
@@ -95,12 +99,12 @@ std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_in
     );
 }
 
-std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_output_path(
+std::expected<std::filesystem::path, io_error> testcase_util::make_testcase_output_path(
     const std::filesystem::path& testcase_directory_path,
     std::int32_t order
 ){
     if(order <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(make_invalid_argument_error("invalid testcase order"));
     }
 
     return make_validated_testcase_path(
@@ -109,7 +113,7 @@ std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_ou
     );
 }
 
-std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_memory_limit_file_path(
+std::expected<std::filesystem::path, io_error> testcase_util::make_testcase_memory_limit_file_path(
     const std::filesystem::path& testcase_directory_path
 ){
     return make_validated_testcase_path(
@@ -118,7 +122,7 @@ std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_me
     );
 }
 
-std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_time_limit_file_path(
+std::expected<std::filesystem::path, io_error> testcase_util::make_testcase_time_limit_file_path(
     const std::filesystem::path& testcase_directory_path
 ){
     return make_validated_testcase_path(
@@ -127,7 +131,7 @@ std::expected<std::filesystem::path, error_code> testcase_util::make_testcase_ti
     );
 }
 
-std::expected<std::int32_t, error_code> testcase_util::count_testcase_output(
+std::expected<std::int32_t, io_error> testcase_util::count_testcase_output(
     const std::filesystem::path& testcase_directory_path
 ){
     const auto validated_directory_path_exp = validate_testcase_base_path(testcase_directory_path);
@@ -138,7 +142,7 @@ std::expected<std::int32_t, error_code> testcase_util::count_testcase_output(
     std::error_code iterator_ec;
     std::filesystem::directory_iterator directory_it(*validated_directory_path_exp, iterator_ec);
     if(iterator_ec){
-        return std::unexpected(error_code::create(error_code::map_errno(iterator_ec.value())));
+        return std::unexpected(io_error::from_error_code(iterator_ec));
     }
 
     std::int32_t testcase_count = 0;
@@ -151,12 +155,12 @@ std::expected<std::int32_t, error_code> testcase_util::count_testcase_output(
     return testcase_count;
 }
 
-std::expected<std::int32_t, error_code> testcase_util::validate_testcase_output(
+std::expected<std::int32_t, io_error> testcase_util::validate_testcase_output(
     const std::filesystem::path& testcase_directory_path,
     std::int32_t testcase_count
 ){
     if(testcase_count < 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(make_invalid_argument_error("invalid testcase count"));
     }
 
     const auto validated_directory_path_exp = validate_testcase_base_path(testcase_directory_path);
@@ -170,7 +174,7 @@ std::expected<std::int32_t, error_code> testcase_util::validate_testcase_output(
     std::error_code iterator_ec;
     std::filesystem::directory_iterator directory_it(*validated_directory_path_exp, iterator_ec);
     if(iterator_ec){
-        return std::unexpected(error_code::create(error_code::map_errno(iterator_ec.value())));
+        return std::unexpected(io_error::from_error_code(iterator_ec));
     }
 
     for(std::filesystem::directory_iterator end_it; directory_it != end_it; ++directory_it){
@@ -192,7 +196,9 @@ std::expected<std::int32_t, error_code> testcase_util::validate_testcase_output(
             order <= 0 ||
             order > testcase_count
         ){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(
+                make_invalid_argument_error("invalid testcase output layout")
+            );
         }
 
         testcase_orders.push_back(order);
@@ -204,7 +210,9 @@ std::expected<std::int32_t, error_code> testcase_util::validate_testcase_output(
             static_cast<std::size_t>(index) >= testcase_orders.size() ||
             testcase_orders[static_cast<std::size_t>(index)] != index + 1
         ){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(
+                make_invalid_argument_error("invalid testcase output layout")
+            );
         }
     }
 

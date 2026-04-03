@@ -1,33 +1,32 @@
 #include "judge_core/checker.hpp"
 
-#include "common/unique_fd.hpp"
 #include "common/blocking_io.hpp"
-#include "error/io_error_bridge.hpp"
+#include "common/unique_fd.hpp"
 #include "judge_core/judge_util.hpp"
 
 #include <cerrno>
 #include <fcntl.h>
 #include <unistd.h>
 
-std::expected<bool, error_code> checker::check(
+std::expected<bool, io_error> checker::check(
     const std::vector<std::string>& output,
     const path& answer_path
 ){
     unique_fd answer_fd = unique_fd(open(answer_path.c_str(), O_RDONLY));
     if(!answer_fd){
-        return std::unexpected(error_code::create(error_code::map_errno(errno)));
+        return std::unexpected(io_error::from_errno(errno));
     }
 
     auto answer_text_exp = blocking_io::read_all(answer_fd.get());
     if(!answer_text_exp){
-        return std::unexpected(io_error_bridge::to_error_code(answer_text_exp.error()));
+        return std::unexpected(answer_text_exp.error());
     }
 
     auto answer_text = std::move(*answer_text_exp);
     return output == judge_util::instance().normalize_output(answer_text);
 }
 
-std::expected<judge_result, error_code> checker::check_all(
+std::expected<judge_result, io_error> checker::check_all(
     const std::vector<std::vector<std::string>>& output,
     const testcase_snapshot& testcase_snapshot_value
 ){

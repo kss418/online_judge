@@ -9,11 +9,16 @@ problem_lock_registry::scoped_lock::scoped_lock(
     entry_(std::move(entry_value)),
     lock_(std::move(lock_value)){}
 
-std::expected<problem_lock_registry::scoped_lock, error_code> problem_lock_registry::lock(
+std::expected<problem_lock_registry::scoped_lock, judge_error> problem_lock_registry::lock(
     std::int64_t problem_id
 ){
     if(problem_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(
+            judge_error{
+                judge_error_code::validation_error,
+                "invalid problem id"
+            }
+        );
     }
 
     std::shared_ptr<entry> entry_value;

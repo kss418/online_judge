@@ -123,16 +123,6 @@ std::string to_string(signal_error ec){
     return "unknown signal";
 }
 
-std::string to_string(limit_error ec){
-    switch(ec){
-        case limit_error::invalid_time_limit:
-            return "invalid time limit";
-        case limit_error::invalid_memory_limit:
-            return "invalid memory limit";
-    }
-    return "unknown limit error";
-}
-
 std::string to_string(boost_error ec){
     switch(ec){
         case boost_error::operation_aborted:
@@ -203,7 +193,6 @@ std::string to_string(error_code ec){
     if(ec.type_ == error_type::syscall_type) return to_string(static_cast<syscall_error>(ec.code_));
     else if(ec.type_ == error_type::errno_type) return to_string(static_cast<errno_error>(ec.code_));
     else if(ec.type_ == error_type::signal_type) return to_string(static_cast<signal_error>(ec.code_));
-    else if(ec.type_ == error_type::limit_type) return to_string(static_cast<limit_error>(ec.code_));
     else if(ec.type_ == error_type::boost_type) return to_string(static_cast<boost_error>(ec.code_));
     else if(ec.type_ == error_type::psql_type) return to_string(static_cast<psql_error>(ec.code_));
     return "unknown error code";
@@ -219,10 +208,6 @@ error_code error_code::create(errno_error code){
 
 error_code error_code::create(signal_error code){
     return error_code{error_type::signal_type, static_cast<int>(code)};
-}
-
-error_code error_code::create(limit_error code){
-    return error_code{error_type::limit_type, static_cast<int>(code)};
 }
 
 error_code error_code::create(boost_error code){

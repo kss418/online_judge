@@ -2,14 +2,50 @@
 
 #include "common/blocking_io.hpp"
 #include "common/unique_fd.hpp"
-#include "error/io_error_bridge.hpp"
 
 #include <cerrno>
+#include <csignal>
+#include <cstring>
+#include <string>
 #include <string_view>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <utility>
 
 namespace zip_util_internal{
+    zip_error make_invalid_argument_error(const char* message){
+        return zip_error{zip_error_code::invalid_argument, message};
+    }
+
+    zip_error make_command_unavailable_error(){
+        return zip_error{
+            zip_error_code::command_unavailable,
+            "unzip command unavailable"
+        };
+    }
+
+    zip_error make_invalid_archive_error(std::string message = {}){
+        return zip_error{
+            zip_error_code::invalid_archive,
+            message.empty() ? "invalid zip archive" : std::move(message)
+        };
+    }
+
+    zip_error make_signal_error(int signal_number){
+        const char* signal_description = ::strsignal(signal_number);
+        if(signal_description == nullptr || *signal_description == '\0'){
+            return zip_error{
+                zip_error_code::internal,
+                "unzip command terminated by signal"
+            };
+        }
+
+        return zip_error{
+            zip_error_code::internal,
+            "unzip command terminated by signal: " + std::string{signal_description}
+        };
+    }
+
     std::string trim_line_endings(std::string_view value){
         std::string trimmed(value);
         while(!trimmed.empty() && (trimmed.back() == '\n' || trimmed.back() == '\r')){
@@ -18,23 +54,23 @@ namespace zip_util_internal{
         return trimmed;
     }
 
-    std::expected<std::string, error_code> run_unzip_command_capture_output(
+    std::expected<std::string, zip_error> run_unzip_command_capture_output(
         const std::vector<std::string>& command_args
     ){
         if(command_args.empty() || command_args[0].empty()){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(make_invalid_argument_error("missing unzip command"));
         }
 
         int output_pipe[2];
         if(pipe(output_pipe) < 0){
-            return std::unexpected(error_code::create(syscall_error::pipe_failed));
+            return std::unexpected(zip_error::from_errno(errno));
         }
 
         unique_fd read_fd(output_pipe[0]);
         unique_fd write_fd(output_pipe[1]);
         const pid_t child_pid = fork();
         if(child_pid < 0){
-            return std::unexpected(error_code::create(syscall_error::fork_failed));
+            return std::unexpected(zip_error::from_errno(errno));
         }
 
         if(child_pid == 0){
@@ -64,10 +100,10 @@ namespace zip_util_internal{
         const auto output_exp = blocking_io::read_all(read_fd.get());
         const auto close_read_fd_exp = read_fd.close_checked();
         if(!output_exp){
-            return std::unexpected(io_error_bridge::to_error_code(output_exp.error()));
+            return std::unexpected(zip_error::from_io_error(output_exp.error()));
         }
         if(!close_read_fd_exp){
-            return std::unexpected(io_error_bridge::to_error_code(close_read_fd_exp.error()));
+            return std::unexpected(zip_error::from_io_error(close_read_fd_exp.error()));
         }
 
         int wait_status = 0;
@@ -80,31 +116,40 @@ namespace zip_util_internal{
                 continue;
             }
 
-            return std::unexpected(error_code::create(syscall_error::waitpid_failed));
+            return std::unexpected(zip_error::from_errno(errno));
         }
 
         if(WIFSIGNALED(wait_status)){
-            return std::unexpected(error_code::create(error_code::map_signal(WTERMSIG(wait_status))));
+            return std::unexpected(make_signal_error(WTERMSIG(wait_status)));
         }
         if(!WIFEXITED(wait_status)){
-            return std::unexpected(error_code::create(syscall_error::waitpid_failed));
+            return std::unexpected(zip_error{
+                zip_error_code::internal,
+                "unzip command exited unexpectedly"
+            });
         }
 
         const int exit_code = WEXITSTATUS(wait_status);
         if(exit_code == 127){
-            return std::unexpected(error_code::create(errno_error::file_not_found));
+            return std::unexpected(make_command_unavailable_error());
         }
         if(exit_code != 0){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(make_invalid_archive_error(*output_exp));
         }
 
         return *output_exp;
     }
 }
 
-std::expected<std::vector<std::string>, error_code> zip_util::list_entry_names(
+std::expected<std::vector<std::string>, zip_error> zip_util::list_entry_names(
     const std::filesystem::path& archive_path
 ){
+    if(archive_path.empty()){
+        return std::unexpected(
+            zip_util_internal::make_invalid_argument_error("archive path is empty")
+        );
+    }
+
     const auto archive_listing_exp = zip_util_internal::run_unzip_command_capture_output({
         "unzip",
         "-Z1",
@@ -136,10 +181,21 @@ std::expected<std::vector<std::string>, error_code> zip_util::list_entry_names(
     return entry_names;
 }
 
-std::expected<void, error_code> zip_util::extract_to_directory(
+std::expected<void, zip_error> zip_util::extract_to_directory(
     const std::filesystem::path& archive_path,
     const std::filesystem::path& output_directory_path
 ){
+    if(archive_path.empty()){
+        return std::unexpected(
+            zip_util_internal::make_invalid_argument_error("archive path is empty")
+        );
+    }
+    if(output_directory_path.empty()){
+        return std::unexpected(
+            zip_util_internal::make_invalid_argument_error("output directory path is empty")
+        );
+    }
+
     const auto extract_exp = zip_util_internal::run_unzip_command_capture_output({
         "unzip",
         "-qq",

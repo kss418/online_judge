@@ -24,23 +24,23 @@ struct testcase_snapshot{
         return testcase_snapshot_value;
     }
 
-    std::expected<std::filesystem::path, error_code> make_input_path(std::int32_t order) const{
+    std::expected<std::filesystem::path, io_error> make_input_path(std::int32_t order) const{
         return testcase_util::make_testcase_input_path(directory_path, order);
     }
 
-    std::expected<std::filesystem::path, error_code> make_output_path(std::int32_t order) const{
+    std::expected<std::filesystem::path, io_error> make_output_path(std::int32_t order) const{
         return testcase_util::make_testcase_output_path(directory_path, order);
     }
 
-    std::expected<std::filesystem::path, error_code> make_memory_limit_file_path() const{
+    std::expected<std::filesystem::path, io_error> make_memory_limit_file_path() const{
         return testcase_util::make_testcase_memory_limit_file_path(directory_path);
     }
 
-    std::expected<std::filesystem::path, error_code> make_time_limit_file_path() const{
+    std::expected<std::filesystem::path, io_error> make_time_limit_file_path() const{
         return testcase_util::make_testcase_time_limit_file_path(directory_path);
     }
 
-    std::expected<std::int32_t, error_code> validate_testcase_layout() const{
+    std::expected<std::int32_t, io_error> validate_testcase_layout() const{
         return testcase_util::validate_testcase_output(directory_path, testcase_count);
     }
 

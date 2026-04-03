@@ -1,7 +1,6 @@
 #include "error/judge_error.hpp"
 
 #include "error/db_error.hpp"
-#include "error/error_code.hpp"
 #include "error/infra_error.hpp"
 #include "error/io_error.hpp"
 #include "error/sandbox_error.hpp"
@@ -35,11 +34,6 @@ namespace{
         }
 
         return judge_error_specs[index];
-    }
-
-    template<typename... Candidates>
-    constexpr bool matches_any(const error_code& error, Candidates... candidates){
-        return ((error == candidates) || ...);
     }
 
     judge_error_code map_db_error_code(const db_error& ec){
@@ -133,46 +127,6 @@ namespace{
         return judge_error_code::internal;
     }
 
-    judge_error_code map_error_code_kind(const error_code& ec){
-        if(matches_any(
-            ec,
-            errno_error::invalid_argument,
-            psql_error::foreign_key_violation,
-            psql_error::not_null_violation,
-            psql_error::check_violation
-        )){
-            return judge_error_code::validation_error;
-        }
-
-        if(ec == errno_error::file_not_found){
-            return judge_error_code::not_found;
-        }
-
-        if(matches_any(
-            ec,
-            psql_error::unique_violation,
-            errno_error::file_exists
-        )){
-            return judge_error_code::conflict;
-        }
-
-        if(matches_any(
-            ec,
-            errno_error::invalid_file_descriptor,
-            errno_error::interrupted_system_call,
-            errno_error::resource_temporarily_unavailable,
-            boost_error::timed_out,
-            boost_error::would_block,
-            boost_error::try_again,
-            psql_error::broken_connection,
-            psql_error::serialization_failure,
-            psql_error::deadlock_detected
-        )){
-            return judge_error_code::unavailable;
-        }
-
-        return judge_error_code::internal;
-    }
 }
 
 judge_error::judge_error(
@@ -191,9 +145,6 @@ judge_error::judge_error(const db_error& ec) :
 
 judge_error::judge_error(const service_error& ec) :
     judge_error(map_service_error_code(ec), ec.message){}
-
-judge_error::judge_error(const error_code& ec) :
-    judge_error(map_error_code_kind(ec), to_string(ec)){}
 
 judge_error::judge_error(const infra_error& ec) :
     judge_error(map_infra_error_code(ec), ec.message){}

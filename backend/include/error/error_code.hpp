@@ -64,11 +64,6 @@ enum class signal_error{
     unknown_signal
 };
 
-enum class limit_error{
-    invalid_time_limit,
-    invalid_memory_limit
-};
-
 enum class boost_error{
     operation_aborted,
     timed_out,
@@ -106,7 +101,6 @@ enum class error_type{
     syscall_type,
     errno_type,
     signal_type,
-    limit_type,
     boost_type,
     psql_type
 };
@@ -128,7 +122,6 @@ struct error_code{
     static error_code create(syscall_error code);
     static error_code create(errno_error code);
     static error_code create(signal_error code);
-    static error_code create(limit_error code);
     static error_code create(boost_error code);
     static error_code create(psql_error code);
     static error_code create(const error_code& code);
@@ -166,16 +159,6 @@ struct error_code{
     }
 
     friend constexpr bool operator==(signal_error left, const error_code& right){
-        return right == left;
-    }
-
-    friend constexpr bool operator==(const error_code& left, limit_error right){
-        return
-            left.type_ == error_type::limit_type &&
-            left.code_ == static_cast<int>(right);
-    }
-
-    friend constexpr bool operator==(limit_error left, const error_code& right){
         return right == left;
     }
 

@@ -6,7 +6,6 @@ target_sources(lib
         http_server_error.cpp
         infra_error.cpp
         io_error.cpp
-        io_error_bridge.cpp
         pool_error.cpp
         problem_content_error.cpp
         repository_error.cpp
@@ -17,5 +16,6 @@ target_sources(lib
         submission_error.cpp
         testcase_upload_error.cpp
         transport_error.cpp
+        zip_error.cpp
         judge_error.cpp
 )

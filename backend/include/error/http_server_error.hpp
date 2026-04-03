@@ -2,7 +2,6 @@
 
 #include <string>
 
-struct error_code;
 struct infra_error;
 struct pool_error;
 
@@ -19,7 +18,6 @@ struct http_server_error{
     http_server_error(http_server_error_code code_value, std::string message_value = {});
     http_server_error(const infra_error& error);
     http_server_error(const pool_error& error);
-    http_server_error(const error_code& error);
 
     bool operator==(const http_server_error& other) const;
 

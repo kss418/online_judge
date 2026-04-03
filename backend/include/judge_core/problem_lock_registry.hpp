@@ -1,6 +1,6 @@
 #pragma once
 
-#include "error/error_code.hpp"
+#include "error/judge_error.hpp"
 
 #include <cstdint>
 #include <expected>
@@ -29,7 +29,7 @@ public:
         std::unique_lock<std::mutex> lock_;
     };
 
-    std::expected<scoped_lock, error_code> lock(std::int64_t problem_id);
+    std::expected<scoped_lock, judge_error> lock(std::int64_t problem_id);
 
 private:
     struct entry{

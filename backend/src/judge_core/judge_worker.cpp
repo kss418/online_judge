@@ -59,7 +59,12 @@ std::expected<judge_worker, judge_error> judge_worker::create(
     std::shared_ptr<problem_lock_registry> problem_lock_registry
 ){
     if(!problem_lock_registry){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(
+            judge_error{
+                judge_error_code::internal,
+                "problem lock registry is not configured"
+            }
+        );
     }
 
     const auto source_directory_path_exp = judge_util::instance().make_source_directory_path();

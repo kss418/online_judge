@@ -4,6 +4,12 @@
 
 #include <cstdlib>
 
+namespace{
+    io_error make_invalid_argument_error(const char* message){
+        return io_error{io_error_code::invalid_argument, message};
+    }
+}
+
 judge_util& judge_util::instance(){
     static judge_util judge_util_value;
     judge_util_value.initialize_if_needed();
@@ -22,20 +28,22 @@ void judge_util::initialize_if_needed(){
     }
 }
 
-std::expected<std::filesystem::path, error_code> judge_util::make_source_directory_path(){
+std::expected<std::filesystem::path, io_error> judge_util::make_source_directory_path(){
     initialize_if_needed();
     if(!source_directory_path_.has_value() || source_directory_path_->empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(
+            make_invalid_argument_error("judge source root is not configured")
+        );
     }
 
     return *source_directory_path_;
 }
 
-std::expected<std::filesystem::path, error_code> judge_util::make_submission_workspace_path(
+std::expected<std::filesystem::path, io_error> judge_util::make_submission_workspace_path(
     std::int64_t submission_id
 ){
     if(submission_id <= 0){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(make_invalid_argument_error("invalid submission id"));
     }
 
     const auto source_root_path_exp = make_source_directory_path();
@@ -46,7 +54,7 @@ std::expected<std::filesystem::path, error_code> judge_util::make_submission_wor
     return *source_root_path_exp / std::to_string(submission_id);
 }
 
-std::expected<std::filesystem::path, error_code> judge_util::make_source_file_path(
+std::expected<std::filesystem::path, io_error> judge_util::make_source_file_path(
     std::int64_t submission_id,
     std::string_view language
 ){
@@ -57,7 +65,7 @@ std::expected<std::filesystem::path, error_code> judge_util::make_source_file_pa
 
     const auto supported_language_opt = language_util::find_supported_language(language);
     if(!supported_language_opt){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(make_invalid_argument_error("unsupported language"));
     }
 
     if(supported_language_opt->language == "java"){

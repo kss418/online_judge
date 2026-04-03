@@ -1,6 +1,6 @@
 #pragma once
 
-#include "error/error_code.hpp"
+#include "error/io_error.hpp"
 
 #include <cstdint>
 #include <expected>
@@ -26,11 +26,11 @@ class judge_util{
 public:
     static judge_util& instance();
 
-    std::expected<std::filesystem::path, error_code> make_source_directory_path();
-    std::expected<std::filesystem::path, error_code> make_submission_workspace_path(
+    std::expected<std::filesystem::path, io_error> make_source_directory_path();
+    std::expected<std::filesystem::path, io_error> make_submission_workspace_path(
         std::int64_t submission_id
     );
-    std::expected<std::filesystem::path, error_code> make_source_file_path(
+    std::expected<std::filesystem::path, io_error> make_source_file_path(
         std::int64_t submission_id,
         std::string_view language
     );

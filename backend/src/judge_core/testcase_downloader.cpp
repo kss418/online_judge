@@ -54,7 +54,12 @@ std::expected<testcase_downloader, judge_error> testcase_downloader::create(
     db_connection connection
 ){
     if(!connection.is_connected()){
-        return std::unexpected(error_code::create(errno_error::invalid_file_descriptor));
+        return std::unexpected(
+            judge_error{
+                judge_error_code::unavailable,
+                "database connection is not connected"
+            }
+        );
     }
 
     return testcase_downloader(std::move(connection));

@@ -1,6 +1,5 @@
 #include "error/http_server_error.hpp"
 
-#include "error/error_code.hpp"
 #include "error/infra_error.hpp"
 #include "error/pool_error.hpp"
 
@@ -35,11 +34,6 @@ namespace{
         return http_server_error_specs[index];
     }
 
-    template<typename... Candidates>
-    constexpr bool matches_any(const error_code& error, Candidates... candidates){
-        return ((error == candidates) || ...);
-    }
-
     http_server_error_code map_infra_error_code(const infra_error& error){
         switch(error.code){
             case infra_error_code::invalid_argument:
@@ -70,29 +64,6 @@ namespace{
         return http_server_error_code::internal;
     }
 
-    http_server_error_code map_error_code_kind(const error_code& error){
-        if(matches_any(
-            error,
-            errno_error::invalid_argument,
-            errno_error::permission_denied,
-            errno_error::file_not_found,
-            errno_error::file_exists
-        )){
-            return http_server_error_code::invalid_configuration;
-        }
-
-        if(matches_any(
-            error,
-            errno_error::resource_temporarily_unavailable,
-            boost_error::timed_out,
-            boost_error::would_block,
-            boost_error::try_again
-        )){
-            return http_server_error_code::unavailable;
-        }
-
-        return http_server_error_code::internal;
-    }
 }
 
 http_server_error::http_server_error(
@@ -113,10 +84,6 @@ http_server_error::http_server_error(const infra_error& error)
 http_server_error::http_server_error(const pool_error& error)
 :
     http_server_error(map_pool_error_code(error), error.message){}
-
-http_server_error::http_server_error(const error_code& error)
-:
-    http_server_error(map_error_code_kind(error), to_string(error)){}
 
 bool http_server_error::operator==(const http_server_error& other) const{
     return code == other.code;

@@ -18,6 +18,42 @@ namespace{
             .detail = std::move(detail)
         };
     }
+
+    service_error make_zip_inspect_error(const zip_error& error_value){
+        switch(error_value.code){
+            case zip_error_code::command_unavailable:
+                return make_error(error_kind::inspect_zip_unavailable);
+            case zip_error_code::invalid_archive:
+                return make_error(error_kind::inspect_zip_invalid);
+            case zip_error_code::invalid_argument:
+            case zip_error_code::unavailable:
+            case zip_error_code::internal:
+                return make_error(
+                    error_kind::inspect_zip_failed,
+                    error_value.message
+                );
+        }
+
+        return make_error(error_kind::inspect_zip_failed, error_value.message);
+    }
+
+    service_error make_zip_extract_error(const zip_error& error_value){
+        switch(error_value.code){
+            case zip_error_code::command_unavailable:
+                return make_error(error_kind::extract_zip_unavailable);
+            case zip_error_code::invalid_archive:
+                return make_error(error_kind::extract_zip_invalid);
+            case zip_error_code::invalid_argument:
+            case zip_error_code::unavailable:
+            case zip_error_code::internal:
+                return make_error(
+                    error_kind::extract_zip_failed,
+                    error_value.message
+                );
+        }
+
+        return make_error(error_kind::extract_zip_failed, error_value.message);
+    }
 }
 
 std::expected<std::vector<problem_dto::testcase>, testcase_zip_service::error>
@@ -54,19 +90,7 @@ testcase_zip_service::load_testcases_from_zip_body(std::string_view zip_body){
         temp_zip_file.get_path()
     );
     if(!list_zip_entries_exp){
-        if(list_zip_entries_exp.error() == errno_error::file_not_found){
-            return std::unexpected(make_error(error_kind::inspect_zip_unavailable));
-        }
-        if(
-            list_zip_entries_exp.error() == errno_error::invalid_argument ||
-            list_zip_entries_exp.error().is_constraint_violation_error()
-        ){
-            return std::unexpected(make_error(error_kind::inspect_zip_invalid));
-        }
-        return std::unexpected(make_error(
-            error_kind::inspect_zip_failed,
-            to_string(list_zip_entries_exp.error())
-        ));
+        return std::unexpected(make_zip_inspect_error(list_zip_entries_exp.error()));
     }
 
     const auto archive_entries_exp = testcase_uploader::parse_testcase_archive_entries(
@@ -95,19 +119,7 @@ testcase_zip_service::load_testcases_from_zip_body(std::string_view zip_body){
         extraction_directory.get_path()
     );
     if(!unzip_archive_exp){
-        if(unzip_archive_exp.error() == errno_error::file_not_found){
-            return std::unexpected(make_error(error_kind::extract_zip_unavailable));
-        }
-        if(
-            unzip_archive_exp.error() == errno_error::invalid_argument ||
-            unzip_archive_exp.error().is_constraint_violation_error()
-        ){
-            return std::unexpected(make_error(error_kind::extract_zip_invalid));
-        }
-        return std::unexpected(make_error(
-            error_kind::extract_zip_failed,
-            to_string(unzip_archive_exp.error())
-        ));
+        return std::unexpected(make_zip_extract_error(unzip_archive_exp.error()));
     }
 
     const auto testcase_values_exp = testcase_uploader::load_testcases_from_directory(
