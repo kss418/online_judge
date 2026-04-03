@@ -20,7 +20,5 @@ namespace execution_report{
         std::vector<testcase_execution> executions;
         bool compile_failed = false;
         std::int32_t testcase_count = 0;
-        std::int64_t prepare_elapsed_ms = 0;
-        std::int64_t testcase_execution_elapsed_ms = 0;
     };
 }

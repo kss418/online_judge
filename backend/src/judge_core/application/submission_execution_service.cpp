@@ -1,6 +1,5 @@
 #include "judge_core/application/submission_execution_service.hpp"
 
-#include "common/timer.hpp"
 #include "judge_core/infrastructure/judge_workspace.hpp"
 #include "judge_core/infrastructure/launch_planner.hpp"
 #include "judge_core/infrastructure/program_builder.hpp"
@@ -23,12 +22,10 @@ namespace{
     }
 
     execution_report::batch make_compile_failed_execution_report(
-        const program_build::compile_failure& compile_failure_value,
-        std::int64_t prepare_elapsed_ms
+        const program_build::compile_failure& compile_failure_value
     ){
         execution_report::batch execution_report_value;
         execution_report_value.compile_failed = true;
-        execution_report_value.prepare_elapsed_ms = prepare_elapsed_ms;
         execution_report_value.executions.push_back(
             make_testcase_execution(compile_failure_value)
         );
@@ -101,27 +98,15 @@ submission_execution_service::process_submission(
     const std::filesystem::path& workspace_path,
     db_connection& testcase_snapshot_connection
 ){
-    std::int64_t prepare_workspace_elapsed_ms = 0;
-    std::int64_t build_source_elapsed_ms = 0;
-    std::int64_t make_execution_plan_elapsed_ms = 0;
-    std::int64_t testcase_snapshot_elapsed_ms = 0;
-
-    const auto source_file_path_exp = timer::measure_elapsed_ms(
-        prepare_workspace_elapsed_ms,
-        [this, &queued_submission_value, &workspace_path]{
-            return prepare_workspace(queued_submission_value, workspace_path);
-        }
+    const auto source_file_path_exp = prepare_workspace(
+        queued_submission_value,
+        workspace_path
     );
     if(!source_file_path_exp){
         return std::unexpected(source_file_path_exp.error());
     }
 
-    const auto build_source_exp = timer::measure_elapsed_ms(
-        build_source_elapsed_ms,
-        [this, &source_file_path_exp]{
-            return program_builder_->build_source(*source_file_path_exp);
-        }
-    );
+    const auto build_source_exp = program_builder_->build_source(*source_file_path_exp);
     if(!build_source_exp){
         return std::unexpected(judge_error{build_source_exp.error()});
     }
@@ -130,34 +115,19 @@ submission_execution_service::process_submission(
         auto process_submission_data_value =
             judge_submission_data::make_process_submission_data(
                 judge_result::compile_error,
-                make_compile_failed_execution_report(
-                    *build_source_exp->compile_failure_opt_,
-                    build_source_elapsed_ms
-                )
+                make_compile_failed_execution_report(*build_source_exp->compile_failure_opt_)
             );
-        process_submission_data_value.prepare_workspace_elapsed_ms =
-            prepare_workspace_elapsed_ms;
         return process_submission_data_value;
     }
 
-    const auto execution_plan_exp = timer::measure_elapsed_ms(
-        make_execution_plan_elapsed_ms,
-        [this, &build_source_exp]{
-            return launch_planner_->make_execution_plan(*build_source_exp);
-        }
-    );
+    const auto execution_plan_exp = launch_planner_->make_execution_plan(*build_source_exp);
     if(!execution_plan_exp){
         return std::unexpected(judge_error{execution_plan_exp.error()});
     }
 
-    const auto testcase_snapshot_exp = timer::measure_elapsed_ms(
-        testcase_snapshot_elapsed_ms,
-        [this, &queued_submission_value, &testcase_snapshot_connection]{
-            return testcase_snapshot_service_.acquire(
-                testcase_snapshot_connection,
-                queued_submission_value.problem_id
-            );
-        }
+    const auto testcase_snapshot_exp = testcase_snapshot_service_.acquire(
+        testcase_snapshot_connection,
+        queued_submission_value.problem_id
     );
     if(!testcase_snapshot_exp){
         return std::unexpected(testcase_snapshot_exp.error());
@@ -170,8 +140,6 @@ submission_execution_service::process_submission(
     if(!execution_report_exp){
         return std::unexpected(execution_report_exp.error());
     }
-    execution_report_exp->prepare_elapsed_ms =
-        build_source_elapsed_ms + make_execution_plan_elapsed_ms;
 
     const auto judge_expectation_exp = judge_expectation_loader::load(
         *testcase_snapshot_exp
@@ -193,9 +161,5 @@ submission_execution_service::process_submission(
             *judge_result_exp,
             std::move(*execution_report_exp)
         );
-    process_submission_data_value.prepare_workspace_elapsed_ms =
-        prepare_workspace_elapsed_ms;
-    process_submission_data_value.testcase_snapshot_elapsed_ms =
-        testcase_snapshot_elapsed_ms;
     return process_submission_data_value;
 }

@@ -1,14 +1,12 @@
 #pragma once
 
 #include "common/db_connection.hpp"
-#include "common/submission_status.hpp"
 #include "dto/submission_dto.hpp"
 #include "error/judge_error.hpp"
 #include "judge_core/application/submission_execution_service.hpp"
 #include "judge_core/infrastructure/submission_queue_source.hpp"
 #include "judge_core/policy/judge_policy.hpp"
 #include "judge_core/types/execution_report.hpp"
-#include "judge_core/types/judge_submission_data.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -44,7 +42,7 @@ private:
         judge_result result,
         const execution_report::batch& execution_report_value
     );
-    std::expected<judge_submission_data::submission_stage_metrics, judge_error> process_submission(
+    std::expected<void, judge_error> process_submission(
         const submission_dto::queued_submission& queued_submission_value,
         const std::filesystem::path& workspace_path
     );
