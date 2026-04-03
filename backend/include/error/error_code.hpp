@@ -1,6 +1,4 @@
 #pragma once
-#include "error/repository_error.hpp"
-
 #include <boost/system/error_code.hpp>
 
 #include <exception>
@@ -110,8 +108,7 @@ enum class error_type{
     signal_type,
     limit_type,
     boost_type,
-    psql_type,
-    repository_type
+    psql_type
 };
 
 struct error_code{
@@ -128,17 +125,12 @@ struct error_code{
             *this == psql_error::check_violation;
     }
 
-    constexpr bool is_repository_error() const{
-        return type_ == error_type::repository_type;
-    }
-
     static error_code create(syscall_error code);
     static error_code create(errno_error code);
     static error_code create(signal_error code);
     static error_code create(limit_error code);
     static error_code create(boost_error code);
     static error_code create(psql_error code);
-    static error_code create(const repository_error& code);
     static error_code create(const error_code& code);
 
     static errno_error map_errno(int code);
@@ -204,16 +196,6 @@ struct error_code{
     }
 
     friend constexpr bool operator==(psql_error left, const error_code& right){
-        return right == left;
-    }
-
-    friend bool operator==(const error_code& left, const repository_error& right){
-        return
-            left.type_ == error_type::repository_type &&
-            left.code_ == static_cast<int>(right.code);
-    }
-
-    friend bool operator==(const repository_error& left, const error_code& right){
         return right == left;
     }
 };
