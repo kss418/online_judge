@@ -9,7 +9,7 @@
 namespace python_runner{
     using path = std::filesystem::path;
 
-    std::expected<program_build::runner_build_result, sandbox_error> build(
+    std::expected<program_build::build_artifact, sandbox_error> build(
         const path& source_file_path
     );
 }

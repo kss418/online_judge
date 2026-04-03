@@ -2,6 +2,7 @@
 
 #include "common/timer.hpp"
 #include "judge_core/infrastructure/judge_workspace.hpp"
+#include "judge_core/infrastructure/launch_planner.hpp"
 #include "judge_core/infrastructure/program_builder.hpp"
 #include "judge_core/infrastructure/testcase_runner.hpp"
 #include "judge_core/policy/judge_expectation_loader.hpp"
@@ -108,7 +109,7 @@ submission_execution_service::process_submission(
     const auto execution_plan_exp = timer::measure_elapsed_ms(
         make_execution_plan_elapsed_ms,
         [&build_source_exp]{
-            return program_builder::instance().make_execution_plan(*build_source_exp);
+            return launch_planner::instance().make_execution_plan(*build_source_exp);
         }
     );
     if(!execution_plan_exp){

@@ -3,6 +3,7 @@ target_sources(lib
         cpp_runner.cpp
         python_runner.cpp
         java_runner.cpp
+        launch_planner.cpp
         problem_lock_registry.cpp
         program_builder.cpp
         nsjail_util.cpp

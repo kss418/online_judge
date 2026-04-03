@@ -42,7 +42,7 @@ namespace{
     }
 
     sandbox_runner::run_options make_base_run_options(
-        const program_build::execution_plan& execution_plan_value,
+        const program_launch::execution_plan& execution_plan_value,
         const problem_content_dto::limits& problem_limits_value
     ){
         sandbox_runner::run_options run_options_value;
@@ -66,7 +66,7 @@ namespace{
 }
 
 std::expected<execution_report::batch, judge_error> testcase_runner::run_all_testcases(
-    const program_build::execution_plan& execution_plan_value,
+    const program_launch::execution_plan& execution_plan_value,
     const testcase_snapshot& testcase_snapshot_value
 ){
     const auto validated_testcase_count_exp = testcase_snapshot_value.validate_testcase_layout();
