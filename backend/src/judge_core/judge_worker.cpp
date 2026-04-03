@@ -4,13 +4,12 @@
 #include "common/file_util.hpp"
 #include "common/logger.hpp"
 #include "common/timer.hpp"
-#include "db_service/submission_service.hpp"
+#include "judge_core/judge_policy.hpp"
 #include "judge_core/judge_service.hpp"
-#include "judge_core/checker.hpp"
+#include "judge_core/judge_submission_data.hpp"
 #include "judge_core/judge_workspace.hpp"
 #include "judge_core/testcase_runner.hpp"
 
-#include <algorithm>
 #include <optional>
 #include <string>
 #include <thread>
@@ -20,7 +19,7 @@
 namespace{
     void log_submission_stage_metrics(
         std::int64_t submission_id,
-        const judge_worker::submission_stage_metrics& submission_stage_metrics_value
+        const judge_submission_data::submission_stage_metrics& submission_stage_metrics_value
     ){
         logger::clog()
             .log("submission_stage_metrics")
@@ -57,18 +56,8 @@ namespace{
 } // namespace
 
 std::expected<judge_worker, judge_error> judge_worker::create(
-    submission_event_listener submission_event_listener,
     std::shared_ptr<problem_lock_registry> problem_lock_registry
 ){
-    if(!problem_lock_registry){
-        return std::unexpected(
-            judge_error{
-                judge_error_code::internal,
-                "problem lock registry is not configured"
-            }
-        );
-    }
-
     const auto source_root_path_text_exp = env_util::require_env("JUDGE_SOURCE_ROOT");
     if(!source_root_path_text_exp){
         return std::unexpected(source_root_path_text_exp.error());
@@ -91,19 +80,33 @@ std::expected<judge_worker, judge_error> judge_worker::create(
         return std::unexpected(create_directories_exp.error());
     }
 
-    auto listen_submission_queue_exp = submission_event_listener.listen_submission_queue();
-    if(!listen_submission_queue_exp){
-        return std::unexpected(listen_submission_queue_exp.error());
-    }
-
     auto db_config_exp = db_connection::load_db_connection_config();
     if(!db_config_exp){
         return std::unexpected(db_config_exp.error());
     }
 
-    auto testcase_downloader_connection_exp = db_connection::create(*db_config_exp);
-    if(!testcase_downloader_connection_exp){
-        return std::unexpected(testcase_downloader_connection_exp.error());
+    auto submission_queue_connection_exp = db_connection::create(*db_config_exp);
+    if(!submission_queue_connection_exp){
+        return std::unexpected(submission_queue_connection_exp.error());
+    }
+
+    auto submission_queue_source_exp = submission_queue_source::create(
+        std::move(*submission_queue_connection_exp)
+    );
+    if(!submission_queue_source_exp){
+        return std::unexpected(judge_error{submission_queue_source_exp.error()});
+    }
+
+    auto testcase_snapshot_connection_exp = db_connection::create(*db_config_exp);
+    if(!testcase_snapshot_connection_exp){
+        return std::unexpected(testcase_snapshot_connection_exp.error());
+    }
+
+    auto testcase_snapshot_service_exp = testcase_snapshot_service::create(
+        std::move(problem_lock_registry)
+    );
+    if(!testcase_snapshot_service_exp){
+        return std::unexpected(testcase_snapshot_service_exp.error());
     }
 
     auto db_connection_exp = db_connection::create(*db_config_exp);
@@ -112,191 +115,32 @@ std::expected<judge_worker, judge_error> judge_worker::create(
     }
 
     return judge_worker(
-        std::move(submission_event_listener),
+        std::move(*submission_queue_source_exp),
         std::move(*db_connection_exp),
-        std::move(*testcase_downloader_connection_exp),
-        source_root_path,
-        std::move(problem_lock_registry)
+        std::move(*testcase_snapshot_connection_exp),
+        std::move(*testcase_snapshot_service_exp),
+        source_root_path
     );
 }
 
 judge_worker::judge_worker(
-    submission_event_listener submission_event_listener,
+    submission_queue_source submission_queue_source,
     db_connection submission_db_connection,
-    db_connection testcase_downloader_connection,
-    std::filesystem::path source_root_path,
-    std::shared_ptr<problem_lock_registry> problem_lock_registry
+    db_connection testcase_snapshot_connection,
+    testcase_snapshot_service testcase_snapshot_service,
+    std::filesystem::path source_root_path
 ) :
-    submission_event_listener_(std::move(submission_event_listener)),
+    submission_queue_source_(std::move(submission_queue_source)),
     db_connection_(std::move(submission_db_connection)),
-    testcase_downloader_connection_(std::move(testcase_downloader_connection)),
-    source_root_path_(std::move(source_root_path)),
-    problem_lock_registry_(std::move(problem_lock_registry)){}
-
-submission_status judge_worker::to_submission_status(judge_result result){
-    switch(result){
-        case judge_result::accepted:
-            return submission_status::accepted;
-        case judge_result::wrong_answer:
-            return submission_status::wrong_answer;
-        case judge_result::time_limit_exceeded:
-            return submission_status::time_limit_exceeded;
-        case judge_result::memory_limit_exceeded:
-            return submission_status::memory_limit_exceeded;
-        case judge_result::runtime_error:
-            return submission_status::runtime_error;
-        case judge_result::compile_error:
-            return submission_status::compile_error;
-        case judge_result::output_exceeded:
-            return submission_status::output_exceeded;
-        case judge_result::invalid_output:
-            return submission_status::wrong_answer;
-    }
-
-    return submission_status::wrong_answer;
-}
-
-judge_worker::finalize_submission_data judge_worker::make_finalize_submission_data(
-    submission_status submission_status_value,
-    const std::vector<sandbox_runner::run_result>& run_results
-){
-    finalize_submission_data finalize_submission_data_value;
-    finalize_submission_data_value.score = std::int16_t{0};
-
-    if(submission_status_value == submission_status::accepted){
-        finalize_submission_data_value.score = std::int16_t{100};
-    }
-
-    if(
-        submission_status_value != submission_status::compile_error &&
-        !run_results.empty()
-    ){
-        std::int64_t max_elapsed_ms = 0;
-        std::int64_t max_rss_kb = 0;
-
-        for(const auto& run_result : run_results){
-            max_elapsed_ms = std::max(
-                max_elapsed_ms,
-                static_cast<std::int64_t>(run_result.elapsed_ms_)
-            );
-            max_rss_kb = std::max(
-                max_rss_kb,
-                static_cast<std::int64_t>(run_result.max_rss_kb_)
-            );
-        }
-
-        finalize_submission_data_value.elapsed_ms_opt = max_elapsed_ms;
-        finalize_submission_data_value.max_rss_kb_opt = max_rss_kb;
-    }
-
-    if(run_results.empty() || run_results.front().stderr_text_.empty()){
-        return finalize_submission_data_value;
-    }
-
-    if(submission_status_value == submission_status::compile_error){
-        finalize_submission_data_value.compile_output = run_results.front().stderr_text_;
-        return finalize_submission_data_value;
-    }
-
-    if(
-        submission_status_value == submission_status::runtime_error ||
-        submission_status_value == submission_status::time_limit_exceeded ||
-        submission_status_value == submission_status::memory_limit_exceeded ||
-        submission_status_value == submission_status::output_exceeded
-    ){
-        finalize_submission_data_value.judge_output = run_results.front().stderr_text_;
-    }
-
-    return finalize_submission_data_value;
-}
-
-judge_worker::submission_stage_metrics judge_worker::make_submission_stage_metrics(
-    const submission_dto::queued_submission& queued_submission_value
-){
-    submission_stage_metrics submission_stage_metrics_value;
-    submission_stage_metrics_value.queue_wait_ms = queued_submission_value.queue_wait_ms;
-    return submission_stage_metrics_value;
-}
-
-judge_worker::submission_stage_metrics judge_worker::make_submission_stage_metrics(
-    submission_stage_metrics submission_stage_metrics_value,
-    const process_submission_data& process_submission_data_value
-){
-    submission_stage_metrics_value.testcase_count =
-        process_submission_data_value.testcase_count;
-    submission_stage_metrics_value.compile_prepare_elapsed_ms =
-        process_submission_data_value.compile_prepare_elapsed_ms;
-    submission_stage_metrics_value.testcase_execution_elapsed_ms =
-        process_submission_data_value.testcase_execution_elapsed_ms;
-    submission_stage_metrics_value.final_submission_status = to_submission_status(
-        process_submission_data_value.judge_result_value
-    );
-    return submission_stage_metrics_value;
-}
-
-judge_worker::submission_stage_metrics judge_worker::make_requeued_submission_stage_metrics(
-    const submission_dto::queued_submission& queued_submission_value,
-    std::string error_message
-){
-    submission_stage_metrics submission_stage_metrics_value = make_submission_stage_metrics(
-        queued_submission_value
-    );
-    submission_stage_metrics_value.event = "requeued";
-    submission_stage_metrics_value.error_message_opt = std::move(error_message);
-    return submission_stage_metrics_value;
-}
-
-judge_worker::process_submission_data judge_worker::make_process_submission_data(
-    judge_result judge_result_value,
-    testcase_runner::run_batch&& run_batch_value
-){
-    process_submission_data process_submission_data_value;
-    process_submission_data_value.judge_result_value = judge_result_value;
-    process_submission_data_value.testcase_count = run_batch_value.testcase_count;
-    process_submission_data_value.compile_prepare_elapsed_ms =
-        run_batch_value.prepare_elapsed_ms;
-    process_submission_data_value.testcase_execution_elapsed_ms =
-        run_batch_value.testcase_execution_elapsed_ms;
-    process_submission_data_value.run_results = std::move(run_batch_value.run_results);
-    return process_submission_data_value;
-}
-
-std::expected<judge_result, judge_error> judge_worker::check_result(
-    const testcase_snapshot& testcase_snapshot_value,
-    const testcase_runner::run_batch& run_batch_value
-){
-    std::vector<std::string> output_texts;
-    output_texts.reserve(run_batch_value.run_results.size());
-
-    if(run_batch_value.compile_failed){
-        return judge_result::compile_error;
-    }
-
-    for(const auto& run_result : run_batch_value.run_results){
-        if(run_result.time_limit_exceeded_){
-            return judge_result::time_limit_exceeded;
-        }
-        if(run_result.output_exceeded_){
-            return judge_result::output_exceeded;
-        }
-        if(run_result.memory_limit_exceeded_){
-            return judge_result::memory_limit_exceeded;
-        }
-        if(run_result.exit_code_ != 0){
-            return judge_result::runtime_error;
-        }
-
-        output_texts.push_back(run_result.stdout_text_);
-    }
-
-    return checker::check_all(output_texts, testcase_snapshot_value);
-}
+    testcase_snapshot_connection_(std::move(testcase_snapshot_connection)),
+    testcase_snapshot_service_(std::move(testcase_snapshot_service)),
+    source_root_path_(std::move(source_root_path)){}
 
 std::expected<void, judge_error> judge_worker::run(){
     while(true){
         auto queued_submission_opt_exp = judge_service::poll_next_submission(
             db_connection_,
-            submission_event_listener_,
+            submission_queue_source_,
             LEASE_DURATION,
             NOTIFICATION_WAIT_TIMEOUT
         );
@@ -324,15 +168,16 @@ std::expected<void, judge_error> judge_worker::run(){
             *workspace_path_exp
         );
 
-        submission_stage_metrics submission_stage_metrics_value;
+        judge_submission_data::submission_stage_metrics submission_stage_metrics_value;
         if(process_submission_exp){
             submission_stage_metrics_value = *process_submission_exp;
         }
         else{
-            submission_stage_metrics_value = make_requeued_submission_stage_metrics(
-                queued_submission_value,
-                to_string(process_submission_exp.error())
-            );
+            submission_stage_metrics_value =
+                judge_submission_data::make_requeued_submission_stage_metrics(
+                    queued_submission_value,
+                    to_string(process_submission_exp.error())
+                );
         }
 
         const auto cleanup_workspace_exp = timer::measure_elapsed_ms(
@@ -370,14 +215,15 @@ std::expected<void, judge_error> judge_worker::run(){
     }
 }
 
-std::expected<judge_worker::submission_stage_metrics, judge_error>
+std::expected<judge_submission_data::submission_stage_metrics, judge_error>
 judge_worker::process_submission(
     const submission_dto::queued_submission& queued_submission_value,
     const std::filesystem::path& workspace_path
 ){
-    submission_stage_metrics submission_stage_metrics_value = make_submission_stage_metrics(
-        queued_submission_value
-    );
+    auto submission_stage_metrics_value =
+        judge_submission_data::make_submission_stage_metrics(
+            queued_submission_value
+        );
 
     const auto source_file_path_exp = timer::measure_elapsed_ms(
         submission_stage_metrics_value.prepare_workspace_elapsed_ms,
@@ -403,7 +249,7 @@ judge_worker::process_submission(
         return std::unexpected(source_file_path_exp.error());
     }
 
-    const auto mark_judging_exp = submission_service::mark_judging(
+    const auto mark_judging_exp = judge_service::mark_judging(
         db_connection_,
         queued_submission_value.submission_id
     );
@@ -414,15 +260,8 @@ judge_worker::process_submission(
     const auto testcase_snapshot_exp = timer::measure_elapsed_ms(
         submission_stage_metrics_value.testcase_snapshot_elapsed_ms,
         [this, &queued_submission_value]() -> std::expected<testcase_snapshot, judge_error> {
-            auto problem_lock_exp = problem_lock_registry_->lock(
-                queued_submission_value.problem_id
-            );
-            if(!problem_lock_exp){
-                return std::unexpected(problem_lock_exp.error());
-            }
-
-            return testcase_downloader::ensure_testcase_snapshot(
-                testcase_downloader_connection_,
+            return testcase_snapshot_service_.acquire(
+                testcase_snapshot_connection_,
                 queued_submission_value.problem_id
             );
         }
@@ -438,7 +277,7 @@ judge_worker::process_submission(
     if(!judge_submission_exp){
         return std::unexpected(judge_submission_exp.error());
     }
-    submission_stage_metrics_value = make_submission_stage_metrics(
+    submission_stage_metrics_value = judge_submission_data::make_submission_stage_metrics(
         std::move(submission_stage_metrics_value),
         *judge_submission_exp
     );
@@ -460,7 +299,7 @@ judge_worker::process_submission(
     return submission_stage_metrics_value;
 }
 
-std::expected<judge_worker::process_submission_data, judge_error>
+std::expected<judge_submission_data::process_submission_data, judge_error>
 judge_worker::judge_submission(
     const std::filesystem::path& source_file_path,
     const testcase_snapshot& testcase_snapshot_value
@@ -473,7 +312,7 @@ judge_worker::judge_submission(
         return std::unexpected(run_all_testcases_exp.error());
     }
 
-    const auto judge_result_exp = check_result(
+    const auto judge_result_exp = judge_policy::check_result(
         testcase_snapshot_value,
         *run_all_testcases_exp
     );
@@ -481,7 +320,7 @@ judge_worker::judge_submission(
         return std::unexpected(judge_result_exp.error());
     }
 
-    return make_process_submission_data(
+    return judge_submission_data::make_process_submission_data(
         *judge_result_exp,
         std::move(*run_all_testcases_exp)
     );
@@ -492,9 +331,10 @@ std::expected<void, judge_error> judge_worker::finalize_submission(
     judge_result result,
     const std::vector<sandbox_runner::run_result>& run_results
 ){
-    const submission_status submission_status_value = to_submission_status(result);
-    const finalize_submission_data finalize_submission_data_value =
-        make_finalize_submission_data(
+    const submission_status submission_status_value =
+        judge_policy::to_submission_status(result);
+    const auto finalize_submission_data_value =
+        judge_policy::make_finalize_submission_data(
             submission_status_value,
             run_results
         );
@@ -509,7 +349,7 @@ std::expected<void, judge_error> judge_worker::finalize_submission(
             finalize_submission_data_value.max_rss_kb_opt
         );
 
-    const auto finalize_submission_exp = submission_service::finalize_submission(
+    const auto finalize_submission_exp = judge_service::finalize_submission(
         db_connection_,
         finalize_request_value
     );
@@ -524,7 +364,7 @@ std::expected<void, judge_error> judge_worker::requeue_submission(
     std::int64_t submission_id,
     std::string reason
 ){
-    return submission_service::requeue_submission_immediately(
+    return judge_service::requeue_submission_immediately(
         db_connection_,
         submission_id,
         std::move(reason)

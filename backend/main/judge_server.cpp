@@ -1,9 +1,7 @@
 #include "common/env_util.hpp"
-#include "common/db_connection.hpp"
 #include "common/logger.hpp"
 #include "common/string_util.hpp"
-#include "db_event/submission_event_listener.hpp"
-#include "error/judge_error.hpp"
+#include "error/infra_error.hpp"
 #include "judge_core/problem_lock_registry.hpp"
 #include "judge_core/judge_worker.hpp"
 #include "judge_core/sandbox_runner.hpp"
@@ -18,27 +16,6 @@
 #include <vector>
 
 constexpr std::chrono::seconds WORKER_RESTART_DELAY{1};
-
-std::expected<submission_event_listener, judge_error> create_submission_event_listener(){
-    auto db_config_exp = db_connection::load_db_connection_config();
-    if(!db_config_exp){
-        return std::unexpected(db_config_exp.error());
-    }
-
-    auto db_connection_exp = db_connection::create(*db_config_exp);
-    if(!db_connection_exp){
-        return std::unexpected(db_connection_exp.error());
-    }
-
-    auto submission_event_listener_exp = submission_event_listener::create(
-        std::move(*db_connection_exp)
-    );
-    if(!submission_event_listener_exp){
-        return std::unexpected(submission_event_listener_exp.error());
-    }
-
-    return std::move(*submission_event_listener_exp);
-}
 
 std::uint32_t default_worker_count(){
     const std::uint32_t hardware_thread_count = std::thread::hardware_concurrency();
@@ -67,19 +44,7 @@ void run_judge_worker_loop(
     const std::shared_ptr<problem_lock_registry>& shared_problem_lock_registry
 ){
     while(true){
-        auto submission_event_listener_exp = create_submission_event_listener();
-        if(!submission_event_listener_exp){
-            logger::cerr()
-                .log("judge_worker_initialize_failed")
-                .field("worker_index", worker_index)
-                .field("stage", "submission_event_listener")
-                .field("error", to_string(submission_event_listener_exp.error()));
-            std::this_thread::sleep_for(WORKER_RESTART_DELAY);
-            continue;
-        }
-
         auto judge_worker_exp = judge_worker::create(
-            std::move(*submission_event_listener_exp),
             shared_problem_lock_registry
         );
         if(!judge_worker_exp){

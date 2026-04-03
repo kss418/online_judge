@@ -13,6 +13,7 @@ target_sources(lib
         sandbox_error.cpp
         service_error.cpp
         submission_error.cpp
+        submission_event_error.cpp
         testcase_upload_error.cpp
         transport_error.cpp
         zip_error.cpp

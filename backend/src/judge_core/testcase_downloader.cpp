@@ -5,25 +5,14 @@
 #include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"
 #include "db_service/testcase_service.hpp"
-#include "error/infra_error.hpp"
 #include "judge_core/testcase_util.hpp"
 
-#include <cstdlib>
 #include <filesystem>
 #include <string>
 #include <system_error>
 
 namespace{
     constexpr int FILE_OPERATION_ATTEMPT_COUNT = 5;
-
-    std::expected<std::filesystem::path, infra_error> read_testcase_root_path(){
-        const char* testcase_root_path = std::getenv("TESTCASE_PATH");
-        if(testcase_root_path == nullptr || *testcase_root_path == '\0'){
-            return std::unexpected(infra_error::invalid_argument);
-        }
-
-        return std::filesystem::path(testcase_root_path);
-    }
 
     std::expected<void, io_error> rename_directory(
         const std::filesystem::path& source_path,
@@ -370,13 +359,9 @@ namespace{
 namespace testcase_downloader{
     std::expected<testcase_snapshot, judge_error> ensure_testcase_snapshot(
         db_connection& connection,
+        const std::filesystem::path& testcase_root_path,
         std::int64_t problem_id
     ){
-        const auto testcase_root_path_exp = read_testcase_root_path();
-        if(!testcase_root_path_exp){
-            return std::unexpected(testcase_root_path_exp.error());
-        }
-
         const auto version_exp = fetch_problem_version(connection, problem_id);
         if(!version_exp){
             return std::unexpected(version_exp.error());
@@ -384,7 +369,7 @@ namespace testcase_downloader{
 
         const auto version_directory_path_exp =
             testcase_util::make_testcase_version_directory_path(
-                *testcase_root_path_exp,
+                testcase_root_path,
                 problem_id,
                 *version_exp
             );
@@ -407,7 +392,7 @@ namespace testcase_downloader{
 
             const auto sync_version_directory_exp = sync_version_directory(
                 connection,
-                *testcase_root_path_exp,
+                testcase_root_path,
                 problem_id,
                 *version_exp,
                 *problem_limits_exp

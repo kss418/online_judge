@@ -8,6 +8,7 @@ struct db_error;
 struct infra_error;
 struct io_error;
 struct sandbox_error;
+struct submission_event_error;
 
 enum class judge_error_code{
     validation_error,
@@ -27,6 +28,7 @@ struct judge_error{
     judge_error(const infra_error& ec);
     judge_error(const io_error& ec);
     judge_error(const sandbox_error& ec);
+    judge_error(const submission_event_error& ec);
 
     bool operator==(const judge_error& other) const;
 

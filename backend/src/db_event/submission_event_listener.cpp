@@ -7,11 +7,11 @@
 #include <chrono>
 #include <utility>
 
-std::expected<submission_event_listener, db_error> submission_event_listener::create(
+std::expected<submission_event_listener, submission_event_error> submission_event_listener::create(
     db_connection db_connection_value
 ){
     if(!db_connection_value.is_connected()){
-        return std::unexpected(db_error::invalid_connection);
+        return std::unexpected(submission_event_error::unavailable);
     }
 
     return submission_event_listener(std::move(db_connection_value));
@@ -24,9 +24,9 @@ bool submission_event_listener::is_connected() const{
     return db_connection_.is_connected();
 }
 
-std::expected<void, db_error> submission_event_listener::listen_submission_queue(){
+std::expected<void, submission_event_error> submission_event_listener::listen_submission_queue(){
     if(!is_connected()){
-        return std::unexpected(db_error::invalid_connection);
+        return std::unexpected(submission_event_error::unavailable);
     }
 
     try{
@@ -37,18 +37,20 @@ std::expected<void, db_error> submission_event_listener::listen_submission_queue
         return {};
     }
     catch(const std::exception& exception){
-        return std::unexpected(db_error::from_psql_exception(exception));
+        return std::unexpected(
+            submission_event_error{db_error::from_psql_exception(exception)}
+        );
     }
 }
 
-std::expected<bool, db_error> submission_event_listener::wait_submission_notification(
+std::expected<bool, submission_event_error> submission_event_listener::wait_submission_notification(
     std::chrono::milliseconds timeout
 ){
     if(!is_connected()){
-        return std::unexpected(db_error::invalid_connection);
+        return std::unexpected(submission_event_error::unavailable);
     }
     if(timeout < std::chrono::milliseconds::zero()){
-        return std::unexpected(db_error::invalid_argument);
+        return std::unexpected(submission_event_error::invalid_argument);
     }
 
     try{
@@ -64,6 +66,8 @@ std::expected<bool, db_error> submission_event_listener::wait_submission_notific
         return notification_count > 0;
     }
     catch(const std::exception& exception){
-        return std::unexpected(db_error::from_psql_exception(exception));
+        return std::unexpected(
+            submission_event_error{db_error::from_psql_exception(exception)}
+        );
     }
 }
