@@ -12,6 +12,7 @@ target_sources(lib
         repository_error.cpp
         http_error.cpp
         request_error.cpp
+        sandbox_error.cpp
         service_error.cpp
         submission_error.cpp
         testcase_upload_error.cpp

@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 
-std::expected<sandbox_runner::run_result, error_code> testcase_runner::run_one_testcase(
+std::expected<sandbox_runner::run_result, judge_error> testcase_runner::run_one_testcase(
     const pl_runner_util::prepared_source& prepared_source_value,
     const std::filesystem::path& input_path,
     const problem_content_dto::limits& problem_limits_value
@@ -22,10 +22,18 @@ std::expected<sandbox_runner::run_result, error_code> testcase_runner::run_one_t
     run_options_value.policy = sandbox_runner::policy_profile::run;
     run_options_value.mounts = prepared_source_value.mount_profile_;
 
-    return sandbox_runner::run(prepared_source_value.run_command_args_, run_options_value);
+    const auto run_exp = sandbox_runner::run(
+        prepared_source_value.run_command_args_,
+        run_options_value
+    );
+    if(!run_exp){
+        return std::unexpected(run_exp.error());
+    }
+
+    return *run_exp;
 }
 
-std::expected<testcase_runner::run_batch, error_code> testcase_runner::run_all_testcases(
+std::expected<testcase_runner::run_batch, judge_error> testcase_runner::run_all_testcases(
     const std::filesystem::path& source_file_path,
     const testcase_snapshot& testcase_snapshot_value
 ){
@@ -57,7 +65,7 @@ std::expected<testcase_runner::run_batch, error_code> testcase_runner::run_all_t
 
     const auto run_testcases_exp = timer::measure_elapsed_ms(
         run_batch_value.testcase_execution_elapsed_ms,
-        [&]() -> std::expected<void, error_code> {
+        [&]() -> std::expected<void, judge_error> {
             for(std::int32_t order = 1; order <= *validated_testcase_count_exp; ++order){
                 const auto input_path_exp = testcase_snapshot_value.make_input_path(order);
                 if(!input_path_exp){

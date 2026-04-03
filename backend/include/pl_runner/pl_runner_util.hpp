@@ -1,6 +1,6 @@
 #pragma once
 
-#include "error/error_code.hpp"
+#include "error/sandbox_error.hpp"
 #include "common/temp_file.hpp"
 #include "judge_core/sandbox_runner.hpp"
 
@@ -32,7 +32,7 @@ public:
         std::string stderr_text
     );
 
-    std::expected<prepared_source, error_code> prepare_source(
+    std::expected<prepared_source, sandbox_error> prepare_source(
         const std::filesystem::path& source_file_path
     );
 

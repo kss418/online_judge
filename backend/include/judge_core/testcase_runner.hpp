@@ -1,6 +1,6 @@
 #pragma once
 
-#include "error/error_code.hpp"
+#include "error/judge_error.hpp"
 #include "judge_core/sandbox_runner.hpp"
 #include "judge_core/testcase_snapshot.hpp"
 #include "pl_runner/pl_runner_util.hpp"
@@ -19,13 +19,13 @@ namespace testcase_runner{
         std::int64_t testcase_execution_elapsed_ms = 0;
     };
 
-    std::expected<sandbox_runner::run_result, error_code> run_one_testcase(
+    std::expected<sandbox_runner::run_result, judge_error> run_one_testcase(
         const pl_runner_util::prepared_source& prepared_source_value,
         const std::filesystem::path& input_path,
         const problem_content_dto::limits& problem_limits_value
     );
 
-    std::expected<run_batch, error_code> run_all_testcases(
+    std::expected<run_batch, judge_error> run_all_testcases(
         const std::filesystem::path& source_file_path,
         const testcase_snapshot& testcase_snapshot_value
     );

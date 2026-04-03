@@ -4,7 +4,7 @@
 #include "common/env_util.hpp"
 #include "common/file_util.hpp"
 #include "common/unique_fd.hpp"
-#include "error/io_error_bridge.hpp"
+#include "error/io_error.hpp"
 #include "judge_core/sandbox_runner.hpp"
 
 #include <array>
@@ -46,6 +46,21 @@ namespace nsjail_util::detail{
         "/dev/random",
         "/dev/urandom"
     };
+    sandbox_error make_invalid_configuration(std::string message){
+        return sandbox_error{
+            sandbox_error_code::invalid_configuration,
+            std::move(message)
+        };
+    }
+
+    sandbox_error make_invalid_configuration(const io_error& error){
+        return make_invalid_configuration(error.message);
+    }
+
+    sandbox_error make_invalid_configuration(const infra_error& error){
+        return make_invalid_configuration(error.message);
+    }
+
     std::string ascii_lowercase(std::string value){
         std::transform(
             value.begin(),
@@ -150,20 +165,20 @@ namespace nsjail_util::detail{
         return policy_text;
     }
 
-    std::expected<void, error_code> create_empty_file(const std::filesystem::path& file_path){
+    std::expected<void, sandbox_error> create_empty_file(const std::filesystem::path& file_path){
         unique_fd file_fd(::open(
             file_path.c_str(),
             O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC,
             0644
         ));
         if(!file_fd){
-            return std::unexpected(error_code::create(error_code::map_errno(errno)));
+            return std::unexpected(sandbox_error::from_errno(errno));
         }
 
         return {};
     }
 
-    std::expected<void, error_code> ensure_mount_target(
+    std::expected<void, sandbox_error> ensure_mount_target(
         const std::filesystem::path& rootfs_path,
         const std::filesystem::path& target_path,
         const std::filesystem::path& source_path
@@ -172,22 +187,20 @@ namespace nsjail_util::detail{
             ? target_path.lexically_relative("/")
             : target_path;
         if(relative_target.empty()){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(sandbox_error::invalid_argument);
         }
 
         const std::filesystem::path full_target_path = rootfs_path / relative_target;
         std::error_code type_ec;
         const bool is_directory = std::filesystem::is_directory(source_path, type_ec);
         if(type_ec){
-            return std::unexpected(error_code::create(error_code::map_errno(type_ec.value())));
+            return std::unexpected(sandbox_error::from_error_code(type_ec));
         }
 
         if(is_directory){
             const auto create_directories_exp = file_util::create_directories(full_target_path);
             if(!create_directories_exp){
-                return std::unexpected(
-                    io_error_bridge::to_error_code(create_directories_exp.error())
-                );
+                return std::unexpected(sandbox_error{create_directories_exp.error()});
             }
             return {};
         }
@@ -196,15 +209,13 @@ namespace nsjail_util::detail{
             full_target_path.parent_path()
         );
         if(!create_parent_dirs_exp){
-            return std::unexpected(
-                io_error_bridge::to_error_code(create_parent_dirs_exp.error())
-            );
+            return std::unexpected(sandbox_error{create_parent_dirs_exp.error()});
         }
 
         return create_empty_file(full_target_path);
     }
 
-    std::expected<void, error_code> append_mount_if_exists(
+    std::expected<void, sandbox_error> append_mount_if_exists(
         std::vector<std::string>& sandbox_command_args,
         const std::filesystem::path& rootfs_path,
         const std::filesystem::path& source_path,
@@ -214,7 +225,7 @@ namespace nsjail_util::detail{
         std::error_code exists_ec;
         const bool exists_value = std::filesystem::exists(source_path, exists_ec);
         if(exists_ec){
-            return std::unexpected(error_code::create(error_code::map_errno(exists_ec.value())));
+            return std::unexpected(sandbox_error::from_error_code(exists_ec));
         }
         if(!exists_value){
             return {};
@@ -234,7 +245,7 @@ namespace nsjail_util::detail{
         return {};
     }
 
-    std::expected<void, error_code> prepare_fixed_mount_args(
+    std::expected<void, sandbox_error> prepare_fixed_mount_args(
         std::vector<std::string>& fixed_mount_args,
         const std::filesystem::path& rootfs_path
     ){
@@ -272,13 +283,13 @@ namespace nsjail_util::detail{
         return {};
     }
 
-    std::expected<std::filesystem::path, error_code> prepare_rootfs_layout(
+    std::expected<std::filesystem::path, sandbox_error> prepare_rootfs_layout(
         const temp_dir& sandbox_dir
     ){
         const std::filesystem::path rootfs_path = sandbox_dir.get_path() / "rootfs";
         const auto create_rootfs_exp = file_util::create_directories(rootfs_path);
         if(!create_rootfs_exp){
-            return std::unexpected(io_error_bridge::to_error_code(create_rootfs_exp.error()));
+            return std::unexpected(sandbox_error{create_rootfs_exp.error()});
         }
 
         for(const std::filesystem::path& relative_dir : {
@@ -289,16 +300,14 @@ namespace nsjail_util::detail{
             }){
             const auto create_directory_exp = file_util::create_directories(rootfs_path / relative_dir);
             if(!create_directory_exp){
-                return std::unexpected(
-                    io_error_bridge::to_error_code(create_directory_exp.error())
-                );
+                return std::unexpected(sandbox_error{create_directory_exp.error()});
             }
         }
 
         return rootfs_path;
     }
 
-    std::expected<std::filesystem::path, error_code> create_seccomp_policy_file(
+    std::expected<std::filesystem::path, sandbox_error> create_seccomp_policy_file(
         const temp_dir& sandbox_dir,
         sandbox_runner::policy_profile policy_profile_value
     ){
@@ -308,7 +317,7 @@ namespace nsjail_util::detail{
             make_seccomp_policy_text(policy_profile_value)
         );
         if(!write_policy_exp){
-            return std::unexpected(io_error_bridge::to_error_code(write_policy_exp.error()));
+            return std::unexpected(sandbox_error{write_policy_exp.error()});
         }
 
         return policy_path;
@@ -326,7 +335,7 @@ namespace nsjail_util::detail{
         return default_run_nproc_limit;
     }
 
-    std::expected<void, error_code> validate_sandbox_artifacts(
+    std::expected<void, sandbox_error> validate_sandbox_artifacts(
         const nsjail_util::sandbox_artifacts& sandbox_artifacts_value
     ){
         std::error_code exists_ec;
@@ -335,10 +344,10 @@ namespace nsjail_util::detail{
             exists_ec
         );
         if(exists_ec){
-            return std::unexpected(error_code::create(error_code::map_errno(exists_ec.value())));
+            return std::unexpected(make_invalid_configuration(io_error::from_error_code(exists_ec)));
         }
         if(!rootfs_exists){
-            return std::unexpected(error_code::create(errno_error::file_not_found));
+            return std::unexpected(make_invalid_configuration("sandbox rootfs not found"));
         }
 
         for(const std::filesystem::path& relative_dir : {
@@ -353,11 +362,15 @@ namespace nsjail_util::detail{
             );
             if(exists_ec){
                 return std::unexpected(
-                    error_code::create(error_code::map_errno(exists_ec.value()))
+                    make_invalid_configuration(io_error::from_error_code(exists_ec))
                 );
             }
             if(!subdir_exists){
-                return std::unexpected(error_code::create(errno_error::file_not_found));
+                return std::unexpected(
+                    make_invalid_configuration(
+                        "sandbox rootfs entry missing: " + relative_dir.string()
+                    )
+                );
             }
         }
 
@@ -366,10 +379,12 @@ namespace nsjail_util::detail{
             exists_ec
         );
         if(exists_ec){
-            return std::unexpected(error_code::create(error_code::map_errno(exists_ec.value())));
+            return std::unexpected(make_invalid_configuration(io_error::from_error_code(exists_ec)));
         }
         if(!seccomp_exists){
-            return std::unexpected(error_code::create(errno_error::file_not_found));
+            return std::unexpected(
+                make_invalid_configuration("sandbox seccomp policy file not found")
+            );
         }
 
         return {};
@@ -395,12 +410,12 @@ namespace nsjail_util::detail{
             : cache.run_artifacts_;
     }
 
-    std::expected<nsjail_util::sandbox_artifacts, error_code> build_sandbox_artifacts(
+    std::expected<nsjail_util::sandbox_artifacts, sandbox_error> build_sandbox_artifacts(
         sandbox_runner::policy_profile policy_profile_value
     ){
         auto sandbox_dir_exp = temp_dir::create("/tmp/oj_nsjail_XXXXXX");
         if(!sandbox_dir_exp){
-            return std::unexpected(io_error_bridge::to_error_code(sandbox_dir_exp.error()));
+            return std::unexpected(sandbox_error{sandbox_dir_exp.error()});
         }
 
         const auto rootfs_path_exp = prepare_rootfs_layout(*sandbox_dir_exp);
@@ -433,60 +448,50 @@ namespace nsjail_util::detail{
     }
 }
 
-std::expected<std::filesystem::path, error_code> nsjail_util::require_nsjail_path(){
+std::expected<std::filesystem::path, sandbox_error> nsjail_util::require_nsjail_path(){
     const auto nsjail_path_exp = env_util::require_env("JUDGE_NSJAIL_PATH");
     if(!nsjail_path_exp){
-        switch(nsjail_path_exp.error().code){
-            case infra_error_code::invalid_argument:
-                return std::unexpected(error_code::create(errno_error::invalid_argument));
-            case infra_error_code::permission_denied:
-                return std::unexpected(error_code::create(errno_error::permission_denied));
-            case infra_error_code::not_found:
-                return std::unexpected(error_code::create(errno_error::file_not_found));
-            case infra_error_code::conflict:
-                return std::unexpected(error_code::create(errno_error::file_exists));
-            case infra_error_code::unavailable:
-                return std::unexpected(
-                    error_code::create(errno_error::resource_temporarily_unavailable)
-                );
-            case infra_error_code::internal:
-                return std::unexpected(error_code::create(errno_error::io_error));
-        }
-
-        return std::unexpected(error_code::create(errno_error::io_error));
+        return std::unexpected(detail::make_invalid_configuration(nsjail_path_exp.error()));
     }
 
     const std::filesystem::path nsjail_path = *nsjail_path_exp;
     if(::access(nsjail_path.c_str(), X_OK) < 0){
-        return std::unexpected(error_code::create(error_code::map_errno(errno)));
+        return std::unexpected(
+            detail::make_invalid_configuration(io_error::from_errno(errno))
+        );
     }
 
     return nsjail_path;
 }
 
-std::expected<void, error_code> nsjail_util::validate_workspace_path(
+std::expected<void, sandbox_error> nsjail_util::validate_workspace_path(
     const std::filesystem::path& workspace_host_path
 ){
     if(workspace_host_path.empty() || !workspace_host_path.is_absolute()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(sandbox_error::invalid_argument);
     }
 
     std::error_code exists_ec;
     const bool exists_value = std::filesystem::exists(workspace_host_path, exists_ec);
     if(exists_ec){
-        return std::unexpected(error_code::create(error_code::map_errno(exists_ec.value())));
+        return std::unexpected(sandbox_error::from_error_code(exists_ec));
     }
     if(!exists_value){
-        return std::unexpected(error_code::create(errno_error::file_not_found));
+        return std::unexpected(
+            detail::make_invalid_configuration("sandbox workspace path not found")
+        );
     }
 
     return {};
 }
 
-std::expected<void, error_code> nsjail_util::check_user_namespace_support(){
+std::expected<void, sandbox_error> nsjail_util::check_user_namespace_support(){
     int error_pipe[2];
     if(::pipe(error_pipe) < 0){
-        return std::unexpected(error_code::create(syscall_error::pipe_failed));
+        return std::unexpected(sandbox_error{
+            sandbox_error_code::internal,
+            "pipe failed"
+        });
     }
 
     unique_fd read_fd(error_pipe[0]);
@@ -494,7 +499,10 @@ std::expected<void, error_code> nsjail_util::check_user_namespace_support(){
 
     const pid_t pid = ::fork();
     if(pid < 0){
-        return std::unexpected(error_code::create(syscall_error::fork_failed));
+        return std::unexpected(sandbox_error{
+            sandbox_error_code::internal,
+            "fork failed"
+        });
     }
 
     if(pid == 0){
@@ -526,13 +534,16 @@ std::expected<void, error_code> nsjail_util::check_user_namespace_support(){
             continue;
         }
 
-        return std::unexpected(error_code::create(syscall_error::waitpid_failed));
+        return std::unexpected(sandbox_error{
+            sandbox_error_code::internal,
+            "waitpid failed"
+        });
     }
 
     int error_number = 0;
     const auto read_error_exp = blocking_io::read_all(read_fd.get());
     if(!read_error_exp){
-        return std::unexpected(io_error_bridge::to_error_code(read_error_exp.error()));
+        return std::unexpected(sandbox_error{read_error_exp.error()});
     }
     if(read_error_exp->size() == sizeof(error_number)){
         std::memcpy(&error_number, read_error_exp->data(), sizeof(error_number));
@@ -543,13 +554,24 @@ std::expected<void, error_code> nsjail_util::check_user_namespace_support(){
     }
 
     if(error_number != 0){
-        return std::unexpected(error_code::create(error_code::map_errno(error_number)));
+        const io_error user_namespace_error = io_error::from_errno(error_number);
+        if(user_namespace_error.code == io_error_code::unavailable){
+            return std::unexpected(sandbox_error{
+                sandbox_error_code::unavailable,
+                user_namespace_error.message
+            });
+        }
+
+        return std::unexpected(sandbox_error{
+            sandbox_error_code::unsupported,
+            user_namespace_error.message
+        });
     }
 
-    return std::unexpected(error_code::create(errno_error::operation_not_supported));
+    return std::unexpected(sandbox_error::unsupported);
 }
 
-std::expected<std::shared_ptr<const nsjail_util::sandbox_artifacts>, error_code>
+std::expected<std::shared_ptr<const nsjail_util::sandbox_artifacts>, sandbox_error>
 nsjail_util::acquire_sandbox_artifacts(
     sandbox_runner::policy_profile policy_profile_value
 ){
@@ -584,7 +606,7 @@ void nsjail_util::invalidate_all_sandbox_artifacts() noexcept{
     cache.run_artifacts_.reset();
 }
 
-std::expected<std::vector<std::string>, error_code> nsjail_util::make_command_args(
+std::expected<std::vector<std::string>, sandbox_error> nsjail_util::make_command_args(
     const std::filesystem::path& nsjail_path,
     const sandbox_artifacts& sandbox_artifacts_value,
     const std::vector<std::string>& command_args,

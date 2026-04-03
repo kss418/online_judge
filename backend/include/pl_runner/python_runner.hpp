@@ -1,6 +1,6 @@
 #pragma once
 
-#include "error/error_code.hpp"
+#include "error/sandbox_error.hpp"
 #include "pl_runner/pl_runner_util.hpp"
 
 #include <expected>
@@ -22,12 +22,12 @@ namespace python_runner{
         }
     };
 
-    std::expected<compile_result, error_code> compile(
+    std::expected<compile_result, sandbox_error> compile(
         const path& source_file_path,
         const path& python_path
     );
 
-    std::expected<pl_runner_util::prepared_source, error_code> prepare(
+    std::expected<pl_runner_util::prepared_source, sandbox_error> prepare(
         const path& source_file_path,
         const path& python_path
     );

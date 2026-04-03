@@ -1,5 +1,6 @@
 #pragma once
-#include "error/error_code.hpp"
+
+#include "error/sandbox_error.hpp"
 
 #include <vector>
 #include <string>
@@ -53,7 +54,7 @@ namespace sandbox_runner{
         std::size_t elapsed_ms_ = 0;
     };
 
-    std::expected<void, error_code> startup_self_check();
+    std::expected<void, sandbox_error> startup_self_check();
 
     void invalidate_cached_artifacts() noexcept;
 
@@ -64,9 +65,12 @@ namespace sandbox_runner{
         int error_fd
     );
 
-    std::expected <wait_result, error_code> wait_wall_clock(pid_t pid, std::chrono::milliseconds time_limit);
+    std::expected<wait_result, sandbox_error> wait_wall_clock(
+        pid_t pid,
+        std::chrono::milliseconds time_limit
+    );
 
-    std::expected<run_result, error_code> run(
+    std::expected<run_result, sandbox_error> run(
         const std::vector<std::string>& command_args,
         const run_options& run_options_value
     );

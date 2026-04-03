@@ -8,7 +8,7 @@ namespace{
     constexpr std::int64_t COMPILE_MEMORY_LIMIT_MB = 1024;
 }
 
-std::expected<java_runner::compile_result, error_code> java_runner::compile(
+std::expected<java_runner::compile_result, sandbox_error> java_runner::compile(
     const path& source_file_path,
     const path& java_compiler_path,
     const path& java_runtime_path
@@ -19,7 +19,7 @@ std::expected<java_runner::compile_result, error_code> java_runner::compile(
         source_file_path
     );
     if(source_sandbox_path.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(sandbox_error::invalid_argument);
     }
 
     sandbox_runner::run_options run_options_value;
@@ -56,7 +56,7 @@ std::expected<java_runner::compile_result, error_code> java_runner::compile(
     return compile_result_value;
 }
 
-std::expected<pl_runner_util::prepared_source, error_code> java_runner::prepare(
+std::expected<pl_runner_util::prepared_source, sandbox_error> java_runner::prepare(
     const path& source_file_path,
     const path& java_compiler_path,
     const path& java_runtime_path

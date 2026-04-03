@@ -4,6 +4,7 @@
 #include "error/error_code.hpp"
 #include "error/infra_error.hpp"
 #include "error/io_error.hpp"
+#include "error/sandbox_error.hpp"
 
 #include <array>
 #include <cstddef>
@@ -98,6 +99,21 @@ namespace{
         return judge_error_code::internal;
     }
 
+    judge_error_code map_sandbox_error_code(const sandbox_error& ec){
+        switch(ec.code){
+            case sandbox_error_code::invalid_argument:
+                return judge_error_code::validation_error;
+            case sandbox_error_code::unavailable:
+                return judge_error_code::unavailable;
+            case sandbox_error_code::invalid_configuration:
+            case sandbox_error_code::unsupported:
+            case sandbox_error_code::internal:
+                return judge_error_code::internal;
+        }
+
+        return judge_error_code::internal;
+    }
+
     judge_error_code map_service_error_code(const service_error& ec){
         switch(ec.code){
             case service_error_code::validation_error:
@@ -184,6 +200,9 @@ judge_error::judge_error(const infra_error& ec) :
 
 judge_error::judge_error(const io_error& ec) :
     judge_error(map_io_error_code(ec), ec.message){}
+
+judge_error::judge_error(const sandbox_error& ec) :
+    judge_error(map_sandbox_error_code(ec), ec.message){}
 
 bool judge_error::operator==(const judge_error& other) const{
     return code == other.code;

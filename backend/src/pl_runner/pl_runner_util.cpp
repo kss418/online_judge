@@ -57,13 +57,13 @@ pl_runner_util::prepared_source pl_runner_util::make_compile_failed_prepared_sou
     return prepared_source_value;
 }
 
-std::expected<pl_runner_util::prepared_source, error_code> pl_runner_util::prepare_source(
+std::expected<pl_runner_util::prepared_source, sandbox_error> pl_runner_util::prepare_source(
     const std::filesystem::path& source_file_path
 ){
     const std::string extension = source_file_path.extension().string();
     if(extension == ".cpp"){
         if(!cpp_compiler_path_.has_value() || cpp_compiler_path_->empty()){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(sandbox_error::invalid_argument);
         }
 
         return cpp_runner::prepare(source_file_path, *cpp_compiler_path_);
@@ -71,7 +71,7 @@ std::expected<pl_runner_util::prepared_source, error_code> pl_runner_util::prepa
 
     if(extension == ".py"){
         if(!python_path_.has_value() || python_path_->empty()){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(sandbox_error::invalid_argument);
         }
 
         return python_runner::prepare(source_file_path, *python_path_);
@@ -84,7 +84,7 @@ std::expected<pl_runner_util::prepared_source, error_code> pl_runner_util::prepa
             !java_runtime_path_.has_value() ||
             java_runtime_path_->empty()
         ){
-            return std::unexpected(error_code::create(errno_error::invalid_argument));
+            return std::unexpected(sandbox_error::invalid_argument);
         }
 
         return java_runner::prepare(
@@ -94,5 +94,5 @@ std::expected<pl_runner_util::prepared_source, error_code> pl_runner_util::prepa
         );
     }
 
-    return std::unexpected(error_code::create(errno_error::invalid_argument));
+    return std::unexpected(sandbox_error::invalid_argument);
 }

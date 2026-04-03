@@ -1,7 +1,7 @@
 #pragma once
 
-#include "error/error_code.hpp"
 #include "common/temp_dir.hpp"
+#include "error/sandbox_error.hpp"
 
 #include <expected>
 #include <filesystem>
@@ -22,21 +22,21 @@ namespace nsjail_util{
         std::vector<std::string> fixed_mount_args_;
     };
 
-    std::expected<std::filesystem::path, error_code> require_nsjail_path();
+    std::expected<std::filesystem::path, sandbox_error> require_nsjail_path();
 
-    std::expected<void, error_code> validate_workspace_path(
+    std::expected<void, sandbox_error> validate_workspace_path(
         const std::filesystem::path& workspace_host_path
     );
 
-    std::expected<void, error_code> check_user_namespace_support();
+    std::expected<void, sandbox_error> check_user_namespace_support();
 
-    std::expected<std::shared_ptr<const sandbox_artifacts>, error_code> acquire_sandbox_artifacts(
+    std::expected<std::shared_ptr<const sandbox_artifacts>, sandbox_error> acquire_sandbox_artifacts(
         sandbox_runner::policy_profile policy_profile_value
     );
 
     void invalidate_all_sandbox_artifacts() noexcept;
 
-    std::expected<std::vector<std::string>, error_code> make_command_args(
+    std::expected<std::vector<std::string>, sandbox_error> make_command_args(
         const std::filesystem::path& nsjail_path,
         const sandbox_artifacts& sandbox_artifacts_value,
         const std::vector<std::string>& command_args,

@@ -4,7 +4,6 @@
 #include "common/logger.hpp"
 #include "common/temp_file.hpp"
 #include "common/unique_fd.hpp"
-#include "error/io_error_bridge.hpp"
 #include "judge_core/judge_util.hpp"
 #include "judge_core/nsjail_util.hpp"
 
@@ -23,30 +22,30 @@ namespace{
         temp_file stderr_temp;
     };
 
-    std::expected<void, error_code> reset_scratch_file(temp_file& scratch_file){
+    std::expected<void, sandbox_error> reset_scratch_file(temp_file& scratch_file){
         if(::ftruncate(scratch_file.get_fd(), 0) < 0){
-            return std::unexpected(error_code::create(error_code::map_errno(errno)));
+            return std::unexpected(sandbox_error::from_errno(errno));
         }
 
         if(::lseek(scratch_file.get_fd(), 0, SEEK_SET) < 0){
-            return std::unexpected(error_code::create(error_code::map_errno(errno)));
+            return std::unexpected(sandbox_error::from_errno(errno));
         }
 
         return {};
     }
 
-    std::expected<scratch_files*, error_code> acquire_thread_local_scratch_files(){
+    std::expected<scratch_files*, sandbox_error> acquire_thread_local_scratch_files(){
         thread_local std::optional<scratch_files> scratch_files_opt;
 
         if(!scratch_files_opt.has_value()){
             auto stdout_temp_exp = temp_file::create("/tmp/oj_stdout_XXXXXX");
             if(!stdout_temp_exp){
-                return std::unexpected(io_error_bridge::to_error_code(stdout_temp_exp.error()));
+                return std::unexpected(sandbox_error{stdout_temp_exp.error()});
             }
 
             auto stderr_temp_exp = temp_file::create("/tmp/oj_stderr_XXXXXX");
             if(!stderr_temp_exp){
-                return std::unexpected(io_error_bridge::to_error_code(stderr_temp_exp.error()));
+                return std::unexpected(sandbox_error{stderr_temp_exp.error()});
             }
 
             scratch_files_opt.emplace(
@@ -71,7 +70,7 @@ namespace{
     }
 }
 
-std::expected<void, error_code> sandbox_runner::startup_self_check(){
+std::expected<void, sandbox_error> sandbox_runner::startup_self_check(){
     const auto nsjail_path_exp = nsjail_util::require_nsjail_path();
     if(!nsjail_path_exp){
         return std::unexpected(nsjail_path_exp.error());
@@ -85,7 +84,7 @@ std::expected<void, error_code> sandbox_runner::startup_self_check(){
 
     auto workspace_exp = temp_dir::create("/tmp/oj_sandbox_check_XXXXXX");
     if(!workspace_exp){
-        return std::unexpected(io_error_bridge::to_error_code(workspace_exp.error()));
+        return std::unexpected(sandbox_error{workspace_exp.error()});
     }
 
     run_options run_options_value;
@@ -104,7 +103,10 @@ std::expected<void, error_code> sandbox_runner::startup_self_check(){
                 .log("sandbox_startup_self_check_stderr")
                 .field("stderr", run_exp->stderr_text_);
         }
-        return std::unexpected(error_code::create(errno_error::operation_not_supported));
+        return std::unexpected(sandbox_error{
+            sandbox_error_code::unsupported,
+            "sandbox startup self check failed"
+        });
     }
 
     return {};
@@ -147,7 +149,7 @@ void sandbox_runner::exec_child(
     _exit(127);
 }
 
-std::expected<sandbox_runner::wait_result, error_code> sandbox_runner::wait_wall_clock(
+std::expected<sandbox_runner::wait_result, sandbox_error> sandbox_runner::wait_wall_clock(
     pid_t pid, std::chrono::milliseconds time_limit
 ){
     wait_result out{};
@@ -169,7 +171,7 @@ std::expected<sandbox_runner::wait_result, error_code> sandbox_runner::wait_wall
                         out.killed_by_wall_clock_ = true;
                     }
                     else{
-                        return std::unexpected(error_code::create(error_code::map_errno(errno)));
+                        return std::unexpected(sandbox_error::from_errno(errno));
                     }
                 }
             }
@@ -182,7 +184,10 @@ std::expected<sandbox_runner::wait_result, error_code> sandbox_runner::wait_wall
             continue;
         }
 
-        return std::unexpected(error_code::create(syscall_error::waitpid_failed));
+        return std::unexpected(sandbox_error{
+            sandbox_error_code::internal,
+            "waitpid failed"
+        });
     }
 
     const auto finished_at = std::chrono::steady_clock::now();
@@ -191,12 +196,12 @@ std::expected<sandbox_runner::wait_result, error_code> sandbox_runner::wait_wall
     return out;
 }
 
-std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
+std::expected<sandbox_runner::run_result, sandbox_error> sandbox_runner::run(
     const std::vector<std::string>& command_args,
     const run_options& run_options_value
 ){
     if(command_args.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(sandbox_error::invalid_argument);
     }
 
     const auto nsjail_path_exp = nsjail_util::require_nsjail_path();
@@ -213,11 +218,17 @@ std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
     }
 
     if(run_options_value.time_limit <= std::chrono::milliseconds::zero()){
-        return std::unexpected(error_code::create(limit_error::invalid_time_limit));
+        return std::unexpected(sandbox_error{
+            sandbox_error_code::invalid_argument,
+            "invalid time limit"
+        });
     }
 
     if(run_options_value.memory_limit_mb <= 0){
-        return std::unexpected(error_code::create(limit_error::invalid_memory_limit));
+        return std::unexpected(sandbox_error{
+            sandbox_error_code::invalid_argument,
+            "invalid memory limit"
+        });
     }
 
     auto scratch_files_exp = acquire_thread_local_scratch_files();
@@ -249,12 +260,15 @@ std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
             : "/dev/null";
     unique_fd input_fd(::open(input_path_string, O_RDONLY));
     if(!input_fd){
-        return std::unexpected(error_code::create(error_code::map_errno(errno)));
+        return std::unexpected(sandbox_error::from_errno(errno));
     }
 
     const pid_t pid = ::fork();
     if(pid < 0){
-        return std::unexpected(error_code::create(syscall_error::fork_failed));
+        return std::unexpected(sandbox_error{
+            sandbox_error_code::internal,
+            "fork failed"
+        });
     }
 
     if(pid == 0){
@@ -266,7 +280,7 @@ std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
         );
     }
     else if(::setpgid(pid, pid) < 0 && errno != EACCES && errno != ESRCH){
-        return std::unexpected(error_code::create(error_code::map_errno(errno)));
+        return std::unexpected(sandbox_error::from_errno(errno));
     }
 
     input_fd.close();
@@ -281,14 +295,14 @@ std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
         scratch_files_value.stdout_temp.get_fd()
     );
     if(!stdout_text_exp){
-        return std::unexpected(io_error_bridge::to_error_code(stdout_text_exp.error()));
+        return std::unexpected(sandbox_error{stdout_text_exp.error()});
     }
 
     auto stderr_text_exp = blocking_io::read_all_from_start(
         scratch_files_value.stderr_temp.get_fd()
     );
     if(!stderr_text_exp){
-        return std::unexpected(io_error_bridge::to_error_code(stderr_text_exp.error()));
+        return std::unexpected(sandbox_error{stderr_text_exp.error()});
     }
 
     run_result result;
@@ -342,5 +356,8 @@ std::expected<sandbox_runner::run_result, error_code> sandbox_runner::run(
         return result;
     }
 
-    return std::unexpected(error_code::create(syscall_error::waitpid_failed));
+    return std::unexpected(sandbox_error{
+        sandbox_error_code::internal,
+        "waitpid failed"
+    });
 }

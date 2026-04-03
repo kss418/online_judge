@@ -2,7 +2,7 @@
 
 #include "judge_core/judge_util.hpp"
 
-std::expected<python_runner::compile_result, error_code> python_runner::compile(
+std::expected<python_runner::compile_result, sandbox_error> python_runner::compile(
     const path& source_file_path,
     const path& python_path
 ){
@@ -13,14 +13,14 @@ std::expected<python_runner::compile_result, error_code> python_runner::compile(
         source_file_path
     );
     if(source_sandbox_path.empty()){
-        return std::unexpected(error_code::create(errno_error::invalid_argument));
+        return std::unexpected(sandbox_error::invalid_argument);
     }
     compile_result_value.run_command_args_.push_back(python_path.string());
     compile_result_value.run_command_args_.push_back(source_sandbox_path.string());
     return compile_result_value;
 }
 
-std::expected<pl_runner_util::prepared_source, error_code> python_runner::prepare(
+std::expected<pl_runner_util::prepared_source, sandbox_error> python_runner::prepare(
     const path& source_file_path,
     const path& python_path
 ){
