@@ -1,35 +1,118 @@
 #include "error/request_error.hpp"
 
+#include <array>
+#include <cstddef>
+#include <string_view>
 #include <utility>
 
 namespace{
-    http_error_code to_http_error_code(request_error_code code){
-        switch(code){
-            case request_error_code::bad_request:
-                return http_error_code::bad_request;
-            case request_error_code::payload_too_large:
-                return http_error_code::payload_too_large;
-            case request_error_code::invalid_json:
-                return http_error_code::invalid_json;
-            case request_error_code::invalid_query_string:
-                return http_error_code::invalid_query_string;
-            case request_error_code::duplicate_query_parameter:
-                return http_error_code::duplicate_query_parameter;
-            case request_error_code::invalid_query_parameter:
-                return http_error_code::invalid_query_parameter;
-            case request_error_code::unsupported_query_parameter:
-                return http_error_code::unsupported_query_parameter;
-            case request_error_code::missing_field:
-                return http_error_code::missing_field;
-            case request_error_code::invalid_field:
-                return http_error_code::invalid_field;
-            case request_error_code::invalid_length:
-                return http_error_code::invalid_length;
-            case request_error_code::invalid_argument:
-                return http_error_code::invalid_argument;
+    enum class request_error_message_template_kind{
+        http_error_default,
+        append_field_value
+    };
+
+    struct request_error_message_template{
+        request_error_message_template_kind kind =
+            request_error_message_template_kind::http_error_default;
+        std::string_view prefix;
+    };
+
+    constexpr std::array request_error_http_error_codes{
+        http_error_code::bad_request,
+        http_error_code::payload_too_large,
+        http_error_code::invalid_json,
+        http_error_code::invalid_query_string,
+        http_error_code::duplicate_query_parameter,
+        http_error_code::invalid_query_parameter,
+        http_error_code::unsupported_query_parameter,
+        http_error_code::missing_field,
+        http_error_code::invalid_field,
+        http_error_code::invalid_length,
+        http_error_code::invalid_argument,
+    };
+
+    constexpr request_error_message_template http_error_default_template{};
+
+    constexpr std::array request_error_message_templates{
+        http_error_default_template,
+        http_error_default_template,
+        http_error_default_template,
+        http_error_default_template,
+        request_error_message_template{
+            request_error_message_template_kind::append_field_value,
+            "duplicate query parameter"
+        },
+        request_error_message_template{
+            request_error_message_template_kind::append_field_value,
+            "invalid query parameter"
+        },
+        request_error_message_template{
+            request_error_message_template_kind::append_field_value,
+            "unsupported query parameter"
+        },
+        request_error_message_template{
+            request_error_message_template_kind::append_field_value,
+            "required field"
+        },
+        request_error_message_template{
+            request_error_message_template_kind::append_field_value,
+            "invalid field"
+        },
+        request_error_message_template{
+            request_error_message_template_kind::append_field_value,
+            "invalid length"
+        },
+        http_error_default_template,
+    };
+
+    const request_error_message_template& describe_request_error_message_template(
+        request_error_code code
+    ){
+        static constexpr request_error_message_template unknown_template{};
+
+        const auto index = static_cast<std::size_t>(code);
+        if(index >= request_error_message_templates.size()){
+            return unknown_template;
         }
 
-        return http_error_code::bad_request;
+        return request_error_message_templates[index];
+    }
+
+    http_error_code to_http_error_code(request_error_code code){
+        const auto index = static_cast<std::size_t>(code);
+        if(index >= request_error_http_error_codes.size()){
+            return http_error_code::bad_request;
+        }
+
+        return request_error_http_error_codes[index];
+    }
+
+    std::string make_prefixed_message(
+        std::string_view prefix,
+        std::string_view field_value
+    ){
+        return std::string{prefix} + ": " + std::string{field_value};
+    }
+
+    std::string resolve_message(
+        request_error_code code,
+        std::string message,
+        const std::optional<std::string>& field_opt
+    ){
+        if(!message.empty()){
+            return message;
+        }
+
+        const auto& message_template = describe_request_error_message_template(code);
+        if(
+            message_template.kind !=
+                request_error_message_template_kind::append_field_value ||
+            !field_opt.has_value()
+        ){
+            return {};
+        }
+
+        return make_prefixed_message(message_template.prefix, *field_opt);
     }
 }
 
@@ -52,7 +135,7 @@ http_error request_error::make_error(
 ){
     return http_error{
         to_http_error_code(code),
-        std::move(message),
+        resolve_message(code, std::move(message), field_opt),
         std::move(field_opt)
     };
 }
@@ -76,7 +159,7 @@ http_error request_error::make_invalid_query_string_error(){
 http_error request_error::make_duplicate_query_parameter_error(std::string_view key){
     return make_error(
         request_error_code::duplicate_query_parameter,
-        "duplicate query parameter: " + std::string{key},
+        {},
         std::string{key}
     );
 }
@@ -86,7 +169,11 @@ http_error request_error::make_invalid_query_parameter_error(
     std::string message
 ){
     if(message.empty()){
-        message = "invalid query parameter: " + std::string{key};
+        return make_error(
+            request_error_code::invalid_query_parameter,
+            {},
+            std::string{key}
+        );
     }
 
     return make_error(
@@ -99,7 +186,7 @@ http_error request_error::make_invalid_query_parameter_error(
 http_error request_error::make_unsupported_query_parameter_error(std::string_view key){
     return make_error(
         request_error_code::unsupported_query_parameter,
-        "unsupported query parameter: " + std::string{key},
+        {},
         std::string{key}
     );
 }
@@ -107,7 +194,7 @@ http_error request_error::make_unsupported_query_parameter_error(std::string_vie
 http_error request_error::make_missing_field_error(std::string_view field_name){
     return make_error(
         request_error_code::missing_field,
-        "required field: " + std::string{field_name},
+        {},
         std::string{field_name}
     );
 }
@@ -117,7 +204,11 @@ http_error request_error::make_invalid_field_error(
     std::string message
 ){
     if(message.empty()){
-        message = "invalid field: " + std::string{field_name};
+        return make_error(
+            request_error_code::invalid_field,
+            {},
+            std::string{field_name}
+        );
     }
 
     return make_error(
@@ -132,7 +223,11 @@ http_error request_error::make_invalid_length_error(
     std::string message
 ){
     if(message.empty()){
-        message = "invalid length: " + std::string{field_name};
+        return make_error(
+            request_error_code::invalid_length,
+            {},
+            std::string{field_name}
+        );
     }
 
     return make_error(
