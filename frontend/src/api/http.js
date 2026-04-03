@@ -1,3 +1,5 @@
+import { formatApiError } from '@/utils/apiError'
+
 const rawApiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
 
 export const apiBaseUrl = rawApiBaseUrl.endsWith('/')
@@ -12,6 +14,16 @@ async function parseResponse(response){
   }
 
   return response.text()
+}
+
+function createRequestError(details){
+  const error = new Error(formatApiError(details))
+  error.status = Number(details.status ?? 0)
+  error.code = details.code || null
+  error.field = details.field || null
+  error.rawMessage = details.message || ''
+  error.payload = details.payload ?? null
+  return error
 }
 
 export async function requestJson(path, options = {}){
@@ -41,25 +53,53 @@ export async function requestJson(path, options = {}){
     headers.set('Content-Type', 'application/json')
   }
 
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    ...fetchOptions,
-    body: hasJsonBody ? JSON.stringify(fetchOptions.body) : fetchOptions.body,
-    headers
-  })
+  let response
 
-  const payload = await parseResponse(response)
+  try {
+    response = await fetch(`${apiBaseUrl}${path}`, {
+      ...fetchOptions,
+      body: hasJsonBody ? JSON.stringify(fetchOptions.body) : fetchOptions.body,
+      headers
+    })
+  } catch (error) {
+    throw createRequestError({
+      status: 0,
+      code: 'network_error',
+      field: '',
+      message: error instanceof Error ? error.message : '',
+      payload: null
+    })
+  }
+
+  let payload
+
+  try {
+    payload = await parseResponse(response)
+  } catch (error) {
+    throw createRequestError({
+      status: response.status,
+      code: 'response_parse_error',
+      field: '',
+      message: error instanceof Error ? error.message : '',
+      payload: null
+    })
+  }
 
   if (!response.ok) {
     const errorMessage =
       typeof payload === 'string'
         ? payload
         : payload?.error?.message || payload?.message || `Request failed with status ${response.status}`
+    const errorCode = typeof payload?.error?.code === 'string' ? payload.error.code : ''
+    const errorField = typeof payload?.error?.field === 'string' ? payload.error.field : ''
 
-    const error = new Error(errorMessage)
-    error.status = response.status
-    error.code = payload?.error?.code || null
-    error.payload = payload
-    throw error
+    throw createRequestError({
+      status: response.status,
+      code: errorCode,
+      field: errorField,
+      message: errorMessage,
+      payload
+    })
   }
 
   return payload

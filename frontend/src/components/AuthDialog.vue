@@ -152,6 +152,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 
 import { useAuth } from '@/composables/useAuth'
+import { formatApiError } from '@/utils/apiError'
 
 const props = defineProps({
   open: {
@@ -173,6 +174,10 @@ const submitErrorMessage = ref('')
 const isBackdropInteraction = ref(false)
 const minimumCredentialLength = 4
 const maximumCredentialLength = 15
+const authFieldLabels = {
+  user_login_id: 'ID',
+  raw_password: '비밀번호'
+}
 
 const loginForm = reactive({
   user_login_id: '',
@@ -282,9 +287,10 @@ async function submitLogin(){
     clearForms()
     emit('close')
   } catch (error) {
-    submitErrorMessage.value = error instanceof Error
-      ? error.message
-      : '로그인에 실패했습니다.'
+    submitErrorMessage.value = formatApiError(error, {
+      fallback: '로그인에 실패했습니다.',
+      fieldLabels: authFieldLabels
+    })
   }
 }
 
@@ -309,9 +315,13 @@ async function submitSignUp(){
     clearForms()
     emit('close')
   } catch (error) {
-    submitErrorMessage.value = error instanceof Error
-      ? error.message
-      : '회원가입에 실패했습니다.'
+    submitErrorMessage.value = formatApiError(error, {
+      fallback: '회원가입에 실패했습니다.',
+      fieldLabels: authFieldLabels,
+      codeMessages: {
+        conflict: '이미 사용 중인 ID입니다.'
+      }
+    })
   }
 }
 </script>

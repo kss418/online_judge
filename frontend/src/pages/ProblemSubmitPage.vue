@@ -134,6 +134,7 @@ import { getProblemDetail } from '@/api/problem'
 import { createSubmission } from '@/api/submission'
 import { getMySubmissionBan } from '@/api/user'
 import { useAuth } from '@/composables/useAuth'
+import { formatApiError } from '@/utils/apiError'
 
 const route = useRoute()
 const router = useRouter()
@@ -162,6 +163,10 @@ const submissionBan = ref({
 })
 const nowTimestamp = ref(Date.now())
 let submissionBanRefreshTimer = null
+const submissionFieldLabels = {
+  language: '언어',
+  source_code: '소스 코드'
+}
 
 const activeLanguage = computed(() =>
   supportedLanguages.value.find((language) => language.language === selectedLanguage.value) || null
@@ -334,9 +339,9 @@ async function loadProblemDetail(){
       }
     }
   } catch (error) {
-    problemErrorMessage.value = error instanceof Error
-      ? error.message
-      : '문제 정보를 불러오지 못했습니다.'
+    problemErrorMessage.value = formatApiError(error, {
+      fallback: '문제 정보를 불러오지 못했습니다.'
+    })
     problemDetail.value = null
   } finally {
     isLoadingProblem.value = false
@@ -353,9 +358,9 @@ async function loadSupportedLanguageList(){
       ? response.languages
       : []
   } catch (error) {
-    languageErrorMessage.value = error instanceof Error
-      ? error.message
-      : '지원 언어를 불러오지 못했습니다.'
+    languageErrorMessage.value = formatApiError(error, {
+      fallback: '지원 언어를 불러오지 못했습니다.'
+    })
     supportedLanguages.value = []
   } finally {
     isLoadingLanguages.value = false
@@ -705,9 +710,10 @@ async function submitSolution(){
         submitErrorMessage.value = '현재 제출이 제한되어 있습니다.'
       }
     } else {
-      submitErrorMessage.value = error instanceof Error
-        ? error.message
-        : '제출을 처리하지 못했습니다.'
+      submitErrorMessage.value = formatApiError(error, {
+        fallback: '제출을 처리하지 못했습니다.',
+        fieldLabels: submissionFieldLabels
+      })
     }
   } finally {
     isSubmittingSubmission.value = false
