@@ -7,7 +7,6 @@
 #include "judge_core/execution_report.hpp"
 #include "judge_core/judge_policy.hpp"
 #include "judge_core/judge_submission_data.hpp"
-#include "judge_core/problem_lock_registry.hpp"
 #include "judge_core/submission_queue_source.hpp"
 #include "judge_core/testcase_snapshot.hpp"
 #include "judge_core/testcase_snapshot_service.hpp"
@@ -17,13 +16,20 @@
 #include <cstdint>
 #include <expected>
 #include <filesystem>
-#include <memory>
 #include <string>
 
 class judge_worker{
 public:
+    struct dependencies{
+        submission_queue_source submission_queue_source_value;
+        db_connection submission_db_connection;
+        db_connection testcase_snapshot_connection;
+        testcase_snapshot_service testcase_snapshot_service_value;
+        std::filesystem::path source_root_path;
+    };
+
     static std::expected<judge_worker, judge_error> create(
-        std::shared_ptr<problem_lock_registry> problem_lock_registry
+        dependencies dependencies_value
     );
 
     std::expected<void, judge_error> run();

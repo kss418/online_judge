@@ -1,32 +1,11 @@
 #include "judge_core/testcase_snapshot_service.hpp"
 
-#include "common/env_util.hpp"
 #include "judge_core/testcase_downloader.hpp"
 
 #include <utility>
 
-namespace{
-    std::expected<std::filesystem::path, judge_error> load_testcase_root_path(){
-        const auto testcase_root_path_text_exp = env_util::require_env("TESTCASE_PATH");
-        if(!testcase_root_path_text_exp){
-            return std::unexpected(testcase_root_path_text_exp.error());
-        }
-
-        const std::filesystem::path testcase_root_path(*testcase_root_path_text_exp);
-        if(testcase_root_path.empty()){
-            return std::unexpected(
-                judge_error{
-                    judge_error_code::validation_error,
-                    "testcase root path is not configured"
-                }
-            );
-        }
-
-        return testcase_root_path;
-    }
-}
-
 std::expected<testcase_snapshot_service, judge_error> testcase_snapshot_service::create(
+    std::filesystem::path testcase_root_path,
     std::shared_ptr<problem_lock_registry> problem_lock_registry
 ){
     if(!problem_lock_registry){
@@ -38,13 +17,17 @@ std::expected<testcase_snapshot_service, judge_error> testcase_snapshot_service:
         );
     }
 
-    const auto testcase_root_path_exp = load_testcase_root_path();
-    if(!testcase_root_path_exp){
-        return std::unexpected(testcase_root_path_exp.error());
+    if(testcase_root_path.empty()){
+        return std::unexpected(
+            judge_error{
+                judge_error_code::validation_error,
+                "testcase root path is not configured"
+            }
+        );
     }
 
     return testcase_snapshot_service(
-        *testcase_root_path_exp,
+        std::move(testcase_root_path),
         std::move(problem_lock_registry)
     );
 }

@@ -1,4 +1,6 @@
+#include "common/db_connection.hpp"
 #include "common/env_util.hpp"
+#include "common/file_util.hpp"
 #include "common/logger.hpp"
 #include "common/string_util.hpp"
 #include "error/infra_error.hpp"
@@ -9,13 +11,108 @@
 #include <chrono>
 #include <cstdint>
 #include <expected>
+#include <filesystem>
 #include <limits>
 #include <memory>
+#include <string>
 #include <thread>
 #include <utility>
 #include <vector>
 
 constexpr std::chrono::seconds WORKER_RESTART_DELAY{1};
+
+std::expected<std::filesystem::path, judge_error> load_required_path_env(
+    const char* key,
+    std::string empty_value_message
+){
+    const auto path_text_exp = env_util::require_env(key);
+    if(!path_text_exp){
+        return std::unexpected(path_text_exp.error());
+    }
+
+    const std::filesystem::path path_value(*path_text_exp);
+    if(path_value.empty()){
+        return std::unexpected(
+            judge_error{
+                judge_error_code::validation_error,
+                std::move(empty_value_message)
+            }
+        );
+    }
+
+    return path_value;
+}
+
+std::expected<judge_worker::dependencies, judge_error> build_judge_worker_dependencies(
+    const std::shared_ptr<problem_lock_registry>& shared_problem_lock_registry
+){
+    const auto source_root_path_exp = load_required_path_env(
+        "JUDGE_SOURCE_ROOT",
+        "judge source root is not configured"
+    );
+    if(!source_root_path_exp){
+        return std::unexpected(source_root_path_exp.error());
+    }
+
+    const auto create_directories_exp = file_util::create_directories(
+        *source_root_path_exp
+    );
+    if(!create_directories_exp){
+        return std::unexpected(create_directories_exp.error());
+    }
+
+    const auto testcase_root_path_exp = load_required_path_env(
+        "TESTCASE_PATH",
+        "testcase root path is not configured"
+    );
+    if(!testcase_root_path_exp){
+        return std::unexpected(testcase_root_path_exp.error());
+    }
+
+    auto db_config_exp = db_connection::load_db_connection_config();
+    if(!db_config_exp){
+        return std::unexpected(db_config_exp.error());
+    }
+
+    auto submission_queue_connection_exp = db_connection::create(*db_config_exp);
+    if(!submission_queue_connection_exp){
+        return std::unexpected(submission_queue_connection_exp.error());
+    }
+
+    auto submission_queue_source_exp = submission_queue_source::create(
+        std::move(*submission_queue_connection_exp)
+    );
+    if(!submission_queue_source_exp){
+        return std::unexpected(judge_error{submission_queue_source_exp.error()});
+    }
+
+    auto testcase_snapshot_connection_exp = db_connection::create(*db_config_exp);
+    if(!testcase_snapshot_connection_exp){
+        return std::unexpected(testcase_snapshot_connection_exp.error());
+    }
+
+    auto testcase_snapshot_service_exp = testcase_snapshot_service::create(
+        *testcase_root_path_exp,
+        shared_problem_lock_registry
+    );
+    if(!testcase_snapshot_service_exp){
+        return std::unexpected(testcase_snapshot_service_exp.error());
+    }
+
+    auto submission_db_connection_exp = db_connection::create(*db_config_exp);
+    if(!submission_db_connection_exp){
+        return std::unexpected(submission_db_connection_exp.error());
+    }
+
+    judge_worker::dependencies dependencies_value{
+        .submission_queue_source_value = std::move(*submission_queue_source_exp),
+        .submission_db_connection = std::move(*submission_db_connection_exp),
+        .testcase_snapshot_connection = std::move(*testcase_snapshot_connection_exp),
+        .testcase_snapshot_service_value = std::move(*testcase_snapshot_service_exp),
+        .source_root_path = std::move(*source_root_path_exp),
+    };
+    return dependencies_value;
+}
 
 std::uint32_t default_worker_count(){
     const std::uint32_t hardware_thread_count = std::thread::hardware_concurrency();
@@ -44,8 +141,21 @@ void run_judge_worker_loop(
     const std::shared_ptr<problem_lock_registry>& shared_problem_lock_registry
 ){
     while(true){
-        auto judge_worker_exp = judge_worker::create(
+        auto judge_worker_dependencies_exp = build_judge_worker_dependencies(
             shared_problem_lock_registry
+        );
+        if(!judge_worker_dependencies_exp){
+            logger::cerr()
+                .log("judge_worker_initialize_failed")
+                .field("worker_index", worker_index)
+                .field("stage", "judge_worker_dependencies")
+                .field("error", to_string(judge_worker_dependencies_exp.error()));
+            std::this_thread::sleep_for(WORKER_RESTART_DELAY);
+            continue;
+        }
+
+        auto judge_worker_exp = judge_worker::create(
+            std::move(*judge_worker_dependencies_exp)
         );
         if(!judge_worker_exp){
             logger::cerr()

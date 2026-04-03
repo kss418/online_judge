@@ -13,6 +13,7 @@
 class testcase_snapshot_service{
 public:
     static std::expected<testcase_snapshot_service, judge_error> create(
+        std::filesystem::path testcase_root_path,
         std::shared_ptr<problem_lock_registry> problem_lock_registry
     );
 

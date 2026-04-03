@@ -1,7 +1,5 @@
 #include "judge_core/judge_worker.hpp"
 
-#include "common/env_util.hpp"
-#include "common/file_util.hpp"
 #include "common/logger.hpp"
 #include "common/timer.hpp"
 #include "judge_core/judge_policy.hpp"
@@ -56,15 +54,9 @@ namespace{
 } // namespace
 
 std::expected<judge_worker, judge_error> judge_worker::create(
-    std::shared_ptr<problem_lock_registry> problem_lock_registry
+    dependencies dependencies_value
 ){
-    const auto source_root_path_text_exp = env_util::require_env("JUDGE_SOURCE_ROOT");
-    if(!source_root_path_text_exp){
-        return std::unexpected(source_root_path_text_exp.error());
-    }
-
-    const std::filesystem::path source_root_path(*source_root_path_text_exp);
-    if(source_root_path.empty()){
+    if(dependencies_value.source_root_path.empty()){
         return std::unexpected(
             judge_error{
                 judge_error_code::validation_error,
@@ -73,53 +65,12 @@ std::expected<judge_worker, judge_error> judge_worker::create(
         );
     }
 
-    const auto create_directories_exp = file_util::create_directories(
-        source_root_path
-    );
-    if(!create_directories_exp){
-        return std::unexpected(create_directories_exp.error());
-    }
-
-    auto db_config_exp = db_connection::load_db_connection_config();
-    if(!db_config_exp){
-        return std::unexpected(db_config_exp.error());
-    }
-
-    auto submission_queue_connection_exp = db_connection::create(*db_config_exp);
-    if(!submission_queue_connection_exp){
-        return std::unexpected(submission_queue_connection_exp.error());
-    }
-
-    auto submission_queue_source_exp = submission_queue_source::create(
-        std::move(*submission_queue_connection_exp)
-    );
-    if(!submission_queue_source_exp){
-        return std::unexpected(judge_error{submission_queue_source_exp.error()});
-    }
-
-    auto testcase_snapshot_connection_exp = db_connection::create(*db_config_exp);
-    if(!testcase_snapshot_connection_exp){
-        return std::unexpected(testcase_snapshot_connection_exp.error());
-    }
-
-    auto testcase_snapshot_service_exp = testcase_snapshot_service::create(
-        std::move(problem_lock_registry)
-    );
-    if(!testcase_snapshot_service_exp){
-        return std::unexpected(testcase_snapshot_service_exp.error());
-    }
-
-    auto db_connection_exp = db_connection::create(*db_config_exp);
-    if(!db_connection_exp){
-        return std::unexpected(db_connection_exp.error());
-    }
-
     return judge_worker(
-        std::move(*submission_queue_source_exp),
-        std::move(*db_connection_exp),
-        std::move(*testcase_snapshot_connection_exp),
-        std::move(*testcase_snapshot_service_exp),
-        source_root_path
+        std::move(dependencies_value.submission_queue_source_value),
+        std::move(dependencies_value.submission_db_connection),
+        std::move(dependencies_value.testcase_snapshot_connection),
+        std::move(dependencies_value.testcase_snapshot_service_value),
+        std::move(dependencies_value.source_root_path)
     );
 }
 
