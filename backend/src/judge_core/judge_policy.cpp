@@ -6,7 +6,7 @@
 #include <vector>
 
 std::expected<judge_result, judge_error> judge_policy::check_result(
-    const testcase_snapshot& testcase_snapshot_value,
+    const judge_expectation& judge_expectation_value,
     const execution_report::batch& execution_report_value
 ){
     std::vector<std::string> output_texts;
@@ -33,7 +33,7 @@ std::expected<judge_result, judge_error> judge_policy::check_result(
         output_texts.push_back(testcase_execution_value.stdout_text);
     }
 
-    return checker::check_all(output_texts, testcase_snapshot_value);
+    return checker::check_all(output_texts, judge_expectation_value);
 }
 
 submission_status judge_policy::to_submission_status(judge_result result){

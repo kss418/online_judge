@@ -14,6 +14,8 @@ namespace judge_submission_data{
     struct process_submission_data{
         judge_result judge_result_value = judge_result::wrong_answer;
         execution_report::batch execution_report_value;
+        std::int64_t prepare_workspace_elapsed_ms = 0;
+        std::int64_t testcase_snapshot_elapsed_ms = 0;
     };
 
     struct submission_stage_metrics{

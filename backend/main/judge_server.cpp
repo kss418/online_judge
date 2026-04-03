@@ -7,6 +7,7 @@
 #include "judge_core/problem_lock_registry.hpp"
 #include "judge_core/judge_worker.hpp"
 #include "judge_core/sandbox_runner.hpp"
+#include "judge_core/submission_execution_service.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -99,6 +100,10 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         return std::unexpected(testcase_snapshot_service_exp.error());
     }
 
+    submission_execution_service submission_execution_service_value{
+        std::move(*testcase_snapshot_service_exp)
+    };
+
     auto submission_db_connection_exp = db_connection::create(*db_config_exp);
     if(!submission_db_connection_exp){
         return std::unexpected(submission_db_connection_exp.error());
@@ -108,7 +113,7 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         .submission_queue_source_value = std::move(*submission_queue_source_exp),
         .submission_db_connection = std::move(*submission_db_connection_exp),
         .testcase_snapshot_connection = std::move(*testcase_snapshot_connection_exp),
-        .testcase_snapshot_service_value = std::move(*testcase_snapshot_service_exp),
+        .submission_execution_service_value = std::move(submission_execution_service_value),
         .source_root_path = std::move(*source_root_path_exp),
     };
     return dependencies_value;

@@ -3,8 +3,8 @@
 #include "common/submission_status.hpp"
 #include "error/judge_error.hpp"
 #include "judge_core/execution_report.hpp"
+#include "judge_core/judge_expectation.hpp"
 #include "judge_core/judge_result.hpp"
-#include "judge_core/testcase_snapshot.hpp"
 
 #include <cstdint>
 #include <expected>
@@ -22,7 +22,7 @@ namespace judge_policy{
     };
 
     std::expected<judge_result, judge_error> check_result(
-        const testcase_snapshot& testcase_snapshot_value,
+        const judge_expectation& judge_expectation_value,
         const execution_report::batch& execution_report_value
     );
 

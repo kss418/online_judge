@@ -17,6 +17,10 @@ namespace judge_submission_data{
         submission_stage_metrics submission_stage_metrics_value,
         const process_submission_data& process_submission_data_value
     ){
+        submission_stage_metrics_value.prepare_workspace_elapsed_ms =
+            process_submission_data_value.prepare_workspace_elapsed_ms;
+        submission_stage_metrics_value.testcase_snapshot_elapsed_ms =
+            process_submission_data_value.testcase_snapshot_elapsed_ms;
         submission_stage_metrics_value.testcase_count =
             process_submission_data_value.execution_report_value.testcase_count;
         submission_stage_metrics_value.compile_prepare_elapsed_ms =

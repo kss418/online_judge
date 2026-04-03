@@ -6,7 +6,6 @@
 #include "judge_core/judge_service.hpp"
 #include "judge_core/judge_submission_data.hpp"
 #include "judge_core/judge_workspace.hpp"
-#include "judge_core/testcase_runner.hpp"
 
 #include <optional>
 #include <string>
@@ -69,7 +68,7 @@ std::expected<judge_worker, judge_error> judge_worker::create(
         std::move(dependencies_value.submission_queue_source_value),
         std::move(dependencies_value.submission_db_connection),
         std::move(dependencies_value.testcase_snapshot_connection),
-        std::move(dependencies_value.testcase_snapshot_service_value),
+        std::move(dependencies_value.submission_execution_service_value),
         std::move(dependencies_value.source_root_path)
     );
 }
@@ -78,13 +77,13 @@ judge_worker::judge_worker(
     submission_queue_source submission_queue_source,
     db_connection submission_db_connection,
     db_connection testcase_snapshot_connection,
-    testcase_snapshot_service testcase_snapshot_service,
+    submission_execution_service submission_execution_service,
     std::filesystem::path source_root_path
 ) :
     submission_queue_source_(std::move(submission_queue_source)),
     db_connection_(std::move(submission_db_connection)),
     testcase_snapshot_connection_(std::move(testcase_snapshot_connection)),
-    testcase_snapshot_service_(std::move(testcase_snapshot_service)),
+    submission_execution_service_(std::move(submission_execution_service)),
     source_root_path_(std::move(source_root_path)){}
 
 std::expected<void, judge_error> judge_worker::run(){
@@ -176,30 +175,6 @@ judge_worker::process_submission(
             queued_submission_value
         );
 
-    const auto source_file_path_exp = timer::measure_elapsed_ms(
-        submission_stage_metrics_value.prepare_workspace_elapsed_ms,
-        [&workspace_path, &queued_submission_value]() -> std::expected<std::filesystem::path, judge_error> {
-            const auto reset_workspace_exp = judge_workspace::reset(workspace_path);
-            if(!reset_workspace_exp){
-                return std::unexpected(judge_error{reset_workspace_exp.error()});
-            }
-
-            const auto source_file_path_exp = judge_workspace::write_source_file(
-                workspace_path,
-                queued_submission_value.language,
-                queued_submission_value.source_code
-            );
-            if(!source_file_path_exp){
-                return std::unexpected(judge_error{source_file_path_exp.error()});
-            }
-
-            return *source_file_path_exp;
-        }
-    );
-    if(!source_file_path_exp){
-        return std::unexpected(source_file_path_exp.error());
-    }
-
     const auto mark_judging_exp = judge_service::mark_judging(
         db_connection_,
         queued_submission_value.submission_id
@@ -208,22 +183,10 @@ judge_worker::process_submission(
         return std::unexpected(mark_judging_exp.error());
     }
 
-    const auto testcase_snapshot_exp = timer::measure_elapsed_ms(
-        submission_stage_metrics_value.testcase_snapshot_elapsed_ms,
-        [this, &queued_submission_value]() -> std::expected<testcase_snapshot, judge_error> {
-            return testcase_snapshot_service_.acquire(
-                testcase_snapshot_connection_,
-                queued_submission_value.problem_id
-            );
-        }
-    );
-    if(!testcase_snapshot_exp){
-        return std::unexpected(testcase_snapshot_exp.error());
-    }
-
-    auto judge_submission_exp = judge_submission(
-        *source_file_path_exp,
-        *testcase_snapshot_exp
+    auto judge_submission_exp = submission_execution_service_.process_submission(
+        queued_submission_value,
+        workspace_path,
+        testcase_snapshot_connection_
     );
     if(!judge_submission_exp){
         return std::unexpected(judge_submission_exp.error());
@@ -248,33 +211,6 @@ judge_worker::process_submission(
     }
 
     return submission_stage_metrics_value;
-}
-
-std::expected<judge_submission_data::process_submission_data, judge_error>
-judge_worker::judge_submission(
-    const std::filesystem::path& source_file_path,
-    const testcase_snapshot& testcase_snapshot_value
-){
-    auto run_all_testcases_exp = testcase_runner::run_all_testcases(
-        source_file_path,
-        testcase_snapshot_value
-    );
-    if(!run_all_testcases_exp){
-        return std::unexpected(run_all_testcases_exp.error());
-    }
-
-    const auto judge_result_exp = judge_policy::check_result(
-        testcase_snapshot_value,
-        *run_all_testcases_exp
-    );
-    if(!judge_result_exp){
-        return std::unexpected(judge_result_exp.error());
-    }
-
-    return judge_submission_data::make_process_submission_data(
-        *judge_result_exp,
-        std::move(*run_all_testcases_exp)
-    );
 }
 
 std::expected<void, judge_error> judge_worker::finalize_submission(

@@ -3,9 +3,11 @@ target_sources(lib
         testcase_runner.cpp
         sandbox_runner.cpp
         nsjail_util.cpp
+        judge_expectation_loader.cpp
         judge_policy.cpp
         judge_service.cpp
         judge_submission_data.cpp
+        submission_execution_service.cpp
         submission_queue_source.cpp
         judge_worker.cpp
         judge_workspace.cpp
