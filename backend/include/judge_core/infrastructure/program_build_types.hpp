@@ -18,8 +18,9 @@ namespace program_build{
 
     struct build_artifact{
         source_language language_ = source_language::cpp;
-        std::filesystem::path entry_host_path_;
-        std::string entry_name_;
+        std::filesystem::path workspace_host_path_;
+        std::filesystem::path entry_file_host_path_;
+        std::string main_class_name_;
         std::optional<compile_failure> compile_failure_opt_;
 
         bool is_runnable() const noexcept{

@@ -4,6 +4,8 @@ target_sources(lib
         python_runner.cpp
         java_runner.cpp
         launch_planner.cpp
+        program_handler.cpp
+        program_handler_factory.cpp
         problem_lock_registry.cpp
         program_builder.cpp
         nsjail_util.cpp

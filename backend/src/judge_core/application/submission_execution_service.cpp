@@ -3,11 +3,14 @@
 #include "common/timer.hpp"
 #include "judge_core/infrastructure/judge_workspace.hpp"
 #include "judge_core/infrastructure/launch_planner.hpp"
+#include "judge_core/infrastructure/program_handler_factory.hpp"
 #include "judge_core/infrastructure/program_builder.hpp"
 #include "judge_core/infrastructure/testcase_runner.hpp"
+#include "judge_core/infrastructure/toolchain_config.hpp"
 #include "judge_core/policy/judge_expectation_loader.hpp"
 #include "judge_core/policy/judge_policy.hpp"
 
+#include <memory>
 #include <utility>
 
 namespace{
@@ -34,10 +37,39 @@ namespace{
     }
 }
 
+std::expected<submission_execution_service, judge_error>
+submission_execution_service::create(
+    const toolchain_config& toolchain_config_value,
+    testcase_snapshot_service testcase_snapshot_service
+){
+    const auto handler_registry = make_program_handler_registry(
+        toolchain_config_value
+    );
+    return submission_execution_service{
+        std::make_unique<program_builder>(handler_registry),
+        std::make_unique<launch_planner>(handler_registry),
+        std::move(testcase_snapshot_service)
+    };
+}
+
 submission_execution_service::submission_execution_service(
+    std::unique_ptr<program_builder> program_builder_value,
+    std::unique_ptr<launch_planner> launch_planner_value,
     testcase_snapshot_service testcase_snapshot_service
 ) :
+    program_builder_(std::move(program_builder_value)),
+    launch_planner_(std::move(launch_planner_value)),
     testcase_snapshot_service_(std::move(testcase_snapshot_service)){}
+
+submission_execution_service::submission_execution_service(
+    submission_execution_service&& other
+) noexcept = default;
+
+submission_execution_service& submission_execution_service::operator=(
+    submission_execution_service&& other
+) noexcept = default;
+
+submission_execution_service::~submission_execution_service() = default;
 
 std::expected<std::filesystem::path, judge_error>
 submission_execution_service::prepare_workspace(
@@ -84,8 +116,8 @@ submission_execution_service::process_submission(
 
     const auto build_source_exp = timer::measure_elapsed_ms(
         build_source_elapsed_ms,
-        [&source_file_path_exp]{
-            return program_builder::instance().build_source(*source_file_path_exp);
+        [this, &source_file_path_exp]{
+            return program_builder_->build_source(*source_file_path_exp);
         }
     );
     if(!build_source_exp){
@@ -108,8 +140,8 @@ submission_execution_service::process_submission(
 
     const auto execution_plan_exp = timer::measure_elapsed_ms(
         make_execution_plan_elapsed_ms,
-        [&build_source_exp]{
-            return launch_planner::instance().make_execution_plan(*build_source_exp);
+        [this, &build_source_exp]{
+            return launch_planner_->make_execution_plan(*build_source_exp);
         }
     );
     if(!execution_plan_exp){

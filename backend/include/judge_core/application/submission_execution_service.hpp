@@ -8,12 +8,25 @@
 
 #include <expected>
 #include <filesystem>
+#include <memory>
+
+class program_builder;
+class launch_planner;
+struct toolchain_config;
 
 class submission_execution_service{
 public:
-    explicit submission_execution_service(
+    static std::expected<submission_execution_service, judge_error> create(
+        const toolchain_config& toolchain_config_value,
         testcase_snapshot_service testcase_snapshot_service
     );
+
+    submission_execution_service(submission_execution_service&& other) noexcept;
+    submission_execution_service& operator=(submission_execution_service&& other) noexcept;
+    ~submission_execution_service();
+
+    submission_execution_service(const submission_execution_service&) = delete;
+    submission_execution_service& operator=(const submission_execution_service&) = delete;
 
     std::expected<judge_submission_data::process_submission_data, judge_error>
     process_submission(
@@ -28,5 +41,13 @@ private:
         const std::filesystem::path& workspace_path
     );
 
+    submission_execution_service(
+        std::unique_ptr<program_builder> program_builder_value,
+        std::unique_ptr<launch_planner> launch_planner_value,
+        testcase_snapshot_service testcase_snapshot_service
+    );
+
+    std::unique_ptr<program_builder> program_builder_;
+    std::unique_ptr<launch_planner> launch_planner_;
     testcase_snapshot_service testcase_snapshot_service_;
 };

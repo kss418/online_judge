@@ -1,15 +1,10 @@
 #pragma once
 
-#include "error/sandbox_error.hpp"
-#include "judge_core/infrastructure/program_build_types.hpp"
-
-#include <expected>
 #include <filesystem>
+#include <memory>
 
-namespace python_runner{
-    using path = std::filesystem::path;
+class program_handler;
 
-    std::expected<program_build::build_artifact, sandbox_error> build(
-        const path& source_file_path
-    );
-}
+std::unique_ptr<program_handler> make_python_program_handler(
+    std::filesystem::path python_path
+);

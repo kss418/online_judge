@@ -5,23 +5,20 @@
 #include "judge_core/infrastructure/program_build_types.hpp"
 
 #include <expected>
-#include <mutex>
-#include <optional>
+#include <memory>
+
+class program_handler_registry;
 
 class launch_planner{
 public:
-    static launch_planner& instance();
+    explicit launch_planner(
+        std::shared_ptr<const program_handler_registry> handler_registry
+    );
 
     std::expected<program_launch::execution_plan, sandbox_error> make_execution_plan(
         const program_build::build_artifact& build_artifact_value
     );
 
 private:
-    launch_planner() = default;
-
-    void initialize_if_needed();
-
-    std::mutex initialize_mutex_;
-    std::optional<std::filesystem::path> python_path_;
-    std::optional<std::filesystem::path> java_runtime_path_;
+    std::shared_ptr<const program_handler_registry> handler_registry_;
 };
