@@ -13,7 +13,6 @@
 #include "judge_core/gateway/testcase_snapshot_port.hpp"
 #include "judge_core/infrastructure/problem_lock_registry.hpp"
 #include "judge_core/infrastructure/sandbox_runner.hpp"
-#include "judge_core/infrastructure/toolchain_config.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -50,47 +49,6 @@ std::expected<std::filesystem::path, judge_error> load_required_path_env(
     return path_value;
 }
 
-std::expected<toolchain_config, judge_error> load_toolchain_config(){
-    const auto cpp_compiler_path_exp = load_required_path_env(
-        "JUDGE_CPP_COMPILER_PATH",
-        "cpp compiler path is not configured"
-    );
-    if(!cpp_compiler_path_exp){
-        return std::unexpected(cpp_compiler_path_exp.error());
-    }
-
-    const auto python_path_exp = load_required_path_env(
-        "JUDGE_PYTHON_PATH",
-        "python path is not configured"
-    );
-    if(!python_path_exp){
-        return std::unexpected(python_path_exp.error());
-    }
-
-    const auto java_compiler_path_exp = load_required_path_env(
-        "JUDGE_JAVA_COMPILER_PATH",
-        "java compiler path is not configured"
-    );
-    if(!java_compiler_path_exp){
-        return std::unexpected(java_compiler_path_exp.error());
-    }
-
-    const auto java_runtime_path_exp = load_required_path_env(
-        "JUDGE_JAVA_RUNTIME_PATH",
-        "java runtime path is not configured"
-    );
-    if(!java_runtime_path_exp){
-        return std::unexpected(java_runtime_path_exp.error());
-    }
-
-    return toolchain_config{
-        .cpp_compiler_path = std::move(*cpp_compiler_path_exp),
-        .python_path = std::move(*python_path_exp),
-        .java_compiler_path = std::move(*java_compiler_path_exp),
-        .java_runtime_path = std::move(*java_runtime_path_exp)
-    };
-}
-
 std::expected<judge_worker::dependencies, judge_error> build_judge_worker_dependencies(
     const std::shared_ptr<problem_lock_registry>& shared_problem_lock_registry
 ){
@@ -117,11 +75,6 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         return std::unexpected(testcase_root_path_exp.error());
     }
 
-    const auto toolchain_config_exp = load_toolchain_config();
-    if(!toolchain_config_exp){
-        return std::unexpected(toolchain_config_exp.error());
-    }
-
     auto db_config_exp = db_connection::load_db_connection_config();
     if(!db_config_exp){
         return std::unexpected(db_config_exp.error());
@@ -142,7 +95,6 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
     }
 
     auto submission_execution_service_exp = submission_execution_service::create(
-        *toolchain_config_exp,
         std::move(*testcase_snapshot_port_exp)
     );
     if(!submission_execution_service_exp){
