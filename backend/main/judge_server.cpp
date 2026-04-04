@@ -7,9 +7,9 @@
 #include "judge_core/application/judge_worker.hpp"
 #include "judge_core/application/submission_execution_service.hpp"
 #include "judge_core/application/submission_processor.hpp"
-#include "judge_core/application/testcase_snapshot_service.hpp"
 #include "judge_core/gateway/judge_queue_port.hpp"
 #include "judge_core/gateway/judge_submission_port.hpp"
+#include "judge_core/gateway/testcase_snapshot_port.hpp"
 #include "judge_core/infrastructure/problem_lock_registry.hpp"
 #include "judge_core/infrastructure/sandbox_runner.hpp"
 #include "judge_core/infrastructure/toolchain_config.hpp"
@@ -131,22 +131,18 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         return std::unexpected(judge_queue_port_exp.error());
     }
 
-    auto testcase_snapshot_connection_exp = db_connection::create(*db_config_exp);
-    if(!testcase_snapshot_connection_exp){
-        return std::unexpected(testcase_snapshot_connection_exp.error());
-    }
-
-    auto testcase_snapshot_service_exp = testcase_snapshot_service::create(
+    auto testcase_snapshot_port_exp = testcase_snapshot_port::create(
+        *db_config_exp,
         *testcase_root_path_exp,
         shared_problem_lock_registry
     );
-    if(!testcase_snapshot_service_exp){
-        return std::unexpected(testcase_snapshot_service_exp.error());
+    if(!testcase_snapshot_port_exp){
+        return std::unexpected(testcase_snapshot_port_exp.error());
     }
 
     auto submission_execution_service_exp = submission_execution_service::create(
         *toolchain_config_exp,
-        std::move(*testcase_snapshot_service_exp)
+        std::move(*testcase_snapshot_port_exp)
     );
     if(!submission_execution_service_exp){
         return std::unexpected(submission_execution_service_exp.error());
@@ -161,7 +157,6 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         submission_processor::dependencies{
             .judge_queue_port_value = std::move(*judge_queue_port_exp),
             .judge_submission_port_value = std::move(*judge_submission_port_exp),
-            .testcase_snapshot_connection = std::move(*testcase_snapshot_connection_exp),
             .submission_execution_service_value = std::move(
                 *submission_execution_service_exp
             ),

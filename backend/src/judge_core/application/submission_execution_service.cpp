@@ -36,7 +36,7 @@ namespace{
 std::expected<submission_execution_service, judge_error>
 submission_execution_service::create(
     const toolchain_config& toolchain_config_value,
-    testcase_snapshot_service testcase_snapshot_service
+    testcase_snapshot_port testcase_snapshot_port_value
 ){
     return submission_execution_service{
         std::make_unique<program_builder>(
@@ -47,18 +47,18 @@ submission_execution_service::create(
             toolchain_config_value.python_path,
             toolchain_config_value.java_runtime_path
         ),
-        std::move(testcase_snapshot_service)
+        std::move(testcase_snapshot_port_value)
     };
 }
 
 submission_execution_service::submission_execution_service(
     std::unique_ptr<program_builder> program_builder_value,
     std::unique_ptr<launch_planner> launch_planner_value,
-    testcase_snapshot_service testcase_snapshot_service
+    testcase_snapshot_port testcase_snapshot_port_value
 ) :
     program_builder_(std::move(program_builder_value)),
     launch_planner_(std::move(launch_planner_value)),
-    testcase_snapshot_service_(std::move(testcase_snapshot_service)){}
+    testcase_snapshot_port_(std::move(testcase_snapshot_port_value)){}
 
 submission_execution_service::submission_execution_service(
     submission_execution_service&& other
@@ -95,8 +95,7 @@ submission_execution_service::prepare_workspace(
 std::expected<judge_submission_data::process_submission_data, judge_error>
 submission_execution_service::process_submission(
     const submission_dto::queued_submission& queued_submission_value,
-    const std::filesystem::path& workspace_path,
-    db_connection& testcase_snapshot_connection
+    const std::filesystem::path& workspace_path
 ){
     const auto source_file_path_exp = prepare_workspace(
         queued_submission_value,
@@ -125,8 +124,7 @@ submission_execution_service::process_submission(
         return std::unexpected(judge_error{execution_plan_exp.error()});
     }
 
-    const auto testcase_snapshot_exp = testcase_snapshot_service_.acquire(
-        testcase_snapshot_connection,
+    const auto testcase_snapshot_exp = testcase_snapshot_port_.acquire(
         queued_submission_value.problem_id
     );
     if(!testcase_snapshot_exp){

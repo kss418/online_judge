@@ -18,7 +18,6 @@ public:
     struct dependencies{
         judge_queue_port judge_queue_port_value;
         judge_submission_port judge_submission_port_value;
-        db_connection testcase_snapshot_connection;
         submission_execution_service submission_execution_service_value;
         std::filesystem::path source_root_path;
     };
@@ -43,7 +42,6 @@ private:
     submission_processor(
         judge_queue_port judge_queue_port_value,
         judge_submission_port judge_submission_port_value,
-        db_connection testcase_snapshot_connection,
         submission_execution_service submission_execution_service,
         std::filesystem::path source_root_path
     );
@@ -64,7 +62,6 @@ private:
 
     judge_queue_port judge_queue_port_;
     judge_submission_port judge_submission_port_;
-    db_connection testcase_snapshot_connection_;
     submission_execution_service submission_execution_service_;
     std::filesystem::path source_root_path_;
 };

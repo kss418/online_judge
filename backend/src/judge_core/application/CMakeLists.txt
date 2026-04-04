@@ -4,5 +4,4 @@ target_sources(lib
         submission_processor.cpp
         judge_worker.cpp
         submission_execution_service.cpp
-        testcase_snapshot_service.cpp
 )

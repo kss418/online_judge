@@ -20,7 +20,6 @@ std::expected<submission_processor, judge_error> submission_processor::create(
     return submission_processor(
         std::move(dependencies_value.judge_queue_port_value),
         std::move(dependencies_value.judge_submission_port_value),
-        std::move(dependencies_value.testcase_snapshot_connection),
         std::move(dependencies_value.submission_execution_service_value),
         std::move(dependencies_value.source_root_path)
     );
@@ -29,13 +28,11 @@ std::expected<submission_processor, judge_error> submission_processor::create(
 submission_processor::submission_processor(
     judge_queue_port judge_queue_port_value,
     judge_submission_port judge_submission_port_value,
-    db_connection testcase_snapshot_connection,
     submission_execution_service submission_execution_service,
     std::filesystem::path source_root_path
 ) :
     judge_queue_port_(std::move(judge_queue_port_value)),
     judge_submission_port_(std::move(judge_submission_port_value)),
-    testcase_snapshot_connection_(std::move(testcase_snapshot_connection)),
     submission_execution_service_(std::move(submission_execution_service)),
     source_root_path_(std::move(source_root_path)){}
 
@@ -110,8 +107,7 @@ std::expected<void, judge_error> submission_processor::execute_submission(
 
     auto judge_submission_exp = submission_execution_service_.process_submission(
         queued_submission_value,
-        workspace_path,
-        testcase_snapshot_connection_
+        workspace_path
     );
     if(!judge_submission_exp){
         return std::unexpected(judge_submission_exp.error());
