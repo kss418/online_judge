@@ -2,7 +2,6 @@
 
 #include "judge_core/policy/checker.hpp"
 
-#include <algorithm>
 #include <vector>
 
 std::expected<judge_result, judge_error> judge_policy::check_result(
@@ -57,57 +56,4 @@ submission_status judge_policy::to_submission_status(judge_result result){
     }
 
     return submission_status::wrong_answer;
-}
-
-judge_policy::finalize_submission_data judge_policy::make_finalize_submission_data(
-    submission_status submission_status_value,
-    const execution_report::batch& execution_report_value
-){
-    finalize_submission_data finalize_submission_data_value;
-    finalize_submission_data_value.score = std::int16_t{0};
-
-    if(submission_status_value == submission_status::accepted){
-        finalize_submission_data_value.score = std::int16_t{100};
-    }
-
-    if(
-        submission_status_value != submission_status::compile_error &&
-        !execution_report_value.executions.empty()
-    ){
-        std::int64_t max_elapsed_ms = 0;
-        std::int64_t max_rss_kb = 0;
-
-        for(const auto& testcase_execution_value : execution_report_value.executions){
-            max_elapsed_ms = std::max(max_elapsed_ms, testcase_execution_value.elapsed_ms);
-            max_rss_kb = std::max(max_rss_kb, testcase_execution_value.max_rss_kb);
-        }
-
-        finalize_submission_data_value.elapsed_ms_opt = max_elapsed_ms;
-        finalize_submission_data_value.max_rss_kb_opt = max_rss_kb;
-    }
-
-    if(
-        execution_report_value.executions.empty() ||
-        execution_report_value.executions.front().stderr_text.empty()
-    ){
-        return finalize_submission_data_value;
-    }
-
-    if(submission_status_value == submission_status::compile_error){
-        finalize_submission_data_value.compile_output =
-            execution_report_value.executions.front().stderr_text;
-        return finalize_submission_data_value;
-    }
-
-    if(
-        submission_status_value == submission_status::runtime_error ||
-        submission_status_value == submission_status::time_limit_exceeded ||
-        submission_status_value == submission_status::memory_limit_exceeded ||
-        submission_status_value == submission_status::output_exceeded
-    ){
-        finalize_submission_data_value.judge_output =
-            execution_report_value.executions.front().stderr_text;
-    }
-
-    return finalize_submission_data_value;
 }

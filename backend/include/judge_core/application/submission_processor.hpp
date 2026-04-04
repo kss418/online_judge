@@ -2,9 +2,9 @@
 
 #include "dto/submission_dto.hpp"
 #include "error/judge_error.hpp"
-#include "judge_core/application/judge_queue_port.hpp"
-#include "judge_core/application/judge_submission_port.hpp"
 #include "judge_core/application/submission_execution_service.hpp"
+#include "judge_core/gateway/judge_queue_port.hpp"
+#include "judge_core/gateway/judge_submission_port.hpp"
 #include "judge_core/types/execution_report.hpp"
 
 #include <chrono>

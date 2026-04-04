@@ -1,7 +1,6 @@
 target_sources(lib
     PRIVATE
-        judge_queue_port.cpp
-        judge_submission_port.cpp
+        finalize_submission_mapper.cpp
         submission_processor.cpp
         judge_worker.cpp
         submission_execution_service.cpp

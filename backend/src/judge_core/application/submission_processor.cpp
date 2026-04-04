@@ -1,7 +1,7 @@
+#include "judge_core/application/finalize_submission_mapper.hpp"
 #include "judge_core/application/submission_processor.hpp"
 
 #include "judge_core/infrastructure/judge_workspace.hpp"
-#include "judge_core/policy/judge_policy.hpp"
 
 #include <utility>
 
@@ -134,22 +134,11 @@ std::expected<void, judge_error> submission_processor::finalize_submission(
     judge_result result,
     const execution_report::batch& execution_report_value
 ){
-    const submission_status submission_status_value =
-        judge_policy::to_submission_status(result);
-    const auto finalize_submission_data_value =
-        judge_policy::make_finalize_submission_data(
-            submission_status_value,
-            execution_report_value
-        );
     const submission_dto::finalize_request finalize_request_value =
-        submission_dto::make_finalize_request(
+        finalize_submission_mapper::make_finalize_request(
             submission_id,
-            submission_status_value,
-            finalize_submission_data_value.score,
-            finalize_submission_data_value.compile_output,
-            finalize_submission_data_value.judge_output,
-            finalize_submission_data_value.elapsed_ms_opt,
-            finalize_submission_data_value.max_rss_kb_opt
+            result,
+            execution_report_value
         );
 
     const auto finalize_submission_exp =
