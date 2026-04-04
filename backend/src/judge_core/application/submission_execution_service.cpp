@@ -71,15 +71,10 @@ submission_execution_service& submission_execution_service::operator=(
 submission_execution_service::~submission_execution_service() = default;
 
 std::expected<std::filesystem::path, judge_error>
-submission_execution_service::prepare_workspace(
+submission_execution_service::write_submission_source(
     const submission_dto::queued_submission& queued_submission_value,
     const std::filesystem::path& workspace_path
 ){
-    const auto reset_workspace_exp = judge_workspace::reset(workspace_path);
-    if(!reset_workspace_exp){
-        return std::unexpected(judge_error{reset_workspace_exp.error()});
-    }
-
     const auto source_file_path_exp = judge_workspace::write_source_file(
         workspace_path,
         queued_submission_value.language,
@@ -97,7 +92,7 @@ submission_execution_service::process_submission(
     const submission_dto::queued_submission& queued_submission_value,
     const std::filesystem::path& workspace_path
 ){
-    const auto source_file_path_exp = prepare_workspace(
+    const auto source_file_path_exp = write_submission_source(
         queued_submission_value,
         workspace_path
     );

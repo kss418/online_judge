@@ -1,40 +1,29 @@
 #include "judge_core/application/finalize_submission_mapper.hpp"
 #include "judge_core/application/submission_processor.hpp"
 
-#include "judge_core/infrastructure/judge_workspace.hpp"
-
 #include <utility>
 
 std::expected<submission_processor, judge_error> submission_processor::create(
     dependencies dependencies_value
 ){
-    if(dependencies_value.source_root_path.empty()){
-        return std::unexpected(
-            judge_error{
-                judge_error_code::validation_error,
-                "judge source root is not configured"
-            }
-        );
-    }
-
     return submission_processor(
         std::move(dependencies_value.judge_queue_port_value),
         std::move(dependencies_value.judge_submission_port_value),
         std::move(dependencies_value.submission_execution_service_value),
-        std::move(dependencies_value.source_root_path)
+        std::move(dependencies_value.workspace_runner_value)
     );
 }
 
 submission_processor::submission_processor(
     judge_queue_port judge_queue_port_value,
     judge_submission_port judge_submission_port_value,
-    submission_execution_service submission_execution_service,
-    std::filesystem::path source_root_path
+    submission_execution_service submission_execution_service_value,
+    workspace_runner workspace_runner_value
 ) :
     judge_queue_port_(std::move(judge_queue_port_value)),
     judge_submission_port_(std::move(judge_submission_port_value)),
-    submission_execution_service_(std::move(submission_execution_service)),
-    source_root_path_(std::move(source_root_path)){}
+    submission_execution_service_(std::move(submission_execution_service_value)),
+    workspace_runner_(std::move(workspace_runner_value)){}
 
 submission_processor::submission_processor(
     submission_processor&& other
@@ -63,22 +52,7 @@ std::expected<void, judge_error> submission_processor::process_next_submission(
 
     const submission_dto::queued_submission& queued_submission_value =
         queued_submission_opt_exp->value();
-    const auto workspace_path_exp = judge_workspace::make_submission_workspace_path(
-        source_root_path_,
-        queued_submission_value.submission_id
-    );
-    if(!workspace_path_exp){
-        return std::unexpected(workspace_path_exp.error());
-    }
-
-    const auto execute_submission_exp = execute_submission(
-        queued_submission_value,
-        *workspace_path_exp
-    );
-    const auto cleanup_workspace_exp = judge_workspace::cleanup(*workspace_path_exp);
-    if(!cleanup_workspace_exp){
-        return std::unexpected(judge_error{cleanup_workspace_exp.error()});
-    }
+    const auto execute_submission_exp = execute_submission(queued_submission_value);
 
     if(!execute_submission_exp){
         const auto requeue_submission_exp = requeue_submission(
@@ -94,8 +68,7 @@ std::expected<void, judge_error> submission_processor::process_next_submission(
 }
 
 std::expected<void, judge_error> submission_processor::execute_submission(
-    const submission_dto::queued_submission& queued_submission_value,
-    const std::filesystem::path& workspace_path
+    const submission_dto::queued_submission& queued_submission_value
 ){
     const auto mark_judging_exp =
         judge_submission_port_.mark_judging(
@@ -105,9 +78,15 @@ std::expected<void, judge_error> submission_processor::execute_submission(
         return std::unexpected(mark_judging_exp.error());
     }
 
-    auto judge_submission_exp = submission_execution_service_.process_submission(
-        queued_submission_value,
-        workspace_path
+    auto judge_submission_exp = workspace_runner_.with_submission_workspace(
+        queued_submission_value.submission_id,
+        [&](const std::filesystem::path& workspace_path)
+            -> std::expected<judge_submission_data::process_submission_data, judge_error> {
+            return submission_execution_service_.process_submission(
+                queued_submission_value,
+                workspace_path
+            );
+        }
     );
     if(!judge_submission_exp){
         return std::unexpected(judge_submission_exp.error());

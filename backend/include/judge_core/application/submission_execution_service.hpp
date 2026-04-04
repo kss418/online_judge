@@ -34,7 +34,7 @@ public:
     );
 
 private:
-    std::expected<std::filesystem::path, judge_error> prepare_workspace(
+    std::expected<std::filesystem::path, judge_error> write_submission_source(
         const submission_dto::queued_submission& queued_submission_value,
         const std::filesystem::path& workspace_path
     );
