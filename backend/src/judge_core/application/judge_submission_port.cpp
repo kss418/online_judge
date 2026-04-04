@@ -30,22 +30,6 @@ judge_submission_port& judge_submission_port::operator=(
 
 judge_submission_port::~judge_submission_port() = default;
 
-std::expected<std::optional<submission_dto::queued_submission>, judge_error>
-judge_submission_port::lease_submission(std::chrono::seconds lease_duration){
-    submission_dto::lease_request lease_request_value;
-    lease_request_value.lease_duration = lease_duration;
-
-    auto queued_submission_opt_exp = submission_service::lease_submission(
-        db_connection_,
-        lease_request_value
-    );
-    if(!queued_submission_opt_exp){
-        return std::unexpected(judge_error{queued_submission_opt_exp.error()});
-    }
-
-    return std::move(*queued_submission_opt_exp);
-}
-
 std::expected<void, judge_error> judge_submission_port::mark_judging(
     std::int64_t submission_id
 ){

@@ -4,6 +4,7 @@
 #include "common/logger.hpp"
 #include "common/string_util.hpp"
 #include "error/infra_error.hpp"
+#include "judge_core/application/judge_queue_port.hpp"
 #include "judge_core/application/judge_submission_port.hpp"
 #include "judge_core/application/judge_worker.hpp"
 #include "judge_core/application/submission_execution_service.hpp"
@@ -123,16 +124,9 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         return std::unexpected(db_config_exp.error());
     }
 
-    auto submission_queue_connection_exp = db_connection::create(*db_config_exp);
-    if(!submission_queue_connection_exp){
-        return std::unexpected(submission_queue_connection_exp.error());
-    }
-
-    auto submission_queue_source_exp = submission_queue_source::create(
-        std::move(*submission_queue_connection_exp)
-    );
-    if(!submission_queue_source_exp){
-        return std::unexpected(judge_error{submission_queue_source_exp.error()});
+    auto judge_queue_port_exp = judge_queue_port::create(*db_config_exp);
+    if(!judge_queue_port_exp){
+        return std::unexpected(judge_queue_port_exp.error());
     }
 
     auto testcase_snapshot_connection_exp = db_connection::create(*db_config_exp);
@@ -161,14 +155,24 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         return std::unexpected(judge_submission_port_exp.error());
     }
 
-    judge_worker::dependencies dependencies_value{
-        .judge_submission_port_value = std::move(*judge_submission_port_exp),
-        .submission_queue_source_value = std::move(*submission_queue_source_exp),
-        .testcase_snapshot_connection = std::move(*testcase_snapshot_connection_exp),
-        .submission_execution_service_value = std::move(*submission_execution_service_exp),
-        .source_root_path = std::move(*source_root_path_exp),
+    auto submission_processor_exp = submission_processor::create(
+        submission_processor::dependencies{
+            .judge_queue_port_value = std::move(*judge_queue_port_exp),
+            .judge_submission_port_value = std::move(*judge_submission_port_exp),
+            .testcase_snapshot_connection = std::move(*testcase_snapshot_connection_exp),
+            .submission_execution_service_value = std::move(
+                *submission_execution_service_exp
+            ),
+            .source_root_path = std::move(*source_root_path_exp),
+        }
+    );
+    if(!submission_processor_exp){
+        return std::unexpected(submission_processor_exp.error());
+    }
+
+    return judge_worker::dependencies{
+        .submission_processor_value = std::move(*submission_processor_exp),
     };
-    return dependencies_value;
 }
 
 std::uint32_t default_worker_count(){

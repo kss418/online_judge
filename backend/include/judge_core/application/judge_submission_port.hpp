@@ -7,7 +7,6 @@
 #include <chrono>
 #include <cstdint>
 #include <expected>
-#include <optional>
 #include <string>
 
 class judge_submission_port{
@@ -22,9 +21,6 @@ public:
 
     judge_submission_port(const judge_submission_port&) = delete;
     judge_submission_port& operator=(const judge_submission_port&) = delete;
-
-    std::expected<std::optional<submission_dto::queued_submission>, judge_error>
-    lease_submission(std::chrono::seconds lease_duration);
 
     std::expected<void, judge_error> mark_judging(std::int64_t submission_id);
 

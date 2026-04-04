@@ -18,6 +18,8 @@ std::expected<submission_processor, judge_error> submission_processor::create(
     }
 
     return submission_processor(
+        std::move(dependencies_value.judge_queue_port_value),
+        std::move(dependencies_value.judge_submission_port_value),
         std::move(dependencies_value.testcase_snapshot_connection),
         std::move(dependencies_value.submission_execution_service_value),
         std::move(dependencies_value.source_root_path)
@@ -25,10 +27,14 @@ std::expected<submission_processor, judge_error> submission_processor::create(
 }
 
 submission_processor::submission_processor(
+    judge_queue_port judge_queue_port_value,
+    judge_submission_port judge_submission_port_value,
     db_connection testcase_snapshot_connection,
     submission_execution_service submission_execution_service,
     std::filesystem::path source_root_path
 ) :
+    judge_queue_port_(std::move(judge_queue_port_value)),
+    judge_submission_port_(std::move(judge_submission_port_value)),
     testcase_snapshot_connection_(std::move(testcase_snapshot_connection)),
     submission_execution_service_(std::move(submission_execution_service)),
     source_root_path_(std::move(source_root_path)){}
@@ -43,10 +49,23 @@ submission_processor& submission_processor::operator=(
 
 submission_processor::~submission_processor() = default;
 
-std::expected<void, judge_error> submission_processor::process_submission(
-    judge_submission_port& judge_submission_port_value,
-    const submission_dto::queued_submission& queued_submission_value
+std::expected<void, judge_error> submission_processor::process_next_submission(
+    std::chrono::seconds lease_duration,
+    std::chrono::milliseconds notification_wait_timeout
 ){
+    auto queued_submission_opt_exp = judge_queue_port_.poll_next_submission(
+        lease_duration,
+        notification_wait_timeout
+    );
+    if(!queued_submission_opt_exp){
+        return std::unexpected(queued_submission_opt_exp.error());
+    }
+    if(!queued_submission_opt_exp->has_value()){
+        return {};
+    }
+
+    const submission_dto::queued_submission& queued_submission_value =
+        queued_submission_opt_exp->value();
     const auto workspace_path_exp = judge_workspace::make_submission_workspace_path(
         source_root_path_,
         queued_submission_value.submission_id
@@ -56,7 +75,6 @@ std::expected<void, judge_error> submission_processor::process_submission(
     }
 
     const auto execute_submission_exp = execute_submission(
-        judge_submission_port_value,
         queued_submission_value,
         *workspace_path_exp
     );
@@ -67,7 +85,6 @@ std::expected<void, judge_error> submission_processor::process_submission(
 
     if(!execute_submission_exp){
         const auto requeue_submission_exp = requeue_submission(
-            judge_submission_port_value,
             queued_submission_value.submission_id,
             to_string(execute_submission_exp.error())
         );
@@ -80,12 +97,11 @@ std::expected<void, judge_error> submission_processor::process_submission(
 }
 
 std::expected<void, judge_error> submission_processor::execute_submission(
-    judge_submission_port& judge_submission_port_value,
     const submission_dto::queued_submission& queued_submission_value,
     const std::filesystem::path& workspace_path
 ){
     const auto mark_judging_exp =
-        judge_submission_port_value.mark_judging(
+        judge_submission_port_.mark_judging(
             queued_submission_value.submission_id
         );
     if(!mark_judging_exp){
@@ -102,7 +118,6 @@ std::expected<void, judge_error> submission_processor::execute_submission(
     }
 
     const auto finalize_submission_exp = finalize_submission(
-        judge_submission_port_value,
         queued_submission_value.submission_id,
         judge_submission_exp->judge_result_value,
         judge_submission_exp->execution_report_value
@@ -115,7 +130,6 @@ std::expected<void, judge_error> submission_processor::execute_submission(
 }
 
 std::expected<void, judge_error> submission_processor::finalize_submission(
-    judge_submission_port& judge_submission_port_value,
     std::int64_t submission_id,
     judge_result result,
     const execution_report::batch& execution_report_value
@@ -139,7 +153,7 @@ std::expected<void, judge_error> submission_processor::finalize_submission(
         );
 
     const auto finalize_submission_exp =
-        judge_submission_port_value.finalize_submission(finalize_request_value);
+        judge_submission_port_.finalize_submission(finalize_request_value);
     if(!finalize_submission_exp){
         return std::unexpected(finalize_submission_exp.error());
     }
@@ -148,11 +162,10 @@ std::expected<void, judge_error> submission_processor::finalize_submission(
 }
 
 std::expected<void, judge_error> submission_processor::requeue_submission(
-    judge_submission_port& judge_submission_port_value,
     std::int64_t submission_id,
     std::string reason
 ){
-    return judge_submission_port_value.requeue_submission_immediately(
+    return judge_submission_port_.requeue_submission_immediately(
         submission_id,
         std::move(reason)
     );
