@@ -4,8 +4,9 @@
 #include "common/logger.hpp"
 #include "common/string_util.hpp"
 #include "error/infra_error.hpp"
+#include "judge_core/application/execution_engine.hpp"
+#include "judge_core/application/judge_evaluator.hpp"
 #include "judge_core/application/judge_worker.hpp"
-#include "judge_core/application/submission_execution_service.hpp"
 #include "judge_core/application/submission_processor.hpp"
 #include "judge_core/application/workspace_runner.hpp"
 #include "judge_core/gateway/judge_queue_port.hpp"
@@ -94,11 +95,16 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         return std::unexpected(testcase_snapshot_port_exp.error());
     }
 
-    auto submission_execution_service_exp = submission_execution_service::create(
+    auto execution_engine_exp = execution_engine::create(
         std::move(*testcase_snapshot_port_exp)
     );
-    if(!submission_execution_service_exp){
-        return std::unexpected(submission_execution_service_exp.error());
+    if(!execution_engine_exp){
+        return std::unexpected(execution_engine_exp.error());
+    }
+
+    auto judge_evaluator_exp = judge_evaluator::create();
+    if(!judge_evaluator_exp){
+        return std::unexpected(judge_evaluator_exp.error());
     }
 
     auto workspace_runner_exp = workspace_runner::create(
@@ -117,9 +123,8 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         submission_processor::dependencies{
             .judge_queue_port_value = std::move(*judge_queue_port_exp),
             .judge_submission_port_value = std::move(*judge_submission_port_exp),
-            .submission_execution_service_value = std::move(
-                *submission_execution_service_exp
-            ),
+            .execution_engine_value = std::move(*execution_engine_exp),
+            .judge_evaluator_value = std::move(*judge_evaluator_exp),
             .workspace_runner_value = std::move(*workspace_runner_exp),
         }
     );

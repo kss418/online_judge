@@ -2,8 +2,8 @@ target_sources(lib
     PRIVATE
         execution_engine.cpp
         finalize_submission_mapper.cpp
+        judge_evaluator.cpp
         submission_processor.cpp
         judge_worker.cpp
-        submission_execution_service.cpp
         workspace_runner.cpp
 )

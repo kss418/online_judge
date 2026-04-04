@@ -9,7 +9,8 @@ std::expected<submission_processor, judge_error> submission_processor::create(
     return submission_processor(
         std::move(dependencies_value.judge_queue_port_value),
         std::move(dependencies_value.judge_submission_port_value),
-        std::move(dependencies_value.submission_execution_service_value),
+        std::move(dependencies_value.execution_engine_value),
+        std::move(dependencies_value.judge_evaluator_value),
         std::move(dependencies_value.workspace_runner_value)
     );
 }
@@ -17,12 +18,14 @@ std::expected<submission_processor, judge_error> submission_processor::create(
 submission_processor::submission_processor(
     judge_queue_port judge_queue_port_value,
     judge_submission_port judge_submission_port_value,
-    submission_execution_service submission_execution_service_value,
+    execution_engine execution_engine_value,
+    judge_evaluator judge_evaluator_value,
     workspace_runner workspace_runner_value
 ) :
     judge_queue_port_(std::move(judge_queue_port_value)),
     judge_submission_port_(std::move(judge_submission_port_value)),
-    submission_execution_service_(std::move(submission_execution_service_value)),
+    execution_engine_(std::move(execution_engine_value)),
+    judge_evaluator_(std::move(judge_evaluator_value)),
     workspace_runner_(std::move(workspace_runner_value)){}
 
 submission_processor::submission_processor(
@@ -82,7 +85,7 @@ std::expected<void, judge_error> submission_processor::execute_submission(
         queued_submission_value.submission_id,
         [&](const std::filesystem::path& workspace_path)
             -> std::expected<judge_submission_data::process_submission_data, judge_error> {
-            return submission_execution_service_.process_submission(
+            return process_submission_in_workspace(
                 queued_submission_value,
                 workspace_path
             );
@@ -102,6 +105,45 @@ std::expected<void, judge_error> submission_processor::execute_submission(
     }
 
     return {};
+}
+
+std::expected<judge_submission_data::process_submission_data, judge_error>
+submission_processor::process_submission_in_workspace(
+    const submission_dto::queued_submission& queued_submission_value,
+    const std::filesystem::path& workspace_path
+){
+    auto execute_result_exp = execution_engine_.execute(
+        queued_submission_value,
+        workspace_path
+    );
+    if(!execute_result_exp){
+        return std::unexpected(execute_result_exp.error());
+    }
+
+    auto execute_result_value = std::move(*execute_result_exp);
+    if(auto* process_submission_data_value =
+           std::get_if<judge_submission_data::process_submission_data>(
+               &execute_result_value
+           )){
+        return std::move(*process_submission_data_value);
+    }
+
+    auto execution_result_value =
+        std::get<execution_engine::execution_result>(std::move(execute_result_value));
+    const auto judge_result_exp = judge_evaluator_.evaluate(
+        execution_result_value.testcase_snapshot_value,
+        execution_result_value.execution_report_value
+    );
+    if(!judge_result_exp){
+        return std::unexpected(judge_result_exp.error());
+    }
+
+    auto process_submission_data_value =
+        judge_submission_data::make_process_submission_data(
+            *judge_result_exp,
+            std::move(execution_result_value.execution_report_value)
+        );
+    return process_submission_data_value;
 }
 
 std::expected<void, judge_error> submission_processor::finalize_submission(

@@ -2,15 +2,18 @@
 
 #include "dto/submission_dto.hpp"
 #include "error/judge_error.hpp"
-#include "judge_core/application/submission_execution_service.hpp"
+#include "judge_core/application/execution_engine.hpp"
+#include "judge_core/application/judge_evaluator.hpp"
 #include "judge_core/application/workspace_runner.hpp"
 #include "judge_core/gateway/judge_queue_port.hpp"
 #include "judge_core/gateway/judge_submission_port.hpp"
 #include "judge_core/types/execution_report.hpp"
+#include "judge_core/types/judge_submission_data.hpp"
 
 #include <chrono>
 #include <cstdint>
 #include <expected>
+#include <filesystem>
 #include <string>
 
 class submission_processor{
@@ -18,7 +21,8 @@ public:
     struct dependencies{
         judge_queue_port judge_queue_port_value;
         judge_submission_port judge_submission_port_value;
-        submission_execution_service submission_execution_service_value;
+        execution_engine execution_engine_value;
+        judge_evaluator judge_evaluator_value;
         workspace_runner workspace_runner_value;
     };
 
@@ -42,12 +46,18 @@ private:
     submission_processor(
         judge_queue_port judge_queue_port_value,
         judge_submission_port judge_submission_port_value,
-        submission_execution_service submission_execution_service_value,
+        execution_engine execution_engine_value,
+        judge_evaluator judge_evaluator_value,
         workspace_runner workspace_runner_value
     );
 
     std::expected<void, judge_error> execute_submission(
         const submission_dto::queued_submission& queued_submission_value
+    );
+    std::expected<judge_submission_data::process_submission_data, judge_error>
+    process_submission_in_workspace(
+        const submission_dto::queued_submission& queued_submission_value,
+        const std::filesystem::path& workspace_path
     );
     std::expected<void, judge_error> finalize_submission(
         std::int64_t submission_id,
@@ -61,6 +71,7 @@ private:
 
     judge_queue_port judge_queue_port_;
     judge_submission_port judge_submission_port_;
-    submission_execution_service submission_execution_service_;
+    execution_engine execution_engine_;
+    judge_evaluator judge_evaluator_;
     workspace_runner workspace_runner_;
 };
