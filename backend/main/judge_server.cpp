@@ -4,6 +4,7 @@
 #include "common/logger.hpp"
 #include "common/string_util.hpp"
 #include "error/infra_error.hpp"
+#include "judge_core/application/judge_submission_port.hpp"
 #include "judge_core/application/judge_worker.hpp"
 #include "judge_core/application/submission_execution_service.hpp"
 #include "judge_core/infrastructure/problem_lock_registry.hpp"
@@ -155,14 +156,14 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         return std::unexpected(submission_execution_service_exp.error());
     }
 
-    auto submission_db_connection_exp = db_connection::create(*db_config_exp);
-    if(!submission_db_connection_exp){
-        return std::unexpected(submission_db_connection_exp.error());
+    auto judge_submission_port_exp = judge_submission_port::create(*db_config_exp);
+    if(!judge_submission_port_exp){
+        return std::unexpected(judge_submission_port_exp.error());
     }
 
     judge_worker::dependencies dependencies_value{
+        .judge_submission_port_value = std::move(*judge_submission_port_exp),
         .submission_queue_source_value = std::move(*submission_queue_source_exp),
-        .submission_db_connection = std::move(*submission_db_connection_exp),
         .testcase_snapshot_connection = std::move(*testcase_snapshot_connection_exp),
         .submission_execution_service_value = std::move(*submission_execution_service_exp),
         .source_root_path = std::move(*source_root_path_exp),

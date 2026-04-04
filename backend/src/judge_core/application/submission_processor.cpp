@@ -1,6 +1,5 @@
 #include "judge_core/application/submission_processor.hpp"
 
-#include "judge_core/application/judge_service.hpp"
 #include "judge_core/infrastructure/judge_workspace.hpp"
 #include "judge_core/policy/judge_policy.hpp"
 
@@ -45,7 +44,7 @@ submission_processor& submission_processor::operator=(
 submission_processor::~submission_processor() = default;
 
 std::expected<void, judge_error> submission_processor::process_submission(
-    db_connection& submission_db_connection,
+    judge_submission_port& judge_submission_port_value,
     const submission_dto::queued_submission& queued_submission_value
 ){
     const auto workspace_path_exp = judge_workspace::make_submission_workspace_path(
@@ -57,7 +56,7 @@ std::expected<void, judge_error> submission_processor::process_submission(
     }
 
     const auto execute_submission_exp = execute_submission(
-        submission_db_connection,
+        judge_submission_port_value,
         queued_submission_value,
         *workspace_path_exp
     );
@@ -68,7 +67,7 @@ std::expected<void, judge_error> submission_processor::process_submission(
 
     if(!execute_submission_exp){
         const auto requeue_submission_exp = requeue_submission(
-            submission_db_connection,
+            judge_submission_port_value,
             queued_submission_value.submission_id,
             to_string(execute_submission_exp.error())
         );
@@ -81,14 +80,14 @@ std::expected<void, judge_error> submission_processor::process_submission(
 }
 
 std::expected<void, judge_error> submission_processor::execute_submission(
-    db_connection& submission_db_connection,
+    judge_submission_port& judge_submission_port_value,
     const submission_dto::queued_submission& queued_submission_value,
     const std::filesystem::path& workspace_path
 ){
-    const auto mark_judging_exp = judge_service::mark_judging(
-        submission_db_connection,
-        queued_submission_value.submission_id
-    );
+    const auto mark_judging_exp =
+        judge_submission_port_value.mark_judging(
+            queued_submission_value.submission_id
+        );
     if(!mark_judging_exp){
         return std::unexpected(mark_judging_exp.error());
     }
@@ -103,7 +102,7 @@ std::expected<void, judge_error> submission_processor::execute_submission(
     }
 
     const auto finalize_submission_exp = finalize_submission(
-        submission_db_connection,
+        judge_submission_port_value,
         queued_submission_value.submission_id,
         judge_submission_exp->judge_result_value,
         judge_submission_exp->execution_report_value
@@ -116,7 +115,7 @@ std::expected<void, judge_error> submission_processor::execute_submission(
 }
 
 std::expected<void, judge_error> submission_processor::finalize_submission(
-    db_connection& submission_db_connection,
+    judge_submission_port& judge_submission_port_value,
     std::int64_t submission_id,
     judge_result result,
     const execution_report::batch& execution_report_value
@@ -139,10 +138,8 @@ std::expected<void, judge_error> submission_processor::finalize_submission(
             finalize_submission_data_value.max_rss_kb_opt
         );
 
-    const auto finalize_submission_exp = judge_service::finalize_submission(
-        submission_db_connection,
-        finalize_request_value
-    );
+    const auto finalize_submission_exp =
+        judge_submission_port_value.finalize_submission(finalize_request_value);
     if(!finalize_submission_exp){
         return std::unexpected(finalize_submission_exp.error());
     }
@@ -151,12 +148,11 @@ std::expected<void, judge_error> submission_processor::finalize_submission(
 }
 
 std::expected<void, judge_error> submission_processor::requeue_submission(
-    db_connection& submission_db_connection,
+    judge_submission_port& judge_submission_port_value,
     std::int64_t submission_id,
     std::string reason
 ){
-    return judge_service::requeue_submission_immediately(
-        submission_db_connection,
+    return judge_submission_port_value.requeue_submission_immediately(
         submission_id,
         std::move(reason)
     );
