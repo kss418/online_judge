@@ -3,7 +3,7 @@
 #include "error/judge_error.hpp"
 #include "error/sandbox_error.hpp"
 #include "judge_core/infrastructure/execution_plan.hpp"
-#include "judge_core/infrastructure/program_build_types.hpp"
+#include "judge_core/types/runnable_program.hpp"
 
 #include <expected>
 
@@ -17,7 +17,7 @@ public:
     );
 
     std::expected<program_launch::execution_plan, sandbox_error> make_execution_plan(
-        const program_build::build_artifact& build_artifact_value
+        const runnable_program& runnable_program_value
     );
 
 private:

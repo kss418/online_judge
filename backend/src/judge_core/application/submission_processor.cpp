@@ -5,16 +5,16 @@
 
 namespace{
     execution_report::testcase_execution make_testcase_execution(
-        const program_build::compile_failure& compile_failure_value
+        const compile_failure& compile_failure_value
     ){
         execution_report::testcase_execution testcase_execution_value;
-        testcase_execution_value.exit_code = compile_failure_value.exit_code_;
-        testcase_execution_value.stderr_text = compile_failure_value.stderr_text_;
+        testcase_execution_value.exit_code = compile_failure_value.exit_code;
+        testcase_execution_value.stderr_text = compile_failure_value.stderr_text;
         return testcase_execution_value;
     }
 
     execution_report::batch make_compile_failed_execution_report(
-        const program_build::compile_failure& compile_failure_value
+        const compile_failure& compile_failure_value
     ){
         execution_report::batch execution_report_value;
         execution_report_value.compile_failed = true;
@@ -151,7 +151,7 @@ submission_processor::process_submission_in_workspace(
 
     auto build_result_value = std::move(*build_result_exp);
     if(auto* compile_failure_value =
-           std::get_if<program_build::compile_failure>(&build_result_value)){
+           std::get_if<compile_failure>(&build_result_value)){
         auto process_submission_data_value =
             judge_submission_data::make_process_submission_data(
                 judge_result::compile_error,
@@ -160,20 +160,20 @@ submission_processor::process_submission_in_workspace(
         return process_submission_data_value;
     }
 
-    const auto* build_artifact_value =
-        std::get_if<program_build::build_artifact>(&build_result_value);
-    if(build_artifact_value == nullptr){
+    const auto* runnable_program_value =
+        std::get_if<runnable_program>(&build_result_value);
+    if(runnable_program_value == nullptr){
         return std::unexpected(
             judge_error{
                 judge_error_code::validation_error,
-                "missing build artifact"
+                "missing runnable program"
             }
         );
     }
 
     auto execution_result_exp = execution_engine_.run(
         queued_submission_value.problem_id,
-        *build_artifact_value
+        *runnable_program_value
     );
     if(!execution_result_exp){
         return std::unexpected(execution_result_exp.error());
