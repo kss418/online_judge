@@ -27,25 +27,37 @@ std::expected<testcase_snapshot_port, judge_error> testcase_snapshot_port::creat
         );
     }
 
-    auto db_connection_exp = db_connection::create(db_config);
-    if(!db_connection_exp){
-        return std::unexpected(judge_error{db_connection_exp.error()});
+    auto testcase_source_port_exp = testcase_source_port::create(db_config);
+    if(!testcase_source_port_exp){
+        return std::unexpected(testcase_source_port_exp.error());
+    }
+
+    auto testcase_store_exp = testcase_store::create(
+        std::move(testcase_root_path)
+    );
+    if(!testcase_store_exp){
+        return std::unexpected(testcase_store_exp.error());
+    }
+
+    auto testcase_downloader_exp = testcase_downloader::create(
+        std::move(*testcase_source_port_exp),
+        std::move(*testcase_store_exp)
+    );
+    if(!testcase_downloader_exp){
+        return std::unexpected(testcase_downloader_exp.error());
     }
 
     return testcase_snapshot_port(
-        std::move(*db_connection_exp),
-        std::move(testcase_root_path),
+        std::move(*testcase_downloader_exp),
         std::move(problem_lock_registry)
     );
 }
 
 testcase_snapshot_port::testcase_snapshot_port(
-    db_connection db_connection_value,
-    std::filesystem::path testcase_root_path,
+    testcase_downloader testcase_downloader_value,
     std::shared_ptr<problem_lock_registry> problem_lock_registry
 ) :
-    db_connection_(std::move(db_connection_value)),
-    testcase_root_path_(std::move(testcase_root_path)),
+    testcase_downloader_(std::move(testcase_downloader_value)),
     problem_lock_registry_(std::move(problem_lock_registry)){}
 
 testcase_snapshot_port::testcase_snapshot_port(
@@ -67,9 +79,7 @@ std::expected<testcase_snapshot, judge_error> testcase_snapshot_port::acquire(
     }
 
     [[maybe_unused]] auto problem_lock = std::move(*problem_lock_exp);
-    return testcase_downloader::ensure_testcase_snapshot(
-        db_connection_,
-        testcase_root_path_,
+    return testcase_downloader_.ensure_testcase_snapshot(
         problem_id
     );
 }

@@ -6,12 +6,19 @@
 std::expected<submission_processor, judge_error> submission_processor::create(
     dependencies dependencies_value
 ){
+    auto workspace_runner_exp = workspace_runner::create(
+        std::move(dependencies_value.source_root_path)
+    );
+    if(!workspace_runner_exp){
+        return std::unexpected(workspace_runner_exp.error());
+    }
+
     return submission_processor(
         std::move(dependencies_value.judge_queue_port_value),
         std::move(dependencies_value.judge_submission_port_value),
         std::move(dependencies_value.execution_engine_value),
         std::move(dependencies_value.judge_evaluator_value),
-        std::move(dependencies_value.workspace_runner_value)
+        std::move(*workspace_runner_exp)
     );
 }
 

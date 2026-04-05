@@ -23,7 +23,7 @@ public:
         judge_submission_port judge_submission_port_value;
         execution_engine execution_engine_value;
         judge_evaluator judge_evaluator_value;
-        workspace_runner workspace_runner_value;
+        std::filesystem::path source_root_path;
     };
 
     static std::expected<submission_processor, judge_error> create(

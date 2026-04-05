@@ -8,7 +8,6 @@
 #include "judge_core/application/judge_evaluator.hpp"
 #include "judge_core/application/judge_worker.hpp"
 #include "judge_core/application/submission_processor.hpp"
-#include "judge_core/application/workspace_runner.hpp"
 #include "judge_core/gateway/judge_queue_port.hpp"
 #include "judge_core/gateway/judge_submission_port.hpp"
 #include "judge_core/gateway/testcase_snapshot_port.hpp"
@@ -107,13 +106,6 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         return std::unexpected(judge_evaluator_exp.error());
     }
 
-    auto workspace_runner_exp = workspace_runner::create(
-        std::move(*source_root_path_exp)
-    );
-    if(!workspace_runner_exp){
-        return std::unexpected(workspace_runner_exp.error());
-    }
-
     auto judge_submission_port_exp = judge_submission_port::create(*db_config_exp);
     if(!judge_submission_port_exp){
         return std::unexpected(judge_submission_port_exp.error());
@@ -125,7 +117,7 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
             .judge_submission_port_value = std::move(*judge_submission_port_exp),
             .execution_engine_value = std::move(*execution_engine_exp),
             .judge_evaluator_value = std::move(*judge_evaluator_exp),
-            .workspace_runner_value = std::move(*workspace_runner_exp),
+            .source_root_path = std::move(*source_root_path_exp),
         }
     );
     if(!submission_processor_exp){
