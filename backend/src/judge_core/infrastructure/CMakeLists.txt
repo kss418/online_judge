@@ -6,6 +6,7 @@ target_sources(lib
         launch_planner.cpp
         problem_lock_registry.cpp
         program_builder.cpp
+        program_runner.cpp
         nsjail_util.cpp
         sandbox_runner.cpp
         submission_queue_source.cpp

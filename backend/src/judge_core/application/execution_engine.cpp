@@ -1,7 +1,6 @@
 #include "judge_core/application/execution_engine.hpp"
 
 #include "judge_core/infrastructure/program_build_types.hpp"
-#include "judge_core/infrastructure/testcase_runner.hpp"
 
 #include <utility>
 
@@ -55,25 +54,25 @@ std::expected<execution_engine, judge_error> execution_engine::create(
         return std::unexpected(program_builder_exp.error());
     }
 
-    auto launch_planner_exp = launch_planner::create();
-    if(!launch_planner_exp){
-        return std::unexpected(launch_planner_exp.error());
+    auto program_runner_exp = program_runner::create();
+    if(!program_runner_exp){
+        return std::unexpected(program_runner_exp.error());
     }
 
     return execution_engine{
         std::move(*program_builder_exp),
-        std::move(*launch_planner_exp),
+        std::move(*program_runner_exp),
         std::move(testcase_snapshot_port_value)
     };
 }
 
 execution_engine::execution_engine(
     program_builder program_builder_value,
-    launch_planner launch_planner_value,
+    program_runner program_runner_value,
     testcase_snapshot_port testcase_snapshot_port_value
 ) :
     program_builder_(std::move(program_builder_value)),
-    launch_planner_(std::move(launch_planner_value)),
+    program_runner_(std::move(program_runner_value)),
     testcase_snapshot_port_(std::move(testcase_snapshot_port_value)){}
 
 execution_engine::execution_engine(
@@ -108,19 +107,13 @@ std::expected<execution_engine::execution_result, judge_error> execution_engine:
     std::int64_t problem_id,
     const runnable_program& runnable_program_value
 ){
-    const auto execution_plan_exp =
-        launch_planner_.make_execution_plan(runnable_program_value);
-    if(!execution_plan_exp){
-        return std::unexpected(judge_error{execution_plan_exp.error()});
-    }
-
     auto testcase_snapshot_exp = testcase_snapshot_port_.acquire(problem_id);
     if(!testcase_snapshot_exp){
         return std::unexpected(testcase_snapshot_exp.error());
     }
 
-    auto execution_report_exp = testcase_runner::run_all_testcases(
-        *execution_plan_exp,
+    auto execution_report_exp = program_runner_.run(
+        runnable_program_value,
         *testcase_snapshot_exp
     );
     if(!execution_report_exp){

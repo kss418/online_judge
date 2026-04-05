@@ -2,8 +2,8 @@
 
 #include "error/judge_error.hpp"
 #include "judge_core/gateway/testcase_snapshot_port.hpp"
-#include "judge_core/infrastructure/launch_planner.hpp"
 #include "judge_core/infrastructure/program_builder.hpp"
+#include "judge_core/infrastructure/program_runner.hpp"
 #include "judge_core/types/compile_failure.hpp"
 #include "judge_core/types/execution_report.hpp"
 #include "judge_core/types/runnable_program.hpp"
@@ -45,11 +45,11 @@ public:
 private:
     execution_engine(
         program_builder program_builder_value,
-        launch_planner launch_planner_value,
+        program_runner program_runner_value,
         testcase_snapshot_port testcase_snapshot_port_value
     );
 
     program_builder program_builder_;
-    launch_planner launch_planner_;
+    program_runner program_runner_;
     testcase_snapshot_port testcase_snapshot_port_;
 };
