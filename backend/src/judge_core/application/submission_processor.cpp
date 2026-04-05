@@ -91,7 +91,7 @@ std::expected<void, judge_error> submission_processor::execute_submission(
 
     auto judge_submission_exp = workspace_runner_.with_submission_workspace(
         queued_submission_value.submission_id,
-        [&](const std::filesystem::path&)
+        [&]()
             -> std::expected<judge_submission_data::process_submission_data, judge_error> {
             return process_submission_in_workspace(queued_submission_value);
         }

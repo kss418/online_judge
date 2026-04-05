@@ -27,17 +27,13 @@ public:
     auto with_submission_workspace(
         std::int64_t submission_id,
         Callback&& callback
-    ) -> std::invoke_result_t<Callback, const std::filesystem::path&> {
-        using result_type =
-            std::invoke_result_t<Callback, const std::filesystem::path&>;
-
+    ) -> std::invoke_result_t<Callback> {
         const auto workspace_path_exp = prepare_workspace(submission_id);
         if(!workspace_path_exp){
             return std::unexpected(workspace_path_exp.error());
         }
 
-        auto callback_result =
-            std::forward<Callback>(callback)(*workspace_path_exp);
+        auto callback_result = std::forward<Callback>(callback)();
         const auto cleanup_workspace_exp = cleanup_workspace(*workspace_path_exp);
         if(!cleanup_workspace_exp){
             return std::unexpected(cleanup_workspace_exp.error());
