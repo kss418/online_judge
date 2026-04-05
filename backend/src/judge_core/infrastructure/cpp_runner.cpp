@@ -1,8 +1,8 @@
 #include "judge_core/infrastructure/cpp_runner.hpp"
 
-#include "judge_core/infrastructure/judge_workspace.hpp"
 #include "judge_core/infrastructure/program_build_support.hpp"
 #include "judge_core/infrastructure/sandbox_runner.hpp"
+#include "judge_core/infrastructure/workspace_path_mapper.hpp"
 
 std::expected<program_build::build_artifact, sandbox_error> cpp_runner::build(
     const path& source_file_path,
@@ -10,11 +10,11 @@ std::expected<program_build::build_artifact, sandbox_error> cpp_runner::build(
 ){
     const auto workspace_host_path = source_file_path.parent_path();
     const auto binary_host_path = workspace_host_path / "program.out";
-    const auto binary_sandbox_path = judge_workspace::make_sandbox_path(
+    const auto binary_sandbox_path = workspace_path_mapper::make_sandbox_path(
         workspace_host_path,
         binary_host_path
     );
-    const auto source_sandbox_path = judge_workspace::make_sandbox_path(
+    const auto source_sandbox_path = workspace_path_mapper::make_sandbox_path(
         workspace_host_path,
         source_file_path
     );

@@ -56,8 +56,7 @@ private:
     );
     std::expected<judge_submission_data::process_submission_data, judge_error>
     process_submission_in_workspace(
-        const submission_dto::queued_submission& queued_submission_value,
-        const std::filesystem::path& workspace_path
+        const submission_dto::queued_submission& queued_submission_value
     );
     std::expected<void, judge_error> finalize_submission(
         std::int64_t submission_id,

@@ -1,7 +1,7 @@
 #include "judge_core/infrastructure/launch_planner.hpp"
 
 #include "common/env_util.hpp"
-#include "judge_core/infrastructure/judge_workspace.hpp"
+#include "judge_core/infrastructure/workspace_path_mapper.hpp"
 
 namespace{
     std::expected<std::filesystem::path, judge_error> load_required_path_env(
@@ -72,7 +72,7 @@ std::expected<program_launch::execution_plan, sandbox_error> launch_planner::mak
             return std::unexpected(sandbox_error::invalid_argument);
         }
 
-        const auto binary_sandbox_path = judge_workspace::make_sandbox_path(
+        const auto binary_sandbox_path = workspace_path_mapper::make_sandbox_path(
             runnable_program_value.workspace_host_path,
             runnable_program_value.entry_file_host_path
         );
@@ -94,7 +94,7 @@ std::expected<program_launch::execution_plan, sandbox_error> launch_planner::mak
             return std::unexpected(sandbox_error::invalid_argument);
         }
 
-        const auto source_sandbox_path = judge_workspace::make_sandbox_path(
+        const auto source_sandbox_path = workspace_path_mapper::make_sandbox_path(
             runnable_program_value.workspace_host_path,
             runnable_program_value.entry_file_host_path
         );
@@ -124,7 +124,7 @@ std::expected<program_launch::execution_plan, sandbox_error> launch_planner::mak
         execution_plan_value.run_command_args_.push_back("-XX:-UsePerfData");
         execution_plan_value.run_command_args_.push_back("-cp");
         execution_plan_value.run_command_args_.push_back(
-            judge_workspace::sandbox_workspace_path().string()
+            workspace_path_mapper::sandbox_workspace_path().string()
         );
         execution_plan_value.run_command_args_.push_back(runnable_program_value.main_class_name);
         return execution_plan_value;

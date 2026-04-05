@@ -112,12 +112,9 @@ std::expected<void, judge_error> submission_processor::execute_submission(
 
     auto judge_submission_exp = workspace_runner_.with_submission_workspace(
         queued_submission_value.submission_id,
-        [&](const std::filesystem::path& workspace_path)
+        [&](const std::filesystem::path&)
             -> std::expected<judge_submission_data::process_submission_data, judge_error> {
-            return process_submission_in_workspace(
-                queued_submission_value,
-                workspace_path
-            );
+            return process_submission_in_workspace(queued_submission_value);
         }
     );
     if(!judge_submission_exp){
@@ -138,12 +135,19 @@ std::expected<void, judge_error> submission_processor::execute_submission(
 
 std::expected<judge_submission_data::process_submission_data, judge_error>
 submission_processor::process_submission_in_workspace(
-    const submission_dto::queued_submission& queued_submission_value,
-    const std::filesystem::path& workspace_path
+    const submission_dto::queued_submission& queued_submission_value
 ){
+    const auto source_file_path_exp = workspace_runner_.write_source_file(
+        queued_submission_value.submission_id,
+        queued_submission_value.language,
+        queued_submission_value.source_code
+    );
+    if(!source_file_path_exp){
+        return std::unexpected(source_file_path_exp.error());
+    }
+
     auto build_result_exp = execution_engine_.build(
-        queued_submission_value,
-        workspace_path
+        *source_file_path_exp
     );
     if(!build_result_exp){
         return std::unexpected(build_result_exp.error());

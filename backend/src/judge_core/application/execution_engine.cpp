@@ -1,6 +1,5 @@
 #include "judge_core/application/execution_engine.hpp"
 
-#include "judge_core/infrastructure/judge_workspace.hpp"
 #include "judge_core/infrastructure/program_build_types.hpp"
 #include "judge_core/infrastructure/testcase_runner.hpp"
 
@@ -87,36 +86,10 @@ execution_engine& execution_engine::operator=(
 
 execution_engine::~execution_engine() = default;
 
-std::expected<std::filesystem::path, judge_error>
-execution_engine::write_submission_source(
-    const submission_dto::queued_submission& queued_submission_value,
-    const std::filesystem::path& workspace_path
-){
-    const auto source_file_path_exp = judge_workspace::write_source_file(
-        workspace_path,
-        queued_submission_value.language,
-        queued_submission_value.source_code
-    );
-    if(!source_file_path_exp){
-        return std::unexpected(judge_error{source_file_path_exp.error()});
-    }
-
-    return *source_file_path_exp;
-}
-
 std::expected<execution_engine::build_result, judge_error> execution_engine::build(
-    const submission_dto::queued_submission& queued_submission_value,
-    const std::filesystem::path& workspace_path
+    const std::filesystem::path& source_file_path
 ){
-    const auto source_file_path_exp = write_submission_source(
-        queued_submission_value,
-        workspace_path
-    );
-    if(!source_file_path_exp){
-        return std::unexpected(source_file_path_exp.error());
-    }
-
-    auto build_source_exp = program_builder_.build_source(*source_file_path_exp);
+    auto build_source_exp = program_builder_.build_source(source_file_path);
     if(!build_source_exp){
         return std::unexpected(judge_error{build_source_exp.error()});
     }

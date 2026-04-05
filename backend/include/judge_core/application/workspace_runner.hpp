@@ -6,6 +6,7 @@
 #include <expected>
 #include <functional>
 #include <filesystem>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -45,11 +46,20 @@ public:
         return callback_result;
     }
 
+    std::expected<std::filesystem::path, judge_error> write_source_file(
+        std::int64_t submission_id,
+        std::string_view language,
+        std::string_view source_code
+    );
+
 private:
     explicit workspace_runner(
         std::filesystem::path source_root_path
     );
 
+    std::expected<std::filesystem::path, judge_error> make_workspace_path(
+        std::int64_t submission_id
+    );
     std::expected<std::filesystem::path, judge_error> prepare_workspace(
         std::int64_t submission_id
     );

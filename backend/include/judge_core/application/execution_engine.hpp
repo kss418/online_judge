@@ -1,6 +1,5 @@
 #pragma once
 
-#include "dto/submission_dto.hpp"
 #include "error/judge_error.hpp"
 #include "judge_core/gateway/testcase_snapshot_port.hpp"
 #include "judge_core/infrastructure/launch_planner.hpp"
@@ -36,8 +35,7 @@ public:
     execution_engine& operator=(const execution_engine&) = delete;
 
     std::expected<build_result, judge_error> build(
-        const submission_dto::queued_submission& queued_submission_value,
-        const std::filesystem::path& workspace_path
+        const std::filesystem::path& source_file_path
     );
     std::expected<execution_result, judge_error> run(
         std::int64_t problem_id,
@@ -45,11 +43,6 @@ public:
     );
 
 private:
-    std::expected<std::filesystem::path, judge_error> write_submission_source(
-        const submission_dto::queued_submission& queued_submission_value,
-        const std::filesystem::path& workspace_path
-    );
-
     execution_engine(
         program_builder program_builder_value,
         launch_planner launch_planner_value,
