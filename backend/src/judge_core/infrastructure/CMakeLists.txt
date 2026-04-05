@@ -10,7 +10,7 @@ target_sources(lib
         judge_workspace.cpp
         sandbox_runner.cpp
         submission_queue_source.cpp
-        testcase_downloader.cpp
+        testcase_snapshot_materializer.cpp
         testcase_store.cpp
         testcase_runner.cpp
         testcase_util.cpp

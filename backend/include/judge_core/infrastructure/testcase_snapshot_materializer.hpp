@@ -8,26 +8,26 @@
 #include <cstdint>
 #include <expected>
 
-class testcase_downloader{
+class testcase_snapshot_materializer{
 public:
-    static std::expected<testcase_downloader, judge_error> create(
+    static std::expected<testcase_snapshot_materializer, judge_error> create(
         testcase_source_port testcase_source_port_value,
         testcase_store testcase_store_value
     );
 
-    testcase_downloader(testcase_downloader&& other) noexcept;
-    testcase_downloader& operator=(testcase_downloader&& other) noexcept;
-    ~testcase_downloader();
+    testcase_snapshot_materializer(testcase_snapshot_materializer&& other) noexcept;
+    testcase_snapshot_materializer& operator=(testcase_snapshot_materializer&& other) noexcept;
+    ~testcase_snapshot_materializer();
 
-    testcase_downloader(const testcase_downloader&) = delete;
-    testcase_downloader& operator=(const testcase_downloader&) = delete;
+    testcase_snapshot_materializer(const testcase_snapshot_materializer&) = delete;
+    testcase_snapshot_materializer& operator=(const testcase_snapshot_materializer&) = delete;
 
     std::expected<testcase_snapshot, judge_error> ensure_testcase_snapshot(
         std::int64_t problem_id
     );
 
 private:
-    testcase_downloader(
+    testcase_snapshot_materializer(
         testcase_source_port testcase_source_port_value,
         testcase_store testcase_store_value
     );

@@ -2,7 +2,7 @@
 
 #include "common/db_connection.hpp"
 #include "error/judge_error.hpp"
-#include "judge_core/infrastructure/testcase_downloader.hpp"
+#include "judge_core/infrastructure/testcase_snapshot_materializer.hpp"
 #include "judge_core/infrastructure/problem_lock_registry.hpp"
 #include "judge_core/types/testcase_snapshot.hpp"
 
@@ -30,10 +30,10 @@ public:
 
 private:
     testcase_snapshot_port(
-        testcase_downloader testcase_downloader_value,
+        testcase_snapshot_materializer testcase_snapshot_materializer_value,
         std::shared_ptr<problem_lock_registry> problem_lock_registry
     );
 
-    testcase_downloader testcase_downloader_;
+    testcase_snapshot_materializer testcase_snapshot_materializer_;
     std::shared_ptr<problem_lock_registry> problem_lock_registry_;
 };

@@ -1,6 +1,6 @@
 #include "judge_core/gateway/testcase_snapshot_port.hpp"
 
-#include "judge_core/infrastructure/testcase_downloader.hpp"
+#include "judge_core/infrastructure/testcase_snapshot_materializer.hpp"
 
 #include <utility>
 
@@ -39,25 +39,26 @@ std::expected<testcase_snapshot_port, judge_error> testcase_snapshot_port::creat
         return std::unexpected(testcase_store_exp.error());
     }
 
-    auto testcase_downloader_exp = testcase_downloader::create(
+    auto testcase_snapshot_materializer_exp =
+        testcase_snapshot_materializer::create(
         std::move(*testcase_source_port_exp),
         std::move(*testcase_store_exp)
     );
-    if(!testcase_downloader_exp){
-        return std::unexpected(testcase_downloader_exp.error());
+    if(!testcase_snapshot_materializer_exp){
+        return std::unexpected(testcase_snapshot_materializer_exp.error());
     }
 
     return testcase_snapshot_port(
-        std::move(*testcase_downloader_exp),
+        std::move(*testcase_snapshot_materializer_exp),
         std::move(problem_lock_registry)
     );
 }
 
 testcase_snapshot_port::testcase_snapshot_port(
-    testcase_downloader testcase_downloader_value,
+    testcase_snapshot_materializer testcase_snapshot_materializer_value,
     std::shared_ptr<problem_lock_registry> problem_lock_registry
 ) :
-    testcase_downloader_(std::move(testcase_downloader_value)),
+    testcase_snapshot_materializer_(std::move(testcase_snapshot_materializer_value)),
     problem_lock_registry_(std::move(problem_lock_registry)){}
 
 testcase_snapshot_port::testcase_snapshot_port(
@@ -79,7 +80,7 @@ std::expected<testcase_snapshot, judge_error> testcase_snapshot_port::acquire(
     }
 
     [[maybe_unused]] auto problem_lock = std::move(*problem_lock_exp);
-    return testcase_downloader_.ensure_testcase_snapshot(
+    return testcase_snapshot_materializer_.ensure_testcase_snapshot(
         problem_id
     );
 }
