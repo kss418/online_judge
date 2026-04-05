@@ -3,6 +3,28 @@
 
 #include <utility>
 
+namespace{
+    execution_report::testcase_execution make_testcase_execution(
+        const program_build::compile_failure& compile_failure_value
+    ){
+        execution_report::testcase_execution testcase_execution_value;
+        testcase_execution_value.exit_code = compile_failure_value.exit_code_;
+        testcase_execution_value.stderr_text = compile_failure_value.stderr_text_;
+        return testcase_execution_value;
+    }
+
+    execution_report::batch make_compile_failed_execution_report(
+        const program_build::compile_failure& compile_failure_value
+    ){
+        execution_report::batch execution_report_value;
+        execution_report_value.compile_failed = true;
+        execution_report_value.executions.push_back(
+            make_testcase_execution(compile_failure_value)
+        );
+        return execution_report_value;
+    }
+}
+
 std::expected<submission_processor, judge_error> submission_processor::create(
     dependencies dependencies_value
 ){
@@ -119,24 +141,45 @@ submission_processor::process_submission_in_workspace(
     const submission_dto::queued_submission& queued_submission_value,
     const std::filesystem::path& workspace_path
 ){
-    auto execute_result_exp = execution_engine_.execute(
+    auto build_result_exp = execution_engine_.build(
         queued_submission_value,
         workspace_path
     );
-    if(!execute_result_exp){
-        return std::unexpected(execute_result_exp.error());
+    if(!build_result_exp){
+        return std::unexpected(build_result_exp.error());
     }
 
-    auto execute_result_value = std::move(*execute_result_exp);
-    if(auto* process_submission_data_value =
-           std::get_if<judge_submission_data::process_submission_data>(
-               &execute_result_value
-           )){
-        return std::move(*process_submission_data_value);
+    auto build_result_value = std::move(*build_result_exp);
+    if(auto* compile_failure_value =
+           std::get_if<program_build::compile_failure>(&build_result_value)){
+        auto process_submission_data_value =
+            judge_submission_data::make_process_submission_data(
+                judge_result::compile_error,
+                make_compile_failed_execution_report(*compile_failure_value)
+            );
+        return process_submission_data_value;
     }
 
-    auto execution_result_value =
-        std::get<execution_engine::execution_result>(std::move(execute_result_value));
+    const auto* build_artifact_value =
+        std::get_if<program_build::build_artifact>(&build_result_value);
+    if(build_artifact_value == nullptr){
+        return std::unexpected(
+            judge_error{
+                judge_error_code::validation_error,
+                "missing build artifact"
+            }
+        );
+    }
+
+    auto execution_result_exp = execution_engine_.run(
+        queued_submission_value.problem_id,
+        *build_artifact_value
+    );
+    if(!execution_result_exp){
+        return std::unexpected(execution_result_exp.error());
+    }
+
+    auto execution_result_value = std::move(*execution_result_exp);
     const auto judge_result_exp = judge_evaluator_.evaluate(
         execution_result_value.testcase_snapshot_value,
         execution_result_value.execution_report_value

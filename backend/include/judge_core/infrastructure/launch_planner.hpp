@@ -1,5 +1,6 @@
 #pragma once
-
+		
+#include "error/judge_error.hpp"
 #include "error/sandbox_error.hpp"
 #include "judge_core/infrastructure/execution_plan.hpp"
 #include "judge_core/infrastructure/program_build_types.hpp"
@@ -8,6 +9,8 @@
 
 class launch_planner{
 public:
+    static std::expected<launch_planner, judge_error> create();
+
     launch_planner(
         std::filesystem::path python_path,
         std::filesystem::path java_runtime_path
