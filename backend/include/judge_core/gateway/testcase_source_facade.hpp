@@ -8,7 +8,7 @@
 #include <expected>
 #include <string>
 
-class testcase_source_port{
+class testcase_source_facade{
 public:
     struct testcase_data{
         std::int32_t order = 0;
@@ -16,16 +16,16 @@ public:
         std::string output;
     };
 
-    static std::expected<testcase_source_port, judge_error> create(
+    static std::expected<testcase_source_facade, judge_error> create(
         const db_connection_config& db_config
     );
 
-    testcase_source_port(testcase_source_port&& other) noexcept;
-    testcase_source_port& operator=(testcase_source_port&& other) noexcept;
-    ~testcase_source_port();
+    testcase_source_facade(testcase_source_facade&& other) noexcept;
+    testcase_source_facade& operator=(testcase_source_facade&& other) noexcept;
+    ~testcase_source_facade();
 
-    testcase_source_port(const testcase_source_port&) = delete;
-    testcase_source_port& operator=(const testcase_source_port&) = delete;
+    testcase_source_facade(const testcase_source_facade&) = delete;
+    testcase_source_facade& operator=(const testcase_source_facade&) = delete;
 
     std::expected<std::int32_t, judge_error> fetch_problem_version(
         std::int64_t problem_id
@@ -45,7 +45,7 @@ public:
     );
 
 private:
-    explicit testcase_source_port(db_connection db_connection_value);
+    explicit testcase_source_facade(db_connection db_connection_value);
 
     db_connection db_connection_;
 };

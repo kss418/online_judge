@@ -1,4 +1,4 @@
-#include "judge_core/gateway/testcase_source_port.hpp"
+#include "judge_core/gateway/testcase_source_facade.hpp"
 
 #include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"
@@ -6,7 +6,7 @@
 
 #include <utility>
 
-std::expected<testcase_source_port, judge_error> testcase_source_port::create(
+std::expected<testcase_source_facade, judge_error> testcase_source_facade::create(
     const db_connection_config& db_config
 ){
     auto db_connection_exp = db_connection::create(db_config);
@@ -14,25 +14,25 @@ std::expected<testcase_source_port, judge_error> testcase_source_port::create(
         return std::unexpected(judge_error{db_connection_exp.error()});
     }
 
-    return testcase_source_port(std::move(*db_connection_exp));
+    return testcase_source_facade(std::move(*db_connection_exp));
 }
 
-testcase_source_port::testcase_source_port(
+testcase_source_facade::testcase_source_facade(
     db_connection db_connection_value
 ) :
     db_connection_(std::move(db_connection_value)){}
 
-testcase_source_port::testcase_source_port(
-    testcase_source_port&& other
+testcase_source_facade::testcase_source_facade(
+    testcase_source_facade&& other
 ) noexcept = default;
 
-testcase_source_port& testcase_source_port::operator=(
-    testcase_source_port&& other
+testcase_source_facade& testcase_source_facade::operator=(
+    testcase_source_facade&& other
 ) noexcept = default;
 
-testcase_source_port::~testcase_source_port() = default;
+testcase_source_facade::~testcase_source_facade() = default;
 
-std::expected<std::int32_t, judge_error> testcase_source_port::fetch_problem_version(
+std::expected<std::int32_t, judge_error> testcase_source_facade::fetch_problem_version(
     std::int64_t problem_id
 ){
     const problem_dto::reference problem_reference_value{problem_id};
@@ -48,7 +48,7 @@ std::expected<std::int32_t, judge_error> testcase_source_port::fetch_problem_ver
 }
 
 std::expected<problem_content_dto::limits, judge_error>
-testcase_source_port::fetch_problem_limits(
+testcase_source_facade::fetch_problem_limits(
     std::int64_t problem_id
 ){
     const problem_dto::reference problem_reference_value{problem_id};
@@ -58,7 +58,7 @@ testcase_source_port::fetch_problem_limits(
     );
 }
 
-std::expected<std::int32_t, judge_error> testcase_source_port::fetch_testcase_count(
+std::expected<std::int32_t, judge_error> testcase_source_facade::fetch_testcase_count(
     std::int64_t problem_id
 ){
     const problem_dto::reference problem_reference_value{problem_id};
@@ -73,8 +73,8 @@ std::expected<std::int32_t, judge_error> testcase_source_port::fetch_testcase_co
     return testcase_count_exp->testcase_count;
 }
 
-std::expected<testcase_source_port::testcase_data, judge_error>
-testcase_source_port::fetch_testcase(
+std::expected<testcase_source_facade::testcase_data, judge_error>
+testcase_source_facade::fetch_testcase(
     std::int64_t problem_id,
     std::int32_t order
 ){

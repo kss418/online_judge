@@ -47,33 +47,33 @@ namespace{
 }
 
 std::expected<execution_engine, judge_error> execution_engine::create(
-    testcase_snapshot_port testcase_snapshot_port_value
+    testcase_snapshot_facade testcase_snapshot_facade_value
 ){
-    auto program_builder_exp = program_builder::create();
-    if(!program_builder_exp){
-        return std::unexpected(program_builder_exp.error());
+    auto build_dispatcher_exp = build_dispatcher::create();
+    if(!build_dispatcher_exp){
+        return std::unexpected(build_dispatcher_exp.error());
     }
 
-    auto program_runner_exp = program_runner::create();
-    if(!program_runner_exp){
-        return std::unexpected(program_runner_exp.error());
+    auto program_executor_exp = program_executor::create();
+    if(!program_executor_exp){
+        return std::unexpected(program_executor_exp.error());
     }
 
     return execution_engine{
-        std::move(*program_builder_exp),
-        std::move(*program_runner_exp),
-        std::move(testcase_snapshot_port_value)
+        std::move(*build_dispatcher_exp),
+        std::move(*program_executor_exp),
+        std::move(testcase_snapshot_facade_value)
     };
 }
 
 execution_engine::execution_engine(
-    program_builder program_builder_value,
-    program_runner program_runner_value,
-    testcase_snapshot_port testcase_snapshot_port_value
+    build_dispatcher build_dispatcher_value,
+    program_executor program_executor_value,
+    testcase_snapshot_facade testcase_snapshot_facade_value
 ) :
-    program_builder_(std::move(program_builder_value)),
-    program_runner_(std::move(program_runner_value)),
-    testcase_snapshot_port_(std::move(testcase_snapshot_port_value)){}
+    build_dispatcher_(std::move(build_dispatcher_value)),
+    program_executor_(std::move(program_executor_value)),
+    testcase_snapshot_facade_(std::move(testcase_snapshot_facade_value)){}
 
 execution_engine::execution_engine(
     execution_engine&& other
@@ -88,7 +88,7 @@ execution_engine::~execution_engine() = default;
 std::expected<execution_engine::build_result, judge_error> execution_engine::build(
     const std::filesystem::path& source_file_path
 ){
-    auto build_source_exp = program_builder_.build_source(source_file_path);
+    auto build_source_exp = build_dispatcher_.build_source(source_file_path);
     if(!build_source_exp){
         return std::unexpected(judge_error{build_source_exp.error()});
     }
@@ -107,12 +107,12 @@ std::expected<execution_engine::execution_result, judge_error> execution_engine:
     std::int64_t problem_id,
     const runnable_program& runnable_program_value
 ){
-    auto testcase_snapshot_exp = testcase_snapshot_port_.acquire(problem_id);
+    auto testcase_snapshot_exp = testcase_snapshot_facade_.acquire(problem_id);
     if(!testcase_snapshot_exp){
         return std::unexpected(testcase_snapshot_exp.error());
     }
 
-    auto execution_report_exp = program_runner_.run(
+    auto execution_report_exp = program_executor_.run(
         runnable_program_value,
         *testcase_snapshot_exp
     );

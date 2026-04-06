@@ -15,8 +15,8 @@ std::expected<submission_processor, judge_error> submission_processor::create(
     }
 
     return submission_processor(
-        std::move(dependencies_value.judge_queue_port_value),
-        std::move(dependencies_value.judge_submission_port_value),
+        std::move(dependencies_value.judge_queue_facade_value),
+        std::move(dependencies_value.judge_submission_facade_value),
         std::move(dependencies_value.execution_engine_value),
         std::move(dependencies_value.judge_evaluator_value),
         std::move(*workspace_runner_exp)
@@ -24,14 +24,14 @@ std::expected<submission_processor, judge_error> submission_processor::create(
 }
 
 submission_processor::submission_processor(
-    judge_queue_port judge_queue_port_value,
-    judge_submission_port judge_submission_port_value,
+    judge_queue_facade judge_queue_facade_value,
+    judge_submission_facade judge_submission_facade_value,
     execution_engine execution_engine_value,
     judge_evaluator judge_evaluator_value,
     workspace_runner workspace_runner_value
 ) :
-    judge_queue_port_(std::move(judge_queue_port_value)),
-    judge_submission_port_(std::move(judge_submission_port_value)),
+    judge_queue_facade_(std::move(judge_queue_facade_value)),
+    judge_submission_facade_(std::move(judge_submission_facade_value)),
     execution_engine_(std::move(execution_engine_value)),
     judge_evaluator_(std::move(judge_evaluator_value)),
     workspace_runner_(std::move(workspace_runner_value)){}
@@ -50,7 +50,7 @@ std::expected<void, judge_error> submission_processor::process_next_submission(
     std::chrono::seconds lease_duration,
     std::chrono::milliseconds notification_wait_timeout
 ){
-    auto queued_submission_opt_exp = judge_queue_port_.poll_next_submission(
+    auto queued_submission_opt_exp = judge_queue_facade_.poll_next_submission(
         lease_duration,
         notification_wait_timeout
     );
@@ -82,7 +82,7 @@ std::expected<void, judge_error> submission_processor::execute_submission(
     const submission_dto::queued_submission& queued_submission_value
 ){
     const auto mark_judging_exp =
-        judge_submission_port_.mark_judging(
+        judge_submission_facade_.mark_judging(
             queued_submission_value.submission_id
         );
     if(!mark_judging_exp){
@@ -194,7 +194,7 @@ std::expected<void, judge_error> submission_processor::finalize_submission(
         );
 
     const auto finalize_submission_exp =
-        judge_submission_port_.finalize_submission(finalize_request_value);
+        judge_submission_facade_.finalize_submission(finalize_request_value);
     if(!finalize_submission_exp){
         return std::unexpected(finalize_submission_exp.error());
     }
@@ -206,7 +206,7 @@ std::expected<void, judge_error> submission_processor::requeue_submission(
     std::int64_t submission_id,
     std::string reason
 ){
-    return judge_submission_port_.requeue_submission_immediately(
+    return judge_submission_facade_.requeue_submission_immediately(
         submission_id,
         std::move(reason)
     );

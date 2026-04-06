@@ -1,16 +1,16 @@
 #pragma once
-		
+
 #include "error/judge_error.hpp"
 #include "error/sandbox_error.hpp"
 #include "judge_core/infrastructure/program_build_types.hpp"
 
 #include <expected>
 
-class program_builder{
+class build_dispatcher{
 public:
-    static std::expected<program_builder, judge_error> create();
+    static std::expected<build_dispatcher, judge_error> create();
 
-    program_builder(
+    build_dispatcher(
         std::filesystem::path cpp_compiler_path,
         std::filesystem::path java_compiler_path
     );

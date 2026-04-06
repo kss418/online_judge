@@ -9,18 +9,18 @@
 #include <expected>
 #include <optional>
 
-class judge_queue_port{
+class judge_queue_facade{
 public:
-    static std::expected<judge_queue_port, judge_error> create(
+    static std::expected<judge_queue_facade, judge_error> create(
         const db_connection_config& db_config
     );
 
-    judge_queue_port(judge_queue_port&& other) noexcept;
-    judge_queue_port& operator=(judge_queue_port&& other) noexcept;
-    ~judge_queue_port();
+    judge_queue_facade(judge_queue_facade&& other) noexcept;
+    judge_queue_facade& operator=(judge_queue_facade&& other) noexcept;
+    ~judge_queue_facade();
 
-    judge_queue_port(const judge_queue_port&) = delete;
-    judge_queue_port& operator=(const judge_queue_port&) = delete;
+    judge_queue_facade(const judge_queue_facade&) = delete;
+    judge_queue_facade& operator=(const judge_queue_facade&) = delete;
 
     std::expected<std::optional<submission_dto::queued_submission>, judge_error>
     poll_next_submission(
@@ -29,7 +29,7 @@ public:
     );
 
 private:
-    judge_queue_port(
+    judge_queue_facade(
         db_connection lease_db_connection,
         submission_queue_source submission_queue_source_value
     );

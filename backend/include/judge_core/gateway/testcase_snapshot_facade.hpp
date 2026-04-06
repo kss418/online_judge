@@ -11,25 +11,25 @@
 #include <filesystem>
 #include <memory>
 
-class testcase_snapshot_port{
+class testcase_snapshot_facade{
 public:
-    static std::expected<testcase_snapshot_port, judge_error> create(
+    static std::expected<testcase_snapshot_facade, judge_error> create(
         const db_connection_config& db_config,
         std::filesystem::path testcase_root_path,
         std::shared_ptr<problem_lock_registry> problem_lock_registry
     );
 
-    testcase_snapshot_port(testcase_snapshot_port&& other) noexcept;
-    testcase_snapshot_port& operator=(testcase_snapshot_port&& other) noexcept;
-    ~testcase_snapshot_port();
+    testcase_snapshot_facade(testcase_snapshot_facade&& other) noexcept;
+    testcase_snapshot_facade& operator=(testcase_snapshot_facade&& other) noexcept;
+    ~testcase_snapshot_facade();
 
-    testcase_snapshot_port(const testcase_snapshot_port&) = delete;
-    testcase_snapshot_port& operator=(const testcase_snapshot_port&) = delete;
+    testcase_snapshot_facade(const testcase_snapshot_facade&) = delete;
+    testcase_snapshot_facade& operator=(const testcase_snapshot_facade&) = delete;
 
     std::expected<testcase_snapshot, judge_error> acquire(std::int64_t problem_id);
 
 private:
-    testcase_snapshot_port(
+    testcase_snapshot_facade(
         testcase_snapshot_materializer testcase_snapshot_materializer_value,
         std::shared_ptr<problem_lock_registry> problem_lock_registry
     );

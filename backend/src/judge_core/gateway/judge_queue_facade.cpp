@@ -1,10 +1,10 @@
-#include "judge_core/gateway/judge_queue_port.hpp"
+#include "judge_core/gateway/judge_queue_facade.hpp"
 
 #include "db_service/submission_service.hpp"
 
 #include <utility>
 
-std::expected<judge_queue_port, judge_error> judge_queue_port::create(
+std::expected<judge_queue_facade, judge_error> judge_queue_facade::create(
     const db_connection_config& db_config
 ){
     auto lease_db_connection_exp = db_connection::create(db_config);
@@ -24,31 +24,31 @@ std::expected<judge_queue_port, judge_error> judge_queue_port::create(
         return std::unexpected(judge_error{submission_queue_source_exp.error()});
     }
 
-    return judge_queue_port(
+    return judge_queue_facade(
         std::move(*lease_db_connection_exp),
         std::move(*submission_queue_source_exp)
     );
 }
 
-judge_queue_port::judge_queue_port(
+judge_queue_facade::judge_queue_facade(
     db_connection lease_db_connection,
     submission_queue_source submission_queue_source_value
 ) :
     lease_db_connection_(std::move(lease_db_connection)),
     submission_queue_source_(std::move(submission_queue_source_value)){}
 
-judge_queue_port::judge_queue_port(
-    judge_queue_port&& other
+judge_queue_facade::judge_queue_facade(
+    judge_queue_facade&& other
 ) noexcept = default;
 
-judge_queue_port& judge_queue_port::operator=(
-    judge_queue_port&& other
+judge_queue_facade& judge_queue_facade::operator=(
+    judge_queue_facade&& other
 ) noexcept = default;
 
-judge_queue_port::~judge_queue_port() = default;
+judge_queue_facade::~judge_queue_facade() = default;
 
 std::expected<std::optional<submission_dto::queued_submission>, judge_error>
-judge_queue_port::poll_next_submission(
+judge_queue_facade::poll_next_submission(
     std::chrono::seconds lease_duration,
     std::chrono::milliseconds notification_wait_timeout
 ){

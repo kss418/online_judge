@@ -8,9 +8,9 @@
 #include "judge_core/application/judge_evaluator.hpp"
 #include "judge_core/entry/judge_worker.hpp"
 #include "judge_core/entry/submission_processor.hpp"
-#include "judge_core/gateway/judge_queue_port.hpp"
-#include "judge_core/gateway/judge_submission_port.hpp"
-#include "judge_core/gateway/testcase_snapshot_port.hpp"
+#include "judge_core/gateway/judge_queue_facade.hpp"
+#include "judge_core/gateway/judge_submission_facade.hpp"
+#include "judge_core/gateway/testcase_snapshot_facade.hpp"
 #include "judge_core/infrastructure/problem_lock_registry.hpp"
 #include "judge_core/infrastructure/sandbox_runner.hpp"
 
@@ -80,22 +80,22 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         return std::unexpected(db_config_exp.error());
     }
 
-    auto judge_queue_port_exp = judge_queue_port::create(*db_config_exp);
-    if(!judge_queue_port_exp){
-        return std::unexpected(judge_queue_port_exp.error());
+    auto judge_queue_facade_exp = judge_queue_facade::create(*db_config_exp);
+    if(!judge_queue_facade_exp){
+        return std::unexpected(judge_queue_facade_exp.error());
     }
 
-    auto testcase_snapshot_port_exp = testcase_snapshot_port::create(
+    auto testcase_snapshot_facade_exp = testcase_snapshot_facade::create(
         *db_config_exp,
         *testcase_root_path_exp,
         shared_problem_lock_registry
     );
-    if(!testcase_snapshot_port_exp){
-        return std::unexpected(testcase_snapshot_port_exp.error());
+    if(!testcase_snapshot_facade_exp){
+        return std::unexpected(testcase_snapshot_facade_exp.error());
     }
 
     auto execution_engine_exp = execution_engine::create(
-        std::move(*testcase_snapshot_port_exp)
+        std::move(*testcase_snapshot_facade_exp)
     );
     if(!execution_engine_exp){
         return std::unexpected(execution_engine_exp.error());
@@ -106,15 +106,17 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         return std::unexpected(judge_evaluator_exp.error());
     }
 
-    auto judge_submission_port_exp = judge_submission_port::create(*db_config_exp);
-    if(!judge_submission_port_exp){
-        return std::unexpected(judge_submission_port_exp.error());
+    auto judge_submission_facade_exp =
+        judge_submission_facade::create(*db_config_exp);
+    if(!judge_submission_facade_exp){
+        return std::unexpected(judge_submission_facade_exp.error());
     }
 
     auto submission_processor_exp = submission_processor::create(
         submission_processor::dependencies{
-            .judge_queue_port_value = std::move(*judge_queue_port_exp),
-            .judge_submission_port_value = std::move(*judge_submission_port_exp),
+            .judge_queue_facade_value = std::move(*judge_queue_facade_exp),
+            .judge_submission_facade_value =
+                std::move(*judge_submission_facade_exp),
             .execution_engine_value = std::move(*execution_engine_exp),
             .judge_evaluator_value = std::move(*judge_evaluator_exp),
             .source_root_path = std::move(*source_root_path_exp),

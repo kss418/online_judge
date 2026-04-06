@@ -1,10 +1,10 @@
-#include "judge_core/gateway/judge_submission_port.hpp"
+#include "judge_core/gateway/judge_submission_facade.hpp"
 
 #include "db_service/submission_service.hpp"
 
 #include <utility>
 
-std::expected<judge_submission_port, judge_error> judge_submission_port::create(
+std::expected<judge_submission_facade, judge_error> judge_submission_facade::create(
     const db_connection_config& db_config
 ){
     auto db_connection_exp = db_connection::create(db_config);
@@ -12,25 +12,25 @@ std::expected<judge_submission_port, judge_error> judge_submission_port::create(
         return std::unexpected(judge_error{db_connection_exp.error()});
     }
 
-    return judge_submission_port(std::move(*db_connection_exp));
+    return judge_submission_facade(std::move(*db_connection_exp));
 }
 
-judge_submission_port::judge_submission_port(
+judge_submission_facade::judge_submission_facade(
     db_connection db_connection_value
 ) :
     db_connection_(std::move(db_connection_value)){}
 
-judge_submission_port::judge_submission_port(
-    judge_submission_port&& other
+judge_submission_facade::judge_submission_facade(
+    judge_submission_facade&& other
 ) noexcept = default;
 
-judge_submission_port& judge_submission_port::operator=(
-    judge_submission_port&& other
+judge_submission_facade& judge_submission_facade::operator=(
+    judge_submission_facade&& other
 ) noexcept = default;
 
-judge_submission_port::~judge_submission_port() = default;
+judge_submission_facade::~judge_submission_facade() = default;
 
-std::expected<void, judge_error> judge_submission_port::mark_judging(
+std::expected<void, judge_error> judge_submission_facade::mark_judging(
     std::int64_t submission_id
 ){
     const auto mark_judging_exp = submission_service::mark_judging(
@@ -44,7 +44,7 @@ std::expected<void, judge_error> judge_submission_port::mark_judging(
     return {};
 }
 
-std::expected<void, judge_error> judge_submission_port::finalize_submission(
+std::expected<void, judge_error> judge_submission_facade::finalize_submission(
     const submission_dto::finalize_request& finalize_request_value
 ){
     const auto finalize_submission_exp = submission_service::finalize_submission(
@@ -58,7 +58,7 @@ std::expected<void, judge_error> judge_submission_port::finalize_submission(
     return {};
 }
 
-std::expected<void, judge_error> judge_submission_port::requeue_submission_immediately(
+std::expected<void, judge_error> judge_submission_facade::requeue_submission_immediately(
     std::int64_t submission_id,
     std::optional<std::string> reason_opt
 ){

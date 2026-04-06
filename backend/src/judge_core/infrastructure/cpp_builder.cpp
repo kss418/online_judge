@@ -1,10 +1,10 @@
-#include "judge_core/infrastructure/cpp_runner.hpp"
+#include "judge_core/infrastructure/cpp_builder.hpp"
 
 #include "judge_core/infrastructure/program_build_support.hpp"
 #include "judge_core/infrastructure/sandbox_runner.hpp"
 #include "judge_core/infrastructure/workspace_path_mapper.hpp"
 
-std::expected<program_build::build_artifact, sandbox_error> cpp_runner::build(
+std::expected<program_build::build_artifact, sandbox_error> cpp_builder::build(
     const path& source_file_path,
     const path& compiler_path
 ){

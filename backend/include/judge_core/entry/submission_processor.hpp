@@ -5,8 +5,8 @@
 #include "judge_core/application/execution_engine.hpp"
 #include "judge_core/application/judge_evaluator.hpp"
 #include "judge_core/application/workspace_runner.hpp"
-#include "judge_core/gateway/judge_queue_port.hpp"
-#include "judge_core/gateway/judge_submission_port.hpp"
+#include "judge_core/gateway/judge_queue_facade.hpp"
+#include "judge_core/gateway/judge_submission_facade.hpp"
 #include "judge_core/types/execution_report.hpp"
 #include "judge_core/types/judge_submission_data.hpp"
 
@@ -19,8 +19,8 @@
 class submission_processor{
 public:
     struct dependencies{
-        judge_queue_port judge_queue_port_value;
-        judge_submission_port judge_submission_port_value;
+        judge_queue_facade judge_queue_facade_value;
+        judge_submission_facade judge_submission_facade_value;
         execution_engine execution_engine_value;
         judge_evaluator judge_evaluator_value;
         std::filesystem::path source_root_path;
@@ -44,8 +44,8 @@ public:
 
 private:
     submission_processor(
-        judge_queue_port judge_queue_port_value,
-        judge_submission_port judge_submission_port_value,
+        judge_queue_facade judge_queue_facade_value,
+        judge_submission_facade judge_submission_facade_value,
         execution_engine execution_engine_value,
         judge_evaluator judge_evaluator_value,
         workspace_runner workspace_runner_value
@@ -68,8 +68,8 @@ private:
         std::string reason
     );
 
-    judge_queue_port judge_queue_port_;
-    judge_submission_port judge_submission_port_;
+    judge_queue_facade judge_queue_facade_;
+    judge_submission_facade judge_submission_facade_;
     execution_engine execution_engine_;
     judge_evaluator judge_evaluator_;
     workspace_runner workspace_runner_;

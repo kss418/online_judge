@@ -9,18 +9,18 @@
 #include <optional>
 #include <string>
 
-class judge_submission_port{
+class judge_submission_facade{
 public:
-    static std::expected<judge_submission_port, judge_error> create(
+    static std::expected<judge_submission_facade, judge_error> create(
         const db_connection_config& db_config
     );
 
-    judge_submission_port(judge_submission_port&& other) noexcept;
-    judge_submission_port& operator=(judge_submission_port&& other) noexcept;
-    ~judge_submission_port();
+    judge_submission_facade(judge_submission_facade&& other) noexcept;
+    judge_submission_facade& operator=(judge_submission_facade&& other) noexcept;
+    ~judge_submission_facade();
 
-    judge_submission_port(const judge_submission_port&) = delete;
-    judge_submission_port& operator=(const judge_submission_port&) = delete;
+    judge_submission_facade(const judge_submission_facade&) = delete;
+    judge_submission_facade& operator=(const judge_submission_facade&) = delete;
 
     std::expected<void, judge_error> mark_judging(std::int64_t submission_id);
 
@@ -34,7 +34,7 @@ public:
     );
 
 private:
-    explicit judge_submission_port(db_connection db_connection_value);
+    explicit judge_submission_facade(db_connection db_connection_value);
 
     db_connection db_connection_;
 };

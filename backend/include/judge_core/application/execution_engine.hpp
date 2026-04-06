@@ -1,9 +1,9 @@
 #pragma once
 
 #include "error/judge_error.hpp"
-#include "judge_core/gateway/testcase_snapshot_port.hpp"
-#include "judge_core/infrastructure/program_builder.hpp"
-#include "judge_core/infrastructure/program_runner.hpp"
+#include "judge_core/gateway/testcase_snapshot_facade.hpp"
+#include "judge_core/infrastructure/build_dispatcher.hpp"
+#include "judge_core/infrastructure/program_executor.hpp"
 #include "judge_core/types/compile_failure.hpp"
 #include "judge_core/types/execution_report.hpp"
 #include "judge_core/types/runnable_program.hpp"
@@ -24,7 +24,7 @@ public:
     using build_result = std::variant<runnable_program, compile_failure>;
 
     static std::expected<execution_engine, judge_error> create(
-        testcase_snapshot_port testcase_snapshot_port_value
+        testcase_snapshot_facade testcase_snapshot_facade_value
     );
 
     execution_engine(execution_engine&& other) noexcept;
@@ -44,12 +44,12 @@ public:
 
 private:
     execution_engine(
-        program_builder program_builder_value,
-        program_runner program_runner_value,
-        testcase_snapshot_port testcase_snapshot_port_value
+        build_dispatcher build_dispatcher_value,
+        program_executor program_executor_value,
+        testcase_snapshot_facade testcase_snapshot_facade_value
     );
 
-    program_builder program_builder_;
-    program_runner program_runner_;
-    testcase_snapshot_port testcase_snapshot_port_;
+    build_dispatcher build_dispatcher_;
+    program_executor program_executor_;
+    testcase_snapshot_facade testcase_snapshot_facade_;
 };

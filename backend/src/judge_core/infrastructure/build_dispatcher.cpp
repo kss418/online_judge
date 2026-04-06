@@ -1,9 +1,9 @@
-#include "judge_core/infrastructure/program_builder.hpp"
+#include "judge_core/infrastructure/build_dispatcher.hpp"
 
 #include "common/env_util.hpp"
-#include "judge_core/infrastructure/cpp_runner.hpp"
-#include "judge_core/infrastructure/java_runner.hpp"
-#include "judge_core/infrastructure/python_runner.hpp"
+#include "judge_core/infrastructure/cpp_builder.hpp"
+#include "judge_core/infrastructure/java_builder.hpp"
+#include "judge_core/infrastructure/python_artifact_builder.hpp"
 
 namespace{
     std::expected<std::filesystem::path, judge_error> load_required_path_env(
@@ -29,7 +29,7 @@ namespace{
     }
 }
 
-std::expected<program_builder, judge_error> program_builder::create(){
+std::expected<build_dispatcher, judge_error> build_dispatcher::create(){
     const auto cpp_compiler_path_exp = load_required_path_env(
         "JUDGE_CPP_COMPILER_PATH",
         "cpp compiler path is not configured"
@@ -46,13 +46,13 @@ std::expected<program_builder, judge_error> program_builder::create(){
         return std::unexpected(java_compiler_path_exp.error());
     }
 
-    return program_builder{
+    return build_dispatcher{
         std::move(*cpp_compiler_path_exp),
         std::move(*java_compiler_path_exp)
     };
 }
 
-program_builder::program_builder(
+build_dispatcher::build_dispatcher(
     std::filesystem::path cpp_compiler_path,
     std::filesystem::path java_compiler_path
 ) :
@@ -60,20 +60,20 @@ program_builder::program_builder(
     java_compiler_path_(std::move(java_compiler_path))
 {}
 
-std::expected<program_build::build_artifact, sandbox_error> program_builder::build_source(
+std::expected<program_build::build_artifact, sandbox_error> build_dispatcher::build_source(
     const std::filesystem::path& source_file_path
 ){
     const auto extension = source_file_path.extension().string();
     if(extension == ".cpp"){
-        return cpp_runner::build(source_file_path, cpp_compiler_path_);
+        return cpp_builder::build(source_file_path, cpp_compiler_path_);
     }
 
     if(extension == ".py"){
-        return python_runner::build(source_file_path);
+        return python_artifact_builder::build(source_file_path);
     }
 
     if(extension == ".java"){
-        return java_runner::build(source_file_path, java_compiler_path_);
+        return java_builder::build(source_file_path, java_compiler_path_);
     }
 
     return std::unexpected(sandbox_error::invalid_argument);

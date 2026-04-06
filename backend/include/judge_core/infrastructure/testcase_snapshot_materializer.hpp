@@ -1,7 +1,7 @@
 #pragma once
 
 #include "error/judge_error.hpp"
-#include "judge_core/gateway/testcase_source_port.hpp"
+#include "judge_core/gateway/testcase_source_facade.hpp"
 #include "judge_core/infrastructure/testcase_store.hpp"
 #include "judge_core/types/testcase_snapshot.hpp"
 
@@ -11,7 +11,7 @@
 class testcase_snapshot_materializer{
 public:
     static std::expected<testcase_snapshot_materializer, judge_error> create(
-        testcase_source_port testcase_source_port_value,
+        testcase_source_facade testcase_source_facade_value,
         testcase_store testcase_store_value
     );
 
@@ -28,7 +28,7 @@ public:
 
 private:
     testcase_snapshot_materializer(
-        testcase_source_port testcase_source_port_value,
+        testcase_source_facade testcase_source_facade_value,
         testcase_store testcase_store_value
     );
 
@@ -49,6 +49,6 @@ private:
         const problem_content_dto::limits& problem_limits_value
     );
 
-    testcase_source_port testcase_source_port_;
+    testcase_source_facade testcase_source_facade_;
     testcase_store testcase_store_;
 };

@@ -1,8 +1,8 @@
-#include "judge_core/infrastructure/python_runner.hpp"
+#include "judge_core/infrastructure/python_artifact_builder.hpp"
 
 #include "judge_core/infrastructure/program_build_support.hpp"
 
-std::expected<program_build::build_artifact, sandbox_error> python_runner::build(
+std::expected<program_build::build_artifact, sandbox_error> python_artifact_builder::build(
     const path& source_file_path
 ){
     if(source_file_path.empty()){

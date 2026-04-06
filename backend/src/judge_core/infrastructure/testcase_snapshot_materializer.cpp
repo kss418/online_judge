@@ -4,20 +4,20 @@
 
 std::expected<testcase_snapshot_materializer, judge_error>
 testcase_snapshot_materializer::create(
-    testcase_source_port testcase_source_port_value,
+    testcase_source_facade testcase_source_facade_value,
     testcase_store testcase_store_value
 ){
     return testcase_snapshot_materializer(
-        std::move(testcase_source_port_value),
+        std::move(testcase_source_facade_value),
         std::move(testcase_store_value)
     );
 }
 
 testcase_snapshot_materializer::testcase_snapshot_materializer(
-    testcase_source_port testcase_source_port_value,
+    testcase_source_facade testcase_source_facade_value,
     testcase_store testcase_store_value
 ) :
-    testcase_source_port_(std::move(testcase_source_port_value)),
+    testcase_source_facade_(std::move(testcase_source_facade_value)),
     testcase_store_(std::move(testcase_store_value)){}
 
 testcase_snapshot_materializer::testcase_snapshot_materializer(
@@ -35,7 +35,7 @@ std::expected<void, judge_error> testcase_snapshot_materializer::download_one(
     std::int32_t order,
     const testcase_store::staging_area& staging_area_value
 ){
-    const auto testcase_exp = testcase_source_port_.fetch_testcase(
+    const auto testcase_exp = testcase_source_facade_.fetch_testcase(
         problem_id,
         order
     );
@@ -55,7 +55,7 @@ std::expected<void, judge_error> testcase_snapshot_materializer::download_all(
     std::int64_t problem_id,
     const testcase_store::staging_area& staging_area_value
 ){
-    const auto testcase_count_exp = testcase_source_port_.fetch_testcase_count(
+    const auto testcase_count_exp = testcase_source_facade_.fetch_testcase_count(
         problem_id
     );
     if(!testcase_count_exp){
@@ -117,7 +117,7 @@ testcase_snapshot_materializer::sync_version_directory(
 
 std::expected<testcase_snapshot, judge_error>
 testcase_snapshot_materializer::ensure_testcase_snapshot(std::int64_t problem_id){
-    const auto version_exp = testcase_source_port_.fetch_problem_version(
+    const auto version_exp = testcase_source_facade_.fetch_problem_version(
         problem_id
     );
     if(!version_exp){
@@ -133,7 +133,7 @@ testcase_snapshot_materializer::ensure_testcase_snapshot(std::int64_t problem_id
     }
 
     if(!has_version_exp.value()){
-        const auto problem_limits_exp = testcase_source_port_.fetch_problem_limits(
+        const auto problem_limits_exp = testcase_source_facade_.fetch_problem_limits(
             problem_id
         );
         if(!problem_limits_exp){

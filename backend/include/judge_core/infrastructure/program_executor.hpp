@@ -8,11 +8,11 @@
 
 #include <expected>
 
-class program_runner{
+class program_executor{
 public:
-    static std::expected<program_runner, judge_error> create();
+    static std::expected<program_executor, judge_error> create();
 
-    explicit program_runner(launch_planner launch_planner_value);
+    explicit program_executor(launch_planner launch_planner_value);
 
     std::expected<execution_report::batch, judge_error> run(
         const runnable_program& runnable_program_value,

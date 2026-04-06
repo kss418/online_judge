@@ -1,12 +1,12 @@
 target_sources(lib
     PRIVATE
-        cpp_runner.cpp
-        python_runner.cpp
-        java_runner.cpp
+        cpp_builder.cpp
+        python_artifact_builder.cpp
+        java_builder.cpp
         launch_planner.cpp
         problem_lock_registry.cpp
-        program_builder.cpp
-        program_runner.cpp
+        build_dispatcher.cpp
+        program_executor.cpp
         nsjail_util.cpp
         sandbox_runner.cpp
         submission_queue_source.cpp
