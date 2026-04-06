@@ -1,7 +1,7 @@
 #include "judge_core/policy/judge_expectation_loader.hpp"
 
 #include "common/file_util.hpp"
-#include "judge_core/infrastructure/testcase_util.hpp"
+#include "judge_core/testcase_snapshot/testcase_util.hpp"
 
 #include <utility>
 

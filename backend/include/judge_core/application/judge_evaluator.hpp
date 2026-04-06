@@ -1,9 +1,9 @@
 #pragma once
 
 #include "error/judge_error.hpp"
+#include "judge_core/testcase_snapshot/testcase_snapshot.hpp"
 #include "judge_core/types/execution_report.hpp"
 #include "judge_core/types/judge_result.hpp"
-#include "judge_core/types/testcase_snapshot.hpp"
 
 #include <expected>
 

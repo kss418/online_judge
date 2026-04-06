@@ -1,7 +1,5 @@
 #include "judge_core/gateway/testcase_snapshot_facade.hpp"
 
-#include "judge_core/infrastructure/testcase_snapshot_materializer.hpp"
-
 #include <utility>
 
 std::expected<testcase_snapshot_facade, judge_error> testcase_snapshot_facade::create(

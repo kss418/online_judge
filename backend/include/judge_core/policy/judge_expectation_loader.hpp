@@ -1,8 +1,8 @@
 #pragma once
 
 #include "error/io_error.hpp"
+#include "judge_core/testcase_snapshot/testcase_snapshot.hpp"
 #include "judge_core/types/judge_expectation.hpp"
-#include "judge_core/types/testcase_snapshot.hpp"
 
 #include <expected>
 

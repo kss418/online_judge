@@ -4,10 +4,10 @@
 #include "judge_core/gateway/testcase_snapshot_facade.hpp"
 #include "judge_core/infrastructure/build_dispatcher.hpp"
 #include "judge_core/infrastructure/program_executor.hpp"
+#include "judge_core/testcase_snapshot/testcase_snapshot.hpp"
 #include "judge_core/types/compile_failure.hpp"
 #include "judge_core/types/execution_report.hpp"
 #include "judge_core/types/runnable_program.hpp"
-#include "judge_core/types/testcase_snapshot.hpp"
 
 #include <cstdint>
 #include <expected>

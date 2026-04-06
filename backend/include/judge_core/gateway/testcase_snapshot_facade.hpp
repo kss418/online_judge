@@ -2,14 +2,15 @@
 
 #include "common/db_connection.hpp"
 #include "error/judge_error.hpp"
-#include "judge_core/infrastructure/testcase_snapshot_materializer.hpp"
 #include "judge_core/infrastructure/problem_lock_registry.hpp"
-#include "judge_core/types/testcase_snapshot.hpp"
+#include "judge_core/testcase_snapshot/testcase_snapshot.hpp"
+#include "judge_core/testcase_snapshot/testcase_snapshot_materializer.hpp"
 
 #include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <memory>
+
 
 class testcase_snapshot_facade{
 public:

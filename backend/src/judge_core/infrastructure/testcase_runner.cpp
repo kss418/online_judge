@@ -1,6 +1,6 @@
 #include "judge_core/infrastructure/testcase_runner.hpp"
 
-#include "judge_core/infrastructure/testcase_util.hpp"
+#include "judge_core/testcase_snapshot/testcase_util.hpp"
 
 #include <utility>
 #include <vector>
