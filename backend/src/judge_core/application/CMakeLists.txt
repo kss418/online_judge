@@ -4,7 +4,5 @@ target_sources(lib
         execution_engine.cpp
         finalize_submission_mapper.cpp
         judge_evaluator.cpp
-        submission_processor.cpp
-        judge_worker.cpp
         workspace_runner.cpp
 )
