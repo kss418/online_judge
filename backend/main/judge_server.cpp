@@ -6,13 +6,13 @@
 #include "error/infra_error.hpp"
 #include "judge_core/application/judge_evaluator.hpp"
 #include "judge_core/application/submission_builder.hpp"
-#include "judge_core/application/submission_executor.hpp"
 #include "judge_core/entry/judge_worker.hpp"
 #include "judge_core/entry/submission_processor.hpp"
 #include "judge_core/gateway/judge_queue_facade.hpp"
 #include "judge_core/gateway/judge_submission_facade.hpp"
 #include "judge_core/gateway/testcase_snapshot_facade.hpp"
 #include "judge_core/infrastructure/problem_lock_registry.hpp"
+#include "judge_core/infrastructure/program_executor.hpp"
 #include "judge_core/infrastructure/sandbox_runner.hpp"
 
 #include <chrono>
@@ -100,9 +100,9 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         return std::unexpected(submission_builder_exp.error());
     }
 
-    auto submission_executor_exp = submission_executor::create();
-    if(!submission_executor_exp){
-        return std::unexpected(submission_executor_exp.error());
+    auto program_executor_exp = program_executor::create();
+    if(!program_executor_exp){
+        return std::unexpected(program_executor_exp.error());
     }
 
     auto judge_evaluator_exp = judge_evaluator::create();
@@ -123,7 +123,7 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
             .testcase_snapshot_facade_value =
                 std::move(*testcase_snapshot_facade_exp),
             .submission_builder_value = std::move(*submission_builder_exp),
-            .submission_executor_value = std::move(*submission_executor_exp),
+            .program_executor_value = std::move(*program_executor_exp),
             .judge_evaluator_value = std::move(*judge_evaluator_exp),
             .source_root_path = std::move(*source_root_path_exp),
         }

@@ -12,13 +12,6 @@ std::expected<submission_processor, judge_error> submission_processor::create(
         return std::unexpected(submission_lifecycle_exp.error());
     }
 
-    auto snapshot_provider_exp = snapshot_provider::create(
-        std::move(dependencies_value.testcase_snapshot_facade_value)
-    );
-    if(!snapshot_provider_exp){
-        return std::unexpected(snapshot_provider_exp.error());
-    }
-
     auto workspace_manager_exp = workspace_manager::create(
         std::move(dependencies_value.source_root_path)
     );
@@ -28,9 +21,9 @@ std::expected<submission_processor, judge_error> submission_processor::create(
 
     return submission_processor(
         std::move(*submission_lifecycle_exp),
-        std::move(*snapshot_provider_exp),
+        std::move(dependencies_value.testcase_snapshot_facade_value),
         std::move(dependencies_value.submission_builder_value),
-        std::move(dependencies_value.submission_executor_value),
+        std::move(dependencies_value.program_executor_value),
         std::move(dependencies_value.judge_evaluator_value),
         std::move(*workspace_manager_exp)
     );
@@ -38,16 +31,16 @@ std::expected<submission_processor, judge_error> submission_processor::create(
 
 submission_processor::submission_processor(
     submission_lifecycle submission_lifecycle_value,
-    snapshot_provider snapshot_provider_value,
+    testcase_snapshot_facade testcase_snapshot_facade_value,
     submission_builder submission_builder_value,
-    submission_executor submission_executor_value,
+    program_executor program_executor_value,
     judge_evaluator judge_evaluator_value,
     workspace_manager workspace_manager_value
 ) :
     submission_lifecycle_(std::move(submission_lifecycle_value)),
-    snapshot_provider_(std::move(snapshot_provider_value)),
+    testcase_snapshot_facade_(std::move(testcase_snapshot_facade_value)),
     submission_builder_(std::move(submission_builder_value)),
-    submission_executor_(std::move(submission_executor_value)),
+    program_executor_(std::move(program_executor_value)),
     judge_evaluator_(std::move(judge_evaluator_value)),
     workspace_manager_(std::move(workspace_manager_value)){}
 
@@ -104,14 +97,14 @@ std::expected<void, judge_error> submission_processor::process(
             );
         }
 
-        auto testcase_snapshot_exp = snapshot_provider_.acquire(
+        auto testcase_snapshot_exp = testcase_snapshot_facade_.acquire(
             queued_submission_value.problem_id
         );
         if(!testcase_snapshot_exp){
             return std::unexpected(testcase_snapshot_exp.error());
         }
 
-        auto execution_report_exp = submission_executor_.execute(
+        auto execution_report_exp = program_executor_.run(
             build_result_value.artifact(),
             *testcase_snapshot_exp
         );
