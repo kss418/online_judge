@@ -27,7 +27,6 @@ std::expected<submission_processor, judge_error> submission_processor::create(
     }
 
     return submission_processor(
-        std::move(dependencies_value.judge_queue_facade_value),
         std::move(*submission_lifecycle_exp),
         std::move(*snapshot_provider_exp),
         std::move(dependencies_value.submission_builder_value),
@@ -38,7 +37,6 @@ std::expected<submission_processor, judge_error> submission_processor::create(
 }
 
 submission_processor::submission_processor(
-    judge_queue_facade judge_queue_facade_value,
     submission_lifecycle submission_lifecycle_value,
     snapshot_provider snapshot_provider_value,
     submission_builder submission_builder_value,
@@ -46,7 +44,6 @@ submission_processor::submission_processor(
     judge_evaluator judge_evaluator_value,
     workspace_manager workspace_manager_value
 ) :
-    judge_queue_facade_(std::move(judge_queue_facade_value)),
     submission_lifecycle_(std::move(submission_lifecycle_value)),
     snapshot_provider_(std::move(snapshot_provider_value)),
     submission_builder_(std::move(submission_builder_value)),
@@ -64,24 +61,9 @@ submission_processor& submission_processor::operator=(
 
 submission_processor::~submission_processor() = default;
 
-std::expected<void, judge_error> submission_processor::process_next_submission(
-    std::chrono::seconds lease_duration,
-    std::chrono::milliseconds notification_wait_timeout
+std::expected<void, judge_error> submission_processor::process(
+    const submission_dto::queued_submission& queued_submission_value
 ){
-    auto queued_submission_opt_exp = judge_queue_facade_.poll_next_submission(
-        lease_duration,
-        notification_wait_timeout
-    );
-    if(!queued_submission_opt_exp){
-        return std::unexpected(queued_submission_opt_exp.error());
-    }
-    if(!queued_submission_opt_exp->has_value()){
-        return {};
-    }
-
-    const submission_dto::queued_submission& queued_submission_value =
-        queued_submission_opt_exp->value();
-
     const auto requeue_submission = [&](const judge_error& error_value){
         return submission_lifecycle_.requeue(
             queued_submission_value,

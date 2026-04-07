@@ -118,7 +118,6 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
 
     auto submission_processor_exp = submission_processor::create(
         submission_processor::dependencies{
-            .judge_queue_facade_value = std::move(*judge_queue_facade_exp),
             .judge_submission_facade_value =
                 std::move(*judge_submission_facade_exp),
             .testcase_snapshot_facade_value =
@@ -134,6 +133,7 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
     }
 
     return judge_worker::dependencies{
+        .judge_queue_facade_value = std::move(*judge_queue_facade_exp),
         .submission_processor_value = std::move(*submission_processor_exp),
     };
 }

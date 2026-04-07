@@ -8,19 +8,14 @@
 #include "judge_core/application/submission_executor.hpp"
 #include "judge_core/application/submission_lifecycle.hpp"
 #include "judge_core/application/workspace_manager.hpp"
-#include "judge_core/gateway/judge_queue_facade.hpp"
 #include "judge_core/gateway/judge_submission_facade.hpp"
 
-#include <chrono>
-#include <cstdint>
 #include <expected>
 #include <filesystem>
-#include <string>
 
 class submission_processor{
 public:
     struct dependencies{
-        judge_queue_facade judge_queue_facade_value;
         judge_submission_facade judge_submission_facade_value;
         testcase_snapshot_facade testcase_snapshot_facade_value;
         submission_builder submission_builder_value;
@@ -40,14 +35,12 @@ public:
     submission_processor(const submission_processor&) = delete;
     submission_processor& operator=(const submission_processor&) = delete;
 
-    std::expected<void, judge_error> process_next_submission(
-        std::chrono::seconds lease_duration,
-        std::chrono::milliseconds notification_wait_timeout
+    std::expected<void, judge_error> process(
+        const submission_dto::queued_submission& queued_submission_value
     );
 
 private:
     submission_processor(
-        judge_queue_facade judge_queue_facade_value,
         submission_lifecycle submission_lifecycle_value,
         snapshot_provider snapshot_provider_value,
         submission_builder submission_builder_value,
@@ -56,7 +49,6 @@ private:
         workspace_manager workspace_manager_value
     );
 
-    judge_queue_facade judge_queue_facade_;
     submission_lifecycle submission_lifecycle_;
     snapshot_provider snapshot_provider_;
     submission_builder submission_builder_;

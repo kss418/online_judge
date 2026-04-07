@@ -48,10 +48,7 @@ judge_queue_facade& judge_queue_facade::operator=(
 judge_queue_facade::~judge_queue_facade() = default;
 
 std::expected<std::optional<submission_dto::queued_submission>, judge_error>
-judge_queue_facade::poll_next_submission(
-    std::chrono::seconds lease_duration,
-    std::chrono::milliseconds notification_wait_timeout
-){
+judge_queue_facade::try_lease_next(std::chrono::seconds lease_duration){
     submission_dto::lease_request lease_request_value;
     lease_request_value.lease_duration = lease_duration;
 
@@ -66,6 +63,12 @@ judge_queue_facade::poll_next_submission(
         return std::move(*queued_submission_opt_exp);
     }
 
+    return std::optional<submission_dto::queued_submission>{};
+}
+
+std::expected<void, judge_error> judge_queue_facade::wait_for_work(
+    std::chrono::milliseconds notification_wait_timeout
+){
     const auto wait_submission_notification_exp =
         submission_queue_source_.wait_submission_notification(
             notification_wait_timeout
@@ -76,5 +79,5 @@ judge_queue_facade::poll_next_submission(
         );
     }
 
-    return std::optional<submission_dto::queued_submission>{};
+    return {};
 }

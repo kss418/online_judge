@@ -23,8 +23,9 @@ public:
     judge_queue_facade& operator=(const judge_queue_facade&) = delete;
 
     std::expected<std::optional<submission_dto::queued_submission>, judge_error>
-    poll_next_submission(
-        std::chrono::seconds lease_duration,
+    try_lease_next(std::chrono::seconds lease_duration);
+
+    std::expected<void, judge_error> wait_for_work(
         std::chrono::milliseconds notification_wait_timeout
     );
 
