@@ -80,10 +80,12 @@ std::expected<submission_builder::build_result, judge_error> submission_builder:
 
     auto build_artifact_value = std::move(*build_source_exp);
     if(!build_artifact_value.is_runnable()){
-        return build_result{
+        return build_result::make_compile_failure(
             make_compile_failure(std::move(*build_artifact_value.compile_failure_opt_))
-        };
+        );
     }
 
-    return build_result{make_runnable_program(std::move(build_artifact_value))};
+    return build_result::make_runnable(
+        make_runnable_program(std::move(build_artifact_value))
+    );
 }

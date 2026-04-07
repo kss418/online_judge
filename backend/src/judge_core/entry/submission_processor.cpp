@@ -1,6 +1,8 @@
 #include "judge_core/application/compile_failure_report_mapper.hpp"
+#include "judge_core/application/execution_bundle.hpp"
 #include "judge_core/entry/submission_processor.hpp"
 
+#include <optional>
 #include <utility>
 
 std::expected<submission_processor, judge_error> submission_processor::create(
@@ -151,56 +153,77 @@ submission_processor::process_submission_in_workspace(
     }
 
     auto build_result_value = std::move(*build_result_exp);
-    if(auto* compile_failure_value =
-           std::get_if<compile_failure>(&build_result_value)){
-        auto process_submission_data_value =
-            judge_submission_data::make_process_submission_data(
-                judge_result::compile_error,
-                compile_failure_report_mapper::make_execution_report(
-                    *compile_failure_value
-                )
+    execution_bundle execution_bundle_value = execution_bundle::skipped();
+    std::optional<testcase_snapshot> testcase_snapshot_opt = std::nullopt;
+    if(build_result_value.success()){
+        const auto* runnable_program_value = build_result_value.runnable_program_opt();
+        if(runnable_program_value == nullptr){
+            return std::unexpected(
+                judge_error{
+                    judge_error_code::validation_error,
+                    "missing runnable program"
+                }
             );
-        return process_submission_data_value;
-    }
+        }
 
-    const auto* runnable_program_value =
-        std::get_if<runnable_program>(&build_result_value);
-    if(runnable_program_value == nullptr){
-        return std::unexpected(
-            judge_error{
-                judge_error_code::validation_error,
-                "missing runnable program"
-            }
+        auto testcase_snapshot_exp = snapshot_provider_.acquire(
+            queued_submission_value.problem_id
+        );
+        if(!testcase_snapshot_exp){
+            return std::unexpected(testcase_snapshot_exp.error());
+        }
+        testcase_snapshot_opt = std::move(*testcase_snapshot_exp);
+
+        auto execution_report_exp = submission_executor_.execute(
+            *runnable_program_value,
+            *testcase_snapshot_opt
+        );
+        if(!execution_report_exp){
+            return std::unexpected(execution_report_exp.error());
+        }
+
+        execution_bundle_value = execution_bundle::executed(
+            std::move(*execution_report_exp)
         );
     }
 
-    auto testcase_snapshot_exp = snapshot_provider_.acquire(
-        queued_submission_value.problem_id
-    );
-    if(!testcase_snapshot_exp){
-        return std::unexpected(testcase_snapshot_exp.error());
-    }
-
-    auto execution_report_exp = submission_executor_.execute(
-        *runnable_program_value,
-        *testcase_snapshot_exp
-    );
-    if(!execution_report_exp){
-        return std::unexpected(execution_report_exp.error());
-    }
-
     const auto judge_result_exp = judge_evaluator_.evaluate(
-        *testcase_snapshot_exp,
-        *execution_report_exp
+        judge_evaluator::evaluation_input{
+            .build_bundle_value = build_result_value,
+            .execution_bundle_value = execution_bundle_value,
+            .testcase_snapshot_value_ptr =
+                testcase_snapshot_opt ? &*testcase_snapshot_opt : nullptr,
+        }
     );
     if(!judge_result_exp){
         return std::unexpected(judge_result_exp.error());
     }
 
+    execution_report::batch execution_report_value;
+    if(const auto* compile_failure_value =
+           build_result_value.compile_failure_opt()){
+        execution_report_value =
+            compile_failure_report_mapper::make_execution_report(
+                *compile_failure_value
+            );
+    }
+    else{
+        auto* executed_report_value = execution_bundle_value.execution_report_opt();
+        if(executed_report_value == nullptr){
+            return std::unexpected(
+                judge_error{
+                    judge_error_code::validation_error,
+                    "missing execution report"
+                }
+            );
+        }
+        execution_report_value = std::move(*executed_report_value);
+    }
+
     auto process_submission_data_value =
         judge_submission_data::make_process_submission_data(
             *judge_result_exp,
-            std::move(*execution_report_exp)
+            std::move(execution_report_value)
         );
     return process_submission_data_value;
 }

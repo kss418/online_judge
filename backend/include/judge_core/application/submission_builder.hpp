@@ -1,17 +1,15 @@
 #pragma once
 
 #include "error/judge_error.hpp"
+#include "judge_core/application/build_bundle.hpp"
 #include "judge_core/infrastructure/build_dispatcher.hpp"
-#include "judge_core/types/compile_failure.hpp"
-#include "judge_core/types/runnable_program.hpp"
 
 #include <expected>
 #include <filesystem>
-#include <variant>
 
 class submission_builder{
 public:
-    using build_result = std::variant<runnable_program, compile_failure>;
+    using build_result = build_bundle;
 
     static std::expected<submission_builder, judge_error> create();
 
