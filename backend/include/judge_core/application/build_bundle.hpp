@@ -17,11 +17,11 @@ public:
     }
 
     bool success() const noexcept{
-        return runnable_program_opt() != nullptr;
+        return std::holds_alternative<runnable_program>(storage_);
     }
 
     bool compile_failed() const noexcept{
-        return compile_failure_opt() != nullptr;
+        return std::holds_alternative<compile_failure>(storage_);
     }
 
     const runnable_program& artifact() const{
@@ -30,14 +30,6 @@ public:
 
     const compile_failure& failure() const{
         return std::get<compile_failure>(storage_);
-    }
-
-    const runnable_program* runnable_program_opt() const noexcept{
-        return std::get_if<runnable_program>(&storage_);
-    }
-
-    const compile_failure* compile_failure_opt() const noexcept{
-        return std::get_if<compile_failure>(&storage_);
     }
 
 private:

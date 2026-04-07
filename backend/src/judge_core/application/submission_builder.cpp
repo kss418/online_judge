@@ -70,7 +70,7 @@ submission_builder& submission_builder::operator=(
 
 submission_builder::~submission_builder() = default;
 
-std::expected<submission_builder::build_result, judge_error> submission_builder::build(
+std::expected<build_bundle, judge_error> submission_builder::build(
     const build_input& build_input_value
 ){
     const auto source_file_path_exp =
@@ -89,12 +89,12 @@ std::expected<submission_builder::build_result, judge_error> submission_builder:
 
     auto build_artifact_value = std::move(*build_source_exp);
     if(!build_artifact_value.is_runnable()){
-        return build_result::make_compile_failure(
+        return build_bundle::make_compile_failure(
             make_compile_failure(std::move(*build_artifact_value.compile_failure_opt_))
         );
     }
 
-    return build_result::make_runnable(
+    return build_bundle::make_runnable(
         make_runnable_program(std::move(build_artifact_value))
     );
 }

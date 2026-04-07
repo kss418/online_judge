@@ -1,5 +1,6 @@
 #include "judge_core/entry/submission_processor.hpp"
 
+#include <optional>
 #include <utility>
 
 std::expected<submission_processor, judge_error> submission_processor::create(
@@ -105,19 +106,18 @@ std::expected<void, judge_error> submission_processor::process_next_submission(
 
     auto workspace_session_value = std::move(*workspace_session_exp);
 
-    std::optional<judge_error> processing_error_opt = std::nullopt;
-    std::optional<submission_decision> submission_decision_opt = std::nullopt;
-
-    auto build_result_exp = submission_builder_.build(
-        submission_builder::build_input{
-            .queued_submission_value = queued_submission_value,
-            .workspace_session_value = workspace_session_value,
+    auto submission_decision_exp = [&]()
+        -> std::expected<submission_decision, judge_error> {
+        auto build_result_exp = submission_builder_.build(
+            submission_builder::build_input{
+                .queued_submission_value = queued_submission_value,
+                .workspace_session_value = workspace_session_value,
+            }
+        );
+        if(!build_result_exp){
+            return std::unexpected(build_result_exp.error());
         }
-    );
-    if(!build_result_exp){
-        processing_error_opt = build_result_exp.error();
-    }
-    else{
+
         auto build_result_value = std::move(*build_result_exp);
         execution_bundle execution_bundle_value = execution_bundle::skipped();
         std::optional<testcase_snapshot> testcase_snapshot_opt = std::nullopt;
@@ -127,67 +127,42 @@ std::expected<void, judge_error> submission_processor::process_next_submission(
                 queued_submission_value.problem_id
             );
             if(!testcase_snapshot_exp){
-                processing_error_opt = testcase_snapshot_exp.error();
+                return std::unexpected(testcase_snapshot_exp.error());
             }
-            else{
-                testcase_snapshot_opt = std::move(*testcase_snapshot_exp);
+            testcase_snapshot_opt = std::move(*testcase_snapshot_exp);
 
-                auto execution_bundle_exp = submission_executor_.execute(
-                    submission_executor::execution_input{
-                        .runnable_program_value = build_result_value.artifact(),
-                        .testcase_snapshot_value = *testcase_snapshot_opt,
-                        .workspace_session_value = workspace_session_value,
-                    }
-                );
-                if(!execution_bundle_exp){
-                    processing_error_opt = execution_bundle_exp.error();
-                }
-                else{
-                    execution_bundle_value = std::move(*execution_bundle_exp);
-                }
-            }
-        }
-
-        if(!processing_error_opt){
-            auto submission_decision_exp = judge_evaluator_.evaluate(
-                judge_evaluator::evaluation_input{
-                    .queued_submission_value = queued_submission_value,
-                    .build_bundle_value = build_result_value,
-                    .execution_bundle_value = execution_bundle_value,
-                    .testcase_snapshot_value_ptr =
-                        testcase_snapshot_opt ? &*testcase_snapshot_opt : nullptr,
-                }
+            auto execution_bundle_exp = submission_executor_.execute(
+                build_result_value.artifact(),
+                *testcase_snapshot_opt
             );
-            if(!submission_decision_exp){
-                processing_error_opt = submission_decision_exp.error();
+            if(!execution_bundle_exp){
+                return std::unexpected(execution_bundle_exp.error());
             }
-            else{
-                submission_decision_opt = std::move(*submission_decision_exp);
-            }
+            execution_bundle_value = std::move(*execution_bundle_exp);
         }
-    }
+
+        return judge_evaluator_.evaluate(
+            judge_evaluator::evaluation_input{
+                .build_bundle_value = build_result_value,
+                .execution_bundle_value = execution_bundle_value,
+                .testcase_snapshot_value_ptr =
+                    testcase_snapshot_opt ? &*testcase_snapshot_opt : nullptr,
+            }
+        );
+    }();
 
     const auto close_workspace_exp = workspace_session_value.close();
     if(!close_workspace_exp){
         return requeue_submission(close_workspace_exp.error());
     }
 
-    if(processing_error_opt){
-        return requeue_submission(*processing_error_opt);
-    }
-
-    if(!submission_decision_opt.has_value()){
-        return requeue_submission(
-            judge_error{
-                judge_error_code::validation_error,
-                "missing submission decision"
-            }
-        );
+    if(!submission_decision_exp){
+        return requeue_submission(submission_decision_exp.error());
     }
 
     const auto finalize_submission_exp = submission_lifecycle_.finalize(
         queued_submission_value,
-        *submission_decision_opt
+        *submission_decision_exp
     );
     if(!finalize_submission_exp){
         return requeue_submission(finalize_submission_exp.error());

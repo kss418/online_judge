@@ -5,7 +5,6 @@
 #include "judge_core/application/judge_evaluator.hpp"
 #include "judge_core/application/snapshot_provider.hpp"
 #include "judge_core/application/submission_builder.hpp"
-#include "judge_core/application/submission_decision.hpp"
 #include "judge_core/application/submission_executor.hpp"
 #include "judge_core/application/submission_lifecycle.hpp"
 #include "judge_core/application/workspace_manager.hpp"
@@ -16,7 +15,6 @@
 #include <cstdint>
 #include <expected>
 #include <filesystem>
-#include <optional>
 #include <string>
 
 class submission_processor{

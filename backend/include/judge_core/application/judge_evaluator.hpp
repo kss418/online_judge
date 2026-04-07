@@ -1,6 +1,5 @@
 #pragma once
 
-#include "dto/submission_dto.hpp"
 #include "error/judge_error.hpp"
 #include "judge_core/application/build_bundle.hpp"
 #include "judge_core/application/execution_bundle.hpp"
@@ -12,7 +11,6 @@
 class judge_evaluator{
 public:
     struct evaluation_input{
-        const submission_dto::queued_submission& queued_submission_value;
         const build_bundle& build_bundle_value;
         execution_bundle& execution_bundle_value;
         const testcase_snapshot* testcase_snapshot_value_ptr = nullptr;

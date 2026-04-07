@@ -4,4 +4,4 @@ add_subdirectory(application)
 add_subdirectory(gateway)
 add_subdirectory(testcase_snapshot)
 add_subdirectory(policy)
-add_subdirectory(types)
+

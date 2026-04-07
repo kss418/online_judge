@@ -10,8 +10,6 @@
 
 class submission_builder{
 public:
-    using build_result = build_bundle;
-
     struct build_input{
         const submission_dto::queued_submission& queued_submission_value;
         workspace_session& workspace_session_value;
@@ -28,7 +26,7 @@ public:
     submission_builder(const submission_builder&) = delete;
     submission_builder& operator=(const submission_builder&) = delete;
 
-    std::expected<build_result, judge_error> build(const build_input& build_input_value);
+    std::expected<build_bundle, judge_error> build(const build_input& build_input_value);
 
 private:
     build_dispatcher build_dispatcher_;
