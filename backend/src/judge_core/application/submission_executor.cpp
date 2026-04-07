@@ -26,7 +26,7 @@ submission_executor& submission_executor::operator=(
 
 submission_executor::~submission_executor() = default;
 
-std::expected<execution_bundle, judge_error> submission_executor::execute(
+std::expected<execution_report::batch, judge_error> submission_executor::execute(
     const runnable_program& runnable_program_value,
     const testcase_snapshot& testcase_snapshot_value
 ){
@@ -38,5 +38,5 @@ std::expected<execution_bundle, judge_error> submission_executor::execute(
         return std::unexpected(execution_report_exp.error());
     }
 
-    return execution_bundle::executed(std::move(*execution_report_exp));
+    return std::move(*execution_report_exp);
 }

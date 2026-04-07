@@ -129,17 +129,17 @@ std::expected<void, judge_error> submission_processor::process_next_submission(
             return std::unexpected(testcase_snapshot_exp.error());
         }
 
-        auto execution_bundle_exp = submission_executor_.execute(
+        auto execution_report_exp = submission_executor_.execute(
             build_result_value.artifact(),
             *testcase_snapshot_exp
         );
-        if(!execution_bundle_exp){
-            return std::unexpected(execution_bundle_exp.error());
+        if(!execution_report_exp){
+            return std::unexpected(execution_report_exp.error());
         }
 
         return judge_evaluator_.evaluate_execution(
             *testcase_snapshot_exp,
-            std::move(execution_bundle_exp->report())
+            std::move(*execution_report_exp)
         );
     }();
 

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "error/judge_error.hpp"
-#include "judge_core/application/execution_bundle.hpp"
 #include "judge_core/infrastructure/program_executor.hpp"
 #include "judge_core/testcase_snapshot/testcase_snapshot.hpp"
+#include "judge_core/types/execution_report.hpp"
 #include "judge_core/types/runnable_program.hpp"
 
 #include <expected>
@@ -21,7 +21,7 @@ public:
     submission_executor(const submission_executor&) = delete;
     submission_executor& operator=(const submission_executor&) = delete;
 
-    std::expected<execution_bundle, judge_error> execute(
+    std::expected<execution_report::batch, judge_error> execute(
         const runnable_program& runnable_program_value,
         const testcase_snapshot& testcase_snapshot_value
     );
