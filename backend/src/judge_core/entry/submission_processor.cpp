@@ -1,6 +1,5 @@
 #include "judge_core/entry/submission_processor.hpp"
 
-#include <optional>
 #include <utility>
 
 std::expected<submission_processor, judge_error> submission_processor::create(
@@ -119,35 +118,30 @@ std::expected<void, judge_error> submission_processor::process_next_submission(
         }
 
         auto build_result_value = std::move(*build_result_exp);
-        execution_bundle execution_bundle_value = execution_bundle::skipped();
-        std::optional<testcase_snapshot> testcase_snapshot_opt = std::nullopt;
-
-        if(build_result_value.success()){
-            auto testcase_snapshot_exp = snapshot_provider_.acquire(
-                queued_submission_value.problem_id
+        if(build_result_value.compile_failed()){
+            return judge_evaluator_.evaluate_compile_failure(
+                build_result_value.failure()
             );
-            if(!testcase_snapshot_exp){
-                return std::unexpected(testcase_snapshot_exp.error());
-            }
-            testcase_snapshot_opt = std::move(*testcase_snapshot_exp);
-
-            auto execution_bundle_exp = submission_executor_.execute(
-                build_result_value.artifact(),
-                *testcase_snapshot_opt
-            );
-            if(!execution_bundle_exp){
-                return std::unexpected(execution_bundle_exp.error());
-            }
-            execution_bundle_value = std::move(*execution_bundle_exp);
         }
 
-        return judge_evaluator_.evaluate(
-            judge_evaluator::evaluation_input{
-                .build_bundle_value = build_result_value,
-                .execution_bundle_value = execution_bundle_value,
-                .testcase_snapshot_value_ptr =
-                    testcase_snapshot_opt ? &*testcase_snapshot_opt : nullptr,
-            }
+        auto testcase_snapshot_exp = snapshot_provider_.acquire(
+            queued_submission_value.problem_id
+        );
+        if(!testcase_snapshot_exp){
+            return std::unexpected(testcase_snapshot_exp.error());
+        }
+
+        auto execution_bundle_exp = submission_executor_.execute(
+            build_result_value.artifact(),
+            *testcase_snapshot_exp
+        );
+        if(!execution_bundle_exp){
+            return std::unexpected(execution_bundle_exp.error());
+        }
+
+        return judge_evaluator_.evaluate_execution(
+            *testcase_snapshot_exp,
+            std::move(execution_bundle_exp->report())
         );
     }();
 
