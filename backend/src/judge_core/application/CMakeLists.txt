@@ -7,5 +7,6 @@ target_sources(lib
         submission_builder.cpp
         submission_executor.cpp
         submission_lifecycle.cpp
-        workspace_runner.cpp
+        workspace_manager.cpp
+        workspace_session.cpp
 )

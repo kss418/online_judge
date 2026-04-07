@@ -22,11 +22,11 @@ std::expected<submission_processor, judge_error> submission_processor::create(
         return std::unexpected(snapshot_provider_exp.error());
     }
 
-    auto workspace_runner_exp = workspace_runner::create(
+    auto workspace_manager_exp = workspace_manager::create(
         std::move(dependencies_value.source_root_path)
     );
-    if(!workspace_runner_exp){
-        return std::unexpected(workspace_runner_exp.error());
+    if(!workspace_manager_exp){
+        return std::unexpected(workspace_manager_exp.error());
     }
 
     return submission_processor(
@@ -36,7 +36,7 @@ std::expected<submission_processor, judge_error> submission_processor::create(
         std::move(dependencies_value.submission_builder_value),
         std::move(dependencies_value.submission_executor_value),
         std::move(dependencies_value.judge_evaluator_value),
-        std::move(*workspace_runner_exp)
+        std::move(*workspace_manager_exp)
     );
 }
 
@@ -47,7 +47,7 @@ submission_processor::submission_processor(
     submission_builder submission_builder_value,
     submission_executor submission_executor_value,
     judge_evaluator judge_evaluator_value,
-    workspace_runner workspace_runner_value
+    workspace_manager workspace_manager_value
 ) :
     judge_queue_facade_(std::move(judge_queue_facade_value)),
     submission_lifecycle_(std::move(submission_lifecycle_value)),
@@ -55,7 +55,7 @@ submission_processor::submission_processor(
     submission_builder_(std::move(submission_builder_value)),
     submission_executor_(std::move(submission_executor_value)),
     judge_evaluator_(std::move(judge_evaluator_value)),
-    workspace_runner_(std::move(workspace_runner_value)){}
+    workspace_manager_(std::move(workspace_manager_value)){}
 
 submission_processor::submission_processor(
     submission_processor&& other
@@ -109,13 +109,25 @@ std::expected<void, judge_error> submission_processor::execute_submission(
         return std::unexpected(mark_judging_exp.error());
     }
 
-    auto judge_submission_exp = workspace_runner_.with_submission_workspace(
-        queued_submission_value.submission_id,
-        [&]()
-            -> std::expected<judge_submission_data::process_submission_data, judge_error> {
-            return process_submission_in_workspace(queued_submission_value);
-        }
+    auto workspace_session_exp = workspace_manager_.create(
+        queued_submission_value.submission_id
     );
+    if(!workspace_session_exp){
+        return std::unexpected(workspace_session_exp.error());
+    }
+
+    auto workspace_session_value = std::move(*workspace_session_exp);
+
+    auto judge_submission_exp = process_submission_in_workspace(
+        queued_submission_value,
+        workspace_session_value
+    );
+
+    const auto close_workspace_exp = workspace_session_value.close();
+    if(!close_workspace_exp){
+        return std::unexpected(close_workspace_exp.error());
+    }
+
     if(!judge_submission_exp){
         return std::unexpected(judge_submission_exp.error());
     }
@@ -134,10 +146,10 @@ std::expected<void, judge_error> submission_processor::execute_submission(
 
 std::expected<judge_submission_data::process_submission_data, judge_error>
 submission_processor::process_submission_in_workspace(
-    const submission_dto::queued_submission& queued_submission_value
+    const submission_dto::queued_submission& queued_submission_value,
+    workspace_session& workspace_session_value
 ){
-    const auto source_file_path_exp = workspace_runner_.write_source_file(
-        queued_submission_value.submission_id,
+    const auto source_file_path_exp = workspace_session_value.write_source_file(
         queued_submission_value.language,
         queued_submission_value.source_code
     );
