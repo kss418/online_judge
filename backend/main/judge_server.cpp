@@ -4,8 +4,9 @@
 #include "common/logger.hpp"
 #include "common/string_util.hpp"
 #include "error/infra_error.hpp"
-#include "judge_core/application/execution_engine.hpp"
 #include "judge_core/application/judge_evaluator.hpp"
+#include "judge_core/application/submission_builder.hpp"
+#include "judge_core/application/submission_executor.hpp"
 #include "judge_core/entry/judge_worker.hpp"
 #include "judge_core/entry/submission_processor.hpp"
 #include "judge_core/gateway/judge_queue_facade.hpp"
@@ -94,11 +95,14 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
         return std::unexpected(testcase_snapshot_facade_exp.error());
     }
 
-    auto execution_engine_exp = execution_engine::create(
-        std::move(*testcase_snapshot_facade_exp)
-    );
-    if(!execution_engine_exp){
-        return std::unexpected(execution_engine_exp.error());
+    auto submission_builder_exp = submission_builder::create();
+    if(!submission_builder_exp){
+        return std::unexpected(submission_builder_exp.error());
+    }
+
+    auto submission_executor_exp = submission_executor::create();
+    if(!submission_executor_exp){
+        return std::unexpected(submission_executor_exp.error());
     }
 
     auto judge_evaluator_exp = judge_evaluator::create();
@@ -117,7 +121,10 @@ std::expected<judge_worker::dependencies, judge_error> build_judge_worker_depend
             .judge_queue_facade_value = std::move(*judge_queue_facade_exp),
             .judge_submission_facade_value =
                 std::move(*judge_submission_facade_exp),
-            .execution_engine_value = std::move(*execution_engine_exp),
+            .testcase_snapshot_facade_value =
+                std::move(*testcase_snapshot_facade_exp),
+            .submission_builder_value = std::move(*submission_builder_exp),
+            .submission_executor_value = std::move(*submission_executor_exp),
             .judge_evaluator_value = std::move(*judge_evaluator_exp),
             .source_root_path = std::move(*source_root_path_exp),
         }

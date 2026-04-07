@@ -2,8 +2,10 @@
 
 #include "dto/submission_dto.hpp"
 #include "error/judge_error.hpp"
-#include "judge_core/application/execution_engine.hpp"
 #include "judge_core/application/judge_evaluator.hpp"
+#include "judge_core/application/snapshot_provider.hpp"
+#include "judge_core/application/submission_builder.hpp"
+#include "judge_core/application/submission_executor.hpp"
 #include "judge_core/application/submission_lifecycle.hpp"
 #include "judge_core/application/workspace_runner.hpp"
 #include "judge_core/gateway/judge_queue_facade.hpp"
@@ -21,7 +23,9 @@ public:
     struct dependencies{
         judge_queue_facade judge_queue_facade_value;
         judge_submission_facade judge_submission_facade_value;
-        execution_engine execution_engine_value;
+        testcase_snapshot_facade testcase_snapshot_facade_value;
+        submission_builder submission_builder_value;
+        submission_executor submission_executor_value;
         judge_evaluator judge_evaluator_value;
         std::filesystem::path source_root_path;
     };
@@ -46,7 +50,9 @@ private:
     submission_processor(
         judge_queue_facade judge_queue_facade_value,
         submission_lifecycle submission_lifecycle_value,
-        execution_engine execution_engine_value,
+        snapshot_provider snapshot_provider_value,
+        submission_builder submission_builder_value,
+        submission_executor submission_executor_value,
         judge_evaluator judge_evaluator_value,
         workspace_runner workspace_runner_value
     );
@@ -61,7 +67,9 @@ private:
 
     judge_queue_facade judge_queue_facade_;
     submission_lifecycle submission_lifecycle_;
-    execution_engine execution_engine_;
+    snapshot_provider snapshot_provider_;
+    submission_builder submission_builder_;
+    submission_executor submission_executor_;
     judge_evaluator judge_evaluator_;
     workspace_runner workspace_runner_;
 };

@@ -1,9 +1,11 @@
 target_sources(lib
     PRIVATE
         compile_failure_report_mapper.cpp
-        execution_engine.cpp
         finalize_submission_mapper.cpp
         judge_evaluator.cpp
+        snapshot_provider.cpp
+        submission_builder.cpp
+        submission_executor.cpp
         submission_lifecycle.cpp
         workspace_runner.cpp
 )

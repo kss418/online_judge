@@ -13,6 +13,13 @@ std::expected<submission_processor, judge_error> submission_processor::create(
         return std::unexpected(submission_lifecycle_exp.error());
     }
 
+    auto snapshot_provider_exp = snapshot_provider::create(
+        std::move(dependencies_value.testcase_snapshot_facade_value)
+    );
+    if(!snapshot_provider_exp){
+        return std::unexpected(snapshot_provider_exp.error());
+    }
+
     auto workspace_runner_exp = workspace_runner::create(
         std::move(dependencies_value.source_root_path)
     );
@@ -23,7 +30,9 @@ std::expected<submission_processor, judge_error> submission_processor::create(
     return submission_processor(
         std::move(dependencies_value.judge_queue_facade_value),
         std::move(*submission_lifecycle_exp),
-        std::move(dependencies_value.execution_engine_value),
+        std::move(*snapshot_provider_exp),
+        std::move(dependencies_value.submission_builder_value),
+        std::move(dependencies_value.submission_executor_value),
         std::move(dependencies_value.judge_evaluator_value),
         std::move(*workspace_runner_exp)
     );
@@ -32,13 +41,17 @@ std::expected<submission_processor, judge_error> submission_processor::create(
 submission_processor::submission_processor(
     judge_queue_facade judge_queue_facade_value,
     submission_lifecycle submission_lifecycle_value,
-    execution_engine execution_engine_value,
+    snapshot_provider snapshot_provider_value,
+    submission_builder submission_builder_value,
+    submission_executor submission_executor_value,
     judge_evaluator judge_evaluator_value,
     workspace_runner workspace_runner_value
 ) :
     judge_queue_facade_(std::move(judge_queue_facade_value)),
     submission_lifecycle_(std::move(submission_lifecycle_value)),
-    execution_engine_(std::move(execution_engine_value)),
+    snapshot_provider_(std::move(snapshot_provider_value)),
+    submission_builder_(std::move(submission_builder_value)),
+    submission_executor_(std::move(submission_executor_value)),
     judge_evaluator_(std::move(judge_evaluator_value)),
     workspace_runner_(std::move(workspace_runner_value)){}
 
@@ -130,7 +143,7 @@ submission_processor::process_submission_in_workspace(
         return std::unexpected(source_file_path_exp.error());
     }
 
-    auto build_result_exp = execution_engine_.build(
+    auto build_result_exp = submission_builder_.build(
         *source_file_path_exp
     );
     if(!build_result_exp){
@@ -161,18 +174,24 @@ submission_processor::process_submission_in_workspace(
         );
     }
 
-    auto execution_result_exp = execution_engine_.run(
-        queued_submission_value.problem_id,
-        *runnable_program_value
+    auto testcase_snapshot_exp = snapshot_provider_.acquire(
+        queued_submission_value.problem_id
     );
-    if(!execution_result_exp){
-        return std::unexpected(execution_result_exp.error());
+    if(!testcase_snapshot_exp){
+        return std::unexpected(testcase_snapshot_exp.error());
     }
 
-    auto execution_result_value = std::move(*execution_result_exp);
+    auto execution_report_exp = submission_executor_.execute(
+        *runnable_program_value,
+        *testcase_snapshot_exp
+    );
+    if(!execution_report_exp){
+        return std::unexpected(execution_report_exp.error());
+    }
+
     const auto judge_result_exp = judge_evaluator_.evaluate(
-        execution_result_value.testcase_snapshot_value,
-        execution_result_value.execution_report_value
+        *testcase_snapshot_exp,
+        *execution_report_exp
     );
     if(!judge_result_exp){
         return std::unexpected(judge_result_exp.error());
@@ -181,7 +200,7 @@ submission_processor::process_submission_in_workspace(
     auto process_submission_data_value =
         judge_submission_data::make_process_submission_data(
             *judge_result_exp,
-            std::move(execution_result_value.execution_report_value)
+            std::move(*execution_report_exp)
         );
     return process_submission_data_value;
 }
