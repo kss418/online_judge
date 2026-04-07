@@ -71,12 +71,13 @@ submission_builder& submission_builder::operator=(
 submission_builder::~submission_builder() = default;
 
 std::expected<build_bundle, judge_error> submission_builder::build(
-    const build_input& build_input_value
+    const submission_dto::queued_submission& queued_submission_value,
+    workspace_session& workspace_session_value
 ){
     const auto source_file_path_exp =
-        build_input_value.workspace_session_value.write_source_file(
-            build_input_value.queued_submission_value.language,
-            build_input_value.queued_submission_value.source_code
+        workspace_session_value.write_source_file(
+            queued_submission_value.language,
+            queued_submission_value.source_code
         );
     if(!source_file_path_exp){
         return std::unexpected(source_file_path_exp.error());

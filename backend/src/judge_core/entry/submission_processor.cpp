@@ -108,10 +108,8 @@ std::expected<void, judge_error> submission_processor::process_next_submission(
     auto submission_decision_exp = [&]()
         -> std::expected<submission_decision, judge_error> {
         auto build_result_exp = submission_builder_.build(
-            submission_builder::build_input{
-                .queued_submission_value = queued_submission_value,
-                .workspace_session_value = workspace_session_value,
-            }
+            queued_submission_value,
+            workspace_session_value
         );
         if(!build_result_exp){
             return std::unexpected(build_result_exp.error());

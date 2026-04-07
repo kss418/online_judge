@@ -10,11 +10,6 @@
 
 class submission_builder{
 public:
-    struct build_input{
-        const submission_dto::queued_submission& queued_submission_value;
-        workspace_session& workspace_session_value;
-    };
-
     static std::expected<submission_builder, judge_error> create();
 
     explicit submission_builder(build_dispatcher build_dispatcher_value);
@@ -26,7 +21,10 @@ public:
     submission_builder(const submission_builder&) = delete;
     submission_builder& operator=(const submission_builder&) = delete;
 
-    std::expected<build_bundle, judge_error> build(const build_input& build_input_value);
+    std::expected<build_bundle, judge_error> build(
+        const submission_dto::queued_submission& queued_submission_value,
+        workspace_session& workspace_session_value
+    );
 
 private:
     build_dispatcher build_dispatcher_;
