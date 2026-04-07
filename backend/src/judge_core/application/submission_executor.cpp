@@ -26,12 +26,16 @@ submission_executor& submission_executor::operator=(
 
 submission_executor::~submission_executor() = default;
 
-std::expected<execution_report::batch, judge_error> submission_executor::execute(
-    const runnable_program& runnable_program_value,
-    const testcase_snapshot& testcase_snapshot_value
+std::expected<execution_bundle, judge_error> submission_executor::execute(
+    const execution_input& execution_input_value
 ){
-    return program_executor_.run(
-        runnable_program_value,
-        testcase_snapshot_value
+    auto execution_report_exp = program_executor_.run(
+        execution_input_value.runnable_program_value,
+        execution_input_value.testcase_snapshot_value
     );
+    if(!execution_report_exp){
+        return std::unexpected(execution_report_exp.error());
+    }
+
+    return execution_bundle::executed(std::move(*execution_report_exp));
 }

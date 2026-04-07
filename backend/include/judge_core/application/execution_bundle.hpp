@@ -31,6 +31,14 @@ public:
         return execution_report_opt_ ? &*execution_report_opt_ : nullptr;
     }
 
+    execution_report::batch& report(){
+        return *execution_report_opt_;
+    }
+
+    const execution_report::batch& report() const{
+        return *execution_report_opt_;
+    }
+
 private:
     execution_bundle() = default;
 

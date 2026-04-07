@@ -24,6 +24,14 @@ public:
         return compile_failure_opt() != nullptr;
     }
 
+    const runnable_program& artifact() const{
+        return std::get<runnable_program>(storage_);
+    }
+
+    const compile_failure& failure() const{
+        return std::get<compile_failure>(storage_);
+    }
+
     const runnable_program* runnable_program_opt() const noexcept{
         return std::get_if<runnable_program>(&storage_);
     }

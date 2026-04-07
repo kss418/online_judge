@@ -1,13 +1,12 @@
 #pragma once
 
+#include "dto/submission_dto.hpp"
 #include "error/judge_error.hpp"
+#include "judge_core/application/submission_decision.hpp"
 #include "judge_core/gateway/judge_submission_facade.hpp"
-#include "judge_core/types/execution_report.hpp"
-#include "judge_core/types/judge_result.hpp"
 
 #include <cstdint>
 #include <expected>
-#include <string>
 
 class submission_lifecycle{
 public:
@@ -22,15 +21,16 @@ public:
     submission_lifecycle(const submission_lifecycle&) = delete;
     submission_lifecycle& operator=(const submission_lifecycle&) = delete;
 
-    std::expected<void, judge_error> mark_judging(std::int64_t submission_id);
-    std::expected<void, judge_error> finalize_submission(
-        std::int64_t submission_id,
-        judge_result result,
-        const execution_report::batch& execution_report_value
+    std::expected<void, judge_error> mark_judging(
+        const submission_dto::queued_submission& queued_submission_value
     );
-    std::expected<void, judge_error> requeue_submission(
-        std::int64_t submission_id,
-        std::string reason
+    std::expected<void, judge_error> finalize(
+        const submission_dto::queued_submission& queued_submission_value,
+        const submission_decision& submission_decision_value
+    );
+    std::expected<void, judge_error> requeue(
+        const submission_dto::queued_submission& queued_submission_value,
+        const judge_error& error_value
     );
 
 private:

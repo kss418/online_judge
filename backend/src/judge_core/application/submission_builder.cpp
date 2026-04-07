@@ -71,9 +71,18 @@ submission_builder& submission_builder::operator=(
 submission_builder::~submission_builder() = default;
 
 std::expected<submission_builder::build_result, judge_error> submission_builder::build(
-    const std::filesystem::path& source_file_path
+    const build_input& build_input_value
 ){
-    auto build_source_exp = build_dispatcher_.build_source(source_file_path);
+    const auto source_file_path_exp =
+        build_input_value.workspace_session_value.write_source_file(
+            build_input_value.queued_submission_value.language,
+            build_input_value.queued_submission_value.source_code
+        );
+    if(!source_file_path_exp){
+        return std::unexpected(source_file_path_exp.error());
+    }
+
+    auto build_source_exp = build_dispatcher_.build_source(*source_file_path_exp);
     if(!build_source_exp){
         return std::unexpected(judge_error{build_source_exp.error()});
     }

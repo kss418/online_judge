@@ -5,17 +5,18 @@
 #include "judge_core/application/judge_evaluator.hpp"
 #include "judge_core/application/snapshot_provider.hpp"
 #include "judge_core/application/submission_builder.hpp"
+#include "judge_core/application/submission_decision.hpp"
 #include "judge_core/application/submission_executor.hpp"
 #include "judge_core/application/submission_lifecycle.hpp"
 #include "judge_core/application/workspace_manager.hpp"
 #include "judge_core/gateway/judge_queue_facade.hpp"
 #include "judge_core/gateway/judge_submission_facade.hpp"
-#include "judge_core/types/judge_submission_data.hpp"
 
 #include <chrono>
 #include <cstdint>
 #include <expected>
 #include <filesystem>
+#include <optional>
 #include <string>
 
 class submission_processor{
@@ -55,15 +56,6 @@ private:
         submission_executor submission_executor_value,
         judge_evaluator judge_evaluator_value,
         workspace_manager workspace_manager_value
-    );
-
-    std::expected<void, judge_error> execute_submission(
-        const submission_dto::queued_submission& queued_submission_value
-    );
-    std::expected<judge_submission_data::process_submission_data, judge_error>
-    process_submission_in_workspace(
-        const submission_dto::queued_submission& queued_submission_value,
-        workspace_session& workspace_session_value
     );
 
     judge_queue_facade judge_queue_facade_;

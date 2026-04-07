@@ -25,32 +25,33 @@ submission_lifecycle& submission_lifecycle::operator=(
 submission_lifecycle::~submission_lifecycle() = default;
 
 std::expected<void, judge_error> submission_lifecycle::mark_judging(
-    std::int64_t submission_id
+    const submission_dto::queued_submission& queued_submission_value
 ){
-    return judge_submission_facade_.mark_judging(submission_id);
+    return judge_submission_facade_.mark_judging(
+        queued_submission_value.submission_id
+    );
 }
 
-std::expected<void, judge_error> submission_lifecycle::finalize_submission(
-    std::int64_t submission_id,
-    judge_result result,
-    const execution_report::batch& execution_report_value
+std::expected<void, judge_error> submission_lifecycle::finalize(
+    const submission_dto::queued_submission& queued_submission_value,
+    const submission_decision& submission_decision_value
 ){
     const submission_dto::finalize_request finalize_request_value =
         finalize_submission_mapper::make_finalize_request(
-            submission_id,
-            result,
-            execution_report_value
+            queued_submission_value.submission_id,
+            submission_decision_value.judge_result_value,
+            submission_decision_value.execution_report_value
         );
 
     return judge_submission_facade_.finalize_submission(finalize_request_value);
 }
 
-std::expected<void, judge_error> submission_lifecycle::requeue_submission(
-    std::int64_t submission_id,
-    std::string reason
+std::expected<void, judge_error> submission_lifecycle::requeue(
+    const submission_dto::queued_submission& queued_submission_value,
+    const judge_error& error_value
 ){
     return judge_submission_facade_.requeue_submission_immediately(
-        submission_id,
-        std::move(reason)
+        queued_submission_value.submission_id,
+        to_string(error_value)
     );
 }

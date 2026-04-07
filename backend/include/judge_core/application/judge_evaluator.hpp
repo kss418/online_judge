@@ -1,18 +1,20 @@
 #pragma once
 
+#include "dto/submission_dto.hpp"
 #include "error/judge_error.hpp"
 #include "judge_core/application/build_bundle.hpp"
 #include "judge_core/application/execution_bundle.hpp"
+#include "judge_core/application/submission_decision.hpp"
 #include "judge_core/testcase_snapshot/testcase_snapshot.hpp"
-#include "judge_core/types/judge_result.hpp"
 
 #include <expected>
 
 class judge_evaluator{
 public:
     struct evaluation_input{
+        const submission_dto::queued_submission& queued_submission_value;
         const build_bundle& build_bundle_value;
-        const execution_bundle& execution_bundle_value;
+        execution_bundle& execution_bundle_value;
         const testcase_snapshot* testcase_snapshot_value_ptr = nullptr;
     };
 
@@ -25,7 +27,7 @@ public:
     judge_evaluator(const judge_evaluator&) = delete;
     judge_evaluator& operator=(const judge_evaluator&) = delete;
 
-    std::expected<judge_result, judge_error> evaluate(
+    std::expected<submission_decision, judge_error> evaluate(
         const evaluation_input& evaluation_input_value
     );
 

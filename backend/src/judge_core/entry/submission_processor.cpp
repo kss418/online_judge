@@ -1,8 +1,5 @@
-#include "judge_core/application/compile_failure_report_mapper.hpp"
-#include "judge_core/application/execution_bundle.hpp"
 #include "judge_core/entry/submission_processor.hpp"
 
-#include <optional>
 #include <utility>
 
 std::expected<submission_processor, judge_error> submission_processor::create(
@@ -84,158 +81,117 @@ std::expected<void, judge_error> submission_processor::process_next_submission(
 
     const submission_dto::queued_submission& queued_submission_value =
         queued_submission_opt_exp->value();
-    const auto execute_submission_exp = execute_submission(queued_submission_value);
 
-    if(!execute_submission_exp){
-        const auto requeue_submission_exp = submission_lifecycle_.requeue_submission(
-            queued_submission_value.submission_id,
-            to_string(execute_submission_exp.error())
+    const auto requeue_submission = [&](const judge_error& error_value){
+        return submission_lifecycle_.requeue(
+            queued_submission_value,
+            error_value
         );
-        if(!requeue_submission_exp){
-            return std::unexpected(requeue_submission_exp.error());
-        }
-    }
+    };
 
-    return {};
-}
-
-std::expected<void, judge_error> submission_processor::execute_submission(
-    const submission_dto::queued_submission& queued_submission_value
-){
     const auto mark_judging_exp = submission_lifecycle_.mark_judging(
-        queued_submission_value.submission_id
+        queued_submission_value
     );
     if(!mark_judging_exp){
-        return std::unexpected(mark_judging_exp.error());
+        return requeue_submission(mark_judging_exp.error());
     }
 
     auto workspace_session_exp = workspace_manager_.create(
         queued_submission_value.submission_id
     );
     if(!workspace_session_exp){
-        return std::unexpected(workspace_session_exp.error());
+        return requeue_submission(workspace_session_exp.error());
     }
 
     auto workspace_session_value = std::move(*workspace_session_exp);
 
-    auto judge_submission_exp = process_submission_in_workspace(
-        queued_submission_value,
-        workspace_session_value
+    std::optional<judge_error> processing_error_opt = std::nullopt;
+    std::optional<submission_decision> submission_decision_opt = std::nullopt;
+
+    auto build_result_exp = submission_builder_.build(
+        submission_builder::build_input{
+            .queued_submission_value = queued_submission_value,
+            .workspace_session_value = workspace_session_value,
+        }
     );
+    if(!build_result_exp){
+        processing_error_opt = build_result_exp.error();
+    }
+    else{
+        auto build_result_value = std::move(*build_result_exp);
+        execution_bundle execution_bundle_value = execution_bundle::skipped();
+        std::optional<testcase_snapshot> testcase_snapshot_opt = std::nullopt;
+
+        if(build_result_value.success()){
+            auto testcase_snapshot_exp = snapshot_provider_.acquire(
+                queued_submission_value.problem_id
+            );
+            if(!testcase_snapshot_exp){
+                processing_error_opt = testcase_snapshot_exp.error();
+            }
+            else{
+                testcase_snapshot_opt = std::move(*testcase_snapshot_exp);
+
+                auto execution_bundle_exp = submission_executor_.execute(
+                    submission_executor::execution_input{
+                        .runnable_program_value = build_result_value.artifact(),
+                        .testcase_snapshot_value = *testcase_snapshot_opt,
+                        .workspace_session_value = workspace_session_value,
+                    }
+                );
+                if(!execution_bundle_exp){
+                    processing_error_opt = execution_bundle_exp.error();
+                }
+                else{
+                    execution_bundle_value = std::move(*execution_bundle_exp);
+                }
+            }
+        }
+
+        if(!processing_error_opt){
+            auto submission_decision_exp = judge_evaluator_.evaluate(
+                judge_evaluator::evaluation_input{
+                    .queued_submission_value = queued_submission_value,
+                    .build_bundle_value = build_result_value,
+                    .execution_bundle_value = execution_bundle_value,
+                    .testcase_snapshot_value_ptr =
+                        testcase_snapshot_opt ? &*testcase_snapshot_opt : nullptr,
+                }
+            );
+            if(!submission_decision_exp){
+                processing_error_opt = submission_decision_exp.error();
+            }
+            else{
+                submission_decision_opt = std::move(*submission_decision_exp);
+            }
+        }
+    }
 
     const auto close_workspace_exp = workspace_session_value.close();
     if(!close_workspace_exp){
-        return std::unexpected(close_workspace_exp.error());
+        return requeue_submission(close_workspace_exp.error());
     }
 
-    if(!judge_submission_exp){
-        return std::unexpected(judge_submission_exp.error());
+    if(processing_error_opt){
+        return requeue_submission(*processing_error_opt);
     }
 
-    const auto finalize_submission_exp = submission_lifecycle_.finalize_submission(
-        queued_submission_value.submission_id,
-        judge_submission_exp->judge_result_value,
-        judge_submission_exp->execution_report_value
+    if(!submission_decision_opt.has_value()){
+        return requeue_submission(
+            judge_error{
+                judge_error_code::validation_error,
+                "missing submission decision"
+            }
+        );
+    }
+
+    const auto finalize_submission_exp = submission_lifecycle_.finalize(
+        queued_submission_value,
+        *submission_decision_opt
     );
     if(!finalize_submission_exp){
-        return std::unexpected(finalize_submission_exp.error());
+        return requeue_submission(finalize_submission_exp.error());
     }
 
     return {};
-}
-
-std::expected<judge_submission_data::process_submission_data, judge_error>
-submission_processor::process_submission_in_workspace(
-    const submission_dto::queued_submission& queued_submission_value,
-    workspace_session& workspace_session_value
-){
-    const auto source_file_path_exp = workspace_session_value.write_source_file(
-        queued_submission_value.language,
-        queued_submission_value.source_code
-    );
-    if(!source_file_path_exp){
-        return std::unexpected(source_file_path_exp.error());
-    }
-
-    auto build_result_exp = submission_builder_.build(
-        *source_file_path_exp
-    );
-    if(!build_result_exp){
-        return std::unexpected(build_result_exp.error());
-    }
-
-    auto build_result_value = std::move(*build_result_exp);
-    execution_bundle execution_bundle_value = execution_bundle::skipped();
-    std::optional<testcase_snapshot> testcase_snapshot_opt = std::nullopt;
-    if(build_result_value.success()){
-        const auto* runnable_program_value = build_result_value.runnable_program_opt();
-        if(runnable_program_value == nullptr){
-            return std::unexpected(
-                judge_error{
-                    judge_error_code::validation_error,
-                    "missing runnable program"
-                }
-            );
-        }
-
-        auto testcase_snapshot_exp = snapshot_provider_.acquire(
-            queued_submission_value.problem_id
-        );
-        if(!testcase_snapshot_exp){
-            return std::unexpected(testcase_snapshot_exp.error());
-        }
-        testcase_snapshot_opt = std::move(*testcase_snapshot_exp);
-
-        auto execution_report_exp = submission_executor_.execute(
-            *runnable_program_value,
-            *testcase_snapshot_opt
-        );
-        if(!execution_report_exp){
-            return std::unexpected(execution_report_exp.error());
-        }
-
-        execution_bundle_value = execution_bundle::executed(
-            std::move(*execution_report_exp)
-        );
-    }
-
-    const auto judge_result_exp = judge_evaluator_.evaluate(
-        judge_evaluator::evaluation_input{
-            .build_bundle_value = build_result_value,
-            .execution_bundle_value = execution_bundle_value,
-            .testcase_snapshot_value_ptr =
-                testcase_snapshot_opt ? &*testcase_snapshot_opt : nullptr,
-        }
-    );
-    if(!judge_result_exp){
-        return std::unexpected(judge_result_exp.error());
-    }
-
-    execution_report::batch execution_report_value;
-    if(const auto* compile_failure_value =
-           build_result_value.compile_failure_opt()){
-        execution_report_value =
-            compile_failure_report_mapper::make_execution_report(
-                *compile_failure_value
-            );
-    }
-    else{
-        auto* executed_report_value = execution_bundle_value.execution_report_opt();
-        if(executed_report_value == nullptr){
-            return std::unexpected(
-                judge_error{
-                    judge_error_code::validation_error,
-                    "missing execution report"
-                }
-            );
-        }
-        execution_report_value = std::move(*executed_report_value);
-    }
-
-    auto process_submission_data_value =
-        judge_submission_data::make_process_submission_data(
-            *judge_result_exp,
-            std::move(execution_report_value)
-        );
-    return process_submission_data_value;
 }
