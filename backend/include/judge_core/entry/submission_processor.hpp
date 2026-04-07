@@ -4,10 +4,10 @@
 #include "error/judge_error.hpp"
 #include "judge_core/application/execution_engine.hpp"
 #include "judge_core/application/judge_evaluator.hpp"
+#include "judge_core/application/submission_lifecycle.hpp"
 #include "judge_core/application/workspace_runner.hpp"
 #include "judge_core/gateway/judge_queue_facade.hpp"
 #include "judge_core/gateway/judge_submission_facade.hpp"
-#include "judge_core/types/execution_report.hpp"
 #include "judge_core/types/judge_submission_data.hpp"
 
 #include <chrono>
@@ -45,7 +45,7 @@ public:
 private:
     submission_processor(
         judge_queue_facade judge_queue_facade_value,
-        judge_submission_facade judge_submission_facade_value,
+        submission_lifecycle submission_lifecycle_value,
         execution_engine execution_engine_value,
         judge_evaluator judge_evaluator_value,
         workspace_runner workspace_runner_value
@@ -58,18 +58,9 @@ private:
     process_submission_in_workspace(
         const submission_dto::queued_submission& queued_submission_value
     );
-    std::expected<void, judge_error> finalize_submission(
-        std::int64_t submission_id,
-        judge_result result,
-        const execution_report::batch& execution_report_value
-    );
-    std::expected<void, judge_error> requeue_submission(
-        std::int64_t submission_id,
-        std::string reason
-    );
 
     judge_queue_facade judge_queue_facade_;
-    judge_submission_facade judge_submission_facade_;
+    submission_lifecycle submission_lifecycle_;
     execution_engine execution_engine_;
     judge_evaluator judge_evaluator_;
     workspace_runner workspace_runner_;

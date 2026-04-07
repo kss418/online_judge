@@ -1,5 +1,4 @@
 #include "judge_core/application/compile_failure_report_mapper.hpp"
-#include "judge_core/application/finalize_submission_mapper.hpp"
 #include "judge_core/entry/submission_processor.hpp"
 
 #include <utility>
@@ -7,6 +6,13 @@
 std::expected<submission_processor, judge_error> submission_processor::create(
     dependencies dependencies_value
 ){
+    auto submission_lifecycle_exp = submission_lifecycle::create(
+        std::move(dependencies_value.judge_submission_facade_value)
+    );
+    if(!submission_lifecycle_exp){
+        return std::unexpected(submission_lifecycle_exp.error());
+    }
+
     auto workspace_runner_exp = workspace_runner::create(
         std::move(dependencies_value.source_root_path)
     );
@@ -16,7 +22,7 @@ std::expected<submission_processor, judge_error> submission_processor::create(
 
     return submission_processor(
         std::move(dependencies_value.judge_queue_facade_value),
-        std::move(dependencies_value.judge_submission_facade_value),
+        std::move(*submission_lifecycle_exp),
         std::move(dependencies_value.execution_engine_value),
         std::move(dependencies_value.judge_evaluator_value),
         std::move(*workspace_runner_exp)
@@ -25,13 +31,13 @@ std::expected<submission_processor, judge_error> submission_processor::create(
 
 submission_processor::submission_processor(
     judge_queue_facade judge_queue_facade_value,
-    judge_submission_facade judge_submission_facade_value,
+    submission_lifecycle submission_lifecycle_value,
     execution_engine execution_engine_value,
     judge_evaluator judge_evaluator_value,
     workspace_runner workspace_runner_value
 ) :
     judge_queue_facade_(std::move(judge_queue_facade_value)),
-    judge_submission_facade_(std::move(judge_submission_facade_value)),
+    submission_lifecycle_(std::move(submission_lifecycle_value)),
     execution_engine_(std::move(execution_engine_value)),
     judge_evaluator_(std::move(judge_evaluator_value)),
     workspace_runner_(std::move(workspace_runner_value)){}
@@ -66,7 +72,7 @@ std::expected<void, judge_error> submission_processor::process_next_submission(
     const auto execute_submission_exp = execute_submission(queued_submission_value);
 
     if(!execute_submission_exp){
-        const auto requeue_submission_exp = requeue_submission(
+        const auto requeue_submission_exp = submission_lifecycle_.requeue_submission(
             queued_submission_value.submission_id,
             to_string(execute_submission_exp.error())
         );
@@ -81,10 +87,9 @@ std::expected<void, judge_error> submission_processor::process_next_submission(
 std::expected<void, judge_error> submission_processor::execute_submission(
     const submission_dto::queued_submission& queued_submission_value
 ){
-    const auto mark_judging_exp =
-        judge_submission_facade_.mark_judging(
-            queued_submission_value.submission_id
-        );
+    const auto mark_judging_exp = submission_lifecycle_.mark_judging(
+        queued_submission_value.submission_id
+    );
     if(!mark_judging_exp){
         return std::unexpected(mark_judging_exp.error());
     }
@@ -100,7 +105,7 @@ std::expected<void, judge_error> submission_processor::execute_submission(
         return std::unexpected(judge_submission_exp.error());
     }
 
-    const auto finalize_submission_exp = finalize_submission(
+    const auto finalize_submission_exp = submission_lifecycle_.finalize_submission(
         queued_submission_value.submission_id,
         judge_submission_exp->judge_result_value,
         judge_submission_exp->execution_report_value
@@ -179,35 +184,4 @@ submission_processor::process_submission_in_workspace(
             std::move(execution_result_value.execution_report_value)
         );
     return process_submission_data_value;
-}
-
-std::expected<void, judge_error> submission_processor::finalize_submission(
-    std::int64_t submission_id,
-    judge_result result,
-    const execution_report::batch& execution_report_value
-){
-    const submission_dto::finalize_request finalize_request_value =
-        finalize_submission_mapper::make_finalize_request(
-            submission_id,
-            result,
-            execution_report_value
-        );
-
-    const auto finalize_submission_exp =
-        judge_submission_facade_.finalize_submission(finalize_request_value);
-    if(!finalize_submission_exp){
-        return std::unexpected(finalize_submission_exp.error());
-    }
-
-    return {};
-}
-
-std::expected<void, judge_error> submission_processor::requeue_submission(
-    std::int64_t submission_id,
-    std::string reason
-){
-    return judge_submission_facade_.requeue_submission_immediately(
-        submission_id,
-        std::move(reason)
-    );
 }
