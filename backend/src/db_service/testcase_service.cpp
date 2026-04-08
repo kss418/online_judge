@@ -3,6 +3,7 @@
 
 #include "db_repository/problem_content_repository.hpp"
 #include "db_repository/problem_core_repository.hpp"
+#include "db_repository/problem_snapshot_repository.hpp"
 #include "db_repository/testcase_repository.hpp"
 
 std::expected<problem_dto::testcase, service_error> testcase_service::create_testcase(
@@ -48,6 +49,15 @@ std::expected<problem_dto::testcase, service_error> testcase_service::create_tes
             );
             if(!version_exp){
                 return std::unexpected(version_exp.error());
+            }
+
+            const auto publish_snapshot_exp =
+                problem_snapshot_repository::publish_current_snapshot(
+                    transaction,
+                    problem_reference_value
+                );
+            if(!publish_snapshot_exp){
+                return std::unexpected(publish_snapshot_exp.error());
             }
 
             return *created_testcase_exp;
@@ -148,6 +158,15 @@ std::expected<void, service_error> testcase_service::set_testcase(
                 return std::unexpected(version_exp.error());
             }
 
+            const auto publish_snapshot_exp =
+                problem_snapshot_repository::publish_current_snapshot(
+                    transaction,
+                    problem_reference_value
+                );
+            if(!publish_snapshot_exp){
+                return std::unexpected(publish_snapshot_exp.error());
+            }
+
             return {};
         }
     );
@@ -194,6 +213,15 @@ std::expected<void, service_error> testcase_service::move_testcase(
                 return std::unexpected(version_exp.error());
             }
 
+            const auto publish_snapshot_exp =
+                problem_snapshot_repository::publish_current_snapshot(
+                    transaction,
+                    problem_reference_value
+                );
+            if(!publish_snapshot_exp){
+                return std::unexpected(publish_snapshot_exp.error());
+            }
+
             return {};
         }
     );
@@ -224,6 +252,15 @@ std::expected<void, service_error> testcase_service::delete_testcase(
             );
             if(!version_exp){
                 return std::unexpected(version_exp.error());
+            }
+
+            const auto publish_snapshot_exp =
+                problem_snapshot_repository::publish_current_snapshot(
+                    transaction,
+                    problem_reference_value
+                );
+            if(!publish_snapshot_exp){
+                return std::unexpected(publish_snapshot_exp.error());
             }
 
             return {};
@@ -274,6 +311,15 @@ std::expected<void, service_error> testcase_service::delete_all_testcases(
             );
             if(!version_exp){
                 return std::unexpected(version_exp.error());
+            }
+
+            const auto publish_snapshot_exp =
+                problem_snapshot_repository::publish_current_snapshot(
+                    transaction,
+                    problem_reference_value
+                );
+            if(!publish_snapshot_exp){
+                return std::unexpected(publish_snapshot_exp.error());
             }
 
             return {};
@@ -370,6 +416,15 @@ std::expected<problem_dto::testcase_count, service_error> testcase_service::repl
                 );
                 if(!version_exp){
                     return std::unexpected(version_exp.error());
+                }
+
+                const auto publish_snapshot_exp =
+                    problem_snapshot_repository::publish_current_snapshot(
+                        transaction,
+                        problem_reference_value
+                    );
+                if(!publish_snapshot_exp){
+                    return std::unexpected(publish_snapshot_exp.error());
                 }
             }
 

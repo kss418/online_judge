@@ -44,6 +44,7 @@ register_temp_file update_problem_response_file
 register_temp_file get_problem_response_file
 register_temp_file delete_problem_response_file
 register_temp_file missing_problem_response_file
+register_temp_file snapshot_manifest_response_file
 
 trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
 
@@ -157,6 +158,60 @@ assert_json_field_equals \
     "int"
 
 print_success_log "updated problem detail validated"
+
+if ! PGPASSWORD="${DB_PASSWORD}" psql \
+    -X \
+    -qAt \
+    -h "${DB_HOST}" \
+    -p "${DB_PORT}" \
+    -U "${DB_USER}" \
+    -d "${DB_NAME}" \
+    -v problem_id="${problem_id}" \
+    -v ON_ERROR_STOP=1 <<'SQL' >"${snapshot_manifest_response_file}" 2>>"${test_log_temp_file}"
+SELECT COALESCE(
+    json_agg(
+        row_to_json(row_value)
+        ORDER BY row_value.version
+    )::text,
+    '[]'
+)
+FROM (
+    SELECT
+        version,
+        memory_limit_mb,
+        time_limit_ms,
+        testcase_count
+    FROM problem_version_manifests
+    WHERE problem_id = :'problem_id'
+    ORDER BY version
+) AS row_value;
+SQL
+then
+    append_log_line "${test_log_temp_file}" "problem snapshot manifest query failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 - "${snapshot_manifest_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    rows = json.load(response_file)
+
+expected = [
+    {"version": 1, "memory_limit_mb": 256, "time_limit_ms": 1000, "testcase_count": 0},
+    {"version": 2, "memory_limit_mb": 256, "time_limit_ms": 1000, "testcase_count": 0},
+]
+
+if rows != expected:
+    raise SystemExit(f"unexpected lifecycle snapshot manifests: {rows!r}")
+PY
+then
+    append_log_line "${test_log_temp_file}" "problem snapshot manifest verification failed"
+    publish_failure_logs
+    exit 1
+fi
 
 send_http_request_and_assert_status \
     "DELETE" \

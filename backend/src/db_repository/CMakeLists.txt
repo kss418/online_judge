@@ -4,6 +4,7 @@ target_sources(lib
         login_repository.cpp
         problem_content_repository.cpp
         problem_core_repository.cpp
+        problem_snapshot_repository.cpp
         problem_statistics_repository.cpp
         submission_repository.cpp
         testcase_repository.cpp

@@ -40,6 +40,9 @@ set_statement_response_file="$(mktemp)"
 get_problem_response_file="$(mktemp)"
 clear_statement_response_file="$(mktemp)"
 updated_problem_response_file="$(mktemp)"
+set_limits_response_file="$(mktemp)"
+limits_problem_response_file="$(mktemp)"
+snapshot_manifest_response_file="$(mktemp)"
 missing_statement_response_file="$(mktemp)"
 missing_limits_response_file="$(mktemp)"
 
@@ -56,6 +59,9 @@ cleanup(){
         "${get_problem_response_file}" \
         "${clear_statement_response_file}" \
         "${updated_problem_response_file}" \
+        "${set_limits_response_file}" \
+        "${limits_problem_response_file}" \
+        "${snapshot_manifest_response_file}" \
         "${missing_statement_response_file}" \
         "${missing_limits_response_file}"
 
@@ -310,6 +316,118 @@ if response.get("statistics") != {"submission_count": 0, "accepted_count": 0}:
 PY
 then
     append_log_line "${test_log_temp_file}" "second statement verification failed"
+    publish_failure_logs
+    exit 1
+fi
+
+send_http_request_and_assert_status \
+    "PUT" \
+    "${base_url}/api/problem/${problem_id}/limits" \
+    "${set_limits_response_file}" \
+    "200" \
+    "set limits" \
+    "${sign_up_token}" \
+    "${limits_request_body}"
+assert_json_message \
+    "${set_limits_response_file}" \
+    "problem limits updated" \
+    "set limits"
+
+send_http_request_and_assert_status \
+    "GET" \
+    "${base_url}/api/problem/${problem_id}" \
+    "${limits_problem_response_file}" \
+    "200" \
+    "get problem after limits update"
+
+if ! python3 - "${limits_problem_response_file}" "${problem_id}" <<'PY'
+import json
+import sys
+
+response_file_path = sys.argv[1]
+expected_problem_id = int(sys.argv[2])
+
+with open(response_file_path, encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+if response.get("problem_id") != expected_problem_id:
+    raise SystemExit("problem_id mismatch after limits update")
+
+if response.get("title") != "Problem Statement Flow":
+    raise SystemExit("title mismatch after limits update")
+
+if response.get("version") != 4:
+    raise SystemExit("version mismatch after limits update")
+
+if response.get("limits") != {"memory_limit_mb": 512, "time_limit_ms": 2000}:
+    raise SystemExit("limits mismatch after limits update")
+
+expected_statement = {
+    "description": "Print the sum of two integers.",
+    "input_format": "A single line contains two integers.",
+    "output_format": "Output the sum on one line.",
+}
+if response.get("statement") != expected_statement:
+    raise SystemExit("statement changed unexpectedly after limits update")
+PY
+then
+    append_log_line "${test_log_temp_file}" "limits verification failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! PGPASSWORD="${DB_PASSWORD}" psql \
+    -X \
+    -qAt \
+    -h "${DB_HOST}" \
+    -p "${DB_PORT}" \
+    -U "${DB_USER}" \
+    -d "${DB_NAME}" \
+    -v problem_id="${problem_id}" \
+    -v ON_ERROR_STOP=1 <<'SQL' >"${snapshot_manifest_response_file}" 2>>"${test_log_temp_file}"
+SELECT COALESCE(
+    json_agg(
+        row_to_json(row_value)
+        ORDER BY row_value.version
+    )::text,
+    '[]'
+)
+FROM (
+    SELECT
+        version,
+        memory_limit_mb,
+        time_limit_ms,
+        testcase_count
+    FROM problem_version_manifests
+    WHERE problem_id = :'problem_id'
+    ORDER BY version
+) AS row_value;
+SQL
+then
+    append_log_line "${test_log_temp_file}" "snapshot manifest query failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 - "${snapshot_manifest_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    rows = json.load(response_file)
+
+expected = [
+    {"version": 1, "memory_limit_mb": 256, "time_limit_ms": 1000, "testcase_count": 0},
+    {"version": 2, "memory_limit_mb": 256, "time_limit_ms": 1000, "testcase_count": 0},
+    {"version": 3, "memory_limit_mb": 256, "time_limit_ms": 1000, "testcase_count": 0},
+    {"version": 4, "memory_limit_mb": 512, "time_limit_ms": 2000, "testcase_count": 0},
+]
+
+if rows != expected:
+    raise SystemExit(f"unexpected snapshot manifests: {rows!r}")
+PY
+then
+    append_log_line "${test_log_temp_file}" "snapshot manifest verification failed"
     publish_failure_logs
     exit 1
 fi

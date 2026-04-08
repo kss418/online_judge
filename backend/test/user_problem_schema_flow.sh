@@ -79,6 +79,7 @@ VALUES
 INSERT INTO submissions(
     user_id,
     problem_id,
+    problem_version,
     language,
     source_code,
     status,
@@ -86,10 +87,10 @@ INSERT INTO submissions(
     updated_at
 )
 VALUES
-    (1, 1, 'cpp17', 'accepted code', 'accepted', '2026-01-01T00:00:01Z', '2026-01-01T00:00:01Z'),
-    (1, 2, 'cpp17', 'wrong code', 'wrong_answer', '2026-01-01T00:00:02Z', '2026-01-01T00:00:02Z'),
-    (1, 2, 'cpp17', 'compile fail', 'compile_error', '2026-01-01T00:00:03Z', '2026-01-01T00:00:03Z'),
-    (2, 1, 'python3', 'queued code', 'queued', '2026-01-01T00:00:04Z', '2026-01-01T00:00:04Z');
+    (1, 1, 1, 'cpp17', 'accepted code', 'accepted', '2026-01-01T00:00:01Z', '2026-01-01T00:00:01Z'),
+    (1, 2, 3, 'cpp17', 'wrong code', 'wrong_answer', '2026-01-01T00:00:02Z', '2026-01-01T00:00:02Z'),
+    (1, 2, 3, 'cpp17', 'compile fail', 'compile_error', '2026-01-01T00:00:03Z', '2026-01-01T00:00:03Z'),
+    (2, 1, 1, 'python3', 'queued code', 'queued', '2026-01-01T00:00:04Z', '2026-01-01T00:00:04Z');
 SQL
 then
     append_log_line "${test_log_temp_file}" "fixture insert failed"

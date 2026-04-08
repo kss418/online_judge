@@ -33,21 +33,13 @@ private:
         testcase_store testcase_store_value
     );
 
-    std::expected<void, judge_error> download_one(
-        std::int64_t problem_id,
-        std::int32_t order,
-        const testcase_store::staging_area& staging_area_value
-    );
-
     std::expected<void, judge_error> download_all(
-        std::int64_t problem_id,
+        const testcase_source_facade::problem_snapshot_manifest& manifest_value,
         const testcase_store::staging_area& staging_area_value
     );
 
     std::expected<void, judge_error> sync_version_directory(
-        std::int64_t problem_id,
-        std::int32_t version,
-        const problem_content_dto::limits& problem_limits_value
+        const testcase_source_facade::problem_snapshot_manifest& manifest_value
     );
 
     testcase_source_facade testcase_source_facade_;

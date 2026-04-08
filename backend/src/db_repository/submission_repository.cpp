@@ -326,8 +326,15 @@ std::expected<submission_dto::created, repository_error> submission_repository::
     }
 
     const auto create_submission_result = transaction.exec(
-        "INSERT INTO submissions(user_id, problem_id, language, source_code) "
-        "VALUES($1, $2, $3, $4) "
+        "INSERT INTO submissions(user_id, problem_id, problem_version, language, source_code) "
+        "SELECT "
+        "    $1, "
+        "    problem_table.problem_id, "
+        "    problem_table.version, "
+        "    $3, "
+        "    $4 "
+        "FROM problems problem_table "
+        "WHERE problem_table.problem_id = $2 "
         "RETURNING submission_id",
         pqxx::params{
             create_request_value.user_id,
@@ -338,7 +345,7 @@ std::expected<submission_dto::created, repository_error> submission_repository::
     );
 
     if(create_submission_result.empty()){
-        return std::unexpected(repository_error::internal);
+        return std::unexpected(repository_error::not_found);
     }
 
     const std::int64_t submission_id = create_submission_result[0][0].as<std::int64_t>();
@@ -364,14 +371,11 @@ std::expected<void, repository_error> submission_repository::enqueue_submission(
     }
 
     const auto enqueue_result = transaction.exec(
-        "INSERT INTO submission_queue(submission_id, priority, problem_version) "
+        "INSERT INTO submission_queue(submission_id, priority) "
         "SELECT "
         "submission_table.submission_id, "
-        "$2, "
-        "problem_table.version "
+        "$2 "
         "FROM submissions submission_table "
-        "JOIN problems problem_table "
-        "ON problem_table.problem_id = submission_table.problem_id "
         "WHERE submission_table.submission_id = $1",
         pqxx::params{submission_id, priority}
     );
@@ -547,7 +551,7 @@ submission_repository::lease_submission(
         "    SELECT "
         "        queue_table.submission_id, "
         "        submission_table.problem_id, "
-        "        queue_table.problem_version, "
+        "        submission_table.problem_version, "
         "        GREATEST(0::bigint, FLOOR(EXTRACT(EPOCH FROM (NOW() - queue_table.available_at)) * 1000))::bigint AS queue_wait_ms, "
         "        submission_table.language, "
         "        submission_table.source_code "
@@ -570,7 +574,6 @@ submission_repository::lease_submission(
         "    WHERE queue_table.submission_id = lease_candidate.submission_id "
         "    RETURNING "
         "        queue_table.submission_id, "
-        "        queue_table.problem_version, "
         "        queue_table.attempt_no, "
         "        queue_table.lease_token, "
         "        queue_table.leased_until::text "
@@ -578,7 +581,7 @@ submission_repository::lease_submission(
         "SELECT "
         "    leased_queue.submission_id, "
         "    lease_candidate.problem_id, "
-        "    leased_queue.problem_version, "
+        "    lease_candidate.problem_version, "
         "    lease_candidate.queue_wait_ms, "
         "    leased_queue.attempt_no, "
         "    leased_queue.lease_token, "

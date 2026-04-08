@@ -31,6 +31,7 @@ Prerequisites:
 | `submission_id` | `bigserial` | no | | pk |
 | `user_id` | `bigint` | no | | `users(user_id)` fk (when auth schema is applied) |
 | `problem_id` | `bigint` | no | | `problems(problem_id)` fk (when problem schema is applied) |
+| `problem_version` | `integer` | no | | pinned problem version for this submission |
 | `language` | `text` | no | |  |
 | `source_code` | `text` | no | |  |
 | `status` | `submission_status` | no | `queued` |  |
@@ -80,7 +81,6 @@ Indexes:
 | `priority` | `smallint` | no | `0` | higher value is leased first |
 | `attempt_no` | `integer` | no | `0` | current lease generation, `>= 0` check |
 | `lease_token` | `text` | yes | | current lease owner token |
-| `problem_version` | `integer` | no | | pinned problem version for this queued submission |
 | `available_at` | `timestamptz` | no | `now()` |  |
 | `leased_until` | `timestamptz` | yes | |  |
 | `created_at` | `timestamptz` | no | `now()` |  |
@@ -94,6 +94,12 @@ Indexes:
 
 - `submissions.user_id -> users.user_id`
 - `submissions.problem_id -> problems.problem_id`
+
+## notes
+
+- Judge workers lease ownership from `submission_queue`, but the pinned evaluation target is always read from `submissions.problem_version`.
+- Basic rejudge re-enqueues the same submission and preserves `submissions.problem_version`, so it re-evaluates the original published problem version.
+- Rejudging against the latest problem version should be implemented as a separate admin workflow rather than mutating the existing submission.
 
 ## shared table
 

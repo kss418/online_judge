@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <expected>
 #include <string>
+#include <vector>
 
 class testcase_source_facade{
 public:
@@ -14,6 +15,13 @@ public:
         std::int32_t order = 0;
         std::string input;
         std::string output;
+    };
+
+    struct problem_snapshot_manifest{
+        std::int64_t problem_id = 0;
+        std::int32_t version = 0;
+        problem_content_dto::limits limits_value;
+        std::vector<testcase_data> testcases;
     };
 
     static std::expected<testcase_source_facade, judge_error> create(
@@ -27,21 +35,9 @@ public:
     testcase_source_facade(const testcase_source_facade&) = delete;
     testcase_source_facade& operator=(const testcase_source_facade&) = delete;
 
-    std::expected<std::int32_t, judge_error> fetch_problem_version(
-        std::int64_t problem_id
-    );
-
-    std::expected<problem_content_dto::limits, judge_error> fetch_problem_limits(
-        std::int64_t problem_id
-    );
-
-    std::expected<std::int32_t, judge_error> fetch_testcase_count(
-        std::int64_t problem_id
-    );
-
-    std::expected<testcase_data, judge_error> fetch_testcase(
+    std::expected<problem_snapshot_manifest, judge_error> fetch_manifest(
         std::int64_t problem_id,
-        std::int32_t order
+        std::int32_t version
     );
 
 private:

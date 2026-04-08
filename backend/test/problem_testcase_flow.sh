@@ -63,6 +63,8 @@ updated_problem_response_file="$(mktemp)"
 deleted_problem_response_file="$(mktemp)"
 cleared_problem_response_file="$(mktemp)"
 final_problem_response_file="$(mktemp)"
+snapshot_manifest_response_file="$(mktemp)"
+snapshot_testcase_response_file="$(mktemp)"
 missing_problem_testcase_response_file="$(mktemp)"
 missing_testcase_update_response_file="$(mktemp)"
 missing_testcase_delete_response_file="$(mktemp)"
@@ -109,6 +111,8 @@ cleanup(){
         "${deleted_problem_response_file}" \
         "${cleared_problem_response_file}" \
         "${final_problem_response_file}" \
+        "${snapshot_manifest_response_file}" \
+        "${snapshot_testcase_response_file}" \
         "${missing_problem_testcase_response_file}" \
         "${missing_testcase_update_response_file}" \
         "${missing_testcase_delete_response_file}" \
@@ -1105,6 +1109,114 @@ if response.get("problem_id") != problem_id:
 if response.get("version") != 9:
     raise SystemExit("version mismatch after invalid testcase zip")
 PY
+
+if ! PGPASSWORD="${DB_PASSWORD}" psql \
+    -X \
+    -qAt \
+    -h "${DB_HOST}" \
+    -p "${DB_PORT}" \
+    -U "${DB_USER}" \
+    -d "${DB_NAME}" \
+    -v problem_id="${problem_id}" \
+    -v ON_ERROR_STOP=1 <<'SQL' >"${snapshot_manifest_response_file}" 2>>"${test_log_temp_file}"
+SELECT COALESCE(
+    json_agg(
+        row_to_json(row_value)
+        ORDER BY row_value.version
+    )::text,
+    '[]'
+)
+FROM (
+    SELECT
+        version,
+        memory_limit_mb,
+        time_limit_ms,
+        testcase_count
+    FROM problem_version_manifests
+    WHERE problem_id = :'problem_id'
+    ORDER BY version
+) AS row_value;
+SQL
+then
+    append_log_line "${test_log_temp_file}" "testcase snapshot manifest query failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! PGPASSWORD="${DB_PASSWORD}" psql \
+    -X \
+    -qAt \
+    -h "${DB_HOST}" \
+    -p "${DB_PORT}" \
+    -U "${DB_USER}" \
+    -d "${DB_NAME}" \
+    -v problem_id="${problem_id}" \
+    -v ON_ERROR_STOP=1 <<'SQL' >"${snapshot_testcase_response_file}" 2>>"${test_log_temp_file}"
+SELECT COALESCE(
+    json_agg(
+        row_to_json(row_value)
+        ORDER BY row_value.version, row_value.testcase_order
+    )::text,
+    '[]'
+)
+FROM (
+    SELECT
+        version,
+        testcase_order,
+        testcase_input,
+        testcase_output
+    FROM problem_version_testcases
+    WHERE
+        problem_id = :'problem_id' AND
+        version IN (8, 9)
+    ORDER BY version, testcase_order
+) AS row_value;
+SQL
+then
+    append_log_line "${test_log_temp_file}" "testcase snapshot testcase query failed"
+    publish_failure_logs
+    exit 1
+fi
+
+if ! python3 - "${snapshot_manifest_response_file}" "${snapshot_testcase_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    manifest_rows = json.load(response_file)
+
+with open(sys.argv[2], encoding="utf-8") as response_file:
+    testcase_rows = json.load(response_file)
+
+expected_manifests = [
+    {"version": 1, "memory_limit_mb": 256, "time_limit_ms": 1000, "testcase_count": 0},
+    {"version": 2, "memory_limit_mb": 256, "time_limit_ms": 1000, "testcase_count": 1},
+    {"version": 3, "memory_limit_mb": 256, "time_limit_ms": 1000, "testcase_count": 2},
+    {"version": 4, "memory_limit_mb": 256, "time_limit_ms": 1000, "testcase_count": 2},
+    {"version": 5, "memory_limit_mb": 256, "time_limit_ms": 1000, "testcase_count": 2},
+    {"version": 6, "memory_limit_mb": 256, "time_limit_ms": 1000, "testcase_count": 1},
+    {"version": 7, "memory_limit_mb": 256, "time_limit_ms": 1000, "testcase_count": 0},
+    {"version": 8, "memory_limit_mb": 256, "time_limit_ms": 1000, "testcase_count": 2},
+    {"version": 9, "memory_limit_mb": 256, "time_limit_ms": 1000, "testcase_count": 1},
+]
+
+expected_testcases = [
+    {"version": 8, "testcase_order": 1, "testcase_input": "4 5\n", "testcase_output": "9\n"},
+    {"version": 8, "testcase_order": 2, "testcase_input": "", "testcase_output": ""},
+    {"version": 9, "testcase_order": 1, "testcase_input": "7 8\n", "testcase_output": "15\n"},
+]
+
+if manifest_rows != expected_manifests:
+    raise SystemExit(f"unexpected testcase snapshot manifests: {manifest_rows!r}")
+
+if testcase_rows != expected_testcases:
+    raise SystemExit(f"unexpected testcase snapshot rows: {testcase_rows!r}")
+PY
+then
+    append_log_line "${test_log_temp_file}" "testcase snapshot verification failed"
+    publish_failure_logs
+    exit 1
+fi
 
 append_log_line "${test_log_temp_file}" "problem testcase flow test passed"
 print_success_log "problem testcase flow test passed: problem_id=${problem_id}, admin_user_id=${sign_up_user_id}"

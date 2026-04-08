@@ -2,6 +2,7 @@
 #include "db_service/db_service_util.hpp"
 #include "db_repository/problem_content_repository.hpp"
 #include "db_repository/problem_core_repository.hpp"
+#include "db_repository/problem_snapshot_repository.hpp"
 
 #include <utility>
 
@@ -44,6 +45,15 @@ std::expected<void, service_error> problem_content_service::set_limits(
             );
             if(!version_exp){
                 return std::unexpected(version_exp.error());
+            }
+
+            const auto publish_snapshot_exp =
+                problem_snapshot_repository::publish_current_snapshot(
+                    transaction,
+                    problem_reference_value
+                );
+            if(!publish_snapshot_exp){
+                return std::unexpected(publish_snapshot_exp.error());
             }
 
             return {};
@@ -91,6 +101,15 @@ std::expected<void, service_error> problem_content_service::set_statement(
             );
             if(!version_exp){
                 return std::unexpected(version_exp.error());
+            }
+
+            const auto publish_snapshot_exp =
+                problem_snapshot_repository::publish_current_snapshot(
+                    transaction,
+                    problem_reference_value
+                );
+            if(!publish_snapshot_exp){
+                return std::unexpected(publish_snapshot_exp.error());
             }
 
             return {};
@@ -182,6 +201,15 @@ std::expected<void, service_error> problem_content_service::set_sample(
                 return std::unexpected(version_exp.error());
             }
 
+            const auto publish_snapshot_exp =
+                problem_snapshot_repository::publish_current_snapshot(
+                    transaction,
+                    problem_reference_value
+                );
+            if(!publish_snapshot_exp){
+                return std::unexpected(publish_snapshot_exp.error());
+            }
+
             return {};
         }
     );
@@ -223,6 +251,15 @@ std::expected<void, service_error> problem_content_service::delete_sample(
             );
             if(!version_exp){
                 return std::unexpected(version_exp.error());
+            }
+
+            const auto publish_snapshot_exp =
+                problem_snapshot_repository::publish_current_snapshot(
+                    transaction,
+                    problem_reference_value
+                );
+            if(!publish_snapshot_exp){
+                return std::unexpected(publish_snapshot_exp.error());
             }
 
             return {};

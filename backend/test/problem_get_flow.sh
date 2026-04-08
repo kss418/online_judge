@@ -182,6 +182,7 @@ if ! PGPASSWORD="${DB_PASSWORD}" psql \
 INSERT INTO submissions(
     user_id,
     problem_id,
+    problem_version,
     language,
     source_code,
     status,
@@ -189,8 +190,8 @@ INSERT INTO submissions(
     updated_at
 )
 VALUES
-    (:'sign_up_user_id', :'full_problem_id', 'cpp17', 'accepted code', 'accepted', '2026-01-01T00:00:01Z', '2026-01-01T00:00:01Z'),
-    (:'sign_up_user_id', :'blank_problem_id', 'cpp17', 'wrong code', 'wrong_answer', '2026-01-01T00:00:02Z', '2026-01-01T00:00:02Z');
+    (:'sign_up_user_id', :'full_problem_id', (SELECT version FROM problems WHERE problem_id = :'full_problem_id'), 'cpp17', 'accepted code', 'accepted', '2026-01-01T00:00:01Z', '2026-01-01T00:00:01Z'),
+    (:'sign_up_user_id', :'blank_problem_id', (SELECT version FROM problems WHERE problem_id = :'blank_problem_id'), 'cpp17', 'wrong code', 'wrong_answer', '2026-01-01T00:00:02Z', '2026-01-01T00:00:02Z');
 
 INSERT INTO user_problem_attempt_summary(
     user_id,

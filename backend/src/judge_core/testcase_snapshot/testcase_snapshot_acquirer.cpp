@@ -2,15 +2,6 @@
 
 #include <utility>
 
-namespace{
-    judge_error make_problem_version_conflict_error(){
-        return judge_error{
-            judge_error_code::conflict,
-            "requested problem version snapshot is unavailable"
-        };
-    }
-}
-
 std::expected<testcase_snapshot_acquirer, judge_error>
 testcase_snapshot_acquirer::create(
     testcase_source_facade testcase_source_facade_value,
@@ -39,46 +30,19 @@ testcase_snapshot_acquirer& testcase_snapshot_acquirer::operator=(
 
 testcase_snapshot_acquirer::~testcase_snapshot_acquirer() = default;
 
-std::expected<void, judge_error> testcase_snapshot_acquirer::download_one(
-    std::int64_t problem_id,
-    std::int32_t order,
-    const testcase_store::staging_area& staging_area_value
-){
-    const auto testcase_exp = testcase_source_facade_.fetch_testcase(
-        problem_id,
-        order
-    );
-    if(!testcase_exp){
-        return std::unexpected(testcase_exp.error());
-    }
-
-    return testcase_store_.write_testcase(
-        staging_area_value,
-        order,
-        testcase_exp->input,
-        testcase_exp->output
-    );
-}
-
 std::expected<void, judge_error> testcase_snapshot_acquirer::download_all(
-    std::int64_t problem_id,
+    const testcase_source_facade::problem_snapshot_manifest& manifest_value,
     const testcase_store::staging_area& staging_area_value
 ){
-    const auto testcase_count_exp = testcase_source_facade_.fetch_testcase_count(
-        problem_id
-    );
-    if(!testcase_count_exp){
-        return std::unexpected(testcase_count_exp.error());
-    }
-
-    for(std::int32_t order = 1; order <= *testcase_count_exp; ++order){
-        const auto download_one_exp = download_one(
-            problem_id,
-            order,
-            staging_area_value
+    for(const auto& testcase_value : manifest_value.testcases){
+        const auto write_testcase_exp = testcase_store_.write_testcase(
+            staging_area_value,
+            testcase_value.order,
+            testcase_value.input,
+            testcase_value.output
         );
-        if(!download_one_exp){
-            return std::unexpected(download_one_exp.error());
+        if(!write_testcase_exp){
+            return std::unexpected(write_testcase_exp.error());
         }
     }
 
@@ -87,13 +51,11 @@ std::expected<void, judge_error> testcase_snapshot_acquirer::download_all(
 
 std::expected<void, judge_error>
 testcase_snapshot_acquirer::sync_version_directory(
-    std::int64_t problem_id,
-    std::int32_t version,
-    const problem_content_dto::limits& problem_limits_value
+    const testcase_source_facade::problem_snapshot_manifest& manifest_value
 ){
     auto staging_area_exp = testcase_store_.create_staging_area(
-        problem_id,
-        version
+        manifest_value.problem_id,
+        manifest_value.version
     );
     if(!staging_area_exp){
         return std::unexpected(staging_area_exp.error());
@@ -102,7 +64,7 @@ testcase_snapshot_acquirer::sync_version_directory(
     auto staging_area_value = std::move(*staging_area_exp);
 
     const auto download_all_exp = download_all(
-        problem_id,
+        manifest_value,
         staging_area_value
     );
     if(!download_all_exp){
@@ -111,7 +73,7 @@ testcase_snapshot_acquirer::sync_version_directory(
 
     const auto write_problem_limits_exp = testcase_store_.write_problem_limits(
         staging_area_value,
-        problem_limits_value
+        manifest_value.limits_value
     );
     if(!write_problem_limits_exp){
         return std::unexpected(write_problem_limits_exp.error());
@@ -119,8 +81,8 @@ testcase_snapshot_acquirer::sync_version_directory(
 
     return testcase_store_.publish_version_directory(
         staging_area_value,
-        problem_id,
-        version
+        manifest_value.problem_id,
+        manifest_value.version
     );
 }
 
@@ -147,26 +109,16 @@ testcase_snapshot_acquirer::acquire_testcase_snapshot(
     }
 
     if(!snapshot_exists_exp.value()){
-        const auto current_problem_version_exp =
-            testcase_source_facade_.fetch_problem_version(problem_id);
-        if(!current_problem_version_exp){
-            return std::unexpected(current_problem_version_exp.error());
-        }
-        if(*current_problem_version_exp != problem_version){
-            return std::unexpected(make_problem_version_conflict_error());
-        }
-
-        const auto problem_limits_exp = testcase_source_facade_.fetch_problem_limits(
-            problem_id
+        const auto manifest_exp = testcase_source_facade_.fetch_manifest(
+            problem_id,
+            problem_version
         );
-        if(!problem_limits_exp){
-            return std::unexpected(problem_limits_exp.error());
+        if(!manifest_exp){
+            return std::unexpected(manifest_exp.error());
         }
 
         const auto sync_version_directory_exp = sync_version_directory(
-            problem_id,
-            problem_version,
-            *problem_limits_exp
+            *manifest_exp
         );
         if(!sync_version_directory_exp){
             return std::unexpected(sync_version_directory_exp.error());

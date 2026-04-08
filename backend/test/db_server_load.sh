@@ -205,6 +205,7 @@ WITH submission_seed AS (
     INSERT INTO submissions(
         user_id,
         problem_id,
+        problem_version,
         language,
         source_code,
         status,
@@ -219,6 +220,7 @@ WITH submission_seed AS (
     SELECT
         submission_seed.user_id,
         submission_seed.problem_id,
+        problems.version,
         submission_seed.language,
         'seed source ' || submission_seed.submission_index,
         submission_seed.status_text::submission_status,
@@ -264,6 +266,8 @@ WITH submission_seed AS (
         submission_seed.created_timestamp,
         submission_seed.created_timestamp
     FROM submission_seed
+    JOIN problems
+    ON problems.problem_id = submission_seed.problem_id
     RETURNING submission_id, status, created_at
 )
 INSERT INTO submission_status_history(
@@ -286,7 +290,6 @@ INSERT INTO submission_queue(
     priority,
     attempt_no,
     lease_token,
-    problem_version,
     available_at,
     leased_until,
     created_at
@@ -296,13 +299,10 @@ SELECT
     0,
     0,
     NULL,
-    problems.version,
     submissions.created_at,
     NULL,
     submissions.created_at
 FROM submissions
-JOIN problems
-ON problems.problem_id = submissions.problem_id
 WHERE submissions.status = 'queued'::submission_status;
 
 UPDATE problem_statistics

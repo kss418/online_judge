@@ -104,6 +104,57 @@ Indexes:
 
 - `problem_testcases_problem_id_testcase_order_idx (problem_id, testcase_order asc)`
 
+### `problem_version_manifests`
+
+| column | type | nullable | default | note |
+|---|---|---|---|---|
+| `problem_id` | `bigint` | no | | pk part, fk -> `problems(problem_id)` on delete cascade |
+| `version` | `integer` | no | | pk part, immutable published problem version |
+| `memory_limit_mb` | `integer` | no | | published memory limit snapshot |
+| `time_limit_ms` | `integer` | no | | published time limit snapshot |
+| `testcase_count` | `integer` | no | `0` | published testcase count snapshot |
+| `published_at` | `timestamptz` | no | `now()` | snapshot materialization timestamp |
+
+Constraints:
+
+- `problem_version_manifests_pkey (problem_id, version)`
+- `problem_version_manifests_problem_id_fkey`
+- `problem_version_manifests_version_check`
+- `problem_version_manifests_memory_limit_check`
+- `problem_version_manifests_time_limit_check`
+- `problem_version_manifests_testcase_count_check`
+
+### `problem_version_testcases`
+
+| column | type | nullable | default | note |
+|---|---|---|---|---|
+| `problem_id` | `bigint` | no | | pk part |
+| `version` | `integer` | no | | pk part |
+| `testcase_order` | `integer` | no | | pk part, published testcase order |
+| `testcase_input` | `text` | no | | published testcase input |
+| `testcase_output` | `text` | no | | published testcase output |
+| `input_char_count` | `integer` | no | `0` | published testcase input char count |
+| `input_line_count` | `integer` | no | `0` | published testcase input line count |
+| `output_char_count` | `integer` | no | `0` | published testcase output char count |
+| `output_line_count` | `integer` | no | `0` | published testcase output line count |
+| `published_at` | `timestamptz` | no | `now()` | snapshot materialization timestamp |
+
+Constraints:
+
+- `problem_version_testcases_pkey (problem_id, version, testcase_order)`
+- `problem_version_testcases_manifest_fkey -> problem_version_manifests(problem_id, version)` on delete cascade
+- `problem_version_testcases_version_check`
+- `problem_version_testcases_testcase_order_check`
+- `problem_version_testcases_input_char_count_check`
+- `problem_version_testcases_input_line_count_check`
+- `problem_version_testcases_output_char_count_check`
+- `problem_version_testcases_output_line_count_check`
+
+Notes:
+
+- Judge snapshot acquisition reads only from `problem_version_manifests` and `problem_version_testcases` by `(problem_id, version)`.
+- Mutable current-state tables such as `problem_limits` and `problem_testcases` are published into these immutable tables whenever a problem version is bumped.
+
 ## cross-schema relation
 
 - `submissions.problem_id -> problems.problem_id`

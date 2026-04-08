@@ -1,8 +1,8 @@
 #include "judge_core/gateway/testcase_source_facade.hpp"
 
-#include "db_service/problem_content_service.hpp"
-#include "db_service/problem_core_service.hpp"
-#include "db_service/testcase_service.hpp"
+#include "db_repository/problem_snapshot_repository.hpp"
+#include "db_service/db_service_util.hpp"
+#include "error/service_error.hpp"
 
 #include <utility>
 
@@ -32,67 +32,46 @@ testcase_source_facade& testcase_source_facade::operator=(
 
 testcase_source_facade::~testcase_source_facade() = default;
 
-std::expected<std::int32_t, judge_error> testcase_source_facade::fetch_problem_version(
-    std::int64_t problem_id
-){
-    const problem_dto::reference problem_reference_value{problem_id};
-    const auto version_exp = problem_core_service::get_version(
-        db_connection_,
-        problem_reference_value
-    );
-    if(!version_exp){
-        return std::unexpected(version_exp.error());
-    }
-
-    return version_exp->version;
-}
-
-std::expected<problem_content_dto::limits, judge_error>
-testcase_source_facade::fetch_problem_limits(
-    std::int64_t problem_id
-){
-    const problem_dto::reference problem_reference_value{problem_id};
-    return problem_content_service::get_limits(
-        db_connection_,
-        problem_reference_value
-    );
-}
-
-std::expected<std::int32_t, judge_error> testcase_source_facade::fetch_testcase_count(
-    std::int64_t problem_id
-){
-    const problem_dto::reference problem_reference_value{problem_id};
-    const auto testcase_count_exp = testcase_service::get_testcase_count(
-        db_connection_,
-        problem_reference_value
-    );
-    if(!testcase_count_exp){
-        return std::unexpected(testcase_count_exp.error());
-    }
-
-    return testcase_count_exp->testcase_count;
-}
-
-std::expected<testcase_source_facade::testcase_data, judge_error>
-testcase_source_facade::fetch_testcase(
+std::expected<testcase_source_facade::problem_snapshot_manifest, judge_error>
+testcase_source_facade::fetch_manifest(
     std::int64_t problem_id,
-    std::int32_t order
+    std::int32_t version
 ){
-    const problem_dto::testcase_ref testcase_reference_value{
-        .problem_id = problem_id,
-        .testcase_order = order
-    };
-    const auto testcase_exp = testcase_service::get_testcase(
+    const auto manifest_exp = db_service_util::with_retry_service_read_transaction(
         db_connection_,
-        testcase_reference_value
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<problem_snapshot_manifest, service_error> {
+            const auto repository_manifest_exp =
+                problem_snapshot_repository::fetch_manifest(
+                    transaction,
+                    problem_id,
+                    version
+                );
+            if(!repository_manifest_exp){
+                return std::unexpected(service_error{repository_manifest_exp.error()});
+            }
+
+            problem_snapshot_manifest manifest_value;
+            manifest_value.problem_id = repository_manifest_exp->problem_id;
+            manifest_value.version = repository_manifest_exp->version;
+            manifest_value.limits_value = repository_manifest_exp->limits_value;
+            manifest_value.testcases.reserve(
+                repository_manifest_exp->testcases.size()
+            );
+            for(auto& testcase_value : repository_manifest_exp->testcases){
+                testcase_data facade_testcase_value;
+                facade_testcase_value.order = testcase_value.order;
+                facade_testcase_value.input = std::move(testcase_value.input);
+                facade_testcase_value.output = std::move(testcase_value.output);
+                manifest_value.testcases.push_back(std::move(facade_testcase_value));
+            }
+
+            return manifest_value;
+        }
     );
-    if(!testcase_exp){
-        return std::unexpected(testcase_exp.error());
+    if(!manifest_exp){
+        return std::unexpected(judge_error{manifest_exp.error()});
     }
 
-    testcase_data testcase_data_value;
-    testcase_data_value.order = testcase_exp->order;
-    testcase_data_value.input = std::move(testcase_exp->input);
-    testcase_data_value.output = std::move(testcase_exp->output);
-    return testcase_data_value;
+    return std::move(*manifest_exp);
 }

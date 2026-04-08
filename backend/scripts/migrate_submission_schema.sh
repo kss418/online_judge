@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS submissions(
     submission_id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(user_id),
     problem_id BIGINT NOT NULL REFERENCES problems(problem_id),
+    problem_version INTEGER NOT NULL,
     language TEXT NOT NULL,
     source_code TEXT NOT NULL,
     status submission_status NOT NULL DEFAULT 'queued',
@@ -125,21 +126,30 @@ CREATE TABLE IF NOT EXISTS submission_queue(
     priority SMALLINT NOT NULL DEFAULT 0,
     attempt_no INTEGER NOT NULL DEFAULT 0,
     lease_token TEXT,
-    problem_version INTEGER NOT NULL,
     available_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     leased_until TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT submission_queue_attempt_no_check CHECK(attempt_no >= 0)
 );
 
+ALTER TABLE submissions
+    ADD COLUMN IF NOT EXISTS problem_version INTEGER;
+
+UPDATE submissions submission_table
+SET problem_version = problem_table.version
+FROM problems problem_table
+WHERE
+    problem_table.problem_id = submission_table.problem_id AND
+    submission_table.problem_version IS NULL;
+
+ALTER TABLE submissions
+    ALTER COLUMN problem_version SET NOT NULL;
+
 ALTER TABLE submission_queue
     ADD COLUMN IF NOT EXISTS attempt_no INTEGER NOT NULL DEFAULT 0;
 
 ALTER TABLE submission_queue
     ADD COLUMN IF NOT EXISTS lease_token TEXT;
-
-ALTER TABLE submission_queue
-    ADD COLUMN IF NOT EXISTS problem_version INTEGER;
 
 DO $do$
 BEGIN
@@ -161,17 +171,8 @@ BEGIN
 END
 $do$;
 
-UPDATE submission_queue queue_table
-SET problem_version = problem_table.version
-FROM submissions submission_table
-JOIN problems problem_table
-ON problem_table.problem_id = submission_table.problem_id
-WHERE
-    submission_table.submission_id = queue_table.submission_id AND
-    queue_table.problem_version IS NULL;
-
 ALTER TABLE submission_queue
-    ALTER COLUMN problem_version SET NOT NULL;
+    DROP COLUMN IF EXISTS problem_version;
 
 DO $do$
 BEGIN
@@ -203,7 +204,7 @@ CREATE INDEX IF NOT EXISTS submission_queue_leased_until_idx
     ON submission_queue(leased_until);
 
 INSERT INTO schema_migrations(version)
-VALUES('submission_schema_v5')
+VALUES('submission_schema_v7')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;
