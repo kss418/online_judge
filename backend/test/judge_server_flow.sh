@@ -59,6 +59,23 @@ int main(){
     std::abort();
 }
 }"
+if [[ -n "${JUDGE_SERVER_FLOW_TEST_OUTPUT_EXCEEDED_SOURCE_CODE:-}" ]]; then
+    output_exceeded_source_code="${JUDGE_SERVER_FLOW_TEST_OUTPUT_EXCEEDED_SOURCE_CODE}"
+else
+    output_exceeded_source_code="$(cat <<'EOF'
+#include <iostream>
+#include <string>
+int main(){
+    const std::string chunk(1024 * 1024, 'x');
+    for(int repeat = 0; repeat < 9; ++repeat){
+        std::cout.write(chunk.data(), static_cast<std::streamsize>(chunk.size()));
+    }
+    std::cout.flush();
+    return 0;
+}
+EOF
+)"
+fi
 time_limit_exceeded_source_code="${JUDGE_SERVER_FLOW_TEST_TIME_LIMIT_EXCEEDED_SOURCE_CODE:-#include <chrono>
 #include <thread>
 int main(){
@@ -103,6 +120,7 @@ java_accepted_submission_detail_response_file="$(mktemp)"
 wrong_answer_submission_detail_response_file="$(mktemp)"
 compile_error_submission_detail_response_file="$(mktemp)"
 runtime_error_submission_detail_response_file="$(mktemp)"
+output_exceeded_submission_detail_response_file="$(mktemp)"
 time_limit_exceeded_submission_detail_response_file="$(mktemp)"
 problem_response_file="$(mktemp)"
 authenticated_problem_response_file="$(mktemp)"
@@ -137,6 +155,7 @@ cleanup(){
         "${wrong_answer_submission_detail_response_file}" \
         "${compile_error_submission_detail_response_file}" \
         "${runtime_error_submission_detail_response_file}" \
+        "${output_exceeded_submission_detail_response_file}" \
         "${time_limit_exceeded_submission_detail_response_file}" \
         "${problem_response_file}" \
         "${authenticated_problem_response_file}" \
@@ -1051,6 +1070,58 @@ validate_submission_source \
     "non_empty"
 print_success_log "runtime_error submission judged successfully"
 
+output_exceeded_submission_request_body="$(
+    make_submission_request_body "cpp" "${output_exceeded_source_code}"
+)"
+output_exceeded_submission_status_code="$(
+    send_http_request \
+        "POST" \
+        "${base_url}/api/submission/${problem_id}" \
+        "${submission_response_file}" \
+        "${sign_up_token}" \
+        "${output_exceeded_submission_request_body}"
+)"
+assert_status_code "${output_exceeded_submission_status_code}" "201" "${submission_response_file}" "output_exceeded submission create"
+
+output_exceeded_submission_id="$(
+    python3 - "${submission_response_file}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response_file:
+    response = json.load(response_file)
+
+submission_id = response.get("submission_id")
+status = response.get("status")
+if not isinstance(submission_id, int) or submission_id <= 0:
+    raise SystemExit("invalid submission_id in output_exceeded submission response")
+if status != "queued":
+    raise SystemExit("expected output_exceeded submission status to be queued")
+
+print(submission_id)
+PY
+)"
+
+append_log_line "${test_log_temp_file}" "output_exceeded submission created: submission_id=${output_exceeded_submission_id}"
+wait_for_submission_final_status \
+    "${output_exceeded_submission_id}" \
+    "output_exceeded" \
+    "${output_exceeded_submission_detail_response_file}"
+validate_submission_detail \
+    "${output_exceeded_submission_detail_response_file}" \
+    "${output_exceeded_submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "cpp" \
+    "output_exceeded" \
+    "0" \
+    "null" \
+    "null" \
+    "non_negative_int" \
+    "non_negative_int"
+validate_submission_status_history "${output_exceeded_submission_id}" "output_exceeded"
+print_success_log "output_exceeded submission judged successfully"
+
 time_limit_exceeded_submission_request_body="$(
     make_submission_request_body "cpp" "${time_limit_exceeded_source_code}"
 )"
@@ -1111,13 +1182,13 @@ problem_status_code="$(
 )"
 assert_status_code "${problem_status_code}" "200" "${problem_response_file}" "problem statistics get"
 
-expected_problem_submission_count="6"
+expected_problem_submission_count="7"
 expected_problem_accepted_count="2"
-expected_summary_counts="6|2|4"
+expected_summary_counts="7|2|5"
 if [[ "${run_java_submission}" == "1" ]]; then
-    expected_problem_submission_count="7"
+    expected_problem_submission_count="8"
     expected_problem_accepted_count="3"
-    expected_summary_counts="7|3|4"
+    expected_summary_counts="8|3|5"
 fi
 
 python3 - "${problem_response_file}" "${problem_id}" "${expected_problem_submission_count}" "${expected_problem_accepted_count}" <<'PY'
@@ -1211,4 +1282,4 @@ fi
 
 print_success_log "user_problem_attempt_summary validation script passed after judge flow"
 append_log_line "${test_log_temp_file}" "judge server flow test passed"
-print_success_log "judge server flow test passed: problem_id=${problem_id}, accepted_submission_id=${accepted_submission_id}, python_accepted_submission_id=${python_accepted_submission_id}, wrong_answer_submission_id=${wrong_answer_submission_id}, compile_error_submission_id=${compile_error_submission_id}, runtime_error_submission_id=${runtime_error_submission_id}, time_limit_exceeded_submission_id=${time_limit_exceeded_submission_id}"
+print_success_log "judge server flow test passed: problem_id=${problem_id}, accepted_submission_id=${accepted_submission_id}, python_accepted_submission_id=${python_accepted_submission_id}, wrong_answer_submission_id=${wrong_answer_submission_id}, compile_error_submission_id=${compile_error_submission_id}, runtime_error_submission_id=${runtime_error_submission_id}, output_exceeded_submission_id=${output_exceeded_submission_id}, time_limit_exceeded_submission_id=${time_limit_exceeded_submission_id}"
