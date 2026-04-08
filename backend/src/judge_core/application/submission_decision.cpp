@@ -1,4 +1,4 @@
-#include "judge_core/application/finalize_submission_mapper.hpp"
+#include "judge_core/application/submission_decision.hpp"
 
 #include "judge_core/policy/judge_policy.hpp"
 
@@ -109,13 +109,11 @@ namespace{
     }
 }
 
-submission_dto::finalize_request finalize_submission_mapper::make_finalize_request(
-    std::int64_t submission_id,
-    judge_result result,
-    const execution_report::batch& execution_report_value
-){
+submission_dto::finalize_request submission_decision::to_finalize_request(
+    std::int64_t submission_id
+) const{
     const submission_status submission_status_value =
-        judge_policy::to_submission_status(result);
+        judge_policy::to_submission_status(judge_result_value);
 
     return submission_dto::make_finalize_request(
         submission_id,
@@ -125,22 +123,5 @@ submission_dto::finalize_request finalize_submission_mapper::make_finalize_reque
         select_judge_output(submission_status_value, execution_report_value),
         calculate_elapsed_ms(submission_status_value, execution_report_value),
         calculate_max_rss_kb(submission_status_value, execution_report_value)
-    );
-}
-
-submission_dto::finalize_request
-finalize_submission_mapper::make_infra_failure_finalize_request(
-    std::int64_t submission_id,
-    std::string reason
-){
-    return submission_dto::make_finalize_request(
-        submission_id,
-        submission_status::infra_failure,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        std::move(reason)
     );
 }

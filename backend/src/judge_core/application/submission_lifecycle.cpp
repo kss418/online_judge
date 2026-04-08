@@ -1,7 +1,25 @@
-#include "judge_core/application/finalize_submission_mapper.hpp"
 #include "judge_core/application/submission_lifecycle.hpp"
 
+#include <optional>
 #include <utility>
+
+namespace{
+    submission_dto::finalize_request make_infra_failure_finalize_request(
+        std::int64_t submission_id,
+        std::string reason
+    ){
+        return submission_dto::make_finalize_request(
+            submission_id,
+            submission_status::infra_failure,
+            std::nullopt,
+            std::nullopt,
+            std::nullopt,
+            std::nullopt,
+            std::nullopt,
+            std::move(reason)
+        );
+    }
+}
 
 std::expected<submission_lifecycle, judge_error> submission_lifecycle::create(
     judge_submission_facade judge_submission_facade_value
@@ -54,10 +72,8 @@ std::expected<void, judge_error> submission_lifecycle::finalize_judged_submissio
     const submission_decision& submission_decision_value
 ){
     const submission_dto::finalize_request finalize_request_value =
-        finalize_submission_mapper::make_finalize_request(
-            queued_submission_value.submission_id,
-            submission_decision_value.judge_result_value,
-            submission_decision_value.execution_report_value
+        submission_decision_value.to_finalize_request(
+            queued_submission_value.submission_id
         );
 
     return judge_submission_facade_.finalize_submission(finalize_request_value);
@@ -78,7 +94,7 @@ std::expected<void, judge_error> submission_lifecycle::handle_infra_failure(
     }
 
     const submission_dto::finalize_request finalize_request_value =
-        finalize_submission_mapper::make_infra_failure_finalize_request(
+        make_infra_failure_finalize_request(
             queued_submission_value.submission_id,
             to_string(error_value)
         );

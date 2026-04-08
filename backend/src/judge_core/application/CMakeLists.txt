@@ -1,8 +1,8 @@
 target_sources(lib
     PRIVATE
         expectation_reader.cpp
-        finalize_submission_mapper.cpp
         judge_evaluator.cpp
+        submission_decision.cpp
         submission_builder.cpp
         submission_lifecycle.cpp
         workspace_manager.cpp
