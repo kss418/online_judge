@@ -71,19 +71,9 @@ submission_builder& submission_builder::operator=(
 submission_builder::~submission_builder() = default;
 
 std::expected<build_bundle, judge_error> submission_builder::build(
-    const submission_dto::queued_submission& queued_submission_value,
-    workspace_session& workspace_session_value
+    const std::filesystem::path& source_file_path
 ){
-    const auto source_file_path_exp =
-        workspace_session_value.write_source_file(
-            queued_submission_value.language,
-            queued_submission_value.source_code
-        );
-    if(!source_file_path_exp){
-        return std::unexpected(source_file_path_exp.error());
-    }
-
-    auto build_source_exp = build_dispatcher_.build_source(*source_file_path_exp);
+    auto build_source_exp = build_dispatcher_.build_source(source_file_path);
     if(!build_source_exp){
         return std::unexpected(judge_error{build_source_exp.error()});
     }

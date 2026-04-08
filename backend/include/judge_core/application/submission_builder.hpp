@@ -3,10 +3,10 @@
 #include "dto/submission_dto.hpp"
 #include "error/judge_error.hpp"
 #include "judge_core/application/build_bundle.hpp"
-#include "judge_core/application/workspace_session.hpp"
 #include "judge_core/infrastructure/build_dispatcher.hpp"
 
 #include <expected>
+#include <filesystem>
 
 class submission_builder{
 public:
@@ -22,8 +22,7 @@ public:
     submission_builder& operator=(const submission_builder&) = delete;
 
     std::expected<build_bundle, judge_error> build(
-        const submission_dto::queued_submission& queued_submission_value,
-        workspace_session& workspace_session_value
+        const std::filesystem::path& source_file_path
     );
 
 private:

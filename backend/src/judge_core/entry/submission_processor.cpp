@@ -82,9 +82,17 @@ std::expected<void, judge_error> submission_processor::process(
 
     auto submission_decision_exp = [&]()
         -> std::expected<submission_decision, judge_error> {
+        const auto source_file_path_exp =
+            workspace_session_value.write_source_file(
+                queued_submission_value.language,
+                queued_submission_value.source_code
+            );
+        if(!source_file_path_exp){
+            return std::unexpected(source_file_path_exp.error());
+        }
+
         auto build_result_exp = submission_builder_.build(
-            queued_submission_value,
-            workspace_session_value
+            *source_file_path_exp
         );
         if(!build_result_exp){
             return std::unexpected(build_result_exp.error());
