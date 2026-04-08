@@ -1,8 +1,8 @@
 #pragma once
 
 #include "error/judge_error.hpp"
-#include "judge_core/application/submission_decision.hpp"
 #include "judge_core/infrastructure/program_build_types.hpp"
+#include "judge_core/types/execution_report.hpp"
 #include "judge_core/types/runnable_program.hpp"
 
 #include <cstdint>
@@ -96,29 +96,7 @@ public:
         return std::get<build_infra_failure>(storage_);
     }
 
-    submission_decision to_compile_error_decision() const{
-        execution_report::batch execution_report_value;
-        execution_report_value.compile_failed = true;
-        execution_report_value.executions.push_back(
-            compile_execution()
-        );
-
-        submission_decision submission_decision_value;
-        submission_decision_value.judge_result_value = judge_result::compile_error;
-        submission_decision_value.execution_report_value =
-            std::move(execution_report_value);
-        return submission_decision_value;
-    }
-
 private:
-    const execution_report::testcase_execution& compile_execution() const{
-        if(is_user_compile_error()){
-            return user_compile_error_value().compile_execution;
-        }
-
-        return compile_resource_exceeded_value().compile_execution;
-    }
-
     explicit build_bundle(build_success success_value) :
         storage_(std::move(success_value)){}
 
