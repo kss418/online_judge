@@ -1,6 +1,43 @@
 #include "judge_core/entry/submission_processor.hpp"
 
+#include "common/logger.hpp"
+
 #include <utility>
+
+namespace{
+    void log_workspace_cleanup_failure(
+        const submission_dto::leased_submission& leased_submission_value,
+        const std::filesystem::path& workspace_path,
+        bool finalize_succeeded,
+        const judge_error& error_value
+    ){
+        logger::cerr()
+            .log("workspace_cleanup_failed")
+            .field("submission_id", leased_submission_value.submission_id)
+            .field("attempt_no", leased_submission_value.attempt_no)
+            .field("workspace_path", workspace_path.string())
+            .field("finalize_succeeded", finalize_succeeded)
+            .field("error_code", to_string(error_value.code))
+            .field("error_message", error_value.message);
+    }
+
+    void close_workspace_best_effort(
+        const submission_dto::leased_submission& leased_submission_value,
+        workspace_session& workspace_session_value,
+        const std::filesystem::path& workspace_path,
+        bool finalize_succeeded
+    ){
+        const auto close_workspace_exp = workspace_session_value.close();
+        if(!close_workspace_exp){
+            log_workspace_cleanup_failure(
+                leased_submission_value,
+                workspace_path,
+                finalize_succeeded,
+                close_workspace_exp.error()
+            );
+        }
+    }
+}
 
 std::expected<submission_processor, judge_error> submission_processor::create(
     dependencies dependencies_value
@@ -83,6 +120,7 @@ std::expected<void, judge_error> submission_processor::process(
     }
 
     auto workspace_session_value = std::move(*workspace_session_exp);
+    const auto workspace_path = workspace_session_value.path();
 
     auto submission_decision_exp = [&]()
         -> std::expected<submission_decision, judge_error> {
@@ -131,14 +169,16 @@ std::expected<void, judge_error> submission_processor::process(
         );
     }();
 
-    const auto close_workspace_exp = workspace_session_value.close();
-    if(!close_workspace_exp){
-        return complete_with_failure(close_workspace_exp.error());
-    }
-
     const auto finalize_submission_exp = submission_lifecycle_.complete(
         leased_submission_value,
         std::move(submission_decision_exp)
+    );
+    const bool finalize_succeeded = finalize_submission_exp.has_value();
+    close_workspace_best_effort(
+        leased_submission_value,
+        workspace_session_value,
+        workspace_path,
+        finalize_succeeded
     );
     if(!finalize_submission_exp){
         return std::unexpected(finalize_submission_exp.error());
