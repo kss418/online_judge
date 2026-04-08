@@ -1,4 +1,4 @@
-#include "judge_core/application/compile_failure_report_mapper.hpp"
+#include "judge_core/application/compile_failure_translator.hpp"
 
 namespace{
     execution_report::testcase_execution make_testcase_execution(
@@ -13,9 +13,9 @@ namespace{
     }
 }
 
-execution_report::batch compile_failure_report_mapper::make_execution_report(
+execution_report::batch compile_failure_translator::translate(
     const compile_failure& compile_failure_value
-){
+) const{
     execution_report::batch execution_report_value;
     execution_report_value.compile_failed = true;
     execution_report_value.executions.push_back(

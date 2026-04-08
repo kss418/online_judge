@@ -9,11 +9,12 @@
 #include <expected>
 #include <vector>
 
-namespace judge_policy{
+class judge_policy{
+public:
     std::expected<judge_result, judge_error> check_result(
         const judge_expectation& judge_expectation_value,
         const execution_report::batch& execution_report_value
-    );
+    ) const;
 
-    submission_status to_submission_status(judge_result result);
-}
+    static submission_status to_submission_status(judge_result result);
+};

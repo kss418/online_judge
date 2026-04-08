@@ -1,19 +1,19 @@
-#include "judge_core/policy/judge_expectation_loader.hpp"
+#include "judge_core/application/expectation_reader.hpp"
 
 #include "common/file_util.hpp"
 #include "judge_core/testcase_snapshot/testcase_util.hpp"
 
 #include <utility>
 
-std::expected<judge_expectation, io_error> judge_expectation_loader::load(
+std::expected<judge_expectation, judge_error> expectation_reader::read(
     const testcase_snapshot& testcase_snapshot_value
-){
+) const{
     const auto validated_testcase_count_exp = testcase_util::validate_testcase_output(
         testcase_snapshot_value.directory_path,
         testcase_snapshot_value.testcase_count
     );
     if(!validated_testcase_count_exp){
-        return std::unexpected(validated_testcase_count_exp.error());
+        return std::unexpected(judge_error{validated_testcase_count_exp.error()});
     }
 
     judge_expectation judge_expectation_value;
@@ -27,12 +27,12 @@ std::expected<judge_expectation, io_error> judge_expectation_loader::load(
             order
         );
         if(!answer_path_exp){
-            return std::unexpected(answer_path_exp.error());
+            return std::unexpected(judge_error{answer_path_exp.error()});
         }
 
         const auto answer_text_exp = file_util::read_file_content(*answer_path_exp);
         if(!answer_text_exp){
-            return std::unexpected(answer_text_exp.error());
+            return std::unexpected(judge_error{answer_text_exp.error()});
         }
 
         judge_expectation_value.expected_output_texts.push_back(

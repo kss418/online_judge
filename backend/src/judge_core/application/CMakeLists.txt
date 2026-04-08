@@ -1,6 +1,7 @@
 target_sources(lib
     PRIVATE
-        compile_failure_report_mapper.cpp
+        compile_failure_translator.cpp
+        expectation_reader.cpp
         finalize_submission_mapper.cpp
         judge_evaluator.cpp
         submission_builder.cpp

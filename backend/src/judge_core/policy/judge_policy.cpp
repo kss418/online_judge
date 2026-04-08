@@ -72,7 +72,7 @@ namespace{
 std::expected<judge_result, judge_error> judge_policy::check_result(
     const judge_expectation& judge_expectation_value,
     const execution_report::batch& execution_report_value
-){
+) const{
     std::vector<std::string> output_texts;
     output_texts.reserve(execution_report_value.executions.size());
 

@@ -1,8 +1,10 @@
 #pragma once
 
 #include "error/judge_error.hpp"
-#include "judge_core/application/build_bundle.hpp"
+#include "judge_core/application/compile_failure_translator.hpp"
+#include "judge_core/application/expectation_reader.hpp"
 #include "judge_core/application/submission_decision.hpp"
+#include "judge_core/policy/judge_policy.hpp"
 #include "judge_core/testcase_snapshot/testcase_snapshot.hpp"
 #include "judge_core/types/compile_failure.hpp"
 #include "judge_core/types/execution_report.hpp"
@@ -29,5 +31,13 @@ public:
     );
 
 private:
-    judge_evaluator() = default;
+    judge_evaluator(
+        expectation_reader expectation_reader_value,
+        compile_failure_translator compile_failure_translator_value,
+        judge_policy judge_policy_value
+    );
+
+    expectation_reader expectation_reader_;
+    compile_failure_translator compile_failure_translator_;
+    judge_policy judge_policy_;
 };
