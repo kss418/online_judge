@@ -103,9 +103,7 @@ std::expected<void, judge_error> submission_processor::process(
 
         auto build_result_value = std::move(*build_result_exp);
         if(build_result_value.compile_failed()){
-            return judge_evaluator_.evaluate_compile_failure(
-                build_result_value.failure()
-            );
+            return build_result_value.to_compile_error_decision();
         }
 
         auto testcase_snapshot_exp = testcase_snapshot_facade_.acquire(
