@@ -1,8 +1,10 @@
 #pragma once
 
 #include "dto/problem_content_dto.hpp"
+#include "error/io_error.hpp"
 
 #include <cstdint>
+#include <expected>
 #include <filesystem>
 #include <utility>
 
@@ -23,6 +25,24 @@ struct testcase_snapshot{
         testcase_snapshot_value.limits_value = std::move(limits_value);
         return testcase_snapshot_value;
     }
+
+    [[nodiscard]] std::int32_t case_count() const noexcept;
+
+    [[nodiscard]] std::expected<void, io_error> validate() const;
+
+    [[nodiscard]] std::expected<std::filesystem::path, io_error> input_path(
+        std::int32_t order
+    ) const;
+
+    [[nodiscard]] std::expected<std::filesystem::path, io_error> output_path(
+        std::int32_t order
+    ) const;
+
+    [[nodiscard]] std::expected<std::filesystem::path, io_error> memory_limit_file_path(
+    ) const;
+
+    [[nodiscard]] std::expected<std::filesystem::path, io_error> time_limit_file_path(
+    ) const;
 
     std::int64_t problem_id = 0;
     std::int32_t version = 0;

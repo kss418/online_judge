@@ -1,7 +1,6 @@
 #include "judge_core/infrastructure/testcase_runner.hpp"
 
 #include "judge_core/infrastructure/nsjail_util.hpp"
-#include "judge_core/testcase_snapshot/testcase_util.hpp"
 
 #include <utility>
 #include <vector>
@@ -74,16 +73,13 @@ std::expected<execution_report::batch, judge_error> testcase_runner::run_all_tes
     const program_launch::execution_plan& execution_plan_value,
     const testcase_snapshot& testcase_snapshot_value
 ){
-    const auto validated_testcase_count_exp = testcase_util::validate_testcase_output(
-        testcase_snapshot_value.directory_path,
-        testcase_snapshot_value.testcase_count
-    );
-    if(!validated_testcase_count_exp){
-        return std::unexpected(validated_testcase_count_exp.error());
+    const auto validate_exp = testcase_snapshot_value.validate();
+    if(!validate_exp){
+        return std::unexpected(validate_exp.error());
     }
 
     execution_report::batch execution_report_value;
-    execution_report_value.testcase_count = *validated_testcase_count_exp;
+    execution_report_value.testcase_count = testcase_snapshot_value.case_count();
     execution_report_value.limits.time_limit_ms =
         testcase_snapshot_value.limits_value.time_ms;
     execution_report_value.limits.memory_limit_kb =
@@ -93,7 +89,7 @@ std::expected<execution_report::batch, judge_error> testcase_runner::run_all_tes
         nsjail_util::output_file_limit_bytes();
 
     execution_report_value.executions.reserve(
-        static_cast<std::size_t>(*validated_testcase_count_exp)
+        static_cast<std::size_t>(testcase_snapshot_value.case_count())
     );
 
     const auto base_run_options_value = make_base_run_options(
@@ -101,11 +97,8 @@ std::expected<execution_report::batch, judge_error> testcase_runner::run_all_tes
         testcase_snapshot_value.limits_value
     );
 
-    for(std::int32_t order = 1; order <= *validated_testcase_count_exp; ++order){
-        const auto input_path_exp = testcase_util::make_testcase_input_path(
-            testcase_snapshot_value.directory_path,
-            order
-        );
+    for(std::int32_t order = 1; order <= testcase_snapshot_value.case_count(); ++order){
+        const auto input_path_exp = testcase_snapshot_value.input_path(order);
         if(!input_path_exp){
             return std::unexpected(input_path_exp.error());
         }
