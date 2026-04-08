@@ -7,6 +7,9 @@
 
 #include <cstdint>
 #include <expected>
+#include <optional>
+
+class build_bundle;
 
 class submission_lifecycle{
 public:
@@ -28,6 +31,9 @@ public:
         const submission_dto::leased_submission& leased_submission_value,
         std::expected<submission_decision, judge_error> submission_outcome_value
     );
+    std::expected<std::optional<submission_decision>, judge_error> apply_build_policy(
+        const build_bundle& build_result_value
+    ) const;
 
 private:
     enum class retry_directive{

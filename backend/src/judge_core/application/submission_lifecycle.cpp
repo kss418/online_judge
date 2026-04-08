@@ -1,9 +1,25 @@
 #include "judge_core/application/submission_lifecycle.hpp"
 
+#include "judge_core/application/build_bundle.hpp"
+
 #include <optional>
 #include <utility>
 
 namespace{
+    submission_decision make_compile_error_decision(
+        const execution_report::testcase_execution& compile_execution_value
+    ){
+        execution_report::batch execution_report_value;
+        execution_report_value.compile_failed = true;
+        execution_report_value.executions.push_back(compile_execution_value);
+
+        submission_decision submission_decision_value;
+        submission_decision_value.judge_result_value = judge_result::compile_error;
+        submission_decision_value.execution_report_value =
+            std::move(execution_report_value);
+        return submission_decision_value;
+    }
+
     submission_dto::finalize_request make_infra_failure_finalize_request(
         const submission_dto::leased_submission& leased_submission_value,
         std::string reason
@@ -65,6 +81,33 @@ std::expected<void, judge_error> submission_lifecycle::complete(
         leased_submission_value,
         submission_outcome_value.error()
     );
+}
+
+std::expected<std::optional<submission_decision>, judge_error>
+submission_lifecycle::apply_build_policy(
+    const build_bundle& build_result_value
+) const{
+    if(build_result_value.success()){
+        return std::optional<submission_decision>{std::nullopt};
+    }
+
+    if(build_result_value.is_user_compile_error()){
+        return std::optional<submission_decision>{
+            make_compile_error_decision(
+                build_result_value.user_compile_error_value().compile_execution
+            )
+        };
+    }
+
+    if(build_result_value.is_compile_resource_exceeded()){
+        return std::optional<submission_decision>{
+            make_compile_error_decision(
+                build_result_value.compile_resource_exceeded_value().compile_execution
+            )
+        };
+    }
+
+    return std::unexpected(build_result_value.infra_failure().error);
 }
 
 std::expected<void, judge_error> submission_lifecycle::finalize_judged_submission(
