@@ -2,6 +2,64 @@
 
 #include <utility>
 
+enum class build_outcome_for_submission{
+    build_success,
+    user_compile_error,
+    compile_resource_exceeded,
+    build_infra_failure
+};
+
+static build_outcome_for_submission classify_build_outcome_for_submission(
+    const build_bundle& build_result_value
+){
+    if(build_result_value.success()){
+        return build_outcome_for_submission::build_success;
+    }
+
+    if(build_result_value.is_user_compile_error()){
+        return build_outcome_for_submission::user_compile_error;
+    }
+
+    if(build_result_value.is_compile_resource_exceeded()){
+        return build_outcome_for_submission::compile_resource_exceeded;
+    }
+
+    return build_outcome_for_submission::build_infra_failure;
+}
+
+struct build_outcome_policy{
+    static submission_decision make_user_compile_error_decision(
+        const build_bundle::user_compile_error& user_compile_error_value
+    ){
+        return make_compile_error_decision(
+            user_compile_error_value.compile_execution
+        );
+    }
+
+    static submission_decision make_compile_resource_exceeded_decision(
+        const build_bundle::compile_resource_exceeded& compile_resource_exceeded_value
+    ){
+        return make_compile_error_decision(
+            compile_resource_exceeded_value.compile_execution
+        );
+    }
+
+private:
+    static submission_decision make_compile_error_decision(
+        const execution_report::testcase_execution& compile_execution_value
+    ){
+        execution_report::batch execution_report_value;
+        execution_report_value.compile_failed = true;
+        execution_report_value.executions.push_back(compile_execution_value);
+
+        submission_decision submission_decision_value;
+        submission_decision_value.judge_result_value = judge_result::compile_error;
+        submission_decision_value.execution_report_value =
+            std::move(execution_report_value);
+        return submission_decision_value;
+    }
+};
+
 std::expected<submission_processor, judge_error> submission_processor::create(
     dependencies dependencies_value
 ){
@@ -98,11 +156,19 @@ std::expected<void, judge_error> submission_processor::process(
         auto build_result_value = submission_builder_.build(
             *source_file_path_exp
         );
-        if(build_result_value.infra_failed()){
+        switch(classify_build_outcome_for_submission(build_result_value)){
+        case build_outcome_for_submission::build_success:
+            break;
+        case build_outcome_for_submission::user_compile_error:
+            return build_outcome_policy::make_user_compile_error_decision(
+                build_result_value.user_compile_error_value()
+            );
+        case build_outcome_for_submission::compile_resource_exceeded:
+            return build_outcome_policy::make_compile_resource_exceeded_decision(
+                build_result_value.compile_resource_exceeded_value()
+            );
+        case build_outcome_for_submission::build_infra_failure:
             return std::unexpected(build_result_value.infra_failure().error);
-        }
-        if(build_result_value.compile_failed()){
-            return build_result_value.to_compile_error_decision();
         }
 
         auto testcase_snapshot_exp = testcase_snapshot_facade_.acquire(
