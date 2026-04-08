@@ -25,6 +25,11 @@
 - Use `sandbox_permissions: "require_escalated"` for those commands.
 - Always submit the command for user approval first (with a short justification question), then run only after approval.
 
+## Build Command Policy
+- For backend builds, use `backend/scripts/build_backend.sh` by default instead of invoking `cmake --build` directly.
+- Only bypass the build script when the user explicitly asks for a direct `cmake` command or when debugging the build script itself.
+- If a test or workflow requires a rebuilt backend binary, prefer running the build script first.
+
 ## C++ Brace Style
 - Use `){` with no space between `)` and `{` (for function definitions, conditionals, loops, and lambdas).
 - Use `const{` with no space between `const` and `{` in function definitions.
