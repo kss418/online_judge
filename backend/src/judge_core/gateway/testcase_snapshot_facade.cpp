@@ -37,26 +37,26 @@ std::expected<testcase_snapshot_facade, judge_error> testcase_snapshot_facade::c
         return std::unexpected(testcase_store_exp.error());
     }
 
-    auto testcase_snapshot_materializer_exp =
-        testcase_snapshot_materializer::create(
+    auto testcase_snapshot_acquirer_exp =
+        testcase_snapshot_acquirer::create(
         std::move(*testcase_source_facade_exp),
         std::move(*testcase_store_exp)
     );
-    if(!testcase_snapshot_materializer_exp){
-        return std::unexpected(testcase_snapshot_materializer_exp.error());
+    if(!testcase_snapshot_acquirer_exp){
+        return std::unexpected(testcase_snapshot_acquirer_exp.error());
     }
 
     return testcase_snapshot_facade(
-        std::move(*testcase_snapshot_materializer_exp),
+        std::move(*testcase_snapshot_acquirer_exp),
         std::move(problem_lock_registry)
     );
 }
 
 testcase_snapshot_facade::testcase_snapshot_facade(
-    testcase_snapshot_materializer testcase_snapshot_materializer_value,
+    testcase_snapshot_acquirer testcase_snapshot_acquirer_value,
     std::shared_ptr<problem_lock_registry> problem_lock_registry
 ) :
-    testcase_snapshot_materializer_(std::move(testcase_snapshot_materializer_value)),
+    testcase_snapshot_acquirer_(std::move(testcase_snapshot_acquirer_value)),
     problem_lock_registry_(std::move(problem_lock_registry)){}
 
 testcase_snapshot_facade::testcase_snapshot_facade(
@@ -78,7 +78,7 @@ std::expected<testcase_snapshot, judge_error> testcase_snapshot_facade::acquire(
     }
 
     [[maybe_unused]] auto problem_lock = std::move(*problem_lock_exp);
-    return testcase_snapshot_materializer_.ensure_testcase_snapshot(
+    return testcase_snapshot_acquirer_.acquire_testcase_snapshot(
         problem_id
     );
 }

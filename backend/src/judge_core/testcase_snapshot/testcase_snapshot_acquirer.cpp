@@ -1,36 +1,36 @@
-#include "judge_core/testcase_snapshot/testcase_snapshot_materializer.hpp"
+#include "judge_core/testcase_snapshot/testcase_snapshot_acquirer.hpp"
 
 #include <utility>
 
-std::expected<testcase_snapshot_materializer, judge_error>
-testcase_snapshot_materializer::create(
+std::expected<testcase_snapshot_acquirer, judge_error>
+testcase_snapshot_acquirer::create(
     testcase_source_facade testcase_source_facade_value,
     testcase_store testcase_store_value
 ){
-    return testcase_snapshot_materializer(
+    return testcase_snapshot_acquirer(
         std::move(testcase_source_facade_value),
         std::move(testcase_store_value)
     );
 }
 
-testcase_snapshot_materializer::testcase_snapshot_materializer(
+testcase_snapshot_acquirer::testcase_snapshot_acquirer(
     testcase_source_facade testcase_source_facade_value,
     testcase_store testcase_store_value
 ) :
     testcase_source_facade_(std::move(testcase_source_facade_value)),
     testcase_store_(std::move(testcase_store_value)){}
 
-testcase_snapshot_materializer::testcase_snapshot_materializer(
-    testcase_snapshot_materializer&& other
+testcase_snapshot_acquirer::testcase_snapshot_acquirer(
+    testcase_snapshot_acquirer&& other
 ) noexcept = default;
 
-testcase_snapshot_materializer& testcase_snapshot_materializer::operator=(
-    testcase_snapshot_materializer&& other
+testcase_snapshot_acquirer& testcase_snapshot_acquirer::operator=(
+    testcase_snapshot_acquirer&& other
 ) noexcept = default;
 
-testcase_snapshot_materializer::~testcase_snapshot_materializer() = default;
+testcase_snapshot_acquirer::~testcase_snapshot_acquirer() = default;
 
-std::expected<void, judge_error> testcase_snapshot_materializer::download_one(
+std::expected<void, judge_error> testcase_snapshot_acquirer::download_one(
     std::int64_t problem_id,
     std::int32_t order,
     const testcase_store::staging_area& staging_area_value
@@ -51,7 +51,7 @@ std::expected<void, judge_error> testcase_snapshot_materializer::download_one(
     );
 }
 
-std::expected<void, judge_error> testcase_snapshot_materializer::download_all(
+std::expected<void, judge_error> testcase_snapshot_acquirer::download_all(
     std::int64_t problem_id,
     const testcase_store::staging_area& staging_area_value
 ){
@@ -77,7 +77,7 @@ std::expected<void, judge_error> testcase_snapshot_materializer::download_all(
 }
 
 std::expected<void, judge_error>
-testcase_snapshot_materializer::sync_version_directory(
+testcase_snapshot_acquirer::sync_version_directory(
     std::int64_t problem_id,
     std::int32_t version,
     const problem_content_dto::limits& problem_limits_value
@@ -116,7 +116,7 @@ testcase_snapshot_materializer::sync_version_directory(
 }
 
 std::expected<testcase_snapshot, judge_error>
-testcase_snapshot_materializer::ensure_testcase_snapshot(std::int64_t problem_id){
+testcase_snapshot_acquirer::acquire_testcase_snapshot(std::int64_t problem_id){
     const auto version_exp = testcase_source_facade_.fetch_problem_version(
         problem_id
     );

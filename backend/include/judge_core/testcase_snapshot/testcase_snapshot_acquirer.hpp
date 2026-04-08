@@ -8,26 +8,26 @@
 #include <cstdint>
 #include <expected>
 
-class testcase_snapshot_materializer{
+class testcase_snapshot_acquirer{
 public:
-    static std::expected<testcase_snapshot_materializer, judge_error> create(
+    static std::expected<testcase_snapshot_acquirer, judge_error> create(
         testcase_source_facade testcase_source_facade_value,
         testcase_store testcase_store_value
     );
 
-    testcase_snapshot_materializer(testcase_snapshot_materializer&& other) noexcept;
-    testcase_snapshot_materializer& operator=(testcase_snapshot_materializer&& other) noexcept;
-    ~testcase_snapshot_materializer();
+    testcase_snapshot_acquirer(testcase_snapshot_acquirer&& other) noexcept;
+    testcase_snapshot_acquirer& operator=(testcase_snapshot_acquirer&& other) noexcept;
+    ~testcase_snapshot_acquirer();
 
-    testcase_snapshot_materializer(const testcase_snapshot_materializer&) = delete;
-    testcase_snapshot_materializer& operator=(const testcase_snapshot_materializer&) = delete;
+    testcase_snapshot_acquirer(const testcase_snapshot_acquirer&) = delete;
+    testcase_snapshot_acquirer& operator=(const testcase_snapshot_acquirer&) = delete;
 
-    std::expected<testcase_snapshot, judge_error> ensure_testcase_snapshot(
+    std::expected<testcase_snapshot, judge_error> acquire_testcase_snapshot(
         std::int64_t problem_id
     );
 
 private:
-    testcase_snapshot_materializer(
+    testcase_snapshot_acquirer(
         testcase_source_facade testcase_source_facade_value,
         testcase_store testcase_store_value
     );
