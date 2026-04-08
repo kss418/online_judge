@@ -422,7 +422,7 @@ List submissions using optional filters. This endpoint is public, and authentica
 | `user_id` | `int64` | no | must be positive |
 | `problem_id` | `int64` | no | must be positive |
 | `language` | `string` | no | one of the supported submission languages such as `cpp` or `python` |
-| `status` | `string` | no | one of `queued`, `judging`, `accepted`, `wrong_answer`, `time_limit_exceeded`, `memory_limit_exceeded`, `runtime_error`, `compile_error`, `output_exceeded` |
+| `status` | `string` | no | one of `queued`, `judging`, `accepted`, `wrong_answer`, `time_limit_exceeded`, `memory_limit_exceeded`, `runtime_error`, `compile_error`, `output_exceeded`, `infra_failure` |
 | `limit` | `int32` | no | page size; must be positive; defaults to 50 |
 | `before_submission_id` | `int64` | no | keyset cursor; return submissions with `submission_id` strictly less than this value |
 

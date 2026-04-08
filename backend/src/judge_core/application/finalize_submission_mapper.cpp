@@ -127,3 +127,20 @@ submission_dto::finalize_request finalize_submission_mapper::make_finalize_reque
         calculate_max_rss_kb(submission_status_value, execution_report_value)
     );
 }
+
+submission_dto::finalize_request
+finalize_submission_mapper::make_infra_failure_finalize_request(
+    std::int64_t submission_id,
+    std::string reason
+){
+    return submission_dto::make_finalize_request(
+        submission_id,
+        submission_status::infra_failure,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::move(reason)
+    );
+}

@@ -61,7 +61,8 @@ BEGIN
             'memory_limit_exceeded',
             'runtime_error',
             'compile_error',
-            'output_exceeded'
+            'output_exceeded',
+            'infra_failure'
         );
     END IF;
 END

@@ -28,6 +28,8 @@ namespace{
                 return "compile_error_submission_count";
             case submission_status::output_exceeded:
                 return "output_exceeded_submission_count";
+            case submission_status::infra_failure:
+                return "infra_failure_submission_count";
         }
 
         return std::unexpected(repository_error::invalid_input);
@@ -56,6 +58,7 @@ user_statistics_repository::get_submission_statistics(
         "runtime_error_submission_count, "
         "compile_error_submission_count, "
         "output_exceeded_submission_count, "
+        "infra_failure_submission_count, "
         "last_submission_at::text, "
         "last_accepted_at::text, "
         "updated_at::text "

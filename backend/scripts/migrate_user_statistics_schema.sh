@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS user_submission_statistics(
     runtime_error_submission_count BIGINT NOT NULL DEFAULT 0,
     compile_error_submission_count BIGINT NOT NULL DEFAULT 0,
     output_exceeded_submission_count BIGINT NOT NULL DEFAULT 0,
+    infra_failure_submission_count BIGINT NOT NULL DEFAULT 0,
     last_submission_at TIMESTAMPTZ,
     last_accepted_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -90,7 +91,8 @@ CREATE TABLE IF NOT EXISTS user_submission_statistics(
         memory_limit_exceeded_submission_count >= 0 AND
         runtime_error_submission_count >= 0 AND
         compile_error_submission_count >= 0 AND
-        output_exceeded_submission_count >= 0
+        output_exceeded_submission_count >= 0 AND
+        infra_failure_submission_count >= 0
     ),
     CONSTRAINT user_submission_statistics_total_check CHECK(
         submission_count =
@@ -102,7 +104,8 @@ CREATE TABLE IF NOT EXISTS user_submission_statistics(
             memory_limit_exceeded_submission_count +
             runtime_error_submission_count +
             compile_error_submission_count +
-            output_exceeded_submission_count
+            output_exceeded_submission_count +
+            infra_failure_submission_count
     )
 );
 
@@ -138,6 +141,7 @@ INSERT INTO user_submission_statistics(
     runtime_error_submission_count,
     compile_error_submission_count,
     output_exceeded_submission_count,
+    infra_failure_submission_count,
     last_submission_at,
     last_accepted_at,
     updated_at
@@ -172,6 +176,9 @@ SELECT
     COUNT(submission_table.submission_id) FILTER(
         WHERE submission_table.status = 'output_exceeded'::submission_status
     )::BIGINT AS output_exceeded_submission_count,
+    COUNT(submission_table.submission_id) FILTER(
+        WHERE submission_table.status = 'infra_failure'::submission_status
+    )::BIGINT AS infra_failure_submission_count,
     MAX(submission_table.created_at) AS last_submission_at,
     MAX(submission_table.created_at) FILTER(
         WHERE submission_table.status = 'accepted'::submission_status
@@ -193,6 +200,7 @@ SET
     runtime_error_submission_count = EXCLUDED.runtime_error_submission_count,
     compile_error_submission_count = EXCLUDED.compile_error_submission_count,
     output_exceeded_submission_count = EXCLUDED.output_exceeded_submission_count,
+    infra_failure_submission_count = EXCLUDED.infra_failure_submission_count,
     last_submission_at = EXCLUDED.last_submission_at,
     last_accepted_at = EXCLUDED.last_accepted_at,
     updated_at = EXCLUDED.updated_at;

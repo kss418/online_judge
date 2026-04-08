@@ -33,6 +33,8 @@ problem-list style lookups and is intended to be updated incrementally as submis
 - `compile_error`
 - `output_exceeded`
 
+`infra_failure` is intentionally excluded because it represents judge infrastructure failure, not a judged user failure.
+
 ## view
 
 ### `user_wrong_problem_list`

@@ -20,6 +20,8 @@ std::string to_string(submission_status status){
             return "compile_error";
         case submission_status::output_exceeded:
             return "output_exceeded";
+        case submission_status::infra_failure:
+            return "infra_failure";
     }
 
     return "queued";
@@ -52,6 +54,9 @@ std::optional<submission_status> parse_submission_status(std::string_view status
     }
     if(status == "output_exceeded"){
         return submission_status::output_exceeded;
+    }
+    if(status == "infra_failure"){
+        return submission_status::infra_failure;
     }
 
     return std::nullopt;

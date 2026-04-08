@@ -12,4 +12,8 @@ namespace finalize_submission_mapper{
         judge_result result,
         const execution_report::batch& execution_report_value
     );
+    submission_dto::finalize_request make_infra_failure_finalize_request(
+        std::int64_t submission_id,
+        std::string reason
+    );
 }

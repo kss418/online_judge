@@ -139,6 +139,7 @@ Get submission statistics for a single user by id.
 | `runtime_error_submission_count` | `int64` | runtime error submissions |
 | `compile_error_submission_count` | `int64` | compile error submissions |
 | `output_exceeded_submission_count` | `int64` | output exceeded submissions |
+| `infra_failure_submission_count` | `int64` | infrastructure failure submissions |
 | `last_submission_at` | `string \| null` | timestamp of the most recent submission |
 | `last_accepted_at` | `string \| null` | timestamp of the most recent accepted submission |
 | `updated_at` | `string` | statistics row updated timestamp |
@@ -480,6 +481,7 @@ Get submission statistics for the currently authenticated user. This endpoint re
 | `runtime_error_submission_count` | `int64` | runtime error submissions |
 | `compile_error_submission_count` | `int64` | compile error submissions |
 | `output_exceeded_submission_count` | `int64` | output exceeded submissions |
+| `infra_failure_submission_count` | `int64` | infrastructure failure submissions |
 | `last_submission_at` | `string \| null` | timestamp of the most recent submission |
 | `last_accepted_at` | `string \| null` | timestamp of the most recent accepted submission |
 | `updated_at` | `string` | statistics row updated timestamp |
@@ -499,6 +501,7 @@ Example:
   "runtime_error_submission_count": 2,
   "compile_error_submission_count": 1,
   "output_exceeded_submission_count": 0,
+  "infra_failure_submission_count": 0,
   "last_submission_at": "2026-03-28 17:10:11.000000+09",
   "last_accepted_at": "2026-03-28 16:42:08.000000+09",
   "updated_at": "2026-03-28 17:10:11.000000+09"

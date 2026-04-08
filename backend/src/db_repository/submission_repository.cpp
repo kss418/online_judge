@@ -15,6 +15,7 @@ namespace{
     ){
         return filter_value.limit_opt.value_or(submission_dto::DEFAULT_LIST_LIMIT);
     }
+
 }
 
 std::expected<submission_repository::locked_submission_context, repository_error>

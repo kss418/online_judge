@@ -359,6 +359,7 @@ SET
     runtime_error_submission_count = aggregated.runtime_error_submission_count,
     compile_error_submission_count = aggregated.compile_error_submission_count,
     output_exceeded_submission_count = aggregated.output_exceeded_submission_count,
+    infra_failure_submission_count = aggregated.infra_failure_submission_count,
     last_submission_at = aggregated.last_submission_at,
     last_accepted_at = aggregated.last_accepted_at,
     updated_at = NOW()
@@ -393,6 +394,9 @@ FROM (
         COUNT(*) FILTER(
             WHERE submissions.status = 'output_exceeded'::submission_status
         )::BIGINT AS output_exceeded_submission_count,
+        COUNT(*) FILTER(
+            WHERE submissions.status = 'infra_failure'::submission_status
+        )::BIGINT AS infra_failure_submission_count,
         MAX(submissions.created_at) AS last_submission_at,
         MAX(submissions.created_at) FILTER(
             WHERE submissions.status = 'accepted'::submission_status

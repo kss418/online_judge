@@ -357,6 +357,7 @@ expected_zero_fields = [
     "runtime_error_submission_count",
     "compile_error_submission_count",
     "output_exceeded_submission_count",
+    "infra_failure_submission_count",
 ]
 for field in expected_zero_fields:
     if statistics.get(field) != 0:
@@ -496,6 +497,7 @@ expected_zero_fields = [
     "runtime_error_submission_count",
     "compile_error_submission_count",
     "output_exceeded_submission_count",
+    "infra_failure_submission_count",
 ]
 
 if statistics.get("user_id") != expected_user_id:

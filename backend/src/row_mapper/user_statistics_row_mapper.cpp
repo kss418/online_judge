@@ -25,10 +25,12 @@ user_statistics_row_mapper::map_submission_statistics_row(
         row_util::get_required<std::int64_t>(user_submission_statistics_row, 9);
     statistics_value.output_exceeded_submission_count =
         row_util::get_required<std::int64_t>(user_submission_statistics_row, 10);
+    statistics_value.infra_failure_submission_count =
+        row_util::get_required<std::int64_t>(user_submission_statistics_row, 11);
     statistics_value.last_submission_at_opt =
-        row_util::get_optional<std::string>(user_submission_statistics_row, 11);
-    statistics_value.last_accepted_at_opt =
         row_util::get_optional<std::string>(user_submission_statistics_row, 12);
-    statistics_value.updated_at = row_util::get_required<std::string>(user_submission_statistics_row, 13);
+    statistics_value.last_accepted_at_opt =
+        row_util::get_optional<std::string>(user_submission_statistics_row, 13);
+    statistics_value.updated_at = row_util::get_required<std::string>(user_submission_statistics_row, 14);
     return statistics_value;
 }

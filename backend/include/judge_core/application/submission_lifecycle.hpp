@@ -24,19 +24,34 @@ public:
     std::expected<void, judge_error> mark_judging(
         const submission_dto::queued_submission& queued_submission_value
     );
-    std::expected<void, judge_error> finalize(
+    std::expected<void, judge_error> complete(
         const submission_dto::queued_submission& queued_submission_value,
-        const submission_decision& submission_decision_value
-    );
-    std::expected<void, judge_error> requeue(
-        const submission_dto::queued_submission& queued_submission_value,
-        const judge_error& error_value
+        std::expected<submission_decision, judge_error> submission_outcome_value
     );
 
 private:
+    enum class retry_directive{
+        requeue_immediately,
+        finalize_as_infra_failure
+    };
+
     explicit submission_lifecycle(
         judge_submission_facade judge_submission_facade_value
     );
+
+    std::expected<void, judge_error> finalize_judged_submission(
+        const submission_dto::queued_submission& queued_submission_value,
+        const submission_decision& submission_decision_value
+    );
+    std::expected<void, judge_error> handle_infra_failure(
+        const submission_dto::queued_submission& queued_submission_value,
+        const judge_error& error_value
+    );
+    std::expected<void, judge_error> requeue_submission(
+        const submission_dto::queued_submission& queued_submission_value,
+        const judge_error& error_value
+    );
+    retry_directive decide_retry_directive(const judge_error& error_value) const;
 
     judge_submission_facade judge_submission_facade_;
 };

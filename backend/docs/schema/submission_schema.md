@@ -20,6 +20,7 @@ Prerequisites:
 - `runtime_error`
 - `compile_error`
 - `output_exceeded`
+- `infra_failure`
 
 ## table
 

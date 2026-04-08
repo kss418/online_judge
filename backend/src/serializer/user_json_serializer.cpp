@@ -173,6 +173,8 @@ boost::json::object user_json_serializer::make_submission_statistics_object(
         statistics_value.compile_error_submission_count;
     response_object["output_exceeded_submission_count"] =
         statistics_value.output_exceeded_submission_count;
+    response_object["infra_failure_submission_count"] =
+        statistics_value.infra_failure_submission_count;
     if(statistics_value.last_submission_at_opt){
         response_object["last_submission_at"] = *statistics_value.last_submission_at_opt;
     }

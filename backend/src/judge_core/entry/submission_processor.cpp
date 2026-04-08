@@ -57,10 +57,13 @@ submission_processor::~submission_processor() = default;
 std::expected<void, judge_error> submission_processor::process(
     const submission_dto::queued_submission& queued_submission_value
 ){
-    const auto requeue_submission = [&](const judge_error& error_value){
-        return submission_lifecycle_.requeue(
+    const auto complete_with_failure =
+        [&](judge_error error_value) -> std::expected<void, judge_error> {
+        return submission_lifecycle_.complete(
             queued_submission_value,
-            error_value
+            std::expected<submission_decision, judge_error>{
+                std::unexpected(std::move(error_value))
+            }
         );
     };
 
@@ -68,14 +71,14 @@ std::expected<void, judge_error> submission_processor::process(
         queued_submission_value
     );
     if(!mark_judging_exp){
-        return requeue_submission(mark_judging_exp.error());
+        return std::unexpected(mark_judging_exp.error());
     }
 
     auto workspace_session_exp = workspace_manager_.create(
         queued_submission_value.submission_id
     );
     if(!workspace_session_exp){
-        return requeue_submission(workspace_session_exp.error());
+        return complete_with_failure(workspace_session_exp.error());
     }
 
     auto workspace_session_value = std::move(*workspace_session_exp);
@@ -128,19 +131,15 @@ std::expected<void, judge_error> submission_processor::process(
 
     const auto close_workspace_exp = workspace_session_value.close();
     if(!close_workspace_exp){
-        return requeue_submission(close_workspace_exp.error());
+        return complete_with_failure(close_workspace_exp.error());
     }
 
-    if(!submission_decision_exp){
-        return requeue_submission(submission_decision_exp.error());
-    }
-
-    const auto finalize_submission_exp = submission_lifecycle_.finalize(
+    const auto finalize_submission_exp = submission_lifecycle_.complete(
         queued_submission_value,
-        *submission_decision_exp
+        std::move(submission_decision_exp)
     );
     if(!finalize_submission_exp){
-        return requeue_submission(finalize_submission_exp.error());
+        return std::unexpected(finalize_submission_exp.error());
     }
 
     return {};

@@ -14,7 +14,8 @@ enum class submission_status{
     memory_limit_exceeded,
     runtime_error,
     compile_error,
-    output_exceeded
+    output_exceeded,
+    infra_failure
 };
 
 inline constexpr std::string_view SUBMISSION_QUEUE_CHANNEL = "submission_queue";
