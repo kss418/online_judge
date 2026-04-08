@@ -22,10 +22,10 @@ public:
     submission_lifecycle& operator=(const submission_lifecycle&) = delete;
 
     std::expected<void, judge_error> mark_judging(
-        const submission_dto::queued_submission& queued_submission_value
+        const submission_dto::leased_submission& leased_submission_value
     );
     std::expected<void, judge_error> complete(
-        const submission_dto::queued_submission& queued_submission_value,
+        const submission_dto::leased_submission& leased_submission_value,
         std::expected<submission_decision, judge_error> submission_outcome_value
     );
 
@@ -40,15 +40,15 @@ private:
     );
 
     std::expected<void, judge_error> finalize_judged_submission(
-        const submission_dto::queued_submission& queued_submission_value,
+        const submission_dto::leased_submission& leased_submission_value,
         const submission_decision& submission_decision_value
     );
     std::expected<void, judge_error> handle_infra_failure(
-        const submission_dto::queued_submission& queued_submission_value,
+        const submission_dto::leased_submission& leased_submission_value,
         const judge_error& error_value
     );
     std::expected<void, judge_error> requeue_submission(
-        const submission_dto::queued_submission& queued_submission_value,
+        const submission_dto::leased_submission& leased_submission_value,
         const judge_error& error_value
     );
     retry_directive decide_retry_directive(const judge_error& error_value) const;

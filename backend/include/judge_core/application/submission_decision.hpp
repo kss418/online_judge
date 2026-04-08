@@ -9,6 +9,6 @@ struct submission_decision{
     execution_report::batch execution_report_value;
 
     submission_dto::finalize_request to_finalize_request(
-        std::int64_t submission_id
+        const submission_dto::leased_submission& leased_submission_value
     ) const;
 };

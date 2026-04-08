@@ -70,7 +70,8 @@ testcase_snapshot_facade& testcase_snapshot_facade::operator=(
 testcase_snapshot_facade::~testcase_snapshot_facade() = default;
 
 std::expected<testcase_snapshot, judge_error> testcase_snapshot_facade::acquire(
-    std::int64_t problem_id
+    std::int64_t problem_id,
+    std::int32_t problem_version
 ){
     auto problem_lock_exp = problem_lock_registry_->lock(problem_id);
     if(!problem_lock_exp){
@@ -79,6 +80,7 @@ std::expected<testcase_snapshot, judge_error> testcase_snapshot_facade::acquire(
 
     [[maybe_unused]] auto problem_lock = std::move(*problem_lock_exp);
     return testcase_snapshot_acquirer_.acquire_testcase_snapshot(
-        problem_id
+        problem_id,
+        problem_version
     );
 }

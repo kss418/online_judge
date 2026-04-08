@@ -5,11 +5,11 @@
 
 namespace{
     submission_dto::finalize_request make_infra_failure_finalize_request(
-        std::int64_t submission_id,
+        const submission_dto::leased_submission& leased_submission_value,
         std::string reason
     ){
         return submission_dto::make_finalize_request(
-            submission_id,
+            leased_submission_value,
             submission_status::infra_failure,
             std::nullopt,
             std::nullopt,
@@ -43,44 +43,44 @@ submission_lifecycle& submission_lifecycle::operator=(
 submission_lifecycle::~submission_lifecycle() = default;
 
 std::expected<void, judge_error> submission_lifecycle::mark_judging(
-    const submission_dto::queued_submission& queued_submission_value
+    const submission_dto::leased_submission& leased_submission_value
 ){
     return judge_submission_facade_.mark_judging(
-        queued_submission_value.submission_id
+        leased_submission_value
     );
 }
 
 std::expected<void, judge_error> submission_lifecycle::complete(
-    const submission_dto::queued_submission& queued_submission_value,
+    const submission_dto::leased_submission& leased_submission_value,
     std::expected<submission_decision, judge_error> submission_outcome_value
 ){
     if(submission_outcome_value){
         return finalize_judged_submission(
-            queued_submission_value,
+            leased_submission_value,
             *submission_outcome_value
         );
     }
 
     return handle_infra_failure(
-        queued_submission_value,
+        leased_submission_value,
         submission_outcome_value.error()
     );
 }
 
 std::expected<void, judge_error> submission_lifecycle::finalize_judged_submission(
-    const submission_dto::queued_submission& queued_submission_value,
+    const submission_dto::leased_submission& leased_submission_value,
     const submission_decision& submission_decision_value
 ){
     const submission_dto::finalize_request finalize_request_value =
         submission_decision_value.to_finalize_request(
-            queued_submission_value.submission_id
+            leased_submission_value
         );
 
     return judge_submission_facade_.finalize_submission(finalize_request_value);
 }
 
 std::expected<void, judge_error> submission_lifecycle::handle_infra_failure(
-    const submission_dto::queued_submission& queued_submission_value,
+    const submission_dto::leased_submission& leased_submission_value,
     const judge_error& error_value
 ){
     if(
@@ -88,25 +88,25 @@ std::expected<void, judge_error> submission_lifecycle::handle_infra_failure(
         retry_directive::requeue_immediately
     ){
         return requeue_submission(
-            queued_submission_value,
+            leased_submission_value,
             error_value
         );
     }
 
     const submission_dto::finalize_request finalize_request_value =
         make_infra_failure_finalize_request(
-            queued_submission_value.submission_id,
+            leased_submission_value,
             to_string(error_value)
         );
     return judge_submission_facade_.finalize_submission(finalize_request_value);
 }
 
 std::expected<void, judge_error> submission_lifecycle::requeue_submission(
-    const submission_dto::queued_submission& queued_submission_value,
+    const submission_dto::leased_submission& leased_submission_value,
     const judge_error& error_value
 ){
     return judge_submission_facade_.requeue_submission_immediately(
-        queued_submission_value.submission_id,
+        leased_submission_value,
         to_string(error_value)
     );
 }

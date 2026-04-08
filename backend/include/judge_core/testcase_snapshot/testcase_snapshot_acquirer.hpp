@@ -23,7 +23,8 @@ public:
     testcase_snapshot_acquirer& operator=(const testcase_snapshot_acquirer&) = delete;
 
     std::expected<testcase_snapshot, judge_error> acquire_testcase_snapshot(
-        std::int64_t problem_id
+        std::int64_t problem_id,
+        std::int32_t problem_version
     );
 
 private:

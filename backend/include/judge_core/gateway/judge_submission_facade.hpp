@@ -22,14 +22,16 @@ public:
     judge_submission_facade(const judge_submission_facade&) = delete;
     judge_submission_facade& operator=(const judge_submission_facade&) = delete;
 
-    std::expected<void, judge_error> mark_judging(std::int64_t submission_id);
+    std::expected<void, judge_error> mark_judging(
+        const submission_dto::leased_submission& leased_submission_value
+    );
 
     std::expected<void, judge_error> finalize_submission(
         const submission_dto::finalize_request& finalize_request_value
     );
 
     std::expected<void, judge_error> requeue_submission_immediately(
-        std::int64_t submission_id,
+        const submission_dto::leased_submission& leased_submission_value,
         std::optional<std::string> reason_opt = std::nullopt
     );
 

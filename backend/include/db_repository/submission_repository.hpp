@@ -89,13 +89,13 @@ namespace submission_repository{
         std::int64_t submission_id
     );
 
-    std::expected<std::optional<submission_dto::queued_submission>, repository_error> lease_submission(
+    std::expected<std::optional<submission_dto::leased_submission>, repository_error> lease_submission(
         pqxx::transaction_base& transaction,
         const submission_dto::lease_request& lease_request_value
     );
     std::expected<void, repository_error> release_submission_lease(
         pqxx::transaction_base& transaction,
-        std::int64_t submission_id
+        const submission_dto::leased_submission& leased_submission_value
     );
 
     std::expected<submission_dto::finalize_result, repository_error> finalize_submission(

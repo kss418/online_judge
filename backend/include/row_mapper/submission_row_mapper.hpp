@@ -35,7 +35,7 @@ namespace submission_row_mapper{
     std::vector<submission_dto::summary> map_summary_result(
         const pqxx::result& submission_summary_result
     );
-    submission_dto::queued_submission map_queued_submission_row(
+    submission_dto::leased_submission map_leased_submission_row(
         const pqxx::row& submission_queue_row
     );
 }

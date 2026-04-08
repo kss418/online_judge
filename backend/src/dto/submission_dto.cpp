@@ -21,11 +21,17 @@ bool submission_dto::is_valid(const lease_request& lease_request_value){
 }
 
 bool submission_dto::is_valid(const status_update& status_update_value){
-    return status_update_value.submission_id > 0;
+    return
+        status_update_value.submission_id > 0 &&
+        status_update_value.attempt_no > 0 &&
+        !status_update_value.lease_token.empty();
 }
 
 bool submission_dto::is_valid(const finalize_request& finalize_request_value){
-    return finalize_request_value.submission_id > 0;
+    return
+        finalize_request_value.submission_id > 0 &&
+        finalize_request_value.attempt_no > 0 &&
+        !finalize_request_value.lease_token.empty();
 }
 
 submission_dto::created submission_dto::make_created(
@@ -45,19 +51,21 @@ std::optional<submission_status> submission_dto::make_submission_status(
 }
 
 submission_dto::status_update submission_dto::make_status_update(
-    std::int64_t submission_id,
+    const leased_submission& leased_submission_value,
     submission_status to_status,
     std::optional<std::string> reason_opt
 ){
     status_update status_update_value;
-    status_update_value.submission_id = submission_id;
+    status_update_value.submission_id = leased_submission_value.submission_id;
+    status_update_value.attempt_no = leased_submission_value.attempt_no;
+    status_update_value.lease_token = leased_submission_value.lease_token;
     status_update_value.to_status = to_status;
     status_update_value.reason_opt = std::move(reason_opt);
     return status_update_value;
 }
 
 submission_dto::finalize_request submission_dto::make_finalize_request(
-    std::int64_t submission_id,
+    const leased_submission& leased_submission_value,
     submission_status to_status,
     std::optional<std::int16_t> score_opt,
     std::optional<std::string> compile_output_opt,
@@ -67,7 +75,9 @@ submission_dto::finalize_request submission_dto::make_finalize_request(
     std::optional<std::string> reason_opt
 ){
     finalize_request finalize_request_value;
-    finalize_request_value.submission_id = submission_id;
+    finalize_request_value.submission_id = leased_submission_value.submission_id;
+    finalize_request_value.attempt_no = leased_submission_value.attempt_no;
+    finalize_request_value.lease_token = leased_submission_value.lease_token;
     finalize_request_value.to_status = to_status;
     finalize_request_value.score_opt = std::move(score_opt);
     finalize_request_value.compile_output_opt = std::move(compile_output_opt);

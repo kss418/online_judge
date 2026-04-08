@@ -31,11 +31,11 @@ judge_submission_facade& judge_submission_facade::operator=(
 judge_submission_facade::~judge_submission_facade() = default;
 
 std::expected<void, judge_error> judge_submission_facade::mark_judging(
-    std::int64_t submission_id
+    const submission_dto::leased_submission& leased_submission_value
 ){
     const auto mark_judging_exp = submission_service::mark_judging(
         db_connection_,
-        submission_id
+        leased_submission_value
     );
     if(!mark_judging_exp){
         return std::unexpected(judge_error{mark_judging_exp.error()});
@@ -59,13 +59,13 @@ std::expected<void, judge_error> judge_submission_facade::finalize_submission(
 }
 
 std::expected<void, judge_error> judge_submission_facade::requeue_submission_immediately(
-    std::int64_t submission_id,
+    const submission_dto::leased_submission& leased_submission_value,
     std::optional<std::string> reason_opt
 ){
     const auto requeue_submission_exp =
         submission_service::requeue_submission_immediately(
             db_connection_,
-            submission_id,
+            leased_submission_value,
             std::move(reason_opt)
         );
     if(!requeue_submission_exp){

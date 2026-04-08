@@ -55,12 +55,12 @@ submission_processor& submission_processor::operator=(
 submission_processor::~submission_processor() = default;
 
 std::expected<void, judge_error> submission_processor::process(
-    const submission_dto::queued_submission& queued_submission_value
+    const submission_dto::leased_submission& leased_submission_value
 ){
     const auto complete_with_failure =
         [&](judge_error error_value) -> std::expected<void, judge_error> {
         return submission_lifecycle_.complete(
-            queued_submission_value,
+            leased_submission_value,
             std::expected<submission_decision, judge_error>{
                 std::unexpected(std::move(error_value))
             }
@@ -68,14 +68,15 @@ std::expected<void, judge_error> submission_processor::process(
     };
 
     const auto mark_judging_exp = submission_lifecycle_.mark_judging(
-        queued_submission_value
+        leased_submission_value
     );
     if(!mark_judging_exp){
         return std::unexpected(mark_judging_exp.error());
     }
 
     auto workspace_session_exp = workspace_manager_.create(
-        queued_submission_value.submission_id
+        leased_submission_value.submission_id,
+        leased_submission_value.attempt_no
     );
     if(!workspace_session_exp){
         return complete_with_failure(workspace_session_exp.error());
@@ -87,8 +88,8 @@ std::expected<void, judge_error> submission_processor::process(
         -> std::expected<submission_decision, judge_error> {
         const auto source_file_path_exp =
             workspace_session_value.write_source_file(
-                queued_submission_value.language,
-                queued_submission_value.source_code
+                leased_submission_value.language,
+                leased_submission_value.source_code
             );
         if(!source_file_path_exp){
             return std::unexpected(source_file_path_exp.error());
@@ -107,7 +108,8 @@ std::expected<void, judge_error> submission_processor::process(
         }
 
         auto testcase_snapshot_exp = testcase_snapshot_facade_.acquire(
-            queued_submission_value.problem_id
+            leased_submission_value.problem_id,
+            leased_submission_value.problem_version
         );
         if(!testcase_snapshot_exp){
             return std::unexpected(testcase_snapshot_exp.error());
@@ -133,7 +135,7 @@ std::expected<void, judge_error> submission_processor::process(
     }
 
     const auto finalize_submission_exp = submission_lifecycle_.complete(
-        queued_submission_value,
+        leased_submission_value,
         std::move(submission_decision_exp)
     );
     if(!finalize_submission_exp){

@@ -209,10 +209,15 @@ std::expected<submission_dto::created, service_error> submission_service::create
     );
 }
 
-std::expected<void, service_error> submission_service::update_submission_status(
+std::expected<void, service_error> submission_service::mark_judging(
     db_connection& connection,
-    const submission_dto::status_update& status_update_value
+    const submission_dto::leased_submission& leased_submission_value
 ){
+    const submission_dto::status_update status_update_value =
+        submission_dto::make_status_update(
+            leased_submission_value,
+            submission_status::judging
+        );
     return db_service_util::with_retry_service_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, service_error> {
@@ -222,30 +227,6 @@ std::expected<void, service_error> submission_service::update_submission_status(
             );
         }
     );
-}
-
-std::expected<void, service_error> submission_service::mark_queued(
-    db_connection& connection,
-    std::int64_t submission_id
-){
-    const submission_dto::status_update status_update_value =
-        submission_dto::make_status_update(
-            submission_id,
-            submission_status::queued
-        );
-    return update_submission_status(connection, status_update_value);
-}
-
-std::expected<void, service_error> submission_service::mark_judging(
-    db_connection& connection,
-    std::int64_t submission_id
-){
-    const submission_dto::status_update status_update_value =
-        submission_dto::make_status_update(
-            submission_id,
-            submission_status::judging
-        );
-    return update_submission_status(connection, status_update_value);
 }
 
 std::expected<void, service_error> submission_service::rejudge(
@@ -295,7 +276,7 @@ std::expected<void, service_error> submission_service::rejudge_problem(
     );
 }
 
-std::expected<std::optional<submission_dto::queued_submission>, service_error>
+std::expected<std::optional<submission_dto::leased_submission>, service_error>
 submission_service::lease_submission(
     db_connection& connection,
     const submission_dto::lease_request& lease_request_value
@@ -303,7 +284,7 @@ submission_service::lease_submission(
     return db_service_util::with_retry_service_write_transaction(
         connection,
         [&](pqxx::work& transaction)
-            -> std::expected<std::optional<submission_dto::queued_submission>, service_error> {
+            -> std::expected<std::optional<submission_dto::leased_submission>, service_error> {
             auto lease_submission_exp = submission_repository::lease_submission(
                 transaction,
                 lease_request_value
@@ -319,7 +300,7 @@ submission_service::lease_submission(
 
 std::expected<void, service_error> submission_service::requeue_submission_immediately(
     db_connection& connection,
-    std::int64_t submission_id,
+    const submission_dto::leased_submission& leased_submission_value,
     std::optional<std::string> reason_opt
 ){
     const std::optional<std::string> queued_reason_opt = std::move(reason_opt);
@@ -328,7 +309,7 @@ std::expected<void, service_error> submission_service::requeue_submission_immedi
         [&](pqxx::work& transaction) -> std::expected<void, service_error> {
             const submission_dto::status_update status_update_value =
                 submission_dto::make_status_update(
-                    submission_id,
+                    leased_submission_value,
                     submission_status::queued,
                     queued_reason_opt
                 );
@@ -343,7 +324,7 @@ std::expected<void, service_error> submission_service::requeue_submission_immedi
 
             return submission_repository::release_submission_lease(
                 transaction,
-                submission_id
+                leased_submission_value
             );
         }
     );

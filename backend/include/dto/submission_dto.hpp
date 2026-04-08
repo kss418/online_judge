@@ -105,10 +105,14 @@ namespace submission_dto{
         std::optional<std::int64_t> before_submission_id_opt = std::nullopt;
     };
 
-    struct queued_submission{
+    struct leased_submission{
         std::int64_t submission_id = 0;
         std::int64_t problem_id = 0;
+        std::int32_t problem_version = 0;
         std::int64_t queue_wait_ms = 0;
+        std::int32_t attempt_no = 0;
+        std::string lease_token;
+        std::string leased_until;
         std::string language;
         std::string source_code;
     };
@@ -119,12 +123,16 @@ namespace submission_dto{
 
     struct status_update{
         std::int64_t submission_id = 0;
+        std::int32_t attempt_no = 0;
+        std::string lease_token;
         submission_status to_status = submission_status::queued;
         std::optional<std::string> reason_opt = std::nullopt;
     };
 
     struct finalize_request{
         std::int64_t submission_id = 0;
+        std::int32_t attempt_no = 0;
+        std::string lease_token;
         submission_status to_status = submission_status::queued;
         std::optional<std::int16_t> score_opt = std::nullopt;
         std::optional<std::string> compile_output_opt = std::nullopt;
@@ -152,12 +160,12 @@ namespace submission_dto{
     );
     std::optional<submission_status> make_submission_status(std::string_view submission_status_string);
     status_update make_status_update(
-        std::int64_t submission_id,
+        const leased_submission& leased_submission_value,
         submission_status to_status,
         std::optional<std::string> reason_opt = std::nullopt
     );
     finalize_request make_finalize_request(
-        std::int64_t submission_id,
+        const leased_submission& leased_submission_value,
         submission_status to_status,
         std::optional<std::int16_t> score_opt = std::nullopt,
         std::optional<std::string> compile_output_opt = std::nullopt,

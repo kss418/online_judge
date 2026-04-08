@@ -36,7 +36,7 @@ public:
     submission_processor& operator=(const submission_processor&) = delete;
 
     std::expected<void, judge_error> process(
-        const submission_dto::queued_submission& queued_submission_value
+        const submission_dto::leased_submission& leased_submission_value
     );
 
 private:

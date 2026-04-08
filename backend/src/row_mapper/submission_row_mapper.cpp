@@ -137,14 +137,18 @@ std::vector<submission_dto::summary> submission_row_mapper::map_summary_result(
     return summary_values;
 }
 
-submission_dto::queued_submission submission_row_mapper::map_queued_submission_row(
+submission_dto::leased_submission submission_row_mapper::map_leased_submission_row(
     const pqxx::row& submission_queue_row
 ){
-    submission_dto::queued_submission queued_submission_value;
-    queued_submission_value.submission_id = row_util::get_required<std::int64_t>(submission_queue_row, 0);
-    queued_submission_value.problem_id = row_util::get_required<std::int64_t>(submission_queue_row, 1);
-    queued_submission_value.queue_wait_ms = row_util::get_required<std::int64_t>(submission_queue_row, 2);
-    queued_submission_value.language = row_util::get_required<std::string>(submission_queue_row, 3);
-    queued_submission_value.source_code = row_util::get_required<std::string>(submission_queue_row, 4);
-    return queued_submission_value;
+    submission_dto::leased_submission leased_submission_value;
+    leased_submission_value.submission_id = row_util::get_required<std::int64_t>(submission_queue_row, 0);
+    leased_submission_value.problem_id = row_util::get_required<std::int64_t>(submission_queue_row, 1);
+    leased_submission_value.problem_version = row_util::get_required<std::int32_t>(submission_queue_row, 2);
+    leased_submission_value.queue_wait_ms = row_util::get_required<std::int64_t>(submission_queue_row, 3);
+    leased_submission_value.attempt_no = row_util::get_required<std::int32_t>(submission_queue_row, 4);
+    leased_submission_value.lease_token = row_util::get_required<std::string>(submission_queue_row, 5);
+    leased_submission_value.leased_until = row_util::get_required<std::string>(submission_queue_row, 6);
+    leased_submission_value.language = row_util::get_required<std::string>(submission_queue_row, 7);
+    leased_submission_value.source_code = row_util::get_required<std::string>(submission_queue_row, 8);
+    return leased_submission_value;
 }

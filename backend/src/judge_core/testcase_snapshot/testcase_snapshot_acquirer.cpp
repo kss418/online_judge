@@ -2,6 +2,15 @@
 
 #include <utility>
 
+namespace{
+    judge_error make_problem_version_conflict_error(){
+        return judge_error{
+            judge_error_code::conflict,
+            "requested problem version snapshot is unavailable"
+        };
+    }
+}
+
 std::expected<testcase_snapshot_acquirer, judge_error>
 testcase_snapshot_acquirer::create(
     testcase_source_facade testcase_source_facade_value,
@@ -116,23 +125,37 @@ testcase_snapshot_acquirer::sync_version_directory(
 }
 
 std::expected<testcase_snapshot, judge_error>
-testcase_snapshot_acquirer::acquire_testcase_snapshot(std::int64_t problem_id){
-    const auto version_exp = testcase_source_facade_.fetch_problem_version(
-        problem_id
-    );
-    if(!version_exp){
-        return std::unexpected(version_exp.error());
+testcase_snapshot_acquirer::acquire_testcase_snapshot(
+    std::int64_t problem_id,
+    std::int32_t problem_version
+){
+    if(problem_version <= 0){
+        return std::unexpected(
+            judge_error{
+                judge_error_code::validation_error,
+                "invalid problem version"
+            }
+        );
     }
 
-    const auto has_version_exp = testcase_store_.has_version(
+    const auto snapshot_exists_exp = testcase_store_.has_version(
         problem_id,
-        *version_exp
+        problem_version
     );
-    if(!has_version_exp){
-        return std::unexpected(has_version_exp.error());
+    if(!snapshot_exists_exp){
+        return std::unexpected(snapshot_exists_exp.error());
     }
 
-    if(!has_version_exp.value()){
+    if(!snapshot_exists_exp.value()){
+        const auto current_problem_version_exp =
+            testcase_source_facade_.fetch_problem_version(problem_id);
+        if(!current_problem_version_exp){
+            return std::unexpected(current_problem_version_exp.error());
+        }
+        if(*current_problem_version_exp != problem_version){
+            return std::unexpected(make_problem_version_conflict_error());
+        }
+
         const auto problem_limits_exp = testcase_source_facade_.fetch_problem_limits(
             problem_id
         );
@@ -142,7 +165,7 @@ testcase_snapshot_acquirer::acquire_testcase_snapshot(std::int64_t problem_id){
 
         const auto sync_version_directory_exp = sync_version_directory(
             problem_id,
-            *version_exp,
+            problem_version,
             *problem_limits_exp
         );
         if(!sync_version_directory_exp){
@@ -152,6 +175,6 @@ testcase_snapshot_acquirer::acquire_testcase_snapshot(std::int64_t problem_id){
 
     return testcase_store_.load_snapshot(
         problem_id,
-        *version_exp
+        problem_version
     );
 }

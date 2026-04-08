@@ -20,13 +20,13 @@ judge_worker::judge_worker(
 
 std::expected<void, judge_error> judge_worker::run(){
     while(true){
-        auto queued_submission_opt_exp = judge_queue_facade_.try_lease_next(
+        auto leased_submission_opt_exp = judge_queue_facade_.try_lease_next(
             LEASE_DURATION
         );
-        if(!queued_submission_opt_exp){
-            return std::unexpected(queued_submission_opt_exp.error());
+        if(!leased_submission_opt_exp){
+            return std::unexpected(leased_submission_opt_exp.error());
         }
-        if(!queued_submission_opt_exp->has_value()){
+        if(!leased_submission_opt_exp->has_value()){
             const auto wait_for_work_exp = judge_queue_facade_.wait_for_work(
                 NOTIFICATION_WAIT_TIMEOUT
             );
@@ -37,7 +37,7 @@ std::expected<void, judge_error> judge_worker::run(){
         }
 
         const auto process_submission_exp = submission_processor_.process(
-            queued_submission_opt_exp->value()
+            leased_submission_opt_exp->value()
         );
         if(!process_submission_exp){
             return std::unexpected(process_submission_exp.error());

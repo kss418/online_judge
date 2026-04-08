@@ -27,7 +27,10 @@ public:
     testcase_snapshot_facade(const testcase_snapshot_facade&) = delete;
     testcase_snapshot_facade& operator=(const testcase_snapshot_facade&) = delete;
 
-    std::expected<testcase_snapshot, judge_error> acquire(std::int64_t problem_id);
+    std::expected<testcase_snapshot, judge_error> acquire(
+        std::int64_t problem_id,
+        std::int32_t problem_version
+    );
 
 private:
     testcase_snapshot_facade(

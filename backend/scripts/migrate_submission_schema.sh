@@ -123,12 +123,69 @@ CREATE TABLE IF NOT EXISTS submission_queue(
     queue_id BIGSERIAL PRIMARY KEY,
     submission_id BIGINT NOT NULL UNIQUE REFERENCES submissions(submission_id) ON DELETE CASCADE,
     priority SMALLINT NOT NULL DEFAULT 0,
-    attempt_count INTEGER NOT NULL DEFAULT 0,
+    attempt_no INTEGER NOT NULL DEFAULT 0,
+    lease_token TEXT,
+    problem_version INTEGER NOT NULL,
     available_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     leased_until TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT submission_queue_attempt_count_check CHECK(attempt_count >= 0)
+    CONSTRAINT submission_queue_attempt_no_check CHECK(attempt_no >= 0)
 );
+
+ALTER TABLE submission_queue
+    ADD COLUMN IF NOT EXISTS attempt_no INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE submission_queue
+    ADD COLUMN IF NOT EXISTS lease_token TEXT;
+
+ALTER TABLE submission_queue
+    ADD COLUMN IF NOT EXISTS problem_version INTEGER;
+
+DO $do$
+BEGIN
+    IF EXISTS(
+        SELECT 1
+        FROM information_schema.columns
+        WHERE
+            table_schema = 'public' AND
+            table_name = 'submission_queue' AND
+            column_name = 'attempt_count'
+    ) THEN
+        EXECUTE
+            'UPDATE submission_queue '
+            'SET attempt_no = attempt_count '
+            'WHERE attempt_no = 0 AND attempt_count <> 0';
+        EXECUTE
+            'ALTER TABLE submission_queue DROP COLUMN attempt_count';
+    END IF;
+END
+$do$;
+
+UPDATE submission_queue queue_table
+SET problem_version = problem_table.version
+FROM submissions submission_table
+JOIN problems problem_table
+ON problem_table.problem_id = submission_table.problem_id
+WHERE
+    submission_table.submission_id = queue_table.submission_id AND
+    queue_table.problem_version IS NULL;
+
+ALTER TABLE submission_queue
+    ALTER COLUMN problem_version SET NOT NULL;
+
+DO $do$
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'submission_queue_attempt_no_check'
+    ) THEN
+        ALTER TABLE submission_queue
+            ADD CONSTRAINT submission_queue_attempt_no_check
+            CHECK(attempt_no >= 0);
+    END IF;
+END
+$do$;
 
 CREATE INDEX IF NOT EXISTS submissions_user_created_idx
     ON submissions(user_id, created_at DESC);
@@ -146,7 +203,7 @@ CREATE INDEX IF NOT EXISTS submission_queue_leased_until_idx
     ON submission_queue(leased_until);
 
 INSERT INTO schema_migrations(version)
-VALUES('submission_schema_v3')
+VALUES('submission_schema_v5')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

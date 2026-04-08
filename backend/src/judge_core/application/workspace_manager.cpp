@@ -53,9 +53,13 @@ workspace_manager& workspace_manager::operator=(
 workspace_manager::~workspace_manager() = default;
 
 std::expected<workspace_session, judge_error> workspace_manager::create(
-    std::int64_t submission_id
+    std::int64_t submission_id,
+    std::int32_t attempt_no
 ){
-    const auto workspace_path_exp = prepare_workspace(submission_id);
+    const auto workspace_path_exp = prepare_workspace(
+        submission_id,
+        attempt_no
+    );
     if(!workspace_path_exp){
         return std::unexpected(workspace_path_exp.error());
     }
@@ -64,19 +68,30 @@ std::expected<workspace_session, judge_error> workspace_manager::create(
 }
 
 std::expected<std::filesystem::path, judge_error> workspace_manager::make_workspace_path(
-    std::int64_t submission_id
+    std::int64_t submission_id,
+    std::int32_t attempt_no
 ){
     if(submission_id <= 0){
         return std::unexpected(make_validation_error("invalid submission id"));
     }
+    if(attempt_no <= 0){
+        return std::unexpected(make_validation_error("invalid submission attempt number"));
+    }
 
-    return source_root_path_ / std::to_string(submission_id);
+    return
+        source_root_path_ /
+        std::to_string(submission_id) /
+        std::to_string(attempt_no);
 }
 
 std::expected<std::filesystem::path, judge_error> workspace_manager::prepare_workspace(
-    std::int64_t submission_id
+    std::int64_t submission_id,
+    std::int32_t attempt_no
 ){
-    const auto workspace_path_exp = make_workspace_path(submission_id);
+    const auto workspace_path_exp = make_workspace_path(
+        submission_id,
+        attempt_no
+    );
     if(!workspace_path_exp){
         return std::unexpected(workspace_path_exp.error());
     }

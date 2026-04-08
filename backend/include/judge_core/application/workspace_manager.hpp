@@ -21,7 +21,8 @@ public:
     workspace_manager& operator=(const workspace_manager&) = delete;
 
     std::expected<workspace_session, judge_error> create(
-        std::int64_t submission_id
+        std::int64_t submission_id,
+        std::int32_t attempt_no
     );
 
 private:
@@ -30,10 +31,12 @@ private:
     );
 
     std::expected<std::filesystem::path, judge_error> make_workspace_path(
-        std::int64_t submission_id
+        std::int64_t submission_id,
+        std::int32_t attempt_no
     );
     std::expected<std::filesystem::path, judge_error> prepare_workspace(
-        std::int64_t submission_id
+        std::int64_t submission_id,
+        std::int32_t attempt_no
     );
 
     std::filesystem::path source_root_path_;

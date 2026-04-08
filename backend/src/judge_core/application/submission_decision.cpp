@@ -110,13 +110,13 @@ namespace{
 }
 
 submission_dto::finalize_request submission_decision::to_finalize_request(
-    std::int64_t submission_id
+    const submission_dto::leased_submission& leased_submission_value
 ) const{
     const submission_status submission_status_value =
         judge_policy::to_submission_status(judge_result_value);
 
     return submission_dto::make_finalize_request(
-        submission_id,
+        leased_submission_value,
         submission_status_value,
         calculate_score(submission_status_value),
         select_compile_output(submission_status_value, execution_report_value),

@@ -47,23 +47,23 @@ judge_queue_facade& judge_queue_facade::operator=(
 
 judge_queue_facade::~judge_queue_facade() = default;
 
-std::expected<std::optional<submission_dto::queued_submission>, judge_error>
+std::expected<std::optional<submission_dto::leased_submission>, judge_error>
 judge_queue_facade::try_lease_next(std::chrono::seconds lease_duration){
     submission_dto::lease_request lease_request_value;
     lease_request_value.lease_duration = lease_duration;
 
-    auto queued_submission_opt_exp = submission_service::lease_submission(
+    auto leased_submission_opt_exp = submission_service::lease_submission(
         lease_db_connection_,
         lease_request_value
     );
-    if(!queued_submission_opt_exp){
-        return std::unexpected(judge_error{queued_submission_opt_exp.error()});
+    if(!leased_submission_opt_exp){
+        return std::unexpected(judge_error{leased_submission_opt_exp.error()});
     }
-    if(queued_submission_opt_exp->has_value()){
-        return std::move(*queued_submission_opt_exp);
+    if(leased_submission_opt_exp->has_value()){
+        return std::move(*leased_submission_opt_exp);
     }
 
-    return std::optional<submission_dto::queued_submission>{};
+    return std::optional<submission_dto::leased_submission>{};
 }
 
 std::expected<void, judge_error> judge_queue_facade::wait_for_work(

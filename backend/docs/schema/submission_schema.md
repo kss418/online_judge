@@ -78,7 +78,9 @@ Indexes:
 | `queue_id` | `bigserial` | no | | pk |
 | `submission_id` | `bigint` | no | | unique fk -> `submissions(submission_id)` on delete cascade |
 | `priority` | `smallint` | no | `0` | higher value is leased first |
-| `attempt_count` | `integer` | no | `0` | `>= 0` check |
+| `attempt_no` | `integer` | no | `0` | current lease generation, `>= 0` check |
+| `lease_token` | `text` | yes | | current lease owner token |
+| `problem_version` | `integer` | no | | pinned problem version for this queued submission |
 | `available_at` | `timestamptz` | no | `now()` |  |
 | `leased_until` | `timestamptz` | yes | |  |
 | `created_at` | `timestamptz` | no | `now()` |  |

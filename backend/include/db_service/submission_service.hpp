@@ -43,17 +43,9 @@ namespace submission_service{
         const submission_dto::list_filter& filter_value,
         std::optional<std::int64_t> viewer_user_id_opt = std::nullopt
     );
-    std::expected<void, service_error> update_submission_status(
-        db_connection& connection,
-        const submission_dto::status_update& status_update_value
-    );
-    std::expected<void, service_error> mark_queued(
-        db_connection& connection,
-        std::int64_t submission_id
-    );
     std::expected<void, service_error> mark_judging(
         db_connection& connection,
-        std::int64_t submission_id
+        const submission_dto::leased_submission& leased_submission_value
     );
     std::expected<void, service_error> rejudge(
         db_connection& connection,
@@ -63,13 +55,13 @@ namespace submission_service{
         db_connection& connection,
         std::int64_t problem_id
     );
-    std::expected<std::optional<submission_dto::queued_submission>, service_error> lease_submission(
+    std::expected<std::optional<submission_dto::leased_submission>, service_error> lease_submission(
         db_connection& connection,
         const submission_dto::lease_request& lease_request_value
     );
     std::expected<void, service_error> requeue_submission_immediately(
         db_connection& connection,
-        std::int64_t submission_id,
+        const submission_dto::leased_submission& leased_submission_value,
         std::optional<std::string> reason_opt = std::nullopt
     );
     std::expected<void, service_error> finalize_submission(

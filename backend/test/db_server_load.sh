@@ -284,7 +284,9 @@ FROM inserted_submissions;
 INSERT INTO submission_queue(
     submission_id,
     priority,
-    attempt_count,
+    attempt_no,
+    lease_token,
+    problem_version,
     available_at,
     leased_until,
     created_at
@@ -293,10 +295,14 @@ SELECT
     submissions.submission_id,
     0,
     0,
+    NULL,
+    problems.version,
     submissions.created_at,
     NULL,
     submissions.created_at
 FROM submissions
+JOIN problems
+ON problems.problem_id = submissions.problem_id
 WHERE submissions.status = 'queued'::submission_status;
 
 UPDATE problem_statistics

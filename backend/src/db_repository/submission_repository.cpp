@@ -16,6 +16,57 @@ namespace{
         return filter_value.limit_opt.value_or(submission_dto::DEFAULT_LIST_LIMIT);
     }
 
+    std::expected<submission_repository::locked_submission_context, repository_error>
+    get_locked_leased_submission_context(
+        pqxx::transaction_base& transaction,
+        std::int64_t submission_id,
+        std::int32_t attempt_no,
+        const std::string& lease_token
+    ){
+        if(submission_id <= 0 || attempt_no <= 0 || lease_token.empty()){
+            return std::unexpected(repository_error::invalid_reference);
+        }
+
+        const auto submission_result = transaction.exec(
+            "SELECT "
+            "submission_table.user_id, "
+            "submission_table.problem_id, "
+            "submission_table.status::text "
+            "FROM submissions submission_table "
+            "JOIN submission_queue queue_table "
+            "ON queue_table.submission_id = submission_table.submission_id "
+            "WHERE "
+            "submission_table.submission_id = $1 AND "
+            "queue_table.attempt_no = $2 AND "
+            "queue_table.lease_token = $3 AND "
+            "queue_table.leased_until IS NOT NULL AND "
+            "queue_table.leased_until > NOW() "
+            "FOR UPDATE OF submission_table, queue_table",
+            pqxx::params{submission_id, attempt_no, lease_token}
+        );
+        if(submission_result.empty()){
+            return std::unexpected(
+                repository_error{
+                    repository_error_code::conflict,
+                    "submission lease is stale"
+                }
+            );
+        }
+
+        const auto submission_status_exp = submission_row_mapper::map_submission_status_row(
+            submission_result[0],
+            2
+        );
+        if(!submission_status_exp){
+            return std::unexpected(submission_status_exp.error());
+        }
+
+        submission_repository::locked_submission_context context_value;
+        context_value.user_id = submission_result[0][0].as<std::int64_t>();
+        context_value.problem_id = submission_result[0][1].as<std::int64_t>();
+        context_value.status = *submission_status_exp;
+        return context_value;
+    }
 }
 
 std::expected<submission_repository::locked_submission_context, repository_error>
@@ -312,10 +363,21 @@ std::expected<void, repository_error> submission_repository::enqueue_submission(
         return std::unexpected(repository_error::invalid_reference);
     }
 
-    transaction.exec(
-        "INSERT INTO submission_queue(submission_id, priority) VALUES($1, $2)",
+    const auto enqueue_result = transaction.exec(
+        "INSERT INTO submission_queue(submission_id, priority, problem_version) "
+        "SELECT "
+        "submission_table.submission_id, "
+        "$2, "
+        "problem_table.version "
+        "FROM submissions submission_table "
+        "JOIN problems problem_table "
+        "ON problem_table.problem_id = submission_table.problem_id "
+        "WHERE submission_table.submission_id = $1",
         pqxx::params{submission_id, priority}
     );
+    if(enqueue_result.affected_rows() == 0){
+        return std::unexpected(repository_error::not_found);
+    }
 
     transaction.exec(
         "SELECT pg_notify($1, $2)",
@@ -334,9 +396,11 @@ std::expected<void, repository_error> submission_repository::update_submission_s
     }
 
     const std::int64_t submission_id = status_update_value.submission_id;
-    const auto locked_submission_exp = get_locked_submission_context(
+    const auto locked_submission_exp = get_locked_leased_submission_context(
         transaction,
-        submission_id
+        submission_id,
+        status_update_value.attempt_no,
+        status_update_value.lease_token
     );
     if(!locked_submission_exp){
         return std::unexpected(locked_submission_exp.error());
@@ -431,11 +495,8 @@ std::expected<void, repository_error> submission_repository::rejudge_submission(
         return std::unexpected(clear_submission_result_exp.error());
     }
 
-    const submission_dto::status_update status_update_value =
-        submission_dto::make_status_update(
-            submission_id,
-            submission_status::queued
-        );
+    submission_dto::status_update status_update_value;
+    status_update_value.to_status = submission_status::queued;
     const auto persist_transition_exp = persist_submission_status_transition(
         transaction,
         submission_id,
@@ -471,7 +532,7 @@ std::expected<void, repository_error> submission_repository::rejudge_submission(
     return {};
 }
 
-std::expected<std::optional<submission_dto::queued_submission>, repository_error>
+std::expected<std::optional<submission_dto::leased_submission>, repository_error>
 submission_repository::lease_submission(
     pqxx::transaction_base& transaction,
     const submission_dto::lease_request& lease_request_value
@@ -481,52 +542,75 @@ submission_repository::lease_submission(
         return std::unexpected(repository_error::invalid_input);
     }
 
-    const auto lease_candidate_result = transaction.exec(
+    const auto leased_submission_result = transaction.exec(
+        "WITH lease_candidate AS ("
+        "    SELECT "
+        "        queue_table.submission_id, "
+        "        submission_table.problem_id, "
+        "        queue_table.problem_version, "
+        "        GREATEST(0::bigint, FLOOR(EXTRACT(EPOCH FROM (NOW() - queue_table.available_at)) * 1000))::bigint AS queue_wait_ms, "
+        "        submission_table.language, "
+        "        submission_table.source_code "
+        "    FROM submission_queue queue_table "
+        "    JOIN submissions submission_table "
+        "    ON submission_table.submission_id = queue_table.submission_id "
+        "    WHERE "
+        "        queue_table.available_at <= NOW() AND "
+        "        (queue_table.leased_until IS NULL OR queue_table.leased_until <= NOW()) "
+        "    ORDER BY queue_table.priority DESC, queue_table.created_at ASC "
+        "    FOR UPDATE OF queue_table SKIP LOCKED "
+        "    LIMIT 1"
+        "), leased_queue AS ("
+        "    UPDATE submission_queue queue_table "
+        "    SET "
+        "        leased_until = NOW() + ($1 * INTERVAL '1 second'), "
+        "        attempt_no = attempt_no + 1, "
+        "        lease_token = md5(random()::text || clock_timestamp()::text || queue_table.submission_id::text || (queue_table.attempt_no + 1)::text) "
+        "    FROM lease_candidate "
+        "    WHERE queue_table.submission_id = lease_candidate.submission_id "
+        "    RETURNING "
+        "        queue_table.submission_id, "
+        "        queue_table.problem_version, "
+        "        queue_table.attempt_no, "
+        "        queue_table.lease_token, "
+        "        queue_table.leased_until::text "
+        ") "
         "SELECT "
-        "queue_table.submission_id, "
-        "submission_table.problem_id, "
-        "GREATEST(0::bigint, FLOOR(EXTRACT(EPOCH FROM (NOW() - queue_table.available_at)) * 1000))::bigint, "
-        "submission_table.language, "
-        "submission_table.source_code "
-        "FROM submission_queue queue_table "
-        "JOIN submissions submission_table "
-        "ON submission_table.submission_id = queue_table.submission_id "
-        "WHERE "
-        "queue_table.available_at <= NOW() AND "
-        "(queue_table.leased_until IS NULL OR queue_table.leased_until <= NOW()) "
-        "ORDER BY queue_table.priority DESC, queue_table.created_at ASC "
-        "FOR UPDATE SKIP LOCKED "
-        "LIMIT 1"
+        "    leased_queue.submission_id, "
+        "    lease_candidate.problem_id, "
+        "    leased_queue.problem_version, "
+        "    lease_candidate.queue_wait_ms, "
+        "    leased_queue.attempt_no, "
+        "    leased_queue.lease_token, "
+        "    leased_queue.leased_until, "
+        "    lease_candidate.language, "
+        "    lease_candidate.source_code "
+        "FROM leased_queue "
+        "JOIN lease_candidate "
+        "ON lease_candidate.submission_id = leased_queue.submission_id",
+        pqxx::params{lease_duration.count()}
     );
 
-    if(lease_candidate_result.empty()){
-        return std::optional<submission_dto::queued_submission>{std::nullopt};
+    if(leased_submission_result.empty()){
+        return std::optional<submission_dto::leased_submission>{std::nullopt};
     }
 
-    submission_dto::queued_submission queued_submission_value =
-        submission_row_mapper::map_queued_submission_row(
-            lease_candidate_result[0]
-        );
-
-    transaction.exec(
-        "UPDATE submission_queue "
-        "SET "
-        "leased_until = NOW() + ($2 * INTERVAL '1 second'), "
-        "attempt_count = attempt_count + 1 "
-        "WHERE submission_id = $1",
-        pqxx::params{queued_submission_value.submission_id, lease_duration.count()}
-    );
-
-    return std::optional<submission_dto::queued_submission>{
-        std::move(queued_submission_value)
+    return std::optional<submission_dto::leased_submission>{
+        submission_row_mapper::map_leased_submission_row(
+            leased_submission_result[0]
+        )
     };
 }
 
 std::expected<void, repository_error> submission_repository::release_submission_lease(
     pqxx::transaction_base& transaction,
-    std::int64_t submission_id
+    const submission_dto::leased_submission& leased_submission_value
 ){
-    if(submission_id <= 0){
+    if(
+        leased_submission_value.submission_id <= 0 ||
+        leased_submission_value.attempt_no <= 0 ||
+        leased_submission_value.lease_token.empty()
+    ){
         return std::unexpected(repository_error::invalid_reference);
     }
 
@@ -534,12 +618,27 @@ std::expected<void, repository_error> submission_repository::release_submission_
         "UPDATE submission_queue "
         "SET "
         "available_at = NOW(), "
-        "leased_until = NOW() "
-        "WHERE submission_id = $1",
-        pqxx::params{submission_id}
+        "leased_until = NULL, "
+        "lease_token = NULL "
+        "WHERE "
+        "submission_id = $1 AND "
+        "attempt_no = $2 AND "
+        "lease_token = $3 AND "
+        "leased_until IS NOT NULL AND "
+        "leased_until > NOW()",
+        pqxx::params{
+            leased_submission_value.submission_id,
+            leased_submission_value.attempt_no,
+            leased_submission_value.lease_token
+        }
     );
     if(update_result.affected_rows() == 0){
-        return std::unexpected(repository_error::not_found);
+        return std::unexpected(
+            repository_error{
+                repository_error_code::conflict,
+                "submission lease is stale"
+            }
+        );
     }
 
     return {};
@@ -554,9 +653,11 @@ std::expected<submission_dto::finalize_result, repository_error> submission_repo
     }
 
     const std::int64_t submission_id = finalize_request_value.submission_id;
-    const auto locked_submission_exp = get_locked_submission_context(
+    const auto locked_submission_exp = get_locked_leased_submission_context(
         transaction,
-        submission_id
+        submission_id,
+        finalize_request_value.attempt_no,
+        finalize_request_value.lease_token
     );
     if(!locked_submission_exp){
         return std::unexpected(locked_submission_exp.error());
