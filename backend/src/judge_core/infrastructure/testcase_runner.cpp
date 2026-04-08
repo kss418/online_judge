@@ -1,5 +1,6 @@
 #include "judge_core/infrastructure/testcase_runner.hpp"
 
+#include "judge_core/infrastructure/nsjail_util.hpp"
 #include "judge_core/testcase_snapshot/testcase_util.hpp"
 
 #include <utility>
@@ -11,18 +12,22 @@ namespace{
     ){
         execution_report::testcase_execution testcase_execution_value;
         testcase_execution_value.exit_code = run_result_value.exit_code_;
+        testcase_execution_value.termination_signal =
+            run_result_value.termination_signal_;
+        testcase_execution_value.killed_by_wall_clock =
+            run_result_value.killed_by_wall_clock_;
         testcase_execution_value.stdout_text = run_result_value.stdout_text_;
         testcase_execution_value.stderr_text = run_result_value.stderr_text_;
+        testcase_execution_value.stdout_bytes =
+            static_cast<std::int64_t>(run_result_value.stdout_bytes_);
+        testcase_execution_value.stderr_bytes =
+            static_cast<std::int64_t>(run_result_value.stderr_bytes_);
         testcase_execution_value.max_rss_kb =
             static_cast<std::int64_t>(run_result_value.max_rss_kb_);
-        testcase_execution_value.elapsed_ms =
-            static_cast<std::int64_t>(run_result_value.elapsed_ms_);
-        testcase_execution_value.time_limit_exceeded =
-            run_result_value.time_limit_exceeded_;
-        testcase_execution_value.memory_limit_exceeded =
-            run_result_value.memory_limit_exceeded_;
-        testcase_execution_value.output_exceeded =
-            run_result_value.output_exceeded_;
+        testcase_execution_value.wall_time_ms =
+            static_cast<std::int64_t>(run_result_value.wall_time_ms_);
+        testcase_execution_value.cpu_time_ms =
+            static_cast<std::int64_t>(run_result_value.cpu_time_ms_);
         return testcase_execution_value;
     }
 
@@ -79,6 +84,13 @@ std::expected<execution_report::batch, judge_error> testcase_runner::run_all_tes
 
     execution_report::batch execution_report_value;
     execution_report_value.testcase_count = *validated_testcase_count_exp;
+    execution_report_value.limits.time_limit_ms =
+        testcase_snapshot_value.limits_value.time_ms;
+    execution_report_value.limits.memory_limit_kb =
+        static_cast<std::int64_t>(testcase_snapshot_value.limits_value.memory_mb) *
+        1024LL;
+    execution_report_value.limits.output_limit_bytes =
+        nsjail_util::output_file_limit_bytes();
 
     execution_report_value.executions.reserve(
         static_cast<std::size_t>(*validated_testcase_count_exp)

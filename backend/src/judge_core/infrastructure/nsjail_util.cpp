@@ -681,3 +681,7 @@ std::expected<std::vector<std::string>, sandbox_error> nsjail_util::make_command
 
     return sandbox_command_args;
 }
+
+std::int64_t nsjail_util::output_file_limit_bytes() noexcept{
+    return detail::output_file_limit_mb * 1024 * 1024;
+}

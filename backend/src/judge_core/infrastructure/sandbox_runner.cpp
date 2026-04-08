@@ -21,6 +21,15 @@ namespace{
         temp_file stderr_temp;
     };
 
+    std::size_t timeval_to_ms(const timeval& value){
+        return static_cast<std::size_t>(value.tv_sec) * 1000ULL +
+            static_cast<std::size_t>(value.tv_usec / 1000);
+    }
+
+    std::size_t calculate_cpu_time_ms(const rusage& usage){
+        return timeval_to_ms(usage.ru_utime) + timeval_to_ms(usage.ru_stime);
+    }
+
     std::expected<void, sandbox_error> reset_scratch_file(temp_file& scratch_file){
         if(::ftruncate(scratch_file.get_fd(), 0) < 0){
             return std::unexpected(sandbox_error::from_errno(errno));
@@ -306,52 +315,24 @@ std::expected<sandbox_runner::run_result, sandbox_error> sandbox_runner::run(
 
     run_result result;
     result.stderr_text_ = std::move(*stderr_text_exp);
+    result.stderr_bytes_ = result.stderr_text_.size();
     result.max_rss_kb_ = static_cast<std::size_t>(wait_result.usage_.ru_maxrss);
-    result.elapsed_ms_ = wait_result.elapsed_ms_;
-
-    const std::size_t memory_limit_kb =
-        static_cast<std::size_t>(run_options_value.memory_limit_mb) * 1024ULL;
-    if(result.max_rss_kb_ > memory_limit_kb){
-        result.memory_limit_exceeded_ = true;
-    }
+    result.wall_time_ms_ = wait_result.elapsed_ms_;
+    result.cpu_time_ms_ = calculate_cpu_time_ms(wait_result.usage_);
+    result.killed_by_wall_clock_ = wait_result.killed_by_wall_clock_;
 
     result.stdout_text_ = std::move(*stdout_text_exp);
+    result.stdout_bytes_ = result.stdout_text_.size();
 
     if(WIFEXITED(wait_result.status_)){
         result.exit_code_ = WEXITSTATUS(wait_result.status_);
-        if(
-            result.exit_code_ != 0 &&
-            result.stderr_text_.find("bad_alloc") != std::string::npos
-        ){
-            result.memory_limit_exceeded_ = true;
-        }
         return result;
     }
 
     if(WIFSIGNALED(wait_result.status_)){
         const int signal_number = WTERMSIG(wait_result.status_);
         result.exit_code_ = 128 + signal_number;
-
-        if(signal_number == SIGXCPU || wait_result.killed_by_wall_clock_){
-            result.time_limit_exceeded_ = true;
-        }
-#ifdef SIGXFSZ
-        if(signal_number == SIGXFSZ){
-            result.output_exceeded_ = true;
-        }
-#endif
-        if(!result.time_limit_exceeded_ && !result.output_exceeded_){
-            if(signal_number == SIGSEGV){
-                result.memory_limit_exceeded_ = true;
-            }
-            else if(
-                signal_number == SIGABRT &&
-                result.stderr_text_.find("bad_alloc") != std::string::npos
-            ){
-                result.memory_limit_exceeded_ = true;
-            }
-        }
-
+        result.termination_signal_ = signal_number;
         return result;
     }
 

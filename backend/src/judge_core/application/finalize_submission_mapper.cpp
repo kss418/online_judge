@@ -79,7 +79,7 @@ namespace{
         for(const auto& testcase_execution_value : execution_report_value.executions){
             max_elapsed_ms = std::max(
                 max_elapsed_ms,
-                testcase_execution_value.elapsed_ms
+                testcase_execution_value.wall_time_ms
             );
         }
 

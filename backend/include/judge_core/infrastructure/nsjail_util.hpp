@@ -3,6 +3,7 @@
 #include "common/temp_dir.hpp"
 #include "error/sandbox_error.hpp"
 
+#include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <memory>
@@ -42,4 +43,6 @@ namespace nsjail_util{
         const std::vector<std::string>& command_args,
         const sandbox_runner::run_options& run_options_value
     );
+
+    std::int64_t output_file_limit_bytes() noexcept;
 }

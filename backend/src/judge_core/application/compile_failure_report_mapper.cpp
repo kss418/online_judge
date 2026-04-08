@@ -7,6 +7,8 @@ namespace{
         execution_report::testcase_execution testcase_execution_value;
         testcase_execution_value.exit_code = compile_failure_value.exit_code;
         testcase_execution_value.stderr_text = compile_failure_value.stderr_text;
+        testcase_execution_value.stderr_bytes =
+            static_cast<std::int64_t>(compile_failure_value.stderr_text.size());
         return testcase_execution_value;
     }
 }

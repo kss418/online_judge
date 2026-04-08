@@ -36,15 +36,19 @@ namespace sandbox_runner{
 
     struct run_result{
         int exit_code_ = 0;
+        std::optional<int> termination_signal_ = std::nullopt;
+        bool killed_by_wall_clock_ = false;
         std::string stdout_text_;
         std::string stderr_text_;
+        std::size_t stdout_bytes_ = 0;
+        std::size_t stderr_bytes_ = 0;
         std::size_t max_rss_kb_ = 0;
-        std::size_t elapsed_ms_ = 0;
-        bool time_limit_exceeded_ = false;
-        bool memory_limit_exceeded_ = false;
-        bool output_exceeded_ = false;
+        std::size_t wall_time_ms_ = 0;
+        std::size_t cpu_time_ms_ = 0;
 
-        bool is_success() const noexcept { return exit_code_ == 0; }
+        bool is_success() const noexcept{
+            return exit_code_ == 0 && !termination_signal_.has_value();
+        }
     };
 
     struct wait_result{
