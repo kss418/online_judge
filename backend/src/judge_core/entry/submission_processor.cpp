@@ -95,14 +95,12 @@ std::expected<void, judge_error> submission_processor::process(
             return std::unexpected(source_file_path_exp.error());
         }
 
-        auto build_result_exp = submission_builder_.build(
+        auto build_result_value = submission_builder_.build(
             *source_file_path_exp
         );
-        if(!build_result_exp){
-            return std::unexpected(build_result_exp.error());
+        if(build_result_value.infra_failed()){
+            return std::unexpected(build_result_value.infra_failure().error);
         }
-
-        auto build_result_value = std::move(*build_result_exp);
         if(build_result_value.compile_failed()){
             return build_result_value.to_compile_error_decision();
         }

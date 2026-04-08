@@ -36,6 +36,42 @@ namespace program_build_support{
         return build_artifact_value;
     }
 
+    inline program_build::compile_run_result make_compile_run_result(
+        sandbox_runner::run_result compile_run_result_value
+    ){
+        program_build::compile_run_result compile_run_value;
+        compile_run_value.exit_code_ = compile_run_result_value.exit_code_;
+        compile_run_value.termination_signal_ =
+            compile_run_result_value.termination_signal_;
+        compile_run_value.killed_by_wall_clock_ =
+            compile_run_result_value.killed_by_wall_clock_;
+        compile_run_value.stdout_text_ =
+            std::move(compile_run_result_value.stdout_text_);
+        compile_run_value.stderr_text_ =
+            std::move(compile_run_result_value.stderr_text_);
+        compile_run_value.stdout_bytes_ = compile_run_result_value.stdout_bytes_;
+        compile_run_value.stderr_bytes_ = compile_run_result_value.stderr_bytes_;
+        compile_run_value.max_rss_kb_ = compile_run_result_value.max_rss_kb_;
+        compile_run_value.wall_time_ms_ = compile_run_result_value.wall_time_ms_;
+        compile_run_value.cpu_time_ms_ = compile_run_result_value.cpu_time_ms_;
+        return compile_run_value;
+    }
+
+    inline program_build::compile_resource_exceeded_reason
+    classify_compile_resource_exceeded_reason(
+        const sandbox_runner::run_result& compile_run_result_value
+    ){
+        if(compile_run_result_value.killed_by_wall_clock_){
+            return program_build::compile_resource_exceeded_reason::wall_clock;
+        }
+
+        if(compile_run_result_value.termination_signal_.has_value()){
+            return program_build::compile_resource_exceeded_reason::signaled;
+        }
+
+        return program_build::compile_resource_exceeded_reason::unknown;
+    }
+
     inline program_build::build_artifact make_compile_failure_artifact(
         program_build::source_language language,
         const std::filesystem::path& workspace_host_path,
@@ -45,10 +81,21 @@ namespace program_build_support{
             language,
             workspace_host_path
         );
-        build_artifact_value.compile_failure_opt_ = program_build::compile_failure{
-            compile_run_result_value.exit_code_,
-            std::move(compile_run_result_value.stderr_text_)
-        };
+        const auto resource_reason = classify_compile_resource_exceeded_reason(
+            compile_run_result_value
+        );
+
+        program_build::compile_failure compile_failure_value;
+        compile_failure_value.kind_ =
+            resource_reason == program_build::compile_resource_exceeded_reason::unknown
+                ? program_build::compile_failure_kind::user_compile_error
+                : program_build::compile_failure_kind::compile_resource_exceeded;
+        compile_failure_value.resource_reason_ = resource_reason;
+        compile_failure_value.run_result_ = make_compile_run_result(
+            std::move(compile_run_result_value)
+        );
+        build_artifact_value.compile_failure_opt_ =
+            std::move(compile_failure_value);
         return build_artifact_value;
     }
 }

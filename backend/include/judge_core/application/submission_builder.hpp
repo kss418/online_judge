@@ -21,7 +21,7 @@ public:
     submission_builder(const submission_builder&) = delete;
     submission_builder& operator=(const submission_builder&) = delete;
 
-    std::expected<build_bundle, judge_error> build(
+    build_bundle build(
         const std::filesystem::path& source_file_path
     );
 
