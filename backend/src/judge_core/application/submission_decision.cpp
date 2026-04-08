@@ -7,14 +7,26 @@
 #include <string>
 
 namespace{
+    std::optional<std::string> select_internal_message(
+        const submission_verdict_summary& verdict_summary_value
+    ){
+        return verdict_summary_value.internal_message_opt;
+    }
+
     std::optional<std::string> select_compile_output(
+        const submission_verdict_summary& verdict_summary_value,
         submission_status submission_status_value,
         const execution_report::batch& execution_report_value
     ){
-        if(
-            submission_status_value != submission_status::compile_error ||
-            execution_report_value.executions.empty()
-        ){
+        if(submission_status_value != submission_status::compile_error){
+            return std::nullopt;
+        }
+
+        if(verdict_summary_value.internal_message_opt.has_value()){
+            return verdict_summary_value.internal_message_opt;
+        }
+
+        if(execution_report_value.executions.empty()){
             return std::nullopt;
         }
 
@@ -28,19 +40,11 @@ namespace{
     }
 
     std::optional<std::string> select_judge_output(
+        const submission_verdict_summary& verdict_summary_value,
         submission_status submission_status_value,
         const execution_report::batch& execution_report_value
     ){
-        if(
-            execution_report_value.executions.empty() ||
-            submission_status_value == submission_status::compile_error
-        ){
-            return std::nullopt;
-        }
-
-        const std::string& stderr_text =
-            execution_report_value.executions.front().stderr_text;
-        if(stderr_text.empty()){
+        if(submission_status_value == submission_status::compile_error){
             return std::nullopt;
         }
 
@@ -50,15 +54,39 @@ namespace{
             submission_status_value == submission_status::memory_limit_exceeded ||
             submission_status_value == submission_status::output_exceeded
         ){
-            return stderr_text;
+            if(auto internal_message_opt = select_internal_message(verdict_summary_value);
+               internal_message_opt.has_value()){
+                return internal_message_opt;
+            }
+
+            if(
+                verdict_summary_value.first_failed_case_index_opt.has_value() &&
+                *verdict_summary_value.first_failed_case_index_opt > 0
+            ){
+                const auto failed_index = static_cast<std::size_t>(
+                    *verdict_summary_value.first_failed_case_index_opt - 1
+                );
+                if(failed_index < execution_report_value.executions.size()){
+                    const auto& stderr_text =
+                        execution_report_value.executions[failed_index].stderr_text;
+                    if(!stderr_text.empty()){
+                        return stderr_text;
+                    }
+                }
+            }
         }
 
         return std::nullopt;
     }
 
     std::optional<std::int16_t> calculate_score(
+        const submission_verdict_summary& verdict_summary_value,
         submission_status submission_status_value
     ){
+        if(verdict_summary_value.score_opt.has_value()){
+            return verdict_summary_value.score_opt;
+        }
+
         return submission_status_value == submission_status::accepted
             ? std::optional<std::int16_t>{100}
             : std::optional<std::int16_t>{0};
@@ -113,14 +141,22 @@ submission_dto::finalize_request submission_decision::to_finalize_request(
     const submission_dto::leased_submission& leased_submission_value
 ) const{
     const submission_status submission_status_value =
-        judge_policy::to_submission_status(judge_result_value);
+        judge_policy::to_submission_status(verdict_summary.overall_verdict);
 
     return submission_dto::make_finalize_request(
         leased_submission_value,
         submission_status_value,
-        calculate_score(submission_status_value),
-        select_compile_output(submission_status_value, execution_report_value),
-        select_judge_output(submission_status_value, execution_report_value),
+        calculate_score(verdict_summary, submission_status_value),
+        select_compile_output(
+            verdict_summary,
+            submission_status_value,
+            execution_report_value
+        ),
+        select_judge_output(
+            verdict_summary,
+            submission_status_value,
+            execution_report_value
+        ),
         calculate_elapsed_ms(submission_status_value, execution_report_value),
         calculate_max_rss_kb(submission_status_value, execution_report_value)
     );

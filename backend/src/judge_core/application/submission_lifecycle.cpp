@@ -14,7 +14,15 @@ namespace{
         execution_report_value.executions.push_back(compile_execution_value);
 
         submission_decision submission_decision_value;
-        submission_decision_value.judge_result_value = judge_result::compile_error;
+        submission_decision_value.verdict_summary.overall_verdict =
+            judge_result::compile_error;
+        submission_decision_value.verdict_summary.public_message_opt =
+            std::string{"compile error"};
+        if(!compile_execution_value.stderr_text.empty()){
+            submission_decision_value.verdict_summary.internal_message_opt =
+                compile_execution_value.stderr_text;
+        }
+        submission_decision_value.verdict_summary.score_opt = std::int16_t{0};
         submission_decision_value.execution_report_value =
             std::move(execution_report_value);
         return submission_decision_value;

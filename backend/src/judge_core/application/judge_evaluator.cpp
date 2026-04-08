@@ -38,16 +38,16 @@ std::expected<submission_decision, judge_error> judge_evaluator::evaluate_execut
         return std::unexpected(judge_expectation_exp.error());
     }
 
-    const auto judge_result_exp = judge_policy_.check_result(
+    const auto verdict_summary_exp = judge_policy_.check_result(
         *judge_expectation_exp,
         execution_report_value
     );
-    if(!judge_result_exp){
-        return std::unexpected(judge_result_exp.error());
+    if(!verdict_summary_exp){
+        return std::unexpected(verdict_summary_exp.error());
     }
 
     submission_decision submission_decision_value;
-    submission_decision_value.judge_result_value = *judge_result_exp;
+    submission_decision_value.verdict_summary = std::move(*verdict_summary_exp);
     submission_decision_value.execution_report_value = std::move(execution_report_value);
     return submission_decision_value;
 }

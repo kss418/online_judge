@@ -1,5 +1,6 @@
 #pragma once
 
+#include "judge_core/application/submission_decision.hpp"
 #include "common/submission_status.hpp"
 #include "error/judge_error.hpp"
 #include "judge_core/types/execution_report.hpp"
@@ -11,7 +12,7 @@
 
 class judge_policy{
 public:
-    std::expected<judge_result, judge_error> check_result(
+    std::expected<submission_verdict_summary, judge_error> check_result(
         const judge_expectation& judge_expectation_value,
         const execution_report::batch& execution_report_value
     ) const;
