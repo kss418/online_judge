@@ -39,7 +39,7 @@ std::expected<program_build::build_artifact, sandbox_error> java_builder::build(
         return std::unexpected(compile_run_exp.error());
     }
 
-    if(compile_run_exp->exit_code_ != 0){
+    if(!compile_run_exp->is_success()){
         return program_build_support::make_compile_failure_artifact(
             program_build::source_language::java,
             workspace_host_path,

@@ -61,11 +61,11 @@ namespace program_build_support{
     classify_compile_resource_exceeded_reason(
         const sandbox_runner::run_result& compile_run_result_value
     ){
-        if(compile_run_result_value.killed_by_wall_clock_){
+        if(compile_run_result_value.is_wall_clock_limit_exceeded()){
             return program_build::compile_resource_exceeded_reason::wall_clock;
         }
 
-        if(compile_run_result_value.termination_signal_.has_value()){
+        if(compile_run_result_value.is_signaled()){
             return program_build::compile_resource_exceeded_reason::signaled;
         }
 
@@ -86,10 +86,9 @@ namespace program_build_support{
         );
 
         program_build::compile_failure compile_failure_value;
-        compile_failure_value.kind_ =
-            resource_reason == program_build::compile_resource_exceeded_reason::unknown
-                ? program_build::compile_failure_kind::user_compile_error
-                : program_build::compile_failure_kind::compile_resource_exceeded;
+        compile_failure_value.kind_ = compile_run_result_value.is_user_exit_failure()
+            ? program_build::compile_failure_kind::user_compile_error
+            : program_build::compile_failure_kind::compile_resource_exceeded;
         compile_failure_value.resource_reason_ = resource_reason;
         compile_failure_value.run_result_ = make_compile_run_result(
             std::move(compile_run_result_value)

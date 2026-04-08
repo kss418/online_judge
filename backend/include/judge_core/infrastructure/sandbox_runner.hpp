@@ -49,6 +49,20 @@ namespace sandbox_runner{
         bool is_success() const noexcept{
             return exit_code_ == 0 && !termination_signal_.has_value();
         }
+
+        bool is_wall_clock_limit_exceeded() const noexcept{
+            return killed_by_wall_clock_;
+        }
+
+        bool is_signaled() const noexcept{
+            return termination_signal_.has_value();
+        }
+
+        bool is_user_exit_failure() const noexcept{
+            return exit_code_ != 0 &&
+                !is_signaled() &&
+                !is_wall_clock_limit_exceeded();
+        }
     };
 
     struct wait_result{
