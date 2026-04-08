@@ -1,7 +1,7 @@
 #include "judge_core/infrastructure/launch_planner.hpp"
 
 #include "common/env_util.hpp"
-#include "judge_core/infrastructure/workspace_path_mapper.hpp"
+#include "judge_core/types/workspace_layout.hpp"
 
 namespace{
     std::expected<std::filesystem::path, judge_error> load_required_path_env(
@@ -72,16 +72,24 @@ std::expected<program_launch::execution_plan, sandbox_error> launch_planner::mak
             return std::unexpected(sandbox_error::invalid_argument);
         }
 
-        const auto binary_sandbox_path = workspace_path_mapper::make_sandbox_path(
-            runnable_program_value.workspace_host_path,
+        const auto workspace_layout_exp = workspace_layout::create(
+            runnable_program_value.workspace_host_path
+        );
+        if(!workspace_layout_exp){
+            return std::unexpected(sandbox_error::invalid_argument);
+        }
+
+        const auto binary_sandbox_path_exp = workspace_layout_exp->sandbox_path_for(
             runnable_program_value.entry_file_host_path
         );
-        if(binary_sandbox_path.empty()){
+        if(!binary_sandbox_path_exp){
             return std::unexpected(sandbox_error::invalid_argument);
         }
 
         execution_plan_value.workspace_host_path_ = runnable_program_value.workspace_host_path;
-        execution_plan_value.run_command_args_.push_back(binary_sandbox_path.string());
+        execution_plan_value.run_command_args_.push_back(
+            binary_sandbox_path_exp->string()
+        );
         return execution_plan_value;
     }
 
@@ -94,17 +102,25 @@ std::expected<program_launch::execution_plan, sandbox_error> launch_planner::mak
             return std::unexpected(sandbox_error::invalid_argument);
         }
 
-        const auto source_sandbox_path = workspace_path_mapper::make_sandbox_path(
-            runnable_program_value.workspace_host_path,
+        const auto workspace_layout_exp = workspace_layout::create(
+            runnable_program_value.workspace_host_path
+        );
+        if(!workspace_layout_exp){
+            return std::unexpected(sandbox_error::invalid_argument);
+        }
+
+        const auto source_sandbox_path_exp = workspace_layout_exp->sandbox_path_for(
             runnable_program_value.entry_file_host_path
         );
-        if(source_sandbox_path.empty()){
+        if(!source_sandbox_path_exp){
             return std::unexpected(sandbox_error::invalid_argument);
         }
 
         execution_plan_value.workspace_host_path_ = runnable_program_value.workspace_host_path;
         execution_plan_value.run_command_args_.push_back(python_path_.string());
-        execution_plan_value.run_command_args_.push_back(source_sandbox_path.string());
+        execution_plan_value.run_command_args_.push_back(
+            source_sandbox_path_exp->string()
+        );
         return execution_plan_value;
     }
 
@@ -123,8 +139,14 @@ std::expected<program_launch::execution_plan, sandbox_error> launch_planner::mak
         execution_plan_value.run_command_args_.push_back(java_runtime_path_.string());
         execution_plan_value.run_command_args_.push_back("-XX:-UsePerfData");
         execution_plan_value.run_command_args_.push_back("-cp");
+        const auto workspace_layout_exp = workspace_layout::create(
+            runnable_program_value.workspace_host_path
+        );
+        if(!workspace_layout_exp){
+            return std::unexpected(sandbox_error::invalid_argument);
+        }
         execution_plan_value.run_command_args_.push_back(
-            workspace_path_mapper::sandbox_workspace_path().string()
+            workspace_layout_exp->sandbox_root().string()
         );
         execution_plan_value.run_command_args_.push_back(runnable_program_value.main_class_name);
         return execution_plan_value;

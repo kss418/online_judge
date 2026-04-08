@@ -11,5 +11,4 @@ target_sources(lib
         sandbox_runner.cpp
         submission_queue_source.cpp
         testcase_runner.cpp
-        workspace_path_mapper.cpp
 )

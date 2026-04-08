@@ -19,6 +19,16 @@ public:
 
     const std::filesystem::path& path() const noexcept;
 
+    std::filesystem::path sandbox_root() const;
+
+    std::expected<std::filesystem::path, judge_error> source_path_for(
+        std::string_view language
+    ) const;
+
+    std::expected<std::filesystem::path, judge_error> sandbox_path_for(
+        const std::filesystem::path& host_path
+    ) const;
+
     std::expected<std::filesystem::path, judge_error> write_source_file(
         std::string_view language,
         std::string_view source_code

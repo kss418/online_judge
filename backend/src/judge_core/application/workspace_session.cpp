@@ -1,7 +1,7 @@
 #include "judge_core/application/workspace_session.hpp"
 
 #include "common/file_util.hpp"
-#include "common/language_util.hpp"
+#include "judge_core/types/workspace_layout.hpp"
 
 #include <utility>
 
@@ -19,32 +19,6 @@ namespace{
         }
 
         return {};
-    }
-
-    std::expected<std::filesystem::path, judge_error> make_source_file_path(
-        const std::filesystem::path& workspace_path,
-        std::string_view language
-    ){
-        const auto workspace_path_validation_exp = require_non_empty_path(
-            workspace_path,
-            "workspace path is empty"
-        );
-        if(!workspace_path_validation_exp){
-            return std::unexpected(workspace_path_validation_exp.error());
-        }
-
-        const auto supported_language_opt =
-            language_util::find_supported_language(language);
-        if(!supported_language_opt){
-            return std::unexpected(make_validation_error("unsupported language"));
-        }
-
-        if(supported_language_opt->language == "java"){
-            return workspace_path / "Main.java";
-        }
-
-        return workspace_path /
-               ("main" + std::string(supported_language_opt->source_extension));
     }
 
     std::expected<void, judge_error> cleanup_workspace_path(
@@ -118,18 +92,55 @@ const std::filesystem::path& workspace_session::path() const noexcept{
     return workspace_path_;
 }
 
-std::expected<std::filesystem::path, judge_error> workspace_session::write_source_file(
-    std::string_view language,
-    std::string_view source_code
-){
+std::filesystem::path workspace_session::sandbox_root() const{
+    return workspace_layout::sandbox_root_path();
+}
+
+std::expected<std::filesystem::path, judge_error> workspace_session::source_path_for(
+    std::string_view language
+) const{
     if(closed_){
         return std::unexpected(make_validation_error("workspace is already closed"));
     }
 
-    const auto source_file_path_exp = make_source_file_path(
-        workspace_path_,
-        language
-    );
+    const auto workspace_layout_exp = workspace_layout::create(workspace_path_);
+    if(!workspace_layout_exp){
+        return std::unexpected(judge_error{workspace_layout_exp.error()});
+    }
+
+    const auto source_path_exp = workspace_layout_exp->source_path_for(language);
+    if(!source_path_exp){
+        return std::unexpected(judge_error{source_path_exp.error()});
+    }
+
+    return *source_path_exp;
+}
+
+std::expected<std::filesystem::path, judge_error> workspace_session::sandbox_path_for(
+    const std::filesystem::path& host_path
+) const{
+    if(closed_){
+        return std::unexpected(make_validation_error("workspace is already closed"));
+    }
+
+    const auto workspace_layout_exp = workspace_layout::create(workspace_path_);
+    if(!workspace_layout_exp){
+        return std::unexpected(judge_error{workspace_layout_exp.error()});
+    }
+
+    const auto sandbox_path_exp = workspace_layout_exp->sandbox_path_for(host_path);
+    if(!sandbox_path_exp){
+        return std::unexpected(judge_error{sandbox_path_exp.error()});
+    }
+
+    return *sandbox_path_exp;
+}
+
+std::expected<std::filesystem::path, judge_error> workspace_session::write_source_file(
+    std::string_view language,
+    std::string_view source_code
+){
+    const auto source_file_path_exp = source_path_for(language);
     if(!source_file_path_exp){
         return std::unexpected(source_file_path_exp.error());
     }

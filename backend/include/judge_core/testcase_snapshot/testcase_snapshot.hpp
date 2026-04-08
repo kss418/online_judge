@@ -26,22 +26,22 @@ struct testcase_snapshot{
         return testcase_snapshot_value;
     }
 
-    [[nodiscard]] std::int32_t case_count() const noexcept;
+    std::int32_t case_count() const noexcept;
 
-    [[nodiscard]] std::expected<void, io_error> validate() const;
+    std::expected<void, io_error> validate() const;
 
-    [[nodiscard]] std::expected<std::filesystem::path, io_error> input_path(
+    std::expected<std::filesystem::path, io_error> input_path(
         std::int32_t order
     ) const;
 
-    [[nodiscard]] std::expected<std::filesystem::path, io_error> output_path(
+    std::expected<std::filesystem::path, io_error> output_path(
         std::int32_t order
     ) const;
 
-    [[nodiscard]] std::expected<std::filesystem::path, io_error> memory_limit_file_path(
+    std::expected<std::filesystem::path, io_error> memory_limit_file_path(
     ) const;
 
-    [[nodiscard]] std::expected<std::filesystem::path, io_error> time_limit_file_path(
+    std::expected<std::filesystem::path, io_error> time_limit_file_path(
     ) const;
 
     std::int64_t problem_id = 0;
