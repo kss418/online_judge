@@ -141,6 +141,16 @@ Get a single submission detail view. This endpoint is public and does not requir
 
 The detail response does not expose `source_code`. Use `GET /api/submission/{submission_id}/source` for owner/admin-only source access.
 
+Build-stage note:
+
+- The judge has richer internal build outcomes than the public `status` field.
+- Internal `CompileResourceExceeded` currently does not map to a dedicated
+  public submission status.
+- For now, both user compile errors and compile-stage resource exhaustion are
+  exposed externally as `compile_error`.
+- This public contract may evolve later if a dedicated submission status is
+  introduced for build-stage resource exhaustion.
+
 Example:
 
 ```json

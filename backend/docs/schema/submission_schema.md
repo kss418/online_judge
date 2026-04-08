@@ -101,6 +101,95 @@ Indexes:
 - Basic rejudge re-enqueues the same submission and preserves `submissions.problem_version`, so it re-evaluates the original published problem version.
 - Rejudging against the latest problem version should be implemented as a separate admin workflow rather than mutating the existing submission.
 
+## internal build outcome model
+
+The judge build step has an internal outcome classification that is richer than
+the persisted `submission_status` enum.
+
+Current internal build outcomes:
+
+- `BuildSuccess`
+- `UserCompileError`
+- `CompileResourceExceeded`
+- `BuildInfraFailure`
+
+Current `CompileResourceExceeded` reason classification:
+
+- `wall_clock`
+- `signaled`
+- `unknown`
+
+Notes:
+
+- These outcomes are internal judge-layer facts used between builder,
+  processor, and lifecycle components.
+- They are not stored 1:1 in `submissions.status`.
+- In particular, `CompileResourceExceeded` is currently an internal category and
+  does not yet have a dedicated external submission status.
+- Memory / OOM is not yet identified precisely enough to expose as a distinct
+  stable public status, so it may currently remain under internal
+  `CompileResourceExceeded{signaled}` or `CompileResourceExceeded{unknown}`.
+
+## current build policy
+
+Current submission lifecycle policy is:
+
+- `BuildSuccess` -> acquire testcase snapshot -> execute -> evaluate -> finalize
+  with the evaluated judge result
+- `UserCompileError` -> finalize as `compile_error`
+- `CompileResourceExceeded` -> currently finalize as `compile_error`
+- `BuildInfraFailure` -> keep the existing infra-failure policy
+  (`infra_failure` finalize or immediate requeue, depending on lifecycle retry
+  policy)
+
+This means internal build classification is richer than the current external
+submission status contract. Public behavior is intentionally conservative for
+now.
+
+## future evolution
+
+- `CompileResourceExceeded` may be promoted to a dedicated external
+  `submission_status` in a later schema / API change.
+- Retry behavior for some build outcomes, especially compile resource
+  exhaustion, may be revisited in a separate change after operational data is
+  collected.
+
+## test plan
+
+Minimum regression validation after build outcome policy changes:
+
+1. Run [`test/submission_flow.sh`](../../test/submission_flow.sh).
+2. Run [`test/judge_server_flow.sh`](../../test/judge_server_flow.sh).
+
+Recommended scenario coverage:
+
+1. User compile error
+   - input: source with a syntax error
+   - expect internal outcome `UserCompileError`
+   - expect external submission status `compile_error`
+2. Compile timeout
+   - input: intentionally slow compile source such as heavy C++ template
+     expansion
+   - expect internal outcome `CompileResourceExceeded{wall_clock}`
+   - current external status remains `compile_error`
+3. Build infra failure
+   - input: broken toolchain path or unavailable sandbox
+   - expect internal outcome `BuildInfraFailure`
+   - expect lifecycle infra-failure handling (`infra_failure` finalize or
+     immediate requeue)
+4. Normal build success
+   - input: valid source
+   - expect internal outcome `BuildSuccess`
+   - expect normal execute/evaluate path
+
+Testing guidance:
+
+- End-to-end tests should stay small and stable.
+- Timeout / OOM reproduction can be flaky, so detailed classification should
+  prefer pure helper-level tests when possible.
+- Flow tests should keep covering the externally visible contract, while
+  helper-level tests can cover internal build classification rules.
+
 ## shared table
 
 ### `schema_migrations`
