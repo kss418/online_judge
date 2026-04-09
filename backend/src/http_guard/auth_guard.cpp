@@ -27,34 +27,55 @@ std::expected<auth_dto::token, auth_guard::response_type> auth_guard::parse_bear
     return token_value;
 }
 
+std::expected<auth_dto::token, auth_guard::response_type> auth_guard::parse_bearer_token_or_401(
+    const request_context& context
+){
+    return parse_bearer_token_or_401(context.request);
+}
+
 std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require_auth(
     const request_type& request,
     db_connection& db_connection
 ){
-    const auto token_exp = parse_bearer_token_or_401(request);
+    request_context context(request, db_connection);
+    return require_auth(context);
+}
+
+std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require_auth(
+    request_context& context
+){
+    if(context.auth_identity_opt.has_value()){
+        return *context.auth_identity_opt;
+    }
+
+    const auto token_exp = parse_bearer_token_or_401(context);
     if(!token_exp){
         return std::unexpected(std::move(token_exp.error()));
     }
 
-    const auto auth_identity_exp = auth_service::auth_token(db_connection, *token_exp);
+    const auto auth_identity_exp = auth_service::auth_token(
+        context.db_connection_ref(),
+        *token_exp
+    );
     if(!auth_identity_exp){
         const auto code = auth_identity_exp.error();
         const auto mapped_error_opt = auth_error::map_token_service_error(code);
         if(mapped_error_opt){
             return std::unexpected(http_response_util::create_error(
-                request,
+                context.request,
                 *mapped_error_opt
             ));
         }
 
         return std::unexpected(http_response_util::create_internal_server_error(
-            request,
+            context.request,
             "authenticate_token",
             to_string(code)
         ));
     }
 
-    return std::move(*auth_identity_exp);
+    context.auth_identity_opt = *auth_identity_exp;
+    return *context.auth_identity_opt;
 }
 
 std::expected<std::optional<auth_dto::identity>, auth_guard::response_type>
@@ -62,12 +83,22 @@ auth_guard::require_optional_auth(
     const request_type& request,
     db_connection& db_connection
 ){
-    const auto authorization_field_it = request.find(boost::beast::http::field::authorization);
-    if(authorization_field_it == request.end()){
+    request_context context(request, db_connection);
+    return require_optional_auth(context);
+}
+
+std::expected<std::optional<auth_dto::identity>, auth_guard::response_type>
+auth_guard::require_optional_auth(
+    request_context& context
+){
+    const auto authorization_field_it = context.request.find(
+        boost::beast::http::field::authorization
+    );
+    if(authorization_field_it == context.request.end()){
         return std::optional<auth_dto::identity>{};
     }
 
-    const auto auth_identity_exp = require_auth(request, db_connection);
+    const auto auth_identity_exp = require_auth(context);
     if(!auth_identity_exp){
         return std::unexpected(std::move(auth_identity_exp.error()));
     }
@@ -79,13 +110,20 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require
     const request_type& request,
     db_connection& db_connection
 ){
-    const auto auth_identity_exp = require_auth(request, db_connection);
+    request_context context(request, db_connection);
+    return require_admin(context);
+}
+
+std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require_admin(
+    request_context& context
+){
+    const auto auth_identity_exp = require_auth(context);
     if(!auth_identity_exp){
         return std::unexpected(std::move(auth_identity_exp.error()));
     }
     if(!permission_util::has_admin_access(auth_identity_exp->permission_level)){
         return std::unexpected(http_response_util::create_error(
-            request,
+            context.request,
             auth_error::admin_bearer_token_required()
         ));
     }
@@ -98,13 +136,21 @@ auth_guard::require_superadmin(
     const request_type& request,
     db_connection& db_connection
 ){
-    const auto auth_identity_exp = require_auth(request, db_connection);
+    request_context context(request, db_connection);
+    return require_superadmin(context);
+}
+
+std::expected<auth_dto::identity, auth_guard::response_type>
+auth_guard::require_superadmin(
+    request_context& context
+){
+    const auto auth_identity_exp = require_auth(context);
     if(!auth_identity_exp){
         return std::unexpected(std::move(auth_identity_exp.error()));
     }
     if(!permission_util::has_superadmin_access(auth_identity_exp->permission_level)){
         return std::unexpected(http_response_util::create_error(
-            request,
+            context.request,
             auth_error::superadmin_bearer_token_required()
         ));
     }

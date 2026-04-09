@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/db_connection_pool.hpp"
+#include "http_core/request_context.hpp"
 #include "http_router/auth_router.hpp"
 #include "http_router/problem_router.hpp"
 #include "http_router/submission_router.hpp"
@@ -34,9 +35,8 @@ private:
         std::string_view path
     );
     std::optional<response_type> try_handle_route(
-        const request_type& request,
-        std::string_view path,
-        db_connection& db_connection
+        request_context& context,
+        std::string_view path
     );
 
     static constexpr std::string_view system_path_prefix_ = "/api/system";

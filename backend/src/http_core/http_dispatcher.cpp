@@ -2,11 +2,21 @@
 #include "http_core/request_parser.hpp"
 #include "http_core/http_response_util.hpp"
 
+#include <atomic>
 #include <chrono>
+#include <cstdint>
+#include <string>
 #include <string_view>
 
 namespace{
     constexpr std::chrono::milliseconds DB_CONNECTION_ACQUIRE_TIMEOUT{100};
+    std::atomic<std::uint64_t> next_request_id{1};
+
+    std::string make_request_id(){
+        return "req-" + std::to_string(
+            next_request_id.fetch_add(1, std::memory_order_relaxed)
+        );
+    }
 }
 
 http_dispatcher::http_dispatcher(db_connection_pool& db_connection_pool) :
@@ -50,38 +60,38 @@ std::optional<http_dispatcher::response_type> http_dispatcher::try_handle_system
 }
 
 std::optional<http_dispatcher::response_type> http_dispatcher::try_handle_route(
-    const request_type& request,
-    std::string_view path,
-    db_connection& db_connection
+    request_context& context,
+    std::string_view path
 ){
     const auto auth_path_opt = strip_path_prefix(auth_path_prefix_, path);
     if(auth_path_opt){
-        auth_router auth_router_value(db_connection);
-        return auth_router_value.route(request, *auth_path_opt);
+        auth_router auth_router_value;
+        return auth_router_value.route(context, *auth_path_opt);
     }
 
     const auto submission_path_opt = strip_path_prefix(submission_path_prefix_, path);
     if(submission_path_opt){
-        submission_router submission_router_value(db_connection);
-        return submission_router_value.route(request, *submission_path_opt);
+        submission_router submission_router_value(context.db_connection_ref());
+        return submission_router_value.route(context.request, *submission_path_opt);
     }
 
     const auto problem_path_opt = strip_path_prefix(problem_path_prefix_, path);
     if(problem_path_opt){
-        problem_router problem_router_value(db_connection);
-        return problem_router_value.route(request, *problem_path_opt);
+        problem_router problem_router_value(context.db_connection_ref());
+        return problem_router_value.route(context.request, *problem_path_opt);
     }
 
     const auto user_path_opt = strip_path_prefix(user_path_prefix_, path);
     if(user_path_opt){
-        user_router user_router_value(db_connection);
-        return user_router_value.route(request, *user_path_opt);
+        user_router user_router_value(context.db_connection_ref());
+        return user_router_value.route(context.request, *user_path_opt);
     }
 
     return std::nullopt;
 }
 
 http_dispatcher::response_type http_dispatcher::handle(const request_type& request){
+    const std::string request_id = make_request_id();
     const std::string_view target{
         request.target().data(),
         request.target().size()
@@ -113,11 +123,12 @@ http_dispatcher::response_type http_dispatcher::handle(const request_type& reque
         );
     }
 
-    const auto response_opt = try_handle_route(
+    request_context context(
         request,
-        path,
-        db_connection_lease_exp->connection()
+        std::move(*db_connection_lease_exp),
+        request_id
     );
+    const auto response_opt = try_handle_route(context, path);
     if(response_opt.has_value()){
         return std::move(response_opt.value());
     }
