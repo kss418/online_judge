@@ -9,20 +9,6 @@
 #include <vector>
 
 namespace{
-    std::optional<execution_report::execution_failure_kind> resolve_execution_failure(
-        const execution_report::testcase_execution& testcase_execution_value,
-        const execution_report::applied_limits& limits_value
-    ){
-        if(testcase_execution_value.failure_opt.has_value()){
-            return testcase_execution_value.failure_opt;
-        }
-
-        return execution_failure_classifier::classify(
-            testcase_execution_value,
-            limits_value
-        );
-    }
-
     std::string make_failed_testcase_message(
         execution_report::execution_failure_kind failure_kind_value,
         std::int32_t testcase_index
@@ -99,10 +85,7 @@ std::expected<submission_verdict_summary, judge_error> judge_policy::check_resul
     for(std::size_t index = 0; index < execution_report_value.executions.size(); ++index){
         const auto& testcase_execution_value = execution_report_value.executions[index];
         const auto testcase_index = static_cast<std::int32_t>(index + 1);
-        const auto execution_failure_opt = resolve_execution_failure(
-            testcase_execution_value,
-            execution_report_value.limits
-        );
+        const auto execution_failure_opt = testcase_execution_value.failure_opt;
         if(execution_failure_opt.has_value()){
             return make_failed_testcase_summary(
                 execution_failure_classifier::to_judge_result(*execution_failure_opt),
