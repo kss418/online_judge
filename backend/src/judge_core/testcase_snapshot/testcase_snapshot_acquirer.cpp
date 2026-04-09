@@ -113,14 +113,6 @@ testcase_snapshot_acquirer::sync_version_directory(
         return std::unexpected(download_all_exp.error());
     }
 
-    const auto write_problem_limits_exp = testcase_store_.write_problem_limits(
-        staging_area_value,
-        manifest_value.limits_value
-    );
-    if(!write_problem_limits_exp){
-        return std::unexpected(write_problem_limits_exp.error());
-    }
-
     const auto snapshot_manifest_exp = make_snapshot_manifest(manifest_value);
     if(!snapshot_manifest_exp){
         return std::unexpected(snapshot_manifest_exp.error());
@@ -163,7 +155,7 @@ testcase_snapshot_acquirer::acquire_testcase_snapshot(
         );
     }
 
-    const auto snapshot_exists_exp = testcase_store_.has_version(
+    const auto snapshot_exists_exp = testcase_store_.has_valid_manifest(
         problem_id,
         problem_version
     );

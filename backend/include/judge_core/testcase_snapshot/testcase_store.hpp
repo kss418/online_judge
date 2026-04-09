@@ -41,11 +41,6 @@ public:
     testcase_store(const testcase_store&) = delete;
     testcase_store& operator=(const testcase_store&) = delete;
 
-    std::expected<bool, judge_error> has_version(
-        std::int64_t problem_id,
-        std::int32_t version
-    ) const;
-
     std::expected<staging_area, judge_error> create_staging_area(
         std::int64_t problem_id,
         std::int32_t version
@@ -56,11 +51,6 @@ public:
         std::int32_t order,
         std::string_view input,
         std::string_view output
-    ) const;
-
-    std::expected<void, judge_error> write_problem_limits(
-        const staging_area& staging_area_value,
-        const problem_content_dto::limits& problem_limits_value
     ) const;
 
     std::expected<void, judge_error> write_manifest(

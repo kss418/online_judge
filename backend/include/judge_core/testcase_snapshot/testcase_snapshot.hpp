@@ -38,12 +38,6 @@ struct testcase_snapshot{
         std::int32_t order
     ) const;
 
-    std::expected<std::filesystem::path, io_error> memory_limit_file_path(
-    ) const;
-
-    std::expected<std::filesystem::path, io_error> time_limit_file_path(
-    ) const;
-
     std::int64_t problem_id = 0;
     std::int32_t version = 0;
     std::filesystem::path directory_path;

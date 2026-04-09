@@ -274,8 +274,12 @@ PY
 validate_testcase_cache_layout(){
     local problem_id="$1"
     local expected_version="$2"
+    local expected_testcase_count="$3"
+    local expected_memory_limit_mb="$4"
+    local expected_time_limit_ms="$5"
     local problem_directory_path="${testcase_root}/${problem_id}"
     local version_directory_path="${problem_directory_path}/${expected_version}"
+    local manifest_path="${version_directory_path}/manifest.json"
 
     if [[ ! -d "${version_directory_path}" ]]; then
         append_log_line "${test_log_temp_file}" "missing version directory: ${version_directory_path}"
@@ -284,7 +288,7 @@ validate_testcase_cache_layout(){
         exit 1
     fi
 
-    for required_file_name in 001.in 001.out memory_limit time_limit; do
+    for required_file_name in 001.in 001.out manifest.json; do
         if [[ ! -f "${version_directory_path}/${required_file_name}" ]]; then
             append_log_line "${test_log_temp_file}" "missing testcase cache file: ${version_directory_path}/${required_file_name}"
             publish_all_failure_logs
@@ -292,6 +296,66 @@ validate_testcase_cache_layout(){
             exit 1
         fi
     done
+
+    if [[ -e "${version_directory_path}/legacy.txt" ]]; then
+        append_log_line "${test_log_temp_file}" "legacy cache marker still exists: ${version_directory_path}/legacy.txt"
+        publish_all_failure_logs
+        echo "legacy testcase cache marker was not replaced: ${version_directory_path}/legacy.txt" >&2
+        exit 1
+    fi
+
+    if ! python3 - \
+        "${manifest_path}" \
+        "${problem_id}" \
+        "${expected_version}" \
+        "${expected_testcase_count}" \
+        "${expected_memory_limit_mb}" \
+        "${expected_time_limit_ms}" <<'PY'
+import json
+import sys
+
+(
+    manifest_path,
+    expected_problem_id,
+    expected_version,
+    expected_testcase_count,
+    expected_memory_limit_mb,
+    expected_time_limit_ms,
+) = sys.argv[1:]
+
+with open(manifest_path, encoding="utf-8") as manifest_file:
+    manifest = json.load(manifest_file)
+
+expected_manifest = {
+    "schema_version": 1,
+    "problem_id": int(expected_problem_id),
+    "version": int(expected_version),
+    "testcase_count": int(expected_testcase_count),
+    "limits": {
+        "memory_limit_mb": int(expected_memory_limit_mb),
+        "time_limit_ms": int(expected_time_limit_ms),
+    },
+}
+if manifest != expected_manifest:
+    raise SystemExit(f"unexpected testcase cache manifest: {manifest!r}")
+PY
+    then
+        append_log_line "${test_log_temp_file}" "testcase cache manifest validation failed: ${manifest_path}"
+        publish_all_failure_logs
+        echo "testcase cache manifest validation failed: ${manifest_path}" >&2
+        exit 1
+    fi
+}
+
+create_legacy_testcase_cache_directory(){
+    local problem_id="$1"
+    local expected_version="$2"
+    local version_directory_path="${testcase_root}/${problem_id}/${expected_version}"
+
+    mkdir -p "${version_directory_path}"
+    printf '1 2\n' >"${version_directory_path}/001.in"
+    printf '999\n' >"${version_directory_path}/001.out"
+    printf 'legacy cache without manifest\n' >"${version_directory_path}/legacy.txt"
 }
 
 wait_for_submission_final_status(){
@@ -711,6 +775,10 @@ PY
 append_log_line "${test_log_temp_file}" "testcase created: problem_id=${problem_id}, testcase_order=1"
 print_success_log "problem testcase create success"
 
+create_legacy_testcase_cache_directory "${problem_id}" "3"
+append_log_line "${test_log_temp_file}" "legacy testcase cache directory created without manifest: problem_id=${problem_id}, version=3"
+print_success_log "legacy testcase cache setup success"
+
 ensure_judge_server
 print_success_log "judge server start success"
 
@@ -765,8 +833,13 @@ validate_submission_detail \
     "non_negative_int"
 validate_submission_status_history "${accepted_submission_id}" "accepted"
 print_success_log "accepted submission judged successfully"
-validate_testcase_cache_layout "${problem_id}" "3"
-print_success_log "testcase version directory layout validated"
+validate_testcase_cache_layout \
+    "${problem_id}" \
+    "3" \
+    "1" \
+    "${problem_memory_limit_mb}" \
+    "${problem_time_limit_ms}"
+print_success_log "testcase version directory manifest validated"
 
 python_accepted_submission_request_body="$(
     make_submission_request_body "python" "${python_accepted_source_code}"

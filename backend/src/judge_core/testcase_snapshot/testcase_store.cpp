@@ -4,6 +4,7 @@
 
 #include <boost/json.hpp>
 
+#include <charconv>
 #include <iomanip>
 #include <limits>
 #include <sstream>
@@ -11,6 +12,7 @@
 #include <string_view>
 #include <system_error>
 #include <utility>
+#include <vector>
 
 namespace{
     constexpr int FILE_OPERATION_ATTEMPT_COUNT = 5;
@@ -121,24 +123,6 @@ namespace{
         return make_validated_testcase_path(
             testcase_directory_path,
             std::filesystem::path(format_testcase_file_name(order, ".out"))
-        );
-    }
-
-    std::expected<std::filesystem::path, io_error> make_testcase_memory_limit_file_path(
-        const std::filesystem::path& testcase_directory_path
-    ){
-        return make_validated_testcase_path(
-            testcase_directory_path,
-            std::filesystem::path("memory_limit")
-        );
-    }
-
-    std::expected<std::filesystem::path, io_error> make_testcase_time_limit_file_path(
-        const std::filesystem::path& testcase_directory_path
-    ){
-        return make_validated_testcase_path(
-            testcase_directory_path,
-            std::filesystem::path("time_limit")
         );
     }
 
@@ -337,14 +321,24 @@ namespace{
         return manifest_value;
     }
 
-    std::expected<std::int32_t, io_error> count_testcase_output(
-        const std::filesystem::path& testcase_directory_path
+    std::expected<void, judge_error> verify_testcase_output_layout(
+        const std::filesystem::path& testcase_directory_path,
+        std::int32_t expected_testcase_count
     ){
         const auto validated_directory_path_exp = validate_testcase_base_path(
             testcase_directory_path
         );
         if(!validated_directory_path_exp){
             return std::unexpected(validated_directory_path_exp.error());
+        }
+
+        if(expected_testcase_count < 0){
+            return std::unexpected(
+                judge_error{
+                    judge_error_code::validation_error,
+                    "invalid testcase count"
+                }
+            );
         }
 
         std::error_code iterator_ec;
@@ -356,14 +350,72 @@ namespace{
             return std::unexpected(io_error::from_error_code(iterator_ec));
         }
 
+        std::vector<bool> seen_orders(
+            static_cast<std::size_t>(expected_testcase_count) + 1,
+            false
+        );
         std::int32_t testcase_count = 0;
         for(std::filesystem::directory_iterator end_it; directory_it != end_it; ++directory_it){
-            if(directory_it->path().extension() == ".out"){
-                ++testcase_count;
+            const std::filesystem::path entry_path = directory_it->path();
+            if(entry_path.extension() != ".out"){
+                continue;
+            }
+
+            const std::string stem = entry_path.stem().string();
+            std::int32_t order = 0;
+            const auto [parse_end, parse_ec] = std::from_chars(
+                stem.data(),
+                stem.data() + stem.size(),
+                order
+            );
+            if(
+                parse_ec != std::errc{} ||
+                parse_end != stem.data() + stem.size() ||
+                order <= 0 ||
+                order > expected_testcase_count
+            ){
+                return std::unexpected(
+                    judge_error{
+                        judge_error_code::validation_error,
+                        "invalid testcase output layout"
+                    }
+                );
+            }
+
+            if(seen_orders[static_cast<std::size_t>(order)]){
+                return std::unexpected(
+                    judge_error{
+                        judge_error_code::validation_error,
+                        "duplicate testcase output layout"
+                    }
+                );
+            }
+
+            seen_orders[static_cast<std::size_t>(order)] = true;
+            ++testcase_count;
+        }
+
+        if(testcase_count != expected_testcase_count){
+            return std::unexpected(
+                judge_error{
+                    judge_error_code::validation_error,
+                    "testcase output layout does not match manifest"
+                }
+            );
+        }
+
+        for(std::int32_t order = 1; order <= expected_testcase_count; ++order){
+            if(!seen_orders[static_cast<std::size_t>(order)]){
+                return std::unexpected(
+                    judge_error{
+                        judge_error_code::validation_error,
+                        "testcase output layout does not match manifest"
+                    }
+                );
             }
         }
 
-        return testcase_count;
+        return {};
     }
 
     std::expected<void, judge_error> ensure_path_exists(
@@ -425,37 +477,9 @@ namespace{
             );
         }
 
-        const auto memory_limit_file_path_exp =
-            make_testcase_memory_limit_file_path(testcase_directory_path);
-        if(!memory_limit_file_path_exp){
-            return std::unexpected(memory_limit_file_path_exp.error());
-        }
-
-        const auto time_limit_file_path_exp =
-            make_testcase_time_limit_file_path(testcase_directory_path);
-        if(!time_limit_file_path_exp){
-            return std::unexpected(time_limit_file_path_exp.error());
-        }
-
         const auto manifest_path_exp = make_manifest_path(testcase_directory_path);
         if(!manifest_path_exp){
             return std::unexpected(manifest_path_exp.error());
-        }
-
-        const auto memory_limit_exists_exp = ensure_path_exists(
-            *memory_limit_file_path_exp,
-            "missing testcase memory limit file"
-        );
-        if(!memory_limit_exists_exp){
-            return std::unexpected(memory_limit_exists_exp.error());
-        }
-
-        const auto time_limit_exists_exp = ensure_path_exists(
-            *time_limit_file_path_exp,
-            "missing testcase time limit file"
-        );
-        if(!time_limit_exists_exp){
-            return std::unexpected(time_limit_exists_exp.error());
         }
 
         const auto manifest_exists_exp = ensure_path_exists(
@@ -500,18 +524,12 @@ namespace{
             }
         }
 
-        const auto testcase_count_exp = count_testcase_output(testcase_directory_path);
-        if(!testcase_count_exp){
-            return std::unexpected(testcase_count_exp.error());
-        }
-
-        if(*testcase_count_exp != manifest_value.testcase_count){
-            return std::unexpected(
-                judge_error{
-                    judge_error_code::validation_error,
-                    "testcase output layout does not match manifest"
-                }
-            );
+        const auto verify_layout_exp = verify_testcase_output_layout(
+            testcase_directory_path,
+            manifest_value.testcase_count
+        );
+        if(!verify_layout_exp){
+            return std::unexpected(verify_layout_exp.error());
         }
 
         return {};
@@ -569,30 +587,6 @@ testcase_store& testcase_store::operator=(
 ) noexcept = default;
 
 testcase_store::~testcase_store() = default;
-
-std::expected<bool, judge_error> testcase_store::has_version(
-    std::int64_t problem_id,
-    std::int32_t version
-) const{
-    const auto version_directory_path_exp =
-        make_testcase_version_directory_path(
-            testcase_root_path_,
-            problem_id,
-            version
-        );
-    if(!version_directory_path_exp){
-        return std::unexpected(version_directory_path_exp.error());
-    }
-
-    const auto version_directory_exists_exp = file_util::exists(
-        *version_directory_path_exp
-    );
-    if(!version_directory_exists_exp){
-        return std::unexpected(version_directory_exists_exp.error());
-    }
-
-    return *version_directory_exists_exp;
-}
 
 std::expected<testcase_store::staging_area, judge_error>
 testcase_store::create_staging_area(
@@ -669,52 +663,6 @@ std::expected<void, judge_error> testcase_store::write_testcase(
     );
     if(!create_output_exp){
         return std::unexpected(create_output_exp.error());
-    }
-
-    return {};
-}
-
-std::expected<void, judge_error> testcase_store::write_problem_limits(
-    const staging_area& staging_area_value,
-    const problem_content_dto::limits& problem_limits_value
-) const{
-    const auto memory_limit_file_path_exp =
-        make_testcase_memory_limit_file_path(
-            staging_area_value.path()
-        );
-    if(!memory_limit_file_path_exp){
-        return std::unexpected(memory_limit_file_path_exp.error());
-    }
-
-    const auto time_limit_file_path_exp =
-        make_testcase_time_limit_file_path(
-            staging_area_value.path()
-        );
-    if(!time_limit_file_path_exp){
-        return std::unexpected(time_limit_file_path_exp.error());
-    }
-
-    const auto create_directories_exp = file_util::create_directories(
-        memory_limit_file_path_exp->parent_path()
-    );
-    if(!create_directories_exp){
-        return std::unexpected(create_directories_exp.error());
-    }
-
-    const auto create_memory_limit_file_exp = file_util::create_file(
-        *memory_limit_file_path_exp,
-        std::to_string(problem_limits_value.memory_mb)
-    );
-    if(!create_memory_limit_file_exp){
-        return std::unexpected(create_memory_limit_file_exp.error());
-    }
-
-    const auto create_time_limit_file_exp = file_util::create_file(
-        *time_limit_file_path_exp,
-        std::to_string(problem_limits_value.time_ms)
-    );
-    if(!create_time_limit_file_exp){
-        return std::unexpected(create_time_limit_file_exp.error());
     }
 
     return {};
@@ -813,12 +761,20 @@ std::expected<void, judge_error> testcase_store::publish_version_directory(
             return std::unexpected(valid_manifest_exp.error());
         }
         if(!valid_manifest_exp.value()){
-            return std::unexpected(
-                judge_error{
-                    judge_error_code::conflict,
-                    "testcase snapshot version directory exists without a valid manifest"
-                }
+            const auto remove_invalid_version_exp = file_util::remove_all(
+                *version_directory_path_exp
             );
+            if(!remove_invalid_version_exp){
+                return std::unexpected(remove_invalid_version_exp.error());
+            }
+
+            const auto retry_rename_exp = rename_directory(
+                staging_area_value.path(),
+                *version_directory_path_exp
+            );
+            if(!retry_rename_exp){
+                return std::unexpected(retry_rename_exp.error());
+            }
         }
     }
 
