@@ -1,6 +1,48 @@
 #include "judge_core/testcase_snapshot/testcase_snapshot_acquirer.hpp"
 
+#include <limits>
 #include <utility>
+
+namespace{
+    std::expected<testcase_store::snapshot_manifest, judge_error> make_snapshot_manifest(
+        const testcase_source_facade::problem_snapshot_manifest& manifest_value
+    ){
+        if(
+            manifest_value.testcases.size() >
+            static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max())
+        ){
+            return std::unexpected(
+                judge_error{
+                    judge_error_code::validation_error,
+                    "too many testcases for local snapshot manifest"
+                }
+            );
+        }
+
+        testcase_store::snapshot_manifest snapshot_manifest_value;
+        snapshot_manifest_value.problem_id = manifest_value.problem_id;
+        snapshot_manifest_value.version = manifest_value.version;
+        snapshot_manifest_value.testcase_count =
+            static_cast<std::int32_t>(manifest_value.testcases.size());
+        snapshot_manifest_value.limits_value = manifest_value.limits_value;
+
+        for(std::size_t index = 0; index < manifest_value.testcases.size(); ++index){
+            if(
+                manifest_value.testcases[index].order !=
+                static_cast<std::int32_t>(index + 1)
+            ){
+                return std::unexpected(
+                    judge_error{
+                        judge_error_code::validation_error,
+                        "problem snapshot manifest testcase order must be contiguous"
+                    }
+                );
+            }
+        }
+
+        return snapshot_manifest_value;
+    }
+}
 
 std::expected<testcase_snapshot_acquirer, judge_error>
 testcase_snapshot_acquirer::create(
@@ -77,6 +119,27 @@ testcase_snapshot_acquirer::sync_version_directory(
     );
     if(!write_problem_limits_exp){
         return std::unexpected(write_problem_limits_exp.error());
+    }
+
+    const auto snapshot_manifest_exp = make_snapshot_manifest(manifest_value);
+    if(!snapshot_manifest_exp){
+        return std::unexpected(snapshot_manifest_exp.error());
+    }
+
+    const auto write_manifest_exp = testcase_store_.write_manifest(
+        staging_area_value,
+        *snapshot_manifest_exp
+    );
+    if(!write_manifest_exp){
+        return std::unexpected(write_manifest_exp.error());
+    }
+
+    const auto validate_staging_area_exp = testcase_store_.validate_staging_area(
+        staging_area_value,
+        *snapshot_manifest_exp
+    );
+    if(!validate_staging_area_exp){
+        return std::unexpected(validate_staging_area_exp.error());
     }
 
     return testcase_store_.publish_version_directory(
