@@ -6,6 +6,7 @@
 
 class system_router{
 public:
+    using context_type = system_handler::context_type;
     using request_type = system_handler::request_type;
     using response_type = system_handler::response_type;
 
@@ -15,11 +16,11 @@ public:
     system_router(system_router&&) noexcept = delete;
     system_router& operator=(system_router&&) noexcept = delete;
 
-    response_type route(const request_type& request, std::string_view path);
+    response_type route(context_type& context, std::string_view path);
 
 private:
-    response_type handle_health(const request_type& request);
-    response_type handle_supported_languages(const request_type& request);
+    response_type handle_health(context_type& context);
+    response_type handle_supported_languages(context_type& context);
 
     system_handler system_handler_;
 };

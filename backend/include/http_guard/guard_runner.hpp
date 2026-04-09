@@ -145,14 +145,6 @@ namespace http_guard{
         return run(detail::make_guard_context(context));
     }
 
-    inline std::expected<std::tuple<>, response_type> run(
-        const request_type& request,
-        db_connection& db_connection_value
-    ){
-        request_context context(request, db_connection_value);
-        return run(context);
-    }
-
     template <typename guard_type, typename... remaining_guard_types>
     std::expected<
         detail::combined_guard_tuple_type<guard_type, remaining_guard_types...>,
@@ -257,20 +249,6 @@ namespace http_guard{
         );
     }
 
-    template <typename guard_type, typename... remaining_guard_types>
-    std::expected<
-        detail::combined_guard_tuple_type<guard_type, remaining_guard_types...>,
-        response_type
-    > run(
-        const request_type& request,
-        db_connection& db_connection_value,
-        guard_type&& guard,
-        remaining_guard_types&&... remaining_guards
-    ){
-        request_context context(request, db_connection_value);
-        return run(context, std::forward<guard_type>(guard), std::forward<remaining_guard_types>(remaining_guards)...);
-    }
-
     template <typename success_type, typename... guard_types>
     auto run_composite_guard(
         request_context& context,
@@ -282,24 +260,6 @@ namespace http_guard{
     >{
         return run_composite_guard(
             detail::make_guard_context(context),
-            std::forward<success_type>(success),
-            std::forward<guard_types>(guards)...
-        );
-    }
-
-    template <typename success_type, typename... guard_types>
-    auto run_composite_guard(
-        const request_type& request,
-        db_connection& db_connection_value,
-        success_type&& success,
-        guard_types&&... guards
-    ) -> detail::composite_guard_result_type<
-        std::decay_t<success_type>&,
-        std::remove_cvref_t<guard_types>...
-    >{
-        request_context context(request, db_connection_value);
-        return run_composite_guard(
-            context,
             std::forward<success_type>(success),
             std::forward<guard_types>(guards)...
         );
@@ -383,18 +343,4 @@ namespace http_guard{
         );
     }
 
-    template <typename success_type, typename... guard_types>
-    response_type run_or_respond(
-        const request_type& request,
-        db_connection& db_connection_value,
-        success_type&& success,
-        guard_types&&... guards
-    ){
-        request_context context(request, db_connection_value);
-        return run_or_respond(
-            context,
-            std::forward<success_type>(success),
-            std::forward<guard_types>(guards)...
-        );
-    }
 }

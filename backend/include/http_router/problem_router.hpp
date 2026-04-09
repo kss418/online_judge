@@ -1,6 +1,5 @@
 #pragma once
 
-#include "common/db_connection.hpp"
 #include "http_handler/problem_handler.hpp"
 
 #include <cstdint>
@@ -8,69 +7,62 @@
 
 class problem_router{
 public:
+    using context_type = problem_handler::context_type;
     using request_type = problem_handler::request_type;
     using response_type = problem_handler::response_type;
 
-    problem_router(const problem_router&) = delete;
-    problem_router& operator=(const problem_router&) = delete;
-    problem_router(problem_router&&) noexcept = delete;
-    problem_router& operator=(problem_router&&) noexcept = delete;
-
-    explicit problem_router(db_connection& db_connection);
-    response_type route(const request_type& request, std::string_view path);
+    response_type route(context_type& context, std::string_view path);
 
 private:
-    response_type handle_problems(const request_type& request);
+    response_type handle_problems(context_type& context);
     response_type handle_problem(
-        const request_type& request,
+        context_type& context,
         std::int64_t problem_id
     );
     response_type handle_title(
-        const request_type& request,
+        context_type& context,
         std::int64_t problem_id
     );
     response_type handle_set_limits(
-        const request_type& request,
+        context_type& context,
         std::int64_t problem_id
     );
     response_type handle_statement(
-        const request_type& request,
+        context_type& context,
         std::int64_t problem_id
     );
     response_type handle_samples(
-        const request_type& request,
+        context_type& context,
         std::int64_t problem_id
     );
     response_type handle_sample(
-        const request_type& request,
+        context_type& context,
         std::int64_t problem_id,
         std::int32_t sample_order
     );
     response_type handle_testcases(
-        const request_type& request,
+        context_type& context,
         std::int64_t problem_id
     );
     response_type handle_testcase(
-        const request_type& request,
+        context_type& context,
         std::int64_t problem_id,
         std::int32_t testcase_order
     );
     response_type handle_testcase_zip(
-        const request_type& request,
+        context_type& context,
         std::int64_t problem_id
     );
     response_type handle_testcase_move(
-        const request_type& request,
+        context_type& context,
         std::int64_t problem_id
     );
     response_type handle_testcase_all(
-        const request_type& request,
+        context_type& context,
         std::int64_t problem_id
     );
     response_type handle_problem_rejudge(
-        const request_type& request,
+        context_type& context,
         std::int64_t problem_id
     );
-
-    db_connection& db_connection_;
 };

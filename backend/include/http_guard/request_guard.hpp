@@ -87,8 +87,7 @@ namespace request_guard{
                 }
 
                 auto problem_exists_exp = problem_guard::require_exists(
-                    composite_context.request,
-                    composite_context.db_connection_value,
+                    composite_context.request_context_value,
                     problem_dto::reference{problem_id}
                 );
                 if(!problem_exists_exp){

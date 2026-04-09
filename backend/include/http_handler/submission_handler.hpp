@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/db_connection.hpp"
+#include "http_core/request_context.hpp"
 
 #include <boost/beast/http/field.hpp>
 #include <boost/beast/http/message.hpp>
@@ -8,40 +8,15 @@
 #include <boost/beast/http/string_body.hpp>
 
 namespace submission_handler{
-    using request_type = boost::beast::http::request<boost::beast::http::string_body>;
-    using response_type = boost::beast::http::response<boost::beast::http::string_body>;
+    using context_type = request_context;
+    using request_type = context_type::request_type;
+    using response_type = context_type::response_type;
 
-    response_type get_submission_history(
-        const request_type& request,
-        db_connection& db_connection_value,
-        std::int64_t submission_id
-    );
-    response_type get_submission_source(
-        const request_type& request,
-        db_connection& db_connection_value,
-        std::int64_t submission_id
-    );
-    response_type get_submission(
-        const request_type& request,
-        db_connection& db_connection_value,
-        std::int64_t submission_id
-    );
-    response_type post_submission_status_batch(
-        const request_type& request,
-        db_connection& db_connection_value
-    );
-    response_type post_submission(
-        const request_type& request,
-        db_connection& db_connection_value,
-        std::int64_t problem_id
-    );
-    response_type post_submission_rejudge(
-        const request_type& request,
-        db_connection& db_connection_value,
-        std::int64_t submission_id
-    );
-    response_type get_submissions(
-        const request_type& request,
-        db_connection& db_connection_value
-    );
+    response_type get_submission_history(context_type& context, std::int64_t submission_id);
+    response_type get_submission_source(context_type& context, std::int64_t submission_id);
+    response_type get_submission(context_type& context, std::int64_t submission_id);
+    response_type post_submission_status_batch(context_type& context);
+    response_type post_submission(context_type& context, std::int64_t problem_id);
+    response_type post_submission_rejudge(context_type& context, std::int64_t submission_id);
+    response_type get_submissions(context_type& context);
 }

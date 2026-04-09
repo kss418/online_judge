@@ -16,17 +16,16 @@ namespace{
 }
 
 submission_handler::response_type submission_handler::get_submission_history(
-    const request_type& request,
-    db_connection& db_connection_value,
+    context_type& context,
     std::int64_t submission_id
 ){
     return http_guard::run_or_respond(
-        request,
-        db_connection_value,
-        [&](const auth_dto::identity&,
+        context,
+        [submission_id](context_type& context_value,
+            const auth_dto::identity&,
             const submission_dto::history_list& history_values) -> response_type {
             return http_response_util::create_json(
-                request,
+                context_value.request,
                 boost::beast::http::status::ok,
                 submission_json_serializer::make_history_list_object(
                     submission_id,
@@ -40,16 +39,15 @@ submission_handler::response_type submission_handler::get_submission_history(
 }
 
 submission_handler::response_type submission_handler::get_submission_source(
-    const request_type& request,
-    db_connection& db_connection_value,
+    context_type& context,
     std::int64_t submission_id
 ){
     return http_guard::run_or_respond(
-        request,
-        db_connection_value,
-        [&](const submission_dto::source_detail& source_detail_value) -> response_type {
+        context,
+        [](context_type& context_value,
+            const submission_dto::source_detail& source_detail_value) -> response_type {
             return http_response_util::create_json(
-                request,
+                context_value.request,
                 boost::beast::http::status::ok,
                 submission_json_serializer::make_source_object(source_detail_value)
             );
@@ -59,16 +57,15 @@ submission_handler::response_type submission_handler::get_submission_source(
 }
 
 submission_handler::response_type submission_handler::get_submission(
-    const request_type& request,
-    db_connection& db_connection_value,
+    context_type& context,
     std::int64_t submission_id
 ){
     return http_guard::run_or_respond(
-        request,
-        db_connection_value,
-        [&](const submission_dto::detail& submission_detail_value) -> response_type {
+        context,
+        [](context_type& context_value,
+            const submission_dto::detail& submission_detail_value) -> response_type {
             return http_response_util::create_json(
-                request,
+                context_value.request,
                 boost::beast::http::status::ok,
                 submission_json_serializer::make_detail_object(submission_detail_value)
             );
@@ -78,17 +75,16 @@ submission_handler::response_type submission_handler::get_submission(
 }
 
 submission_handler::response_type submission_handler::post_submission_status_batch(
-    const request_type& request,
-    db_connection& db_connection_value
+    context_type& context
 ){
     return http_guard::run_or_respond(
-        request,
-        db_connection_value,
-        [&](const submission_dto::status_batch_request& batch_request) -> response_type {
+        context,
+        [](context_type& context_value,
+            const submission_dto::status_batch_request& batch_request) -> response_type {
             return http_response_util::create_json_or_4xx_or_500(
-                request,
+                context_value.request,
                 submission_service::get_submission_status_snapshots(
-                    db_connection_value,
+                    context_value.db_connection_ref(),
                     batch_request.submission_ids
                 ),
                 submission_json_serializer::make_status_snapshot_batch_object
@@ -101,20 +97,19 @@ submission_handler::response_type submission_handler::post_submission_status_bat
 }
 
 submission_handler::response_type submission_handler::post_submission(
-    const request_type& request,
-    db_connection& db_connection_value,
+    context_type& context,
     std::int64_t problem_id
 ){
     return http_guard::run_or_respond(
-        request,
-        db_connection_value,
-        [&](const submission_dto::create_request& create_request) -> response_type {
+        context,
+        [](context_type& context_value,
+            const submission_dto::create_request& create_request) -> response_type {
             const auto create_submission_exp = submission_service::create_submission(
-                db_connection_value,
+                context_value.db_connection_ref(),
                 create_request
             );
             return http_response_util::create_response_or_error(
-                request,
+                context_value.request,
                 std::move(create_submission_exp),
                 [&](const request_type& error_request,
                     const service_error& code) {
@@ -132,7 +127,7 @@ submission_handler::response_type submission_handler::post_submission(
                 },
                 [&](const submission_dto::created& created_value) {
                     return http_response_util::create_json(
-                        request,
+                        context_value.request,
                         boost::beast::http::status::created,
                         submission_json_serializer::make_created_object(created_value)
                     );
@@ -144,18 +139,17 @@ submission_handler::response_type submission_handler::post_submission(
 }
 
 submission_handler::response_type submission_handler::post_submission_rejudge(
-    const request_type& request,
-    db_connection& db_connection_value,
+    context_type& context,
     std::int64_t submission_id
 ){
     return http_guard::run_or_respond(
-        request,
-        db_connection_value,
-        [&](const auth_dto::identity&) -> response_type {
+        context,
+        [submission_id](context_type& context_value,
+            const auth_dto::identity&) -> response_type {
             return http_response_util::create_json_or_4xx_or_500(
-                request,
+                context_value.request,
                 submission_service::rejudge(
-                    db_connection_value,
+                    context_value.db_connection_ref(),
                     submission_id
                 ),
                 [&]{
@@ -171,22 +165,21 @@ submission_handler::response_type submission_handler::post_submission_rejudge(
 }
 
 submission_handler::response_type submission_handler::get_submissions(
-    const request_type& request,
-    db_connection& db_connection_value
+    context_type& context
 ){
     return http_guard::run_or_respond(
-        request,
-        db_connection_value,
-        [&](const std::optional<auth_dto::identity>& auth_identity_opt,
+        context,
+        [](context_type& context_value,
+            const std::optional<auth_dto::identity>& auth_identity_opt,
             const submission_dto::list_filter& filter_value) -> response_type {
             const auto viewer_user_id_opt = auth_guard::get_viewer_user_id(
                 auth_identity_opt
             );
 
             return http_response_util::create_json_or_4xx_or_500(
-                request,
+                context_value.request,
                 submission_service::list_submissions(
-                    db_connection_value,
+                    context_value.db_connection_ref(),
                     filter_value,
                     viewer_user_id_opt
                 ),

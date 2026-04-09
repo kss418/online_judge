@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/db_connection.hpp"
+#include "http_core/request_context.hpp"
 
 #include <boost/beast/http/field.hpp>
 #include <boost/beast/http/message.hpp>
@@ -10,35 +10,14 @@
 #include <cstdint>
 
 namespace problem_handler{
-    using request_type = boost::beast::http::request<boost::beast::http::string_body>;
-    using response_type = boost::beast::http::response<boost::beast::http::string_body>;
+    using context_type = request_context;
+    using request_type = context_type::request_type;
+    using response_type = context_type::response_type;
 
-    response_type get_problems(
-        const request_type& request,
-        db_connection& db_connection_value
-    );
-    response_type get_problem(
-        const request_type& request,
-        db_connection& db_connection_value,
-        std::int64_t problem_id
-    );
-    response_type post_problem(
-        const request_type& request,
-        db_connection& db_connection_value
-    );
-    response_type put_problem(
-        const request_type& request,
-        db_connection& db_connection_value,
-        std::int64_t problem_id
-    );
-    response_type delete_problem(
-        const request_type& request,
-        db_connection& db_connection_value,
-        std::int64_t problem_id
-    );
-    response_type post_problem_rejudge(
-        const request_type& request,
-        db_connection& db_connection_value,
-        std::int64_t problem_id
-    );
+    response_type get_problems(context_type& context);
+    response_type get_problem(context_type& context, std::int64_t problem_id);
+    response_type post_problem(context_type& context);
+    response_type put_problem(context_type& context, std::int64_t problem_id);
+    response_type delete_problem(context_type& context, std::int64_t problem_id);
+    response_type post_problem_rejudge(context_type& context, std::int64_t problem_id);
 }

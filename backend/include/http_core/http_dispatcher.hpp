@@ -31,7 +31,7 @@ private:
     );
     static bool has_db_route_prefix(std::string_view path);
     std::optional<response_type> try_handle_system_route(
-        const request_type& request,
+        request_context& context,
         std::string_view path
     );
     std::optional<response_type> try_handle_route(

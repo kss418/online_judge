@@ -1,6 +1,5 @@
 #pragma once
 
-#include "common/db_connection.hpp"
 #include "http_handler/submission_handler.hpp"
 
 #include <cstdint>
@@ -8,36 +7,29 @@
 
 class submission_router{
 public:
+    using context_type = submission_handler::context_type;
     using request_type = submission_handler::request_type;
     using response_type = submission_handler::response_type;
 
-    submission_router(const submission_router&) = delete;
-    submission_router& operator=(const submission_router&) = delete;
-    submission_router(submission_router&&) noexcept = delete;
-    submission_router& operator=(submission_router&&) noexcept = delete;
-
-    explicit submission_router(db_connection& db_connection);
-    response_type route(const request_type& request, std::string_view path);
+    response_type route(context_type& context, std::string_view path);
 
 private:
-    response_type handle_submissions(const request_type& request);
-    response_type handle_submission_status_batch(const request_type& request);
+    response_type handle_submissions(context_type& context);
+    response_type handle_submission_status_batch(context_type& context);
     response_type handle_submission(
-        const request_type& request,
+        context_type& context,
         std::int64_t resource_id
     );
     response_type handle_submission_history(
-        const request_type& request,
+        context_type& context,
         std::int64_t resource_id
     );
     response_type handle_submission_source(
-        const request_type& request,
+        context_type& context,
         std::int64_t resource_id
     );
     response_type handle_submission_rejudge(
-        const request_type& request,
+        context_type& context,
         std::int64_t resource_id
     );
-
-    db_connection& db_connection_;
 };

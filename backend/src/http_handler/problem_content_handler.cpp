@@ -14,21 +14,19 @@
 #include <utility>
 
 problem_content_handler::response_type problem_content_handler::get_limits(
-    const request_type& request,
-    db_connection& db_connection_value,
+    context_type& context,
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
     return http_guard::run_or_respond(
-        request,
-        db_connection_value,
-        [&]() -> response_type {
+        context,
+        [&context, &problem_reference_value]() -> response_type {
             const auto limits_exp = problem_content_service::get_limits(
-                db_connection_value,
+                context.db_connection_ref(),
                 problem_reference_value
             );
             return http_response_util::create_json_or_4xx_or_500(
-                request,
+                context.request,
                 std::move(limits_exp),
                 [](const auto& limits_value){
                     boost::json::object response_object;
@@ -43,22 +41,22 @@ problem_content_handler::response_type problem_content_handler::get_limits(
 }
 
 problem_content_handler::response_type problem_content_handler::put_limits(
-    const request_type& request,
-    db_connection& db_connection_value,
+    context_type& context,
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
     return http_guard::run_or_respond(
-        request,
-        db_connection_value,
-        [&](const auth_dto::identity&, const problem_content_dto::limits& limits_value){
+        context,
+        [problem_reference_value](context_type& context_value,
+            const auth_dto::identity&,
+            const problem_content_dto::limits& limits_value){
             const auto set_limits_exp = problem_content_service::set_limits(
-                db_connection_value,
+                context_value.db_connection_ref(),
                 problem_reference_value,
                 limits_value
             );
             return http_response_util::create_message_or_4xx_or_500(
-                request,
+                context_value.request,
                 std::move(set_limits_exp),
                 "problem limits updated"
             );
@@ -72,22 +70,22 @@ problem_content_handler::response_type problem_content_handler::put_limits(
 }
 
 problem_content_handler::response_type problem_content_handler::put_statement(
-    const request_type& request,
-    db_connection& db_connection_value,
+    context_type& context,
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
     return http_guard::run_or_respond(
-        request,
-        db_connection_value,
-        [&](const auth_dto::identity&, const problem_content_dto::statement& statement_value){
+        context,
+        [problem_reference_value](context_type& context_value,
+            const auth_dto::identity&,
+            const problem_content_dto::statement& statement_value){
             const auto set_statement_exp = problem_content_service::set_statement(
-                db_connection_value,
+                context_value.db_connection_ref(),
                 problem_reference_value,
                 statement_value
             );
             return http_response_util::create_message_or_4xx_or_500(
-                request,
+                context_value.request,
                 std::move(set_statement_exp),
                 "problem statement updated"
             );
@@ -101,21 +99,19 @@ problem_content_handler::response_type problem_content_handler::put_statement(
 }
 
 problem_content_handler::response_type problem_content_handler::get_samples(
-    const request_type& request,
-    db_connection& db_connection_value,
+    context_type& context,
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
     return http_guard::run_or_respond(
-        request,
-        db_connection_value,
-        [&]() -> response_type {
+        context,
+        [&context, &problem_reference_value]() -> response_type {
             const auto sample_values_exp = problem_content_service::list_samples(
-                db_connection_value,
+                context.db_connection_ref(),
                 problem_reference_value
             );
             return http_response_util::create_json_or_4xx_or_500(
-                request,
+                context.request,
                 std::move(sample_values_exp),
                 problem_json_serializer::make_sample_list_object
             );
@@ -125,23 +121,22 @@ problem_content_handler::response_type problem_content_handler::get_samples(
 }
 
 problem_content_handler::response_type problem_content_handler::post_sample(
-    const request_type& request,
-    db_connection& db_connection_value,
+    context_type& context,
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
     return http_guard::run_or_respond(
-        request,
-        db_connection_value,
-        [&](const auth_dto::identity&) -> response_type {
+        context,
+        [problem_reference_value](context_type& context_value,
+            const auth_dto::identity&) -> response_type {
             const problem_content_dto::sample sample_value{};
             const auto create_sample_exp = problem_content_service::create_sample(
-                db_connection_value,
+                context_value.db_connection_ref(),
                 problem_reference_value,
                 sample_value
             );
             return http_response_util::create_json_or_4xx_or_500(
-                request,
+                context_value.request,
                 std::move(create_sample_exp),
                 problem_json_serializer::make_sample_created_object,
                 boost::beast::http::status::created
@@ -153,8 +148,7 @@ problem_content_handler::response_type problem_content_handler::post_sample(
 }
 
 problem_content_handler::response_type problem_content_handler::put_sample(
-    const request_type& request,
-    db_connection& db_connection_value,
+    context_type& context,
     std::int64_t problem_id,
     std::int32_t sample_order
 ){
@@ -163,22 +157,23 @@ problem_content_handler::response_type problem_content_handler::put_sample(
         .sample_order = sample_order
     };
     return http_guard::run_or_respond(
-        request,
-        db_connection_value,
-        [&](const auth_dto::identity&, const problem_content_dto::sample& sample_value){
+        context,
+        [sample_reference_value](context_type& context_value,
+            const auth_dto::identity&,
+            const problem_content_dto::sample& sample_value){
             const auto set_sample_exp = problem_content_service::set_sample(
-                db_connection_value,
+                context_value.db_connection_ref(),
                 sample_reference_value,
                 sample_value
             );
             return http_response_util::create_response_or_4xx_or_500(
-                request,
+                context_value.request,
                 std::move(set_sample_exp),
-                [&]() -> response_type {
+                [&context_value, &sample_reference_value]() -> response_type {
                     return http_response_util::create_json_or_4xx_or_500(
-                        request,
+                        context_value.request,
                         problem_content_service::get_sample(
-                            db_connection_value,
+                            context_value.db_connection_ref(),
                             sample_reference_value
                         ),
                         problem_json_serializer::make_sample_object
@@ -194,36 +189,35 @@ problem_content_handler::response_type problem_content_handler::put_sample(
 }
 
 problem_content_handler::response_type problem_content_handler::delete_sample(
-    const request_type& request,
-    db_connection& db_connection_value,
+    context_type& context,
     std::int64_t problem_id
 ){
     problem_dto::reference problem_reference_value{problem_id};
     return http_guard::run_or_respond(
-        request,
-        db_connection_value,
-        [&](const auth_dto::identity&) -> response_type {
+        context,
+        [problem_reference_value](context_type& context_value,
+            const auth_dto::identity&) -> response_type {
             const auto sample_values_exp = problem_content_service::list_samples(
-                db_connection_value,
+                context_value.db_connection_ref(),
                 problem_reference_value
             );
             return http_response_util::create_response_or_4xx_or_500(
-                request,
+                context_value.request,
                 std::move(sample_values_exp),
                 [&](
                     const std::vector<problem_content_dto::sample>& sample_values
                 ) -> response_type {
                     if(sample_values.empty()){
                         return http_response_util::create_error(
-                            request,
+                            context_value.request,
                             problem_content_error::missing_sample_to_delete()
                         );
                     }
 
                     return http_response_util::create_message_or_4xx_or_500(
-                        request,
+                        context_value.request,
                         problem_content_service::delete_sample(
-                            db_connection_value,
+                            context_value.db_connection_ref(),
                             problem_reference_value
                         ),
                         "problem sample deleted"

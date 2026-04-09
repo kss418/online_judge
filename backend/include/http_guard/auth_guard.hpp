@@ -1,6 +1,5 @@
 #pragma once
 
-#include "common/db_connection.hpp"
 #include "dto/auth_dto.hpp"
 #include "http_core/request_context.hpp"
 #include "http_core/http_response_util.hpp"
@@ -24,29 +23,13 @@ namespace auth_guard{
         const request_context& context
     );
     std::expected<auth_dto::identity, response_type> require_auth(
-        const request_type& request,
-        db_connection& db_connection
-    );
-    std::expected<auth_dto::identity, response_type> require_auth(
         request_context& context
-    );
-    std::expected<std::optional<auth_dto::identity>, response_type> require_optional_auth(
-        const request_type& request,
-        db_connection& db_connection
     );
     std::expected<std::optional<auth_dto::identity>, response_type> require_optional_auth(
         request_context& context
     );
     std::expected<auth_dto::identity, response_type> require_admin(
-        const request_type& request,
-        db_connection& db_connection
-    );
-    std::expected<auth_dto::identity, response_type> require_admin(
         request_context& context
-    );
-    std::expected<auth_dto::identity, response_type> require_superadmin(
-        const request_type& request,
-        db_connection& db_connection
     );
     std::expected<auth_dto::identity, response_type> require_superadmin(
         request_context& context

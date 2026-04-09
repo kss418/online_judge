@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/db_connection.hpp"
+#include "http_core/request_context.hpp"
 
 #include <cstdint>
 #include <string_view>
@@ -11,87 +11,57 @@
 #include <boost/beast/http/string_body.hpp>
 
 namespace user_handler{
-    using request_type = boost::beast::http::request<boost::beast::http::string_body>;
-    using response_type = boost::beast::http::response<boost::beast::http::string_body>;
+    using context_type = request_context;
+    using request_type = context_type::request_type;
+    using response_type = context_type::response_type;
 
-    response_type get_me(
-        const request_type& request,
-        db_connection& db_connection_value
-    );
-    response_type get_me_submission_statistics(
-        const request_type& request,
-        db_connection& db_connection_value
-    );
-    response_type get_me_submission_ban(
-        const request_type& request,
-        db_connection& db_connection_value
-    );
-    response_type get_me_solved_problems(
-        const request_type& request,
-        db_connection& db_connection_value
-    );
-    response_type get_me_wrong_problems(
-        const request_type& request,
-        db_connection& db_connection_value
-    );
-    response_type get_public_user_list(
-        const request_type& request,
-        db_connection& db_connection_value
-    );
+    response_type get_me(context_type& context);
+    response_type get_me_submission_statistics(context_type& context);
+    response_type get_me_submission_ban(context_type& context);
+    response_type get_me_solved_problems(context_type& context);
+    response_type get_me_wrong_problems(context_type& context);
+    response_type get_public_user_list(context_type& context);
     response_type get_user_summary(
-        const request_type& request,
-        db_connection& db_connection_value,
+        context_type& context,
         std::int64_t user_id
     );
     response_type get_user_summary_by_login_id(
-        const request_type& request,
-        db_connection& db_connection_value,
+        context_type& context,
         std::string_view user_login_id
     );
     response_type get_user_submission_statistics(
-        const request_type& request,
-        db_connection& db_connection_value,
+        context_type& context,
         std::int64_t user_id
     );
     response_type get_user_solved_problems(
-        const request_type& request,
-        db_connection& db_connection_value,
+        context_type& context,
         std::int64_t user_id
     );
     response_type get_user_wrong_problems(
-        const request_type& request,
-        db_connection& db_connection_value,
+        context_type& context,
         std::int64_t user_id
     );
 
-    response_type get_user_list(
-        const request_type& request,
-        db_connection& db_connection_value
-    );
+    response_type get_user_list(context_type& context);
 
     response_type put_user_admin(
-        const request_type& request,
-        db_connection& db_connection_value,
+        context_type& context,
         std::int64_t user_id
     );
     response_type put_user_regular(
-        const request_type& request,
-        db_connection& db_connection_value,
+        context_type& context,
         std::int64_t user_id
     );
     response_type get_user_submission_ban(
-        const request_type& request,
-        db_connection& db_connection_value,
+        context_type& context,
         std::int64_t user_id
     );
     response_type post_user_submission_ban(
-        const request_type& request,
-        db_connection& db_connection_value,
+        context_type& context,
         std::int64_t user_id
     );
     response_type delete_user_submission_ban(
-        const request_type& request,
-        db_connection& db_connection_value,
+        context_type& context,
         std::int64_t user_id
     );
 }

@@ -4,17 +4,16 @@
 #include "http_guard/auth_guard.hpp"
 
 std::expected<void, problem_guard::response_type> problem_guard::require_exists(
-    const request_type& request,
-    db_connection& db_connection,
+    context_type& context,
     const problem_dto::reference& problem_reference_value
 ){
     const auto ensure_problem_exists_exp = problem_core_service::ensure_problem_exists(
-        db_connection,
+        context.db_connection_ref(),
         problem_reference_value
     );
     if(!ensure_problem_exists_exp){
         return std::unexpected(http_response_util::create_4xx_or_500(
-            request,
+            context.request,
             ensure_problem_exists_exp.error()
         ));
     }
@@ -24,13 +23,11 @@ std::expected<void, problem_guard::response_type> problem_guard::require_exists(
 
 std::expected<problem_dto::detail, problem_guard::response_type>
 problem_guard::require_readable_detail(
-    const request_type& request,
-    db_connection& db_connection,
+    context_type& context,
     const problem_dto::reference& problem_reference_value
 ){
     return http_guard::run_composite_guard(
-        request,
-        db_connection,
+        context,
         [problem_reference_value](const http_guard::guard_context& context,
             const std::optional<auth_dto::identity>& auth_identity_opt)
             -> std::expected<problem_dto::detail, response_type> {

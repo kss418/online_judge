@@ -34,14 +34,6 @@ std::expected<auth_dto::token, auth_guard::response_type> auth_guard::parse_bear
 }
 
 std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require_auth(
-    const request_type& request,
-    db_connection& db_connection
-){
-    request_context context(request, db_connection);
-    return require_auth(context);
-}
-
-std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require_auth(
     request_context& context
 ){
     if(context.auth_identity_opt.has_value()){
@@ -80,15 +72,6 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require
 
 std::expected<std::optional<auth_dto::identity>, auth_guard::response_type>
 auth_guard::require_optional_auth(
-    const request_type& request,
-    db_connection& db_connection
-){
-    request_context context(request, db_connection);
-    return require_optional_auth(context);
-}
-
-std::expected<std::optional<auth_dto::identity>, auth_guard::response_type>
-auth_guard::require_optional_auth(
     request_context& context
 ){
     const auto authorization_field_it = context.request.find(
@@ -107,14 +90,6 @@ auth_guard::require_optional_auth(
 }
 
 std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require_admin(
-    const request_type& request,
-    db_connection& db_connection
-){
-    request_context context(request, db_connection);
-    return require_admin(context);
-}
-
-std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require_admin(
     request_context& context
 ){
     const auto auth_identity_exp = require_auth(context);
@@ -129,15 +104,6 @@ std::expected<auth_dto::identity, auth_guard::response_type> auth_guard::require
     }
 
     return *auth_identity_exp;
-}
-
-std::expected<auth_dto::identity, auth_guard::response_type>
-auth_guard::require_superadmin(
-    const request_type& request,
-    db_connection& db_connection
-){
-    request_context context(request, db_connection);
-    return require_superadmin(context);
 }
 
 std::expected<auth_dto::identity, auth_guard::response_type>

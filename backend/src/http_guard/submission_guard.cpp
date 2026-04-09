@@ -24,14 +24,13 @@ namespace{
 
 std::expected<submission_dto::history_list, submission_guard::response_type>
 submission_guard::require_history(
-    const request_type& request,
-    db_connection& db_connection,
+    context_type& context,
     std::int64_t submission_id
 ){
     return require_submission_value(
-        request,
+        context.request,
         submission_service::get_submission_history(
-            db_connection,
+            context.db_connection_ref(),
             submission_id
         )
     );
@@ -39,14 +38,13 @@ submission_guard::require_history(
 
 std::expected<submission_dto::detail, submission_guard::response_type>
 submission_guard::require_detail(
-    const request_type& request,
-    db_connection& db_connection,
+    context_type& context,
     std::int64_t submission_id
 ){
     return require_submission_value(
-        request,
+        context.request,
         submission_service::get_submission_detail(
-            db_connection,
+            context.db_connection_ref(),
             submission_id
         )
     );
@@ -54,14 +52,13 @@ submission_guard::require_detail(
 
 std::expected<submission_dto::source_detail, submission_guard::response_type>
 submission_guard::require_source_detail(
-    const request_type& request,
-    db_connection& db_connection,
+    context_type& context,
     std::int64_t submission_id
 ){
     return require_submission_value(
-        request,
+        context.request,
         submission_service::get_submission_source(
-            db_connection,
+            context.db_connection_ref(),
             submission_id
         )
     );
@@ -69,13 +66,11 @@ submission_guard::require_source_detail(
 
 std::expected<submission_dto::source_detail, submission_guard::response_type>
 submission_guard::require_readable_source(
-    const request_type& request,
-    db_connection& db_connection,
+    context_type& context,
     std::int64_t submission_id
 ){
     return http_guard::run_composite_guard(
-        request,
-        db_connection,
+        context,
         [&](const http_guard::guard_context& context,
             const auth_dto::identity& auth_identity_value,
             submission_dto::source_detail source_detail_value)
