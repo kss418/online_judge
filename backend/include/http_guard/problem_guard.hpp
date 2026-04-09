@@ -23,7 +23,7 @@ namespace problem_guard{
     inline auto make_exists_guard(problem_dto::reference problem_reference_value){
         return [problem_reference_value](const http_guard::guard_context& context){
             return require_exists(
-                context.request_context_value,
+                context.request_context_ref(),
                 problem_reference_value
             );
         };
@@ -32,7 +32,7 @@ namespace problem_guard{
     inline auto make_readable_detail_guard(problem_dto::reference problem_reference_value){
         return [problem_reference_value](const http_guard::guard_context& context){
             return require_readable_detail(
-                context.request_context_value,
+                context.request_context_ref(),
                 problem_reference_value
             );
         };

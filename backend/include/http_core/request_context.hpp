@@ -25,17 +25,6 @@ struct request_context{
 
     request_context(
         const request_type& request_value,
-        db_connection& db_connection_value,
-        std::string request_id_value = {},
-        request_observer* observer_value = nullptr
-    ) :
-        request(request_value),
-        request_id(std::move(request_id_value)),
-        observer(observer_value),
-        db_connection_ptr_(&db_connection_value){}
-
-    request_context(
-        const request_type& request_value,
         db_connection_pool::lease db_connection_lease_value,
         std::string request_id_value = {},
         request_observer* observer_value = nullptr

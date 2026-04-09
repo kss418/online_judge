@@ -38,7 +38,7 @@ namespace submission_guard{
     inline auto make_history_guard(std::int64_t submission_id){
         return [submission_id](const http_guard::guard_context& context){
             return require_history(
-                context.request_context_value,
+                context.request_context_ref(),
                 submission_id
             );
         };
@@ -47,7 +47,7 @@ namespace submission_guard{
     inline auto make_detail_guard(std::int64_t submission_id){
         return [submission_id](const http_guard::guard_context& context){
             return require_detail(
-                context.request_context_value,
+                context.request_context_ref(),
                 submission_id
             );
         };
@@ -56,7 +56,7 @@ namespace submission_guard{
     inline auto make_source_detail_guard(std::int64_t submission_id){
         return [submission_id](const http_guard::guard_context& context){
             return require_source_detail(
-                context.request_context_value,
+                context.request_context_ref(),
                 submission_id
             );
         };
@@ -65,7 +65,7 @@ namespace submission_guard{
     inline auto make_readable_source_guard(std::int64_t submission_id){
         return [submission_id](const http_guard::guard_context& context){
             return require_readable_source(
-                context.request_context_value,
+                context.request_context_ref(),
                 submission_id
             );
         };

@@ -76,7 +76,7 @@ submission_guard::require_readable_source(
             submission_dto::source_detail source_detail_value)
             -> std::expected<submission_dto::source_detail, response_type> {
             const auto source_access_exp = require_source_access(
-                context.request,
+                context.request(),
                 auth_identity_value,
                 source_detail_value
             );

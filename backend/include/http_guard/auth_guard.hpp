@@ -47,31 +47,31 @@ namespace auth_guard{
 
     inline auto make_auth_guard(){
         return [](const http_guard::guard_context& context){
-            return require_auth(context.request_context_value);
+            return require_auth(context.request_context_ref());
         };
     }
 
     inline auto make_bearer_token_guard(){
         return [](const http_guard::guard_context& context){
-            return parse_bearer_token_or_401(context.request_context_value);
+            return parse_bearer_token_or_401(context.request_context_ref());
         };
     }
 
     inline auto make_optional_auth_guard(){
         return [](const http_guard::guard_context& context){
-            return require_optional_auth(context.request_context_value);
+            return require_optional_auth(context.request_context_ref());
         };
     }
 
     inline auto make_admin_guard(){
         return [](const http_guard::guard_context& context){
-            return require_admin(context.request_context_value);
+            return require_admin(context.request_context_ref());
         };
     }
 
     inline auto make_superadmin_guard(){
         return [](const http_guard::guard_context& context){
-            return require_superadmin(context.request_context_value);
+            return require_superadmin(context.request_context_ref());
         };
     }
 }

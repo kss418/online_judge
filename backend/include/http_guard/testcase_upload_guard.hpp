@@ -17,7 +17,7 @@ namespace testcase_upload_guard{
 
     inline auto make_testcase_zip_guard(){
         return [](const http_guard::guard_context& context){
-            return require_testcase_zip_upload(context.request);
+            return require_testcase_zip_upload(context.request());
         };
     }
 }

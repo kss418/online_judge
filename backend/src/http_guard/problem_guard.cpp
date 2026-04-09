@@ -36,13 +36,13 @@ problem_guard::require_readable_detail(
             );
 
             auto problem_detail_exp = problem_core_service::get_problem_detail(
-                context.db_connection_value,
+                context.db_connection_ref(),
                 problem_reference_value,
                 viewer_user_id_opt
             );
             if(!problem_detail_exp){
                 return std::unexpected(http_response_util::create_4xx_or_500(
-                    context.request,
+                    context.request(),
                     problem_detail_exp.error()
                 ));
             }

@@ -25,7 +25,7 @@ namespace user_guard{
     inline auto make_summary_guard(std::int64_t user_id){
         return [user_id](const http_guard::guard_context& context){
             return require_summary(
-                context.request_context_value,
+                context.request_context_ref(),
                 user_id
             );
         };
@@ -34,7 +34,7 @@ namespace user_guard{
     inline auto make_summary_by_login_id_guard(std::string_view user_login_id){
         return [user_login_id](const http_guard::guard_context& context){
             return require_summary_by_login_id(
-                context.request_context_value,
+                context.request_context_ref(),
                 user_login_id
             );
         };

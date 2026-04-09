@@ -26,7 +26,7 @@ namespace request_guard{
             return std::apply(
                 [&](auto&... captured_args){
                     return request_dto::parse_json_or_400<dto_type>(
-                        context.request,
+                        context.request(),
                         factory_value,
                         captured_args...
                     );
@@ -48,7 +48,7 @@ namespace request_guard{
             return std::apply(
                 [&](auto&... captured_args){
                     return request_dto::parse_query_or_400<dto_type>(
-                        context.request,
+                        context.request(),
                         factory_value,
                         captured_args...
                     );
@@ -60,13 +60,13 @@ namespace request_guard{
 
     inline auto make_problem_list_filter_guard(){
         return [](const http_guard::guard_context& context){
-            return request_dto::parse_problem_list_filter_or_400(context.request);
+            return request_dto::parse_problem_list_filter_or_400(context.request());
         };
     }
 
     inline auto make_submission_list_filter_guard(){
         return [](const http_guard::guard_context& context){
-            return request_dto::parse_submission_list_filter_or_400(context.request);
+            return request_dto::parse_submission_list_filter_or_400(context.request());
         };
     }
 
@@ -77,7 +77,7 @@ namespace request_guard{
                 -> std::expected<submission_dto::create_request, http_guard::response_type> {
                 auto create_request_exp =
                     request_dto::parse_json_or_400<submission_dto::create_request>(
-                    composite_context.request,
+                    composite_context.request(),
                     submission_request_parser::parse_create_request,
                     auth_identity_value.user_id,
                     problem_id
@@ -87,7 +87,7 @@ namespace request_guard{
                 }
 
                 auto problem_exists_exp = problem_guard::require_exists(
-                    composite_context.request_context_value,
+                    composite_context.request_context_ref(),
                     problem_dto::reference{problem_id}
                 );
                 if(!problem_exists_exp){

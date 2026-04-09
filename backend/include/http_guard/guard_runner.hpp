@@ -14,9 +14,23 @@ namespace http_guard{
     using response_type = request_context::response_type;
 
     struct guard_context{
-        request_context& request_context_value;
-        const request_type& request;
-        db_connection& db_connection_value;
+        explicit guard_context(request_context& request_context_value) :
+            request_context_value_(request_context_value){}
+
+        request_context& request_context_ref() const{
+            return request_context_value_;
+        }
+
+        const request_type& request() const{
+            return request_context_value_.request;
+        }
+
+        db_connection& db_connection_ref() const{
+            return request_context_value_.db_connection_ref();
+        }
+
+    private:
+        request_context& request_context_value_;
     };
 
     namespace detail{
@@ -105,11 +119,7 @@ namespace http_guard{
         }
 
         inline guard_context make_guard_context(request_context& context){
-            return guard_context{
-                .request_context_value = context,
-                .request = context.request,
-                .db_connection_value = context.db_connection_ref()
-            };
+            return guard_context(context);
         }
 
         template <typename success_type, typename... value_types>
@@ -334,7 +344,7 @@ namespace http_guard{
         return std::apply(
             [&](auto&&... values) -> response_type {
                 return detail::invoke_success(
-                    context.request_context_value,
+                    context.request_context_ref(),
                     std::forward<success_type>(success),
                     std::forward<decltype(values)>(values)...
                 );
