@@ -5,6 +5,15 @@
 #include <utility>
 
 namespace{
+    execution_policy select_execution_policy(
+        const submission_dto::leased_submission& leased_submission_value,
+        const testcase_snapshot& testcase_snapshot_value
+    ){
+        (void)leased_submission_value;
+        (void)testcase_snapshot_value;
+        return execution_policy{};
+    }
+
     void log_workspace_cleanup_failure(
         const submission_dto::leased_submission& leased_submission_value,
         const std::filesystem::path& workspace_path,
@@ -155,9 +164,16 @@ std::expected<void, judge_error> submission_processor::process(
             return std::unexpected(testcase_snapshot_exp.error());
         }
 
+        const execution_policy execution_policy_value =
+            select_execution_policy(
+                leased_submission_value,
+                *testcase_snapshot_exp
+            );
+
         auto execution_report_exp = program_executor_.run(
             build_result_value.artifact(),
-            *testcase_snapshot_exp
+            *testcase_snapshot_exp,
+            execution_policy_value
         );
         if(!execution_report_exp){
             return std::unexpected(execution_report_exp.error());

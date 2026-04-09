@@ -7,6 +7,16 @@
 #include <vector>
 
 namespace{
+    bool has_recorded_failure(const execution_report::batch& execution_report_value){
+        for(const auto& testcase_execution_value : execution_report_value.executions){
+            if(testcase_execution_value.failure_opt.has_value()){
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     execution_report::testcase_execution make_testcase_execution(
         const sandbox_runner::run_result& run_result_value
     ){
@@ -68,11 +78,47 @@ namespace{
         run_options_value.input_path_opt = input_path;
         return run_options_value;
     }
+
+    void apply_stderr_policy(
+        execution_report::testcase_execution& testcase_execution_value,
+        const execution_report::batch& execution_report_value,
+        const execution_policy& execution_policy_value
+    ){
+        if(
+            execution_policy_value.stderr_policy ==
+            stderr_capture_policy::keep_all
+        ){
+            return;
+        }
+
+        if(
+            execution_policy_value.stderr_policy ==
+                stderr_capture_policy::keep_first_failure_only &&
+            testcase_execution_value.failure_opt.has_value() &&
+            !has_recorded_failure(execution_report_value)
+        ){
+            return;
+        }
+
+        testcase_execution_value.stderr_text.clear();
+        testcase_execution_value.stderr_bytes = 0;
+    }
+
+    bool should_stop_after(
+        const execution_report::testcase_execution& testcase_execution_value,
+        const execution_policy& execution_policy_value
+    ){
+        return
+            execution_policy_value.stop_rule ==
+                execution_stop_rule::stop_on_first_execution_failure &&
+            testcase_execution_value.failure_opt.has_value();
+    }
 }
 
-std::expected<execution_report::batch, judge_error> testcase_runner::run_all_testcases(
+std::expected<execution_report::batch, judge_error> testcase_runner::run_testcases(
     const program_launch::execution_plan& execution_plan_value,
-    const testcase_snapshot& testcase_snapshot_value
+    const testcase_snapshot& testcase_snapshot_value,
+    const execution_policy& execution_policy_value
 ){
     const auto validate_exp = testcase_snapshot_value.validate();
     if(!validate_exp){
@@ -122,9 +168,22 @@ std::expected<execution_report::batch, judge_error> testcase_runner::run_all_tes
             execution_report_value.limits
         );
 
+        apply_stderr_policy(
+            *run_one_testcase_exp,
+            execution_report_value,
+            execution_policy_value
+        );
+
         execution_report_value.executions.push_back(
             std::move(*run_one_testcase_exp)
         );
+
+        if(should_stop_after(
+            execution_report_value.executions.back(),
+            execution_policy_value
+        )){
+            break;
+        }
     }
 
     return execution_report_value;

@@ -3,6 +3,7 @@
 #include "error/judge_error.hpp"
 #include "judge_core/infrastructure/launch_planner.hpp"
 #include "judge_core/testcase_snapshot/testcase_snapshot.hpp"
+#include "judge_core/types/execution_policy.hpp"
 #include "judge_core/types/execution_report.hpp"
 #include "judge_core/types/runnable_program.hpp"
 
@@ -16,7 +17,8 @@ public:
 
     std::expected<execution_report::batch, judge_error> run(
         const runnable_program& runnable_program_value,
-        const testcase_snapshot& testcase_snapshot_value
+        const testcase_snapshot& testcase_snapshot_value,
+        const execution_policy& execution_policy_value
     );
 
 private:
