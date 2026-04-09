@@ -7,89 +7,28 @@
 #include <string>
 
 namespace{
-    std::optional<std::string> select_internal_message(
-        const submission_verdict_summary& verdict_summary_value
-    ){
-        return verdict_summary_value.internal_message_opt;
+    bool is_compile_verdict(judge_result verdict_value){
+        return verdict_value == judge_result::compile_error;
     }
 
     std::optional<std::string> select_compile_output(
-        const submission_verdict_summary& verdict_summary_value,
-        submission_status submission_status_value,
-        const execution_report::batch& execution_report_value
+        const submission_verdict_summary& verdict_summary_value
     ){
-        if(submission_status_value != submission_status::compile_error){
+        if(!is_compile_verdict(verdict_summary_value.overall_verdict)){
             return std::nullopt;
         }
 
-        if(verdict_summary_value.internal_message_opt.has_value()){
-            return verdict_summary_value.internal_message_opt;
-        }
-
-        if(execution_report_value.executions.empty()){
-            return std::nullopt;
-        }
-
-        const std::string& stderr_text =
-            execution_report_value.executions.front().stderr_text;
-        if(stderr_text.empty()){
-            return std::nullopt;
-        }
-
-        return stderr_text;
+        return verdict_summary_value.internal_message_opt;
     }
 
     std::optional<std::string> select_judge_output(
-        const submission_verdict_summary& verdict_summary_value,
-        submission_status submission_status_value,
-        const execution_report::batch& execution_report_value
+        const submission_verdict_summary& verdict_summary_value
     ){
-        if(submission_status_value == submission_status::compile_error){
+        if(is_compile_verdict(verdict_summary_value.overall_verdict)){
             return std::nullopt;
         }
 
-        if(
-            submission_status_value == submission_status::runtime_error ||
-            submission_status_value == submission_status::time_limit_exceeded ||
-            submission_status_value == submission_status::memory_limit_exceeded ||
-            submission_status_value == submission_status::output_exceeded
-        ){
-            if(auto internal_message_opt = select_internal_message(verdict_summary_value);
-               internal_message_opt.has_value()){
-                return internal_message_opt;
-            }
-
-            if(
-                verdict_summary_value.first_failed_case_index_opt.has_value() &&
-                *verdict_summary_value.first_failed_case_index_opt > 0
-            ){
-                const auto failed_index = static_cast<std::size_t>(
-                    *verdict_summary_value.first_failed_case_index_opt - 1
-                );
-                if(failed_index < execution_report_value.executions.size()){
-                    const auto& stderr_text =
-                        execution_report_value.executions[failed_index].stderr_text;
-                    if(!stderr_text.empty()){
-                        return stderr_text;
-                    }
-                }
-            }
-        }
-
-        return std::nullopt;
-    }
-
-    std::optional<std::int16_t> calculate_score(
-        const submission_verdict_summary& verdict_summary_value,
-        submission_status submission_status_value
-    ){
-        if(verdict_summary_value.score_opt.has_value()){
-            return verdict_summary_value.score_opt;
-        }
-
-        return submission_status_value == submission_status::accepted
-            ? std::optional<std::int16_t>{100}
-            : std::optional<std::int16_t>{0};
+        return verdict_summary_value.internal_message_opt;
     }
 
     std::optional<std::int64_t> calculate_elapsed_ms(
@@ -146,17 +85,9 @@ submission_dto::finalize_request submission_decision::to_finalize_request(
     return submission_dto::make_finalize_request(
         leased_submission_value,
         submission_status_value,
-        calculate_score(verdict_summary, submission_status_value),
-        select_compile_output(
-            verdict_summary,
-            submission_status_value,
-            execution_report_value
-        ),
-        select_judge_output(
-            verdict_summary,
-            submission_status_value,
-            execution_report_value
-        ),
+        verdict_summary.score_opt,
+        select_compile_output(verdict_summary),
+        select_judge_output(verdict_summary),
         calculate_elapsed_ms(submission_status_value, execution_report_value),
         calculate_max_rss_kb(submission_status_value, execution_report_value)
     );
