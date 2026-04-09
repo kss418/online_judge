@@ -1,8 +1,8 @@
 #pragma once
 
 #include "common/temp_dir.hpp"
-#include "dto/problem_content_dto.hpp"
 #include "error/judge_error.hpp"
+#include "judge_core/testcase_snapshot/snapshot_manifest.hpp"
 #include "judge_core/testcase_snapshot/testcase_snapshot.hpp"
 
 #include <cstdint>
@@ -18,16 +18,6 @@ public:
         const std::filesystem::path& path() const noexcept{
             return temp_directory.get_path();
         }
-    };
-
-    struct snapshot_manifest{
-        static constexpr std::int32_t current_schema_version = 1;
-
-        std::int32_t schema_version = current_schema_version;
-        std::int64_t problem_id = 0;
-        std::int32_t version = 0;
-        std::int32_t testcase_count = 0;
-        problem_content_dto::limits limits_value{};
     };
 
     static std::expected<testcase_store, judge_error> create(

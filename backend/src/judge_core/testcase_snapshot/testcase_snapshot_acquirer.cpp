@@ -4,7 +4,7 @@
 #include <utility>
 
 namespace{
-    std::expected<testcase_store::snapshot_manifest, judge_error> make_snapshot_manifest(
+    std::expected<snapshot_manifest, judge_error> make_snapshot_manifest(
         const testcase_source_facade::problem_snapshot_manifest& manifest_value
     ){
         if(
@@ -19,7 +19,7 @@ namespace{
             );
         }
 
-        testcase_store::snapshot_manifest snapshot_manifest_value;
+        snapshot_manifest snapshot_manifest_value;
         snapshot_manifest_value.problem_id = manifest_value.problem_id;
         snapshot_manifest_value.version = manifest_value.version;
         snapshot_manifest_value.testcase_count =
