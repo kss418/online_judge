@@ -2,6 +2,7 @@
 
 #include "common/db_connection_pool.hpp"
 #include "http_core/request_context.hpp"
+#include "http_core/request_observer.hpp"
 #include "http_router/auth_router.hpp"
 #include "http_router/problem_router.hpp"
 #include "http_router/submission_router.hpp"
@@ -22,7 +23,10 @@ public:
     http_dispatcher(http_dispatcher&&) noexcept = delete;
     http_dispatcher& operator=(http_dispatcher&&) noexcept = delete;
 
-    explicit http_dispatcher(db_connection_pool& db_connection_pool);
+    explicit http_dispatcher(
+        db_connection_pool& db_connection_pool,
+        request_observer* request_observer = nullptr
+    );
     response_type handle(const request_type& request);
 private:
     static std::optional<std::string_view> strip_path_prefix(
@@ -46,5 +50,6 @@ private:
     static constexpr std::string_view user_path_prefix_ = "/api/user";
 
     db_connection_pool& db_connection_pool_;
+    request_observer* request_observer_ = nullptr;
     system_router system_router_;
 };

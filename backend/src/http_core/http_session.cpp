@@ -1,6 +1,7 @@
 #include "http_core/http_session.hpp"
 #include "common/logger.hpp"
 #include "error/request_error.hpp"
+#include "http_core/request_id_util.hpp"
 #include "http_core/http_server.hpp"
 #include "http_core/http_response_util.hpp"
 #include "serializer/common_json_serializer.hpp"
@@ -191,5 +192,6 @@ http_session::response_type http_session::create_read_error_response(
         common_json_serializer::make_error_object(error.code_string(), error.message)
     ) + "\n";
     response.prepare_payload();
+    request_id_util::set_response_header(response, request_id_util::make_request_id());
     return response;
 }

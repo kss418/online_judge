@@ -1,26 +1,40 @@
 #include "http_core/http_dispatcher.hpp"
 #include "http_core/request_parser.hpp"
 #include "http_core/http_response_util.hpp"
+#include "http_core/request_id_util.hpp"
 
-#include <atomic>
 #include <chrono>
-#include <cstdint>
-#include <string>
 #include <string_view>
 
 namespace{
-    constexpr std::chrono::milliseconds DB_CONNECTION_ACQUIRE_TIMEOUT{100};
-    std::atomic<std::uint64_t> next_request_id{1};
+    using request_clock = std::chrono::steady_clock;
 
-    std::string make_request_id(){
-        return "req-" + std::to_string(
-            next_request_id.fetch_add(1, std::memory_order_relaxed)
-        );
+    constexpr std::chrono::milliseconds DB_CONNECTION_ACQUIRE_TIMEOUT{100};
+
+    http_dispatcher::response_type finalize_response(
+        request_context& context,
+        http_dispatcher::response_type response,
+        request_clock::time_point started_at
+    ){
+        request_id_util::set_response_header(response, context.request_id);
+        if(context.observer != nullptr){
+            context.observer->on_request_complete(
+                context,
+                response,
+                request_clock::now() - started_at
+            );
+        }
+
+        return response;
     }
 }
 
-http_dispatcher::http_dispatcher(db_connection_pool& db_connection_pool) :
+http_dispatcher::http_dispatcher(
+    db_connection_pool& db_connection_pool,
+    request_observer* request_observer
+) :
     db_connection_pool_(db_connection_pool),
+    request_observer_(request_observer),
     system_router_(){}
 
 std::optional<std::string_view> http_dispatcher::strip_path_prefix(
@@ -91,48 +105,74 @@ std::optional<http_dispatcher::response_type> http_dispatcher::try_handle_route(
 }
 
 http_dispatcher::response_type http_dispatcher::handle(const request_type& request){
-    const std::string request_id = make_request_id();
+    const auto started_at = request_clock::now();
+    const std::string request_id = request_id_util::make_request_id();
     const std::string_view target{
         request.target().data(),
         request.target().size()
     };
     const auto path = request_parser::get_target_path(target);
-    request_context context(request, request_id);
+    request_context context(request, request_id, request_observer_);
 
     const auto system_response_opt = try_handle_system_route(context, path);
     if(system_response_opt.has_value()){
-        return std::move(system_response_opt.value());
+        return finalize_response(
+            context,
+            std::move(system_response_opt.value()),
+            started_at
+        );
     }
 
     if(!has_db_route_prefix(path)){
-        return http_response_util::create_not_found(request);
+        return finalize_response(
+            context,
+            http_response_util::create_not_found(request),
+            started_at
+        );
     }
 
     auto db_connection_lease_exp = db_connection_pool_.acquire_for(DB_CONNECTION_ACQUIRE_TIMEOUT);
     if(!db_connection_lease_exp){
         if(db_connection_lease_exp.error() == pool_error::timed_out){
-            return http_response_util::create_service_unavailable(
-                request,
-                "db connection pool is busy, retry later"
+            return finalize_response(
+                context,
+                http_response_util::create_service_unavailable(
+                    request,
+                    "db connection pool is busy, retry later"
+                ),
+                started_at
             );
         }
 
-        return http_response_util::create_internal_server_error(
-            request,
-            "acquire_db_connection",
-            to_string(db_connection_lease_exp.error())
+        return finalize_response(
+            context,
+            http_response_util::create_internal_server_error(
+                request,
+                "acquire_db_connection",
+                to_string(db_connection_lease_exp.error())
+            ),
+            started_at
         );
     }
 
     request_context db_context(
         request,
         std::move(*db_connection_lease_exp),
-        request_id
+        request_id,
+        request_observer_
     );
     const auto response_opt = try_handle_route(db_context, path);
     if(response_opt.has_value()){
-        return std::move(response_opt.value());
+        return finalize_response(
+            db_context,
+            std::move(response_opt.value()),
+            started_at
+        );
     }
 
-    return http_response_util::create_not_found(request);
+    return finalize_response(
+        db_context,
+        http_response_util::create_not_found(request),
+        started_at
+    );
 }

@@ -37,7 +37,9 @@ init_flow_test
 register_temp_file test_log_temp_file
 register_temp_file server_log_temp_file
 register_temp_file health_response_file
+register_temp_file health_response_header_file
 register_temp_file supported_languages_response_file
+register_temp_file supported_languages_response_header_file
 
 trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
 
@@ -62,11 +64,21 @@ send_http_request_and_assert_status \
     "${base_url}/api/system/health" \
     "${health_response_file}" \
     "200" \
-    "system health"
+    "system health" \
+    "" \
+    "" \
+    "application/json" \
+    "${health_response_header_file}"
 assert_json_message \
     "${health_response_file}" \
     "ok" \
     "system health"
+health_request_id="$(
+    assert_http_header_nonempty \
+        "${health_response_header_file}" \
+        "X-Request-Id" \
+        "system health request id"
+)"
 
 print_success_log "system health validated"
 
@@ -75,13 +87,30 @@ send_http_request_and_assert_status \
     "${base_url}/api/system/supported-languages" \
     "${supported_languages_response_file}" \
     "200" \
-    "supported languages"
+    "supported languages" \
+    "" \
+    "" \
+    "application/json" \
+    "${supported_languages_response_header_file}"
 assert_json_field_equals \
     "${supported_languages_response_file}" \
     "language_count" \
     "3" \
     "supported languages" \
     "int"
+supported_languages_request_id="$(
+    assert_http_header_nonempty \
+        "${supported_languages_response_header_file}" \
+        "X-Request-Id" \
+        "supported languages request id"
+)"
+
+if [[ "${health_request_id}" == "${supported_languages_request_id}" ]]; then
+    append_log_line "${test_log_temp_file}" "request id header validation failed: duplicate request ids"
+    publish_failure_logs
+    echo "expected unique X-Request-Id values per request" >&2
+    exit 1
+fi
 
 if ! python3 - "${supported_languages_response_file}" <<'PY'
 import json

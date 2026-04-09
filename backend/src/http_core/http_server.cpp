@@ -2,6 +2,7 @@
 
 #include "common/string_util.hpp"
 #include "error/infra_error.hpp"
+#include "http_core/request_id_util.hpp"
 #include "http_core/http_response_util.hpp"
 
 #include <cstdlib>
@@ -90,7 +91,8 @@ http_server::http_server(
 ) :
     db_connection_pool_(std::move(db_connection_pool)),
     response_worker_pool_(std::move(response_worker_pool)),
-    http_dispatcher_(db_connection_pool_){}
+    request_observer_(),
+    http_dispatcher_(db_connection_pool_, &request_observer_){}
 
 void http_server::async_handle(request_type request, handle_callback callback){
     auto request_ptr = std::make_shared<request_type>(std::move(request));
@@ -104,13 +106,14 @@ void http_server::async_handle(request_type request, handle_callback callback){
     }
 
     const http_server_error dispatch_error(post_exp.error());
-    callback(
-        http_response_util::create_internal_server_error(
-            *request_ptr,
-            "dispatch_request",
-            to_string(dispatch_error)
-        )
+    const std::string request_id = request_id_util::make_request_id();
+    auto response = http_response_util::create_internal_server_error(
+        *request_ptr,
+        "dispatch_request",
+        to_string(dispatch_error)
     );
+    request_id_util::set_response_header(response, request_id);
+    callback(std::move(response));
 }
 
 http_server::response_type http_server::handle(const request_type& request){

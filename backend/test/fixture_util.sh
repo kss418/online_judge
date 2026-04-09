@@ -30,6 +30,7 @@ send_http_request(){
     local auth_token="${4:-}"
     local request_body="${5:-}"
     local content_type="${6:-application/json}"
+    local response_header_file_path="${7:-}"
     local curl_args=()
 
     require_fixture_test_env
@@ -47,6 +48,10 @@ send_http_request(){
         --write-out "%{http_code}"
         --request "${request_method}"
     )
+
+    if [[ -n "${response_header_file_path}" ]]; then
+        curl_args+=(--dump-header "${response_header_file_path}")
+    fi
 
     if [[ -n "${auth_token}" ]]; then
         curl_args+=(-H "Authorization: Bearer ${auth_token}")
@@ -71,6 +76,7 @@ send_http_request_and_assert_status(){
     local auth_token="${6:-}"
     local request_body="${7:-}"
     local content_type="${8:-application/json}"
+    local response_header_file_path="${9:-}"
     local actual_status_code=""
 
     actual_status_code="$(
@@ -80,7 +86,8 @@ send_http_request_and_assert_status(){
             "${response_file_path}" \
             "${auth_token}" \
             "${request_body}" \
-            "${content_type}"
+            "${content_type}" \
+            "${response_header_file_path}"
     )"
 
     assert_status_code \
@@ -111,6 +118,51 @@ assert_status_code(){
     fi
 
     append_log_line "${test_log_temp_file}" "${failure_context} passed: status=${actual_status_code}"
+}
+
+assert_http_header_nonempty(){
+    local response_header_file_path="$1"
+    local header_name="$2"
+    local failure_context="$3"
+
+    if [[ -z "${response_header_file_path}" || -z "${header_name}" || -z "${failure_context}" ]]; then
+        echo "missing required http header assertion argument" >&2
+        exit 1
+    fi
+
+    if ! python3 - "${response_header_file_path}" "${header_name}" <<'PY'
+import sys
+
+response_header_file_path = sys.argv[1]
+header_name = sys.argv[2].lower()
+
+with open(response_header_file_path, encoding="utf-8") as header_file:
+    for raw_line in header_file:
+        line = raw_line.strip()
+        if not line or ":" not in line:
+            continue
+
+        current_name, current_value = line.split(":", 1)
+        if current_name.strip().lower() != header_name:
+            continue
+
+        value = current_value.strip()
+        if not value:
+            raise SystemExit(f"empty header value: {header_name}")
+
+        print(value)
+        raise SystemExit(0)
+
+raise SystemExit(f"missing header: {header_name}")
+PY
+    then
+        append_log_line "${test_log_temp_file}" "${failure_context} header validation failed: header=${header_name}"
+        publish_fixture_failure_logs
+        echo "${failure_context} header validation failed: header=${header_name}" >&2
+        echo "response headers:" >&2
+        cat "${response_header_file_path}" >&2
+        exit 1
+    fi
 }
 
 read_json_field(){
