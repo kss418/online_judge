@@ -11,6 +11,7 @@ namespace{
             status == submission_status::memory_limit_exceeded ||
             status == submission_status::runtime_error ||
             status == submission_status::compile_error ||
+            status == submission_status::build_resource_exceeded ||
             status == submission_status::output_exceeded;
     }
 

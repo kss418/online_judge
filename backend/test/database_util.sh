@@ -110,5 +110,6 @@ apply_test_database_migrations(){
     run_schema_migration "${project_root}/scripts/migrate_submission_schema.sh" "submission_schema"
     run_schema_migration "${project_root}/scripts/migrate_user_statistics_schema.sh" "user_statistics_schema"
     run_schema_migration "${project_root}/scripts/migrate_submission_infra_failure_schema.sh" "submission_infra_failure_schema"
+    run_schema_migration "${project_root}/scripts/migrate_submission_build_resource_exceeded_schema.sh" "submission_build_resource_exceeded_schema"
     run_schema_migration "${project_root}/scripts/migrate_user_problem_schema.sh" "user_problem_schema"
 }

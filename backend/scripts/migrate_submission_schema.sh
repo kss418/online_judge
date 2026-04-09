@@ -61,6 +61,7 @@ BEGIN
             'memory_limit_exceeded',
             'runtime_error',
             'compile_error',
+            'build_resource_exceeded',
             'output_exceeded',
             'infra_failure'
         );

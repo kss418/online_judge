@@ -3,7 +3,9 @@
 #include "judge_core/application/build_bundle.hpp"
 
 #include <optional>
+#include <string>
 #include <utility>
+#include <variant>
 
 namespace{
     submission_decision make_compile_error_decision(
@@ -43,6 +45,52 @@ namespace{
             std::move(reason)
         );
     }
+
+    std::string to_string(
+        program_build::compile_resource_exceeded_reason reason_value
+    ){
+        switch(reason_value){
+            case program_build::compile_resource_exceeded_reason::wall_clock:
+                return "wall_clock";
+            case program_build::compile_resource_exceeded_reason::signaled:
+                return "signaled";
+            case program_build::compile_resource_exceeded_reason::unknown:
+                return "unknown";
+        }
+
+        return "unknown";
+    }
+
+    std::optional<std::string> select_compile_output(
+        const execution_report::testcase_execution& compile_execution_value
+    ){
+        if(!compile_execution_value.stderr_text.empty()){
+            return compile_execution_value.stderr_text;
+        }
+        if(!compile_execution_value.stdout_text.empty()){
+            return compile_execution_value.stdout_text;
+        }
+
+        return std::nullopt;
+    }
+
+    submission_dto::finalize_request make_build_resource_exceeded_finalize_request(
+        const submission_dto::leased_submission& leased_submission_value,
+        const build_bundle::compile_resource_exceeded& compile_resource_exceeded_value
+    ){
+        return submission_dto::make_finalize_request(
+            leased_submission_value,
+            submission_status::build_resource_exceeded,
+            std::int16_t{0},
+            select_compile_output(
+                compile_resource_exceeded_value.compile_execution
+            ),
+            std::nullopt,
+            std::nullopt,
+            std::nullopt,
+            to_string(compile_resource_exceeded_value.reason)
+        );
+    }
 }
 
 std::expected<submission_lifecycle, judge_error> submission_lifecycle::create(
@@ -76,46 +124,48 @@ std::expected<void, judge_error> submission_lifecycle::mark_judging(
 
 std::expected<void, judge_error> submission_lifecycle::complete(
     const submission_dto::leased_submission& leased_submission_value,
-    std::expected<submission_decision, judge_error> submission_outcome_value
+    completion_outcome submission_outcome_value
 ){
-    if(submission_outcome_value){
+    if(const auto decision_opt = std::get_if<submission_decision>(&submission_outcome_value)){
         return finalize_judged_submission(
             leased_submission_value,
-            *submission_outcome_value
+            *decision_opt
         );
     }
 
-    return handle_infra_failure(
-        leased_submission_value,
-        submission_outcome_value.error()
-    );
+    if(
+        const auto finalize_request_opt =
+            std::get_if<submission_dto::finalize_request>(&submission_outcome_value)
+    ){
+        return finalize_direct_submission(*finalize_request_opt);
+    }
+
+    return handle_infra_failure(leased_submission_value, std::get<judge_error>(submission_outcome_value));
 }
 
-std::expected<std::optional<submission_decision>, judge_error>
+submission_lifecycle::build_policy_outcome
 submission_lifecycle::apply_build_policy(
+    const submission_dto::leased_submission& leased_submission_value,
     const build_bundle& build_result_value
 ) const{
     if(build_result_value.success()){
-        return std::optional<submission_decision>{std::nullopt};
+        return std::monostate{};
     }
 
     if(build_result_value.is_user_compile_error()){
-        return std::optional<submission_decision>{
-            make_compile_error_decision(
-                build_result_value.user_compile_error_value().compile_execution
-            )
-        };
+        return make_compile_error_decision(
+            build_result_value.user_compile_error_value().compile_execution
+        );
     }
 
     if(build_result_value.is_compile_resource_exceeded()){
-        return std::optional<submission_decision>{
-            make_compile_error_decision(
-                build_result_value.compile_resource_exceeded_value().compile_execution
-            )
-        };
+        return make_build_resource_exceeded_finalize_request(
+            leased_submission_value,
+            build_result_value.compile_resource_exceeded_value()
+        );
     }
 
-    return std::unexpected(build_result_value.infra_failure().error);
+    return build_result_value.infra_failure().error;
 }
 
 std::expected<void, judge_error> submission_lifecycle::finalize_judged_submission(
@@ -127,6 +177,12 @@ std::expected<void, judge_error> submission_lifecycle::finalize_judged_submissio
             leased_submission_value
         );
 
+    return judge_submission_facade_.finalize_submission(finalize_request_value);
+}
+
+std::expected<void, judge_error> submission_lifecycle::finalize_direct_submission(
+    const submission_dto::finalize_request& finalize_request_value
+){
     return judge_submission_facade_.finalize_submission(finalize_request_value);
 }
 

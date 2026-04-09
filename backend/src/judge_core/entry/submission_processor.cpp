@@ -3,6 +3,7 @@
 #include "common/logger.hpp"
 
 #include <utility>
+#include <variant>
 
 namespace{
     execution_policy select_execution_policy(
@@ -107,9 +108,7 @@ std::expected<void, judge_error> submission_processor::process(
         [&](judge_error error_value) -> std::expected<void, judge_error> {
         return submission_lifecycle_.complete(
             leased_submission_value,
-            std::expected<submission_decision, judge_error>{
-                std::unexpected(std::move(error_value))
-            }
+            submission_lifecycle::completion_outcome{std::move(error_value)}
         );
     };
 
@@ -131,29 +130,41 @@ std::expected<void, judge_error> submission_processor::process(
     auto workspace_session_value = std::move(*workspace_session_exp);
     const auto workspace_path = workspace_session_value.path();
 
-    auto submission_decision_exp = [&]()
-        -> std::expected<submission_decision, judge_error> {
+    auto submission_outcome_value = [&]()
+        -> submission_lifecycle::completion_outcome {
         const auto source_file_path_exp =
             workspace_session_value.write_source_file(
                 leased_submission_value.language,
                 leased_submission_value.source_code
             );
         if(!source_file_path_exp){
-            return std::unexpected(source_file_path_exp.error());
+            return source_file_path_exp.error();
         }
 
         auto build_result_value = submission_builder_.build(
             *source_file_path_exp
         );
-        auto build_policy_exp = submission_lifecycle_.apply_build_policy(
+        auto build_policy_value = submission_lifecycle_.apply_build_policy(
+            leased_submission_value,
             build_result_value
         );
-        if(!build_policy_exp){
-            return std::unexpected(build_policy_exp.error());
+
+        if(
+            const auto direct_finalize_request_opt =
+                std::get_if<submission_dto::finalize_request>(&build_policy_value)
+        ){
+            return std::move(*direct_finalize_request_opt);
         }
 
-        if(build_policy_exp->has_value()){
-            return std::move(**build_policy_exp);
+        if(
+            const auto build_decision_opt =
+                std::get_if<submission_decision>(&build_policy_value)
+        ){
+            return std::move(*build_decision_opt);
+        }
+
+        if(const auto build_error_opt = std::get_if<judge_error>(&build_policy_value)){
+            return *build_error_opt;
         }
 
         auto testcase_snapshot_exp = testcase_snapshot_facade_.acquire(
@@ -161,7 +172,7 @@ std::expected<void, judge_error> submission_processor::process(
             leased_submission_value.problem_version
         );
         if(!testcase_snapshot_exp){
-            return std::unexpected(testcase_snapshot_exp.error());
+            return testcase_snapshot_exp.error();
         }
 
         const execution_policy execution_policy_value =
@@ -176,18 +187,23 @@ std::expected<void, judge_error> submission_processor::process(
             execution_policy_value
         );
         if(!execution_report_exp){
-            return std::unexpected(execution_report_exp.error());
+            return execution_report_exp.error();
         }
 
-        return judge_evaluator_.evaluate_execution(
+        auto submission_decision_exp = judge_evaluator_.evaluate_execution(
             *testcase_snapshot_exp,
             std::move(*execution_report_exp)
         );
+        if(!submission_decision_exp){
+            return submission_decision_exp.error();
+        }
+
+        return std::move(*submission_decision_exp);
     }();
 
     const auto finalize_submission_exp = submission_lifecycle_.complete(
         leased_submission_value,
-        std::move(submission_decision_exp)
+        std::move(submission_outcome_value)
     );
     const bool finalize_succeeded = finalize_submission_exp.has_value();
     close_workspace_best_effort(

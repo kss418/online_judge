@@ -171,6 +171,8 @@ boost::json::object user_json_serializer::make_submission_statistics_object(
         statistics_value.runtime_error_submission_count;
     response_object["compile_error_submission_count"] =
         statistics_value.compile_error_submission_count;
+    response_object["build_resource_exceeded_submission_count"] =
+        statistics_value.build_resource_exceeded_submission_count;
     response_object["output_exceeded_submission_count"] =
         statistics_value.output_exceeded_submission_count;
     response_object["infra_failure_submission_count"] =

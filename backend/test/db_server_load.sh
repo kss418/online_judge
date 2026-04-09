@@ -346,6 +346,7 @@ SELECT
             'memory_limit_exceeded'::submission_status,
             'runtime_error'::submission_status,
             'compile_error'::submission_status,
+            'build_resource_exceeded'::submission_status,
             'output_exceeded'::submission_status
         )
     )::BIGINT,
@@ -364,6 +365,8 @@ SET
     memory_limit_exceeded_submission_count = aggregated.memory_limit_exceeded_submission_count,
     runtime_error_submission_count = aggregated.runtime_error_submission_count,
     compile_error_submission_count = aggregated.compile_error_submission_count,
+    build_resource_exceeded_submission_count =
+        aggregated.build_resource_exceeded_submission_count,
     output_exceeded_submission_count = aggregated.output_exceeded_submission_count,
     infra_failure_submission_count = aggregated.infra_failure_submission_count,
     last_submission_at = aggregated.last_submission_at,
@@ -397,6 +400,9 @@ FROM (
         COUNT(*) FILTER(
             WHERE submissions.status = 'compile_error'::submission_status
         )::BIGINT AS compile_error_submission_count,
+        COUNT(*) FILTER(
+            WHERE submissions.status = 'build_resource_exceeded'::submission_status
+        )::BIGINT AS build_resource_exceeded_submission_count,
         COUNT(*) FILTER(
             WHERE submissions.status = 'output_exceeded'::submission_status
         )::BIGINT AS output_exceeded_submission_count,

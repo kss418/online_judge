@@ -356,6 +356,7 @@ expected_zero_fields = [
     "memory_limit_exceeded_submission_count",
     "runtime_error_submission_count",
     "compile_error_submission_count",
+    "build_resource_exceeded_submission_count",
     "output_exceeded_submission_count",
     "infra_failure_submission_count",
 ]
@@ -496,6 +497,7 @@ expected_zero_fields = [
     "memory_limit_exceeded_submission_count",
     "runtime_error_submission_count",
     "compile_error_submission_count",
+    "build_resource_exceeded_submission_count",
     "output_exceeded_submission_count",
     "infra_failure_submission_count",
 ]

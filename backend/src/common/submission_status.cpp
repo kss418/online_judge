@@ -18,6 +18,8 @@ std::string to_string(submission_status status){
             return "runtime_error";
         case submission_status::compile_error:
             return "compile_error";
+        case submission_status::build_resource_exceeded:
+            return "build_resource_exceeded";
         case submission_status::output_exceeded:
             return "output_exceeded";
         case submission_status::infra_failure:
@@ -51,6 +53,9 @@ std::optional<submission_status> parse_submission_status(std::string_view status
     }
     if(status == "compile_error"){
         return submission_status::compile_error;
+    }
+    if(status == "build_resource_exceeded"){
+        return submission_status::build_resource_exceeded;
     }
     if(status == "output_exceeded"){
         return submission_status::output_exceeded;

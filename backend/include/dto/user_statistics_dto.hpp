@@ -16,6 +16,7 @@ namespace user_statistics_dto{
         std::int64_t memory_limit_exceeded_submission_count = 0;
         std::int64_t runtime_error_submission_count = 0;
         std::int64_t compile_error_submission_count = 0;
+        std::int64_t build_resource_exceeded_submission_count = 0;
         std::int64_t output_exceeded_submission_count = 0;
         std::int64_t infra_failure_submission_count = 0;
         std::optional<std::string> last_submission_at_opt = std::nullopt;

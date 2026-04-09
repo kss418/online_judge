@@ -55,6 +55,7 @@ WITH expected AS (
                 'memory_limit_exceeded'::submission_status,
                 'runtime_error'::submission_status,
                 'compile_error'::submission_status,
+                'build_resource_exceeded'::submission_status,
                 'output_exceeded'::submission_status
             )
         )::BIGINT AS failed_submission_count
@@ -106,6 +107,7 @@ WITH expected AS (
                 'memory_limit_exceeded'::submission_status,
                 'runtime_error'::submission_status,
                 'compile_error'::submission_status,
+                'build_resource_exceeded'::submission_status,
                 'output_exceeded'::submission_status
             )
         )::BIGINT AS failed_submission_count
