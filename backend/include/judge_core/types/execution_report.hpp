@@ -6,6 +6,13 @@
 #include <vector>
 
 namespace execution_report{
+    enum class execution_failure_kind{
+        time_limit_exceeded,
+        output_exceeded,
+        memory_limit_exceeded,
+        runtime_error
+    };
+
     struct applied_limits{
         std::int64_t time_limit_ms = 0;
         std::int64_t memory_limit_kb = 0;
@@ -23,6 +30,7 @@ namespace execution_report{
         std::int64_t max_rss_kb = 0;
         std::int64_t wall_time_ms = 0;
         std::int64_t cpu_time_ms = 0;
+        std::optional<execution_failure_kind> failure_opt = std::nullopt;
     };
 
     struct batch{

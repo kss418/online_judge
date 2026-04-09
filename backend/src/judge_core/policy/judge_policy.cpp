@@ -1,73 +1,44 @@
 #include "judge_core/policy/judge_policy.hpp"
 
+#include "judge_core/policy/execution_failure_classifier.hpp"
 #include "judge_core/policy/checker.hpp"
 
-#include <csignal>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace{
-    bool contains_bad_alloc(std::string_view stderr_text){
-        return stderr_text.find("bad_alloc") != std::string::npos;
-    }
-
-    bool exceeded_time_limit(
+    std::optional<execution_report::execution_failure_kind> resolve_execution_failure(
         const execution_report::testcase_execution& testcase_execution_value,
         const execution_report::applied_limits& limits_value
     ){
-        if(limits_value.time_limit_ms <= 0){
-            return false;
+        if(testcase_execution_value.failure_opt.has_value()){
+            return testcase_execution_value.failure_opt;
         }
 
-        return
-            testcase_execution_value.killed_by_wall_clock ||
-            testcase_execution_value.termination_signal == SIGXCPU ||
-            testcase_execution_value.wall_time_ms > limits_value.time_limit_ms ||
-            testcase_execution_value.cpu_time_ms > limits_value.time_limit_ms;
+        return execution_failure_classifier::classify(
+            testcase_execution_value,
+            limits_value
+        );
     }
 
-    bool exceeded_output_limit(
-        const execution_report::testcase_execution& testcase_execution_value,
-        const execution_report::applied_limits& limits_value
+    std::string make_failed_testcase_message(
+        execution_report::execution_failure_kind failure_kind_value,
+        std::int32_t testcase_index
     ){
-        if(limits_value.output_limit_bytes <= 0){
-            return false;
+        switch(failure_kind_value){
+            case execution_report::execution_failure_kind::time_limit_exceeded:
+                return "time limit exceeded on testcase " + std::to_string(testcase_index);
+            case execution_report::execution_failure_kind::output_exceeded:
+                return "output limit exceeded on testcase " + std::to_string(testcase_index);
+            case execution_report::execution_failure_kind::memory_limit_exceeded:
+                return "memory limit exceeded on testcase " + std::to_string(testcase_index);
+            case execution_report::execution_failure_kind::runtime_error:
+                return "runtime error on testcase " + std::to_string(testcase_index);
         }
 
-        return
-            testcase_execution_value.stdout_bytes > limits_value.output_limit_bytes ||
-            testcase_execution_value.stderr_bytes > limits_value.output_limit_bytes
-#ifdef SIGXFSZ
-            || testcase_execution_value.termination_signal == SIGXFSZ
-#endif
-            ;
-    }
-
-    bool exceeded_memory_limit(
-        const execution_report::testcase_execution& testcase_execution_value,
-        const execution_report::applied_limits& limits_value
-    ){
-        if(
-            limits_value.memory_limit_kb > 0 &&
-            testcase_execution_value.max_rss_kb > limits_value.memory_limit_kb
-        ){
-            return true;
-        }
-
-        if(testcase_execution_value.termination_signal == SIGSEGV){
-            return true;
-        }
-
-        if(
-            testcase_execution_value.exit_code != 0 &&
-            contains_bad_alloc(testcase_execution_value.stderr_text)
-        ){
-            return true;
-        }
-
-        return false;
+        return "runtime error on testcase " + std::to_string(testcase_index);
     }
 
     std::optional<std::string> to_optional_message(std::string_view value){
@@ -128,50 +99,15 @@ std::expected<submission_verdict_summary, judge_error> judge_policy::check_resul
     for(std::size_t index = 0; index < execution_report_value.executions.size(); ++index){
         const auto& testcase_execution_value = execution_report_value.executions[index];
         const auto testcase_index = static_cast<std::int32_t>(index + 1);
-        if(
-            exceeded_time_limit(
-                testcase_execution_value,
-                execution_report_value.limits
-            )
-        ){
+        const auto execution_failure_opt = resolve_execution_failure(
+            testcase_execution_value,
+            execution_report_value.limits
+        );
+        if(execution_failure_opt.has_value()){
             return make_failed_testcase_summary(
-                judge_result::time_limit_exceeded,
+                execution_failure_classifier::to_judge_result(*execution_failure_opt),
                 testcase_index,
-                "time limit exceeded on testcase " + std::to_string(testcase_index),
-                testcase_execution_value.stderr_text
-            );
-        }
-        if(
-            exceeded_output_limit(
-                testcase_execution_value,
-                execution_report_value.limits
-            )
-        ){
-            return make_failed_testcase_summary(
-                judge_result::output_exceeded,
-                testcase_index,
-                "output limit exceeded on testcase " + std::to_string(testcase_index),
-                testcase_execution_value.stderr_text
-            );
-        }
-        if(
-            exceeded_memory_limit(
-                testcase_execution_value,
-                execution_report_value.limits
-            )
-        ){
-            return make_failed_testcase_summary(
-                judge_result::memory_limit_exceeded,
-                testcase_index,
-                "memory limit exceeded on testcase " + std::to_string(testcase_index),
-                testcase_execution_value.stderr_text
-            );
-        }
-        if(testcase_execution_value.exit_code != 0){
-            return make_failed_testcase_summary(
-                judge_result::runtime_error,
-                testcase_index,
-                "runtime error on testcase " + std::to_string(testcase_index),
+                make_failed_testcase_message(*execution_failure_opt, testcase_index),
                 testcase_execution_value.stderr_text
             );
         }

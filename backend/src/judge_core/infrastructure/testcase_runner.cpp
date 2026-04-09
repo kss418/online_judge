@@ -1,6 +1,7 @@
 #include "judge_core/infrastructure/testcase_runner.hpp"
 
 #include "judge_core/infrastructure/nsjail_util.hpp"
+#include "judge_core/policy/execution_failure_classifier.hpp"
 
 #include <utility>
 #include <vector>
@@ -108,13 +109,18 @@ std::expected<execution_report::batch, judge_error> testcase_runner::run_all_tes
             *input_path_exp
         );
 
-        const auto run_one_testcase_exp = run_one_testcase(
+        auto run_one_testcase_exp = run_one_testcase(
             execution_plan_value.run_command_args_,
             run_options_value
         );
         if(!run_one_testcase_exp){
             return std::unexpected(run_one_testcase_exp.error());
         }
+
+        run_one_testcase_exp->failure_opt = execution_failure_classifier::classify(
+            *run_one_testcase_exp,
+            execution_report_value.limits
+        );
 
         execution_report_value.executions.push_back(
             std::move(*run_one_testcase_exp)
