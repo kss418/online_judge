@@ -1,17 +1,15 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { useProblemSelectionQuery } from '@/composables/adminProblemTestcases/useProblemSelectionQuery'
+import { useProblemTestcaseListResource } from '@/composables/adminProblemTestcases/useProblemTestcaseListResource'
 import {
-  createProblemTestcase,
-  deleteProblemTestcase,
-  getProblemDetail,
-  getProblemTestcase,
-  getProblemList,
-  getProblemTestcases,
-  moveProblemTestcase,
-  uploadProblemTestcaseZip,
-  updateProblemTestcase
-} from '@/api/problem'
+  formatCount as formatCountValue,
+  formatProblemLimit as formatProblemLimitValue
+} from '@/composables/adminProblemTestcases/testcaseHelpers'
+import { useTestcaseEditorDraft } from '@/composables/adminProblemTestcases/useTestcaseEditorDraft'
+import { useTestcaseReorder } from '@/composables/adminProblemTestcases/useTestcaseReorder'
+import { useTestcaseUploadActions } from '@/composables/adminProblemTestcases/useTestcaseUploadActions'
 import { useAuth } from '@/composables/useAuth'
 import { useNotice } from '@/composables/useNotice'
 
@@ -21,317 +19,169 @@ export function useAdminProblemTestcasesPage(){
   const { authState, isAuthenticated, initializeAuth } = useAuth()
   const { showErrorNotice, showSuccessNotice } = useNotice()
   const countFormatter = new Intl.NumberFormat()
-
-  const selectedProblemId = computed(() => {
-    const parsedValue = Number.parseInt(route.params.problemId, 10)
-    return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : 0
-  })
-  const routeSearchMode = computed(() => {
-    const rawValue = Array.isArray(route.query.searchMode)
-      ? route.query.searchMode[0]
-      : route.query.searchMode
-
-    return rawValue === 'problem-id' ? 'problem-id' : 'title'
-  })
-  const routeTitleSearch = computed(() => {
-    const rawValue = Array.isArray(route.query.searchTitle)
-      ? route.query.searchTitle[0]
-      : route.query.searchTitle
-
-    return String(rawValue ?? '').trim()
-  })
-  const routeProblemIdSearch = computed(() => {
-    const rawValue = Array.isArray(route.query.searchProblemId)
-      ? route.query.searchProblemId[0]
-      : route.query.searchProblemId
-
-    return parsePositiveInteger(rawValue)
-  })
-
-  const isLoadingProblems = ref(true)
-  const isLoadingProblem = ref(false)
-  const isLoadingTestcases = ref(false)
-  const isLoadingSelectedTestcase = ref(false)
-  const listErrorMessage = ref('')
-  const problemErrorMessage = ref('')
-  const testcaseErrorMessage = ref('')
-  const selectedTestcaseErrorMessage = ref('')
-  const searchMode = ref('title')
-  const titleSearchInput = ref('')
-  const problemIdSearchInput = ref('')
-  const problems = ref([])
-  const problemDetail = ref(null)
-  const testcaseItems = ref([])
-  const selectedTestcase = ref(null)
-  const newTestcaseInput = ref('')
-  const newTestcaseOutput = ref('')
-  const testcaseZipFile = ref(null)
-  const testcaseZipInputKey = ref(0)
-  const selectedTestcaseOrder = ref(0)
-  const selectedTestcaseInputDraft = ref('')
-  const selectedTestcaseOutputDraft = ref('')
-  const viewTestcaseOrderInput = ref('')
   const busySection = ref('')
   const testcaseSummaryElementMap = new Map()
 
-  let latestProblemListRequestId = 0
-  let latestProblemRequestId = 0
-  let latestTestcaseRequestId = 0
-  let latestSelectedTestcaseRequestId = 0
-
   const canManageProblems = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 1)
-  const problemCount = computed(() => problems.value.length)
-  const testcaseCount = computed(() => testcaseItems.value.length)
+
+  let listResource
+
+  const formatCount = (value) => formatCountValue(countFormatter, value)
+  const formatProblemLimit = (value, unit) => formatProblemLimitValue(countFormatter, value, unit)
+
+  const draft = useTestcaseEditorDraft({
+    authState,
+    busySection,
+    testcaseItems: computed(() => listResource?.testcaseItems.value ?? []),
+    selectedTestcase: computed(() => listResource?.selectedTestcase.value ?? null),
+    showErrorNotice
+  })
+
+  const query = useProblemSelectionQuery({
+    route,
+    router,
+    formatCount,
+    getSelectedProblemId: () => query.selectedProblemId.value,
+    reloadProblems: async (preferredProblemId) => {
+      if (!listResource) {
+        return
+      }
+
+      await listResource.loadProblems({ preferredProblemId })
+    },
+    showErrorNotice
+  })
+
+  listResource = useProblemTestcaseListResource({
+    authState,
+    selectedProblemId: query.selectedProblemId,
+    routeSearchMode: query.routeSearchMode,
+    routeTitleSearch: query.routeTitleSearch,
+    routeProblemIdSearch: query.routeProblemIdSearch,
+    replaceProblemRoute: query.replaceProblemRoute,
+    syncSelectedTestcase: draft.syncSelectedTestcase,
+    resetSelectedTestcaseState: draft.resetSelectedTestcaseState
+  })
+
+  const uploadActions = useTestcaseUploadActions({
+    authState,
+    busySection,
+    formatCount,
+    showErrorNotice,
+    showSuccessNotice,
+    selectedProblemId: query.selectedProblemId,
+    testcaseItems: listResource.testcaseItems,
+    selectedTestcase: listResource.selectedTestcase,
+    selectedTestcaseSummary: draft.selectedTestcaseSummary,
+    newTestcaseInput: draft.newTestcaseInput,
+    newTestcaseOutput: draft.newTestcaseOutput,
+    testcaseZipFile: draft.testcaseZipFile,
+    testcaseZipInputKey: draft.testcaseZipInputKey,
+    selectedTestcaseInputDraft: draft.selectedTestcaseInputDraft,
+    selectedTestcaseOutputDraft: draft.selectedTestcaseOutputDraft,
+    canSaveSelectedTestcase: draft.canSaveSelectedTestcase,
+    applyProblemVersion: listResource.applyProblemVersion,
+    loadProblems: listResource.loadProblems,
+    loadSelectedProblemData: listResource.loadSelectedProblemData,
+    loadTestcases: listResource.loadTestcases,
+    syncSelectedTestcase: draft.syncSelectedTestcase,
+    resetSelectedTestcaseState: draft.resetSelectedTestcaseState
+  })
+
+  const reorderActions = useTestcaseReorder({
+    authState,
+    busySection,
+    testcaseItems: listResource.testcaseItems,
+    selectedProblemId: query.selectedProblemId,
+    selectedTestcaseSummary: draft.selectedTestcaseSummary,
+    applyProblemVersion: listResource.applyProblemVersion,
+    showErrorNotice,
+    showSuccessNotice,
+    syncSelectedTestcaseById(preferredTestcaseId, fallbackOrder){
+      draft.syncSelectedTestcaseById(preferredTestcaseId, fallbackOrder)
+      void scrollSelectedTestcaseIntoView()
+    }
+  })
+
   const toolbarStatusLabel = computed(() => {
-    if (isLoadingProblems.value || isLoadingProblem.value || isLoadingTestcases.value) {
+    if (
+      listResource.isLoadingProblems.value ||
+      listResource.isLoadingProblem.value ||
+      listResource.isLoadingTestcases.value
+    ) {
       return 'Loading'
     }
 
-    if (selectedProblemId.value > 0) {
-      return `${formatCount(testcaseCount.value)} Testcases`
+    if (query.selectedProblemId.value > 0) {
+      return `${formatCount(listResource.testcaseCount.value)} Testcases`
     }
 
-    return `${formatCount(problemCount.value)} Problems`
+    return `${formatCount(listResource.problemCount.value)} Problems`
   })
   const toolbarStatusTone = computed(() => {
-    if (listErrorMessage.value || problemErrorMessage.value || testcaseErrorMessage.value) {
+    if (
+      listResource.listErrorMessage.value ||
+      listResource.problemErrorMessage.value ||
+      listResource.testcaseErrorMessage.value
+    ) {
       return 'danger'
     }
 
     return 'success'
   })
-  const hasAppliedSearch = computed(() => {
-    if (routeSearchMode.value === 'problem-id') {
-      return routeProblemIdSearch.value != null
-    }
 
-    return Boolean(routeTitleSearch.value)
-  })
-  const problemListCaption = computed(() => {
-    if (routeSearchMode.value === 'problem-id' && routeProblemIdSearch.value != null) {
-      return `문제 #${formatCount(routeProblemIdSearch.value)} 검색 결과`
-    }
-
-    if (routeTitleSearch.value) {
-      return `"${routeTitleSearch.value}" 검색 결과`
-    }
-
-    return '전체 문제'
-  })
-  const emptyProblemListMessage = computed(() => {
-    if (routeSearchMode.value === 'problem-id' && routeProblemIdSearch.value != null) {
-      return `문제 #${formatCount(routeProblemIdSearch.value)}를 찾지 못했습니다.`
-    }
-
-    if (routeTitleSearch.value) {
-      return '검색 조건에 맞는 문제가 없습니다.'
-    }
-
-    return '등록된 문제가 아직 없습니다.'
-  })
-  const isCreatingTestcase = computed(() => busySection.value === 'create')
-  const isUploadingTestcaseZip = computed(() => busySection.value === 'upload')
-  const isDeletingSelectedTestcase = computed(() => busySection.value === 'delete-selected')
-  const isMovingTestcase = computed(() => busySection.value === 'move')
-  const isSavingSelectedTestcase = computed(() => busySection.value === 'save')
-  const selectedTestcaseZipName = computed(() => testcaseZipFile.value?.name || '')
-  const selectedTestcaseSummary = computed(() =>
-    testcaseItems.value.find((testcase) => testcase.testcase_order === selectedTestcaseOrder.value) || null
-  )
-  const canCreateTestcase = computed(() =>
-    selectedProblemId.value > 0 &&
-    Boolean(authState.token) &&
-    !busySection.value
-  )
-  const canUploadTestcaseZip = computed(() =>
-    selectedProblemId.value > 0 &&
-    Boolean(authState.token) &&
-    Boolean(testcaseZipFile.value) &&
-    !busySection.value
-  )
-  const canDeleteSelectedTestcase = computed(() =>
-    selectedProblemId.value > 0 &&
-    Boolean(authState.token) &&
-    Boolean(selectedTestcaseSummary.value) &&
-    !busySection.value
-  )
-  const canMoveTestcases = computed(() =>
-    selectedProblemId.value > 0 &&
-    Boolean(authState.token) &&
-    testcaseItems.value.length > 1 &&
-    !busySection.value
-  )
-  const canSaveSelectedTestcase = computed(() => {
-    if (!selectedTestcase.value || !authState.token || busySection.value) {
-      return false
-    }
-
-    return (
-      selectedTestcaseInputDraft.value !== selectedTestcase.value.testcase_input ||
-      selectedTestcaseOutputDraft.value !== selectedTestcase.value.testcase_output
-    )
-  })
-  const canViewSpecificTestcase = computed(() => {
-    if (isLoadingTestcases.value || !testcaseItems.value.length) {
-      return false
-    }
-
-    return parsePositiveInteger(viewTestcaseOrderInput.value) != null
-  })
-
-  watch(selectedProblemId, () => {
+  watch(query.selectedProblemId, () => {
     resetSelectedProblemState()
 
     if (!authState.initialized || !canManageProblems.value) {
       return
     }
 
-    if (selectedProblemId.value > 0) {
-      void loadSelectedProblemData()
+    if (query.selectedProblemId.value > 0) {
+      void listResource.loadSelectedProblemData()
       return
     }
 
-    isLoadingProblem.value = false
-    isLoadingTestcases.value = false
+    listResource.isLoadingProblem.value = false
+    listResource.isLoadingTestcases.value = false
   })
 
-  watch(selectedTestcase, (testcase) => {
-    selectedTestcaseInputDraft.value = testcase?.testcase_input ?? ''
-    selectedTestcaseOutputDraft.value = testcase?.testcase_output ?? ''
+  watch(listResource.selectedTestcase, (testcase) => {
+    draft.selectedTestcaseInputDraft.value = testcase?.testcase_input ?? ''
+    draft.selectedTestcaseOutputDraft.value = testcase?.testcase_output ?? ''
   }, {
     immediate: true
   })
 
-  watch(selectedTestcaseSummary, (testcaseSummary) => {
+  watch(draft.selectedTestcaseSummary, (testcaseSummary) => {
     if (!authState.initialized || !canManageProblems.value) {
       return
     }
 
-    if (!authState.token || selectedProblemId.value <= 0 || !testcaseSummary) {
-      latestSelectedTestcaseRequestId += 1
-      selectedTestcase.value = null
-      isLoadingSelectedTestcase.value = false
-      selectedTestcaseErrorMessage.value = ''
+    if (!authState.token || query.selectedProblemId.value <= 0 || !testcaseSummary) {
+      listResource.clearSelectedTestcaseDetail()
       return
     }
 
-    void loadSelectedTestcaseDetail(testcaseSummary.testcase_order)
+    void listResource.loadSelectedTestcaseDetail(testcaseSummary.testcase_order)
   })
 
   watch(
-    () => [routeSearchMode.value, routeTitleSearch.value, routeProblemIdSearch.value],
+    () => [query.routeSearchMode.value, query.routeTitleSearch.value, query.routeProblemIdSearch.value],
     () => {
       if (!authState.initialized || !isAuthenticated.value || !canManageProblems.value) {
         return
       }
 
-      syncSearchControlsFromRoute()
-      void loadProblems({
+      query.syncSearchControlsFromRoute()
+      void listResource.loadProblems({
         preferredProblemId:
-          routeSearchMode.value === 'problem-id'
-            ? routeProblemIdSearch.value || selectedProblemId.value
-            : selectedProblemId.value
+          query.routeSearchMode.value === 'problem-id'
+            ? query.routeProblemIdSearch.value || query.selectedProblemId.value
+            : query.selectedProblemId.value
       })
     }
   )
-
-  function formatCount(value){
-    return countFormatter.format(Number(value) || 0)
-  }
-
-  function formatProblemLimit(value, unit){
-    const numericValue = Number(value ?? 0)
-    if (!numericValue) {
-      return `미설정 ${unit}`
-    }
-
-    return `${formatCount(numericValue)} ${unit}`
-  }
-
-  function normalizeProblemItem(problem){
-    return {
-      ...problem,
-      problem_id: Number(problem.problem_id ?? 0),
-      version: Number(problem.version ?? 1),
-      title: problem.title || '',
-      time_limit_ms: Number(problem.time_limit_ms ?? problem.limits?.time_limit_ms ?? 0),
-      memory_limit_mb: Number(problem.memory_limit_mb ?? problem.limits?.memory_limit_mb ?? 0)
-    }
-  }
-
-  function normalizeProblemDetail(detail){
-    return {
-      ...detail,
-      problem_id: Number(detail.problem_id ?? 0),
-      version: Number(detail.version ?? 1),
-      title: detail.title || ''
-    }
-  }
-
-  function mergeProblemSummary(problemId, patch){
-    problems.value = problems.value.map((problem) =>
-      problem.problem_id === problemId
-        ? {
-          ...problem,
-          ...patch
-        }
-        : problem
-    )
-  }
-
-  function applyProblemVersion(problemId, version){
-    const normalizedVersion = Number(version)
-    if (!Number.isInteger(normalizedVersion) || normalizedVersion <= 0) {
-      return
-    }
-
-    if (problemDetail.value?.problem_id === problemId) {
-      problemDetail.value = {
-        ...problemDetail.value,
-        version: normalizedVersion
-      }
-    }
-
-    mergeProblemSummary(problemId, {
-      version: normalizedVersion
-    })
-  }
-
-  function normalizeTestcaseList(response){
-    const rawTestcases = Array.isArray(response?.testcases) ? response.testcases : []
-
-    return rawTestcases.map((testcase) => ({
-      testcase_id: Number(testcase.testcase_id ?? 0),
-      testcase_order: Number(testcase.testcase_order ?? 0),
-      input_char_count: Number(testcase.input_char_count ?? 0),
-      input_line_count: Number(testcase.input_line_count ?? 0),
-      output_char_count: Number(testcase.output_char_count ?? 0),
-      output_line_count: Number(testcase.output_line_count ?? 0)
-    }))
-  }
-
-  function normalizeTestcaseDetail(response){
-    return {
-      testcase_id: Number(response?.testcase_id ?? 0),
-      testcase_order: Number(response?.testcase_order ?? 0),
-      testcase_input: typeof response?.testcase_input === 'string' ? response.testcase_input : '',
-      testcase_output: typeof response?.testcase_output === 'string' ? response.testcase_output : ''
-    }
-  }
-
-  function parsePositiveInteger(value){
-    const normalized = typeof value === 'string' ? value.trim() : String(value ?? '').trim()
-    if (!normalized) {
-      return null
-    }
-
-    const parsedValue = Number.parseInt(normalized, 10)
-    if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
-      return null
-    }
-
-    return parsedValue
-  }
 
   function describeTestcaseContent(charCount, lineCount){
     const normalizedCharCount = Number(charCount ?? 0)
@@ -345,126 +195,20 @@ export function useAdminProblemTestcasesPage(){
   }
 
   function isLastTestcase(testcaseOrder){
-    if (!testcaseItems.value.length) {
+    if (!listResource.testcaseItems.value.length) {
       return false
     }
 
-    return testcaseItems.value[testcaseItems.value.length - 1].testcase_order === testcaseOrder
+    return listResource.testcaseItems.value[listResource.testcaseItems.value.length - 1].testcase_order === testcaseOrder
   }
 
   function resetSelectedProblemState(){
-    latestSelectedTestcaseRequestId += 1
-    problemDetail.value = null
-    testcaseItems.value = []
-    selectedTestcase.value = null
-    newTestcaseInput.value = ''
-    newTestcaseOutput.value = ''
-    testcaseZipFile.value = null
-    testcaseZipInputKey.value += 1
-    selectedTestcaseOrder.value = 0
-    selectedTestcaseInputDraft.value = ''
-    selectedTestcaseOutputDraft.value = ''
-    viewTestcaseOrderInput.value = ''
-    problemErrorMessage.value = ''
-    testcaseErrorMessage.value = ''
-    selectedTestcaseErrorMessage.value = ''
-    isLoadingSelectedTestcase.value = false
-  }
-
-  function syncSearchControlsFromRoute(){
-    searchMode.value = routeSearchMode.value
-    titleSearchInput.value = routeTitleSearch.value
-    problemIdSearchInput.value = routeProblemIdSearch.value != null
-      ? String(routeProblemIdSearch.value)
-      : ''
-  }
-
-  function setSearchMode(nextMode){
-    searchMode.value = nextMode
-  }
-
-  function handleProblemIdSearchInput(event){
-    const normalizedValue = String(event.target?.value ?? '').replace(/\D+/g, '')
-    problemIdSearchInput.value = normalizedValue
-  }
-
-  function buildSearchQuery(mode, options = {}){
-    const nextQuery = {}
-
-    if (mode === 'problem-id') {
-      const nextProblemId = parsePositiveInteger(options.problemId)
-      if (nextProblemId != null) {
-        nextQuery.searchMode = 'problem-id'
-        nextQuery.searchProblemId = String(nextProblemId)
-      }
-
-      return nextQuery
-    }
-
-    const nextTitle = String(options.title ?? '').trim()
-    if (nextTitle) {
-      nextQuery.searchMode = 'title'
-      nextQuery.searchTitle = nextTitle
-    }
-
-    return nextQuery
-  }
-
-  function isSameSearchQuery(nextQuery){
-    const currentQuery = buildSearchQuery(routeSearchMode.value, {
-      title: routeTitleSearch.value,
-      problemId: routeProblemIdSearch.value
-    })
-
-    return JSON.stringify(currentQuery) === JSON.stringify(nextQuery)
-  }
-
-  function syncSelectedTestcase(preferredOrder){
-    if (!testcaseItems.value.length) {
-      selectedTestcaseOrder.value = 0
-      selectedTestcaseInputDraft.value = ''
-      selectedTestcaseOutputDraft.value = ''
-      viewTestcaseOrderInput.value = ''
-      return
-    }
-
-    const lastTestcaseOrder = testcaseItems.value[testcaseItems.value.length - 1].testcase_order
-    const candidateOrder =
-      preferredOrder && preferredOrder > 0
-        ? Math.min(preferredOrder, lastTestcaseOrder)
-        : selectedTestcaseOrder.value > 0
-          ? Math.min(selectedTestcaseOrder.value, lastTestcaseOrder)
-          : testcaseItems.value[0].testcase_order
-    const matchedTestcase = testcaseItems.value.find(
-      (testcase) => testcase.testcase_order === candidateOrder
-    )
-    const nextOrder = matchedTestcase
-      ? matchedTestcase.testcase_order
-      : testcaseItems.value[0].testcase_order
-
-    selectedTestcaseOrder.value = nextOrder
-    viewTestcaseOrderInput.value = String(nextOrder)
-    void scrollSelectedTestcaseIntoView()
-  }
-
-  function syncSelectedTestcaseById(preferredTestcaseId, fallbackOrder){
-    if (preferredTestcaseId > 0) {
-      const matchedTestcase = testcaseItems.value.find(
-        (testcase) => testcase.testcase_id === preferredTestcaseId
-      )
-
-      if (matchedTestcase) {
-        syncSelectedTestcase(matchedTestcase.testcase_order)
-        return
-      }
-    }
-
-    syncSelectedTestcase(fallbackOrder)
+    listResource.resetSelectedProblemResource()
+    draft.resetDraftState()
   }
 
   function selectTestcase(testcaseOrder){
-    selectedTestcaseOrder.value = testcaseOrder
-    viewTestcaseOrderInput.value = String(testcaseOrder)
+    draft.selectTestcase(testcaseOrder)
     void scrollSelectedTestcaseIntoView()
   }
 
@@ -480,7 +224,7 @@ export function useAdminProblemTestcasesPage(){
   async function scrollSelectedTestcaseIntoView(){
     await nextTick()
 
-    const summaryElement = testcaseSummaryElementMap.get(selectedTestcaseOrder.value)
+    const summaryElement = testcaseSummaryElementMap.get(draft.selectedTestcaseOrder.value)
     if (!summaryElement || typeof summaryElement.scrollIntoView !== 'function') {
       return
     }
@@ -491,315 +235,10 @@ export function useAdminProblemTestcasesPage(){
     })
   }
 
-  async function selectProblem(problemId){
-    if (problemId === selectedProblemId.value) {
-      return
-    }
-
-    await router.push({
-      name: 'admin-problem-testcases',
-      params: {
-        problemId: String(problemId)
-      },
-      query: buildSearchQuery(routeSearchMode.value, {
-        title: routeTitleSearch.value,
-        problemId: routeProblemIdSearch.value
-      })
-    })
-  }
-
-  function submitSearch(){
-    if (searchMode.value === 'problem-id') {
-      const nextProblemId = parsePositiveInteger(problemIdSearchInput.value)
-      if (nextProblemId == null) {
-        showErrorNotice('문제 번호를 입력하세요.')
-        return
-      }
-
-      void applySearchQuery(buildSearchQuery('problem-id', {
-        problemId: nextProblemId
-      }), nextProblemId)
-      return
-    }
-
-    void applySearchQuery(buildSearchQuery('title', {
-      title: titleSearchInput.value
-    }), selectedProblemId.value)
-  }
-
-  function resetSearch(){
-    searchMode.value = 'title'
-    titleSearchInput.value = ''
-    problemIdSearchInput.value = ''
-    void applySearchQuery(buildSearchQuery('title'), selectedProblemId.value)
-  }
-
-  async function applySearchQuery(nextQuery, preferredProblemId){
-    if (isSameSearchQuery(nextQuery)) {
-      await loadProblems({ preferredProblemId })
-      return
-    }
-
-    await router.replace({
-      name: 'admin-problem-testcases',
-      params: selectedProblemId.value > 0
-        ? {
-          problemId: String(selectedProblemId.value)
-        }
-        : {},
-      query: nextQuery
-    })
-  }
-
   function handleViewSelectedTestcase(){
-    const targetOrder = parsePositiveInteger(viewTestcaseOrderInput.value)
-    if (targetOrder == null) {
-      showErrorNotice('확인할 테스트케이스 순번을 올바르게 입력하세요.')
-      return
+    if (draft.handleViewSelectedTestcase()) {
+      void scrollSelectedTestcaseIntoView()
     }
-
-    const matchedTestcase = testcaseItems.value.find(
-      (testcase) => testcase.testcase_order === targetOrder
-    )
-    if (!matchedTestcase) {
-      showErrorNotice(`테스트케이스 ${targetOrder}번이 없습니다.`)
-      return
-    }
-
-    selectTestcase(matchedTestcase.testcase_order)
-  }
-
-  function handleTestcaseZipFileChange(event){
-    const nextFile = event.target?.files?.[0] || null
-    if (!nextFile) {
-      testcaseZipFile.value = null
-      return
-    }
-
-    if (!nextFile.name.toLowerCase().endsWith('.zip')) {
-      testcaseZipFile.value = null
-      testcaseZipInputKey.value += 1
-      showErrorNotice('ZIP 파일만 업로드할 수 있습니다.')
-      return
-    }
-
-    testcaseZipFile.value = nextFile
-  }
-
-  async function loadProblems(options = {}){
-    const requestId = ++latestProblemListRequestId
-    const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
-    isLoadingProblems.value = true
-    listErrorMessage.value = ''
-
-    try {
-      const activeTitleSearch = routeSearchMode.value === 'title'
-        ? routeTitleSearch.value
-        : ''
-      const activeProblemIdSearch = routeSearchMode.value === 'problem-id'
-        ? routeProblemIdSearch.value
-        : null
-      const response = await getProblemList({
-        title: activeTitleSearch,
-        bearerToken: authState.token || ''
-      })
-
-      if (requestId !== latestProblemListRequestId) {
-        return
-      }
-
-      const responseProblems = Array.isArray(response.problems) ? response.problems : []
-      const filteredProblems = activeProblemIdSearch == null
-        ? responseProblems
-        : responseProblems.filter((problem) => Number(problem.problem_id ?? 0) === activeProblemIdSearch)
-
-      problems.value = filteredProblems.map(normalizeProblemItem)
-
-      if (!problems.value.length) {
-        if (selectedProblemId.value > 0) {
-          await router.replace({
-            name: 'admin-problem-testcases',
-            query: buildSearchQuery(routeSearchMode.value, {
-              title: routeTitleSearch.value,
-              problemId: routeProblemIdSearch.value
-            })
-          })
-        } else {
-          problemDetail.value = null
-          testcaseItems.value = []
-          problemErrorMessage.value = ''
-          testcaseErrorMessage.value = ''
-          isLoadingProblem.value = false
-          isLoadingTestcases.value = false
-        }
-        return
-      }
-
-      const nextProblemId = problems.value.some((problem) => problem.problem_id === preferredProblemId)
-        ? preferredProblemId
-        : problems.value[0].problem_id
-      if (nextProblemId > 0 && nextProblemId !== selectedProblemId.value) {
-        await router.replace({
-          name: 'admin-problem-testcases',
-          params: {
-            problemId: String(nextProblemId)
-          },
-          query: buildSearchQuery(routeSearchMode.value, {
-            title: routeTitleSearch.value,
-            problemId: routeProblemIdSearch.value
-          })
-        })
-      }
-    } catch (error) {
-      if (requestId !== latestProblemListRequestId) {
-        return
-      }
-
-      problems.value = []
-      listErrorMessage.value = error instanceof Error
-        ? error.message
-        : '문제 목록을 불러오지 못했습니다.'
-    } finally {
-      if (requestId === latestProblemListRequestId) {
-        isLoadingProblems.value = false
-      }
-    }
-  }
-
-  async function loadProblemDetail(){
-    const requestId = ++latestProblemRequestId
-    isLoadingProblem.value = true
-    problemErrorMessage.value = ''
-
-    if (selectedProblemId.value <= 0) {
-      problemDetail.value = null
-      isLoadingProblem.value = false
-      return
-    }
-
-    try {
-      const response = await getProblemDetail(selectedProblemId.value, {
-        bearerToken: authState.token || ''
-      })
-
-      if (requestId !== latestProblemRequestId) {
-        return
-      }
-
-      problemDetail.value = normalizeProblemDetail(response)
-      mergeProblemSummary(selectedProblemId.value, {
-        title: problemDetail.value.title,
-        version: problemDetail.value.version
-      })
-    } catch (error) {
-      if (requestId !== latestProblemRequestId) {
-        return
-      }
-
-      problemDetail.value = null
-      problemErrorMessage.value = error instanceof Error
-        ? error.message
-        : '문제 정보를 불러오지 못했습니다.'
-    } finally {
-      if (requestId === latestProblemRequestId) {
-        isLoadingProblem.value = false
-      }
-    }
-  }
-
-  async function loadSelectedTestcaseDetail(testcaseOrder){
-    const requestId = ++latestSelectedTestcaseRequestId
-    isLoadingSelectedTestcase.value = true
-    selectedTestcaseErrorMessage.value = ''
-    selectedTestcase.value = null
-
-    try {
-      const response = await getProblemTestcase(
-        selectedProblemId.value,
-        testcaseOrder,
-        {
-          bearerToken: authState.token || ''
-        }
-      )
-
-      if (requestId !== latestSelectedTestcaseRequestId) {
-        return
-      }
-
-      selectedTestcase.value = normalizeTestcaseDetail(response)
-    } catch (error) {
-      if (requestId !== latestSelectedTestcaseRequestId) {
-        return
-      }
-
-      selectedTestcase.value = null
-      selectedTestcaseErrorMessage.value = error instanceof Error
-        ? error.message
-        : '테스트케이스 본문을 불러오지 못했습니다.'
-    } finally {
-      if (requestId === latestSelectedTestcaseRequestId) {
-        isLoadingSelectedTestcase.value = false
-      }
-    }
-  }
-
-  async function loadTestcases(preferredOrder){
-    const requestId = ++latestTestcaseRequestId
-    isLoadingTestcases.value = true
-    testcaseErrorMessage.value = ''
-
-    if (!authState.token || selectedProblemId.value <= 0) {
-      testcaseItems.value = []
-      selectedTestcase.value = null
-      selectedTestcaseErrorMessage.value = ''
-      isLoadingTestcases.value = false
-      return
-    }
-
-    try {
-      const response = await getProblemTestcases(selectedProblemId.value, {
-        bearerToken: authState.token
-      })
-
-      if (requestId !== latestTestcaseRequestId) {
-        return
-      }
-
-      testcaseItems.value = normalizeTestcaseList(response)
-      syncSelectedTestcase(preferredOrder)
-    } catch (error) {
-      if (requestId !== latestTestcaseRequestId) {
-        return
-      }
-
-      testcaseItems.value = []
-      selectedTestcase.value = null
-      selectedTestcaseOrder.value = 0
-      selectedTestcaseInputDraft.value = ''
-      selectedTestcaseOutputDraft.value = ''
-      viewTestcaseOrderInput.value = ''
-      selectedTestcaseErrorMessage.value = ''
-      testcaseErrorMessage.value = error instanceof Error
-        ? error.message
-        : '테스트케이스를 불러오지 못했습니다.'
-    } finally {
-      if (requestId === latestTestcaseRequestId) {
-        isLoadingTestcases.value = false
-      }
-    }
-  }
-
-  async function loadSelectedProblemData(){
-    if (selectedProblemId.value <= 0) {
-      isLoadingProblem.value = false
-      isLoadingTestcases.value = false
-      return
-    }
-
-    await Promise.all([
-      loadProblemDetail(),
-      loadTestcases()
-    ])
   }
 
   async function refreshPage(){
@@ -807,325 +246,98 @@ export function useAdminProblemTestcasesPage(){
       return
     }
 
-    await loadProblems({
+    await listResource.loadProblems({
       preferredProblemId:
-        routeSearchMode.value === 'problem-id'
-          ? routeProblemIdSearch.value || selectedProblemId.value
-          : selectedProblemId.value
+        query.routeSearchMode.value === 'problem-id'
+          ? query.routeProblemIdSearch.value || query.selectedProblemId.value
+          : query.selectedProblemId.value
     })
-    await loadSelectedProblemData()
-  }
-
-  async function handleCreateTestcase(){
-    if (!canCreateTestcase.value || !authState.token) {
-      return
-    }
-
-    busySection.value = 'create'
-
-    const nextTestcaseInput = newTestcaseInput.value
-    const nextTestcaseOutput = newTestcaseOutput.value
-
-    try {
-      const response = await createProblemTestcase(
-        selectedProblemId.value,
-        {
-          testcase_input: nextTestcaseInput,
-          testcase_output: nextTestcaseOutput
-        },
-        authState.token
-      )
-
-      applyProblemVersion(selectedProblemId.value, response.version)
-      await loadTestcases(Number(response.testcase_order ?? 0))
-      newTestcaseInput.value = ''
-      newTestcaseOutput.value = ''
-      showSuccessNotice('테스트케이스를 마지막에 추가했습니다.')
-    } catch (error) {
-      showErrorNotice(
-        error instanceof Error
-          ? error.message
-          : '테스트케이스를 추가하지 못했습니다.'
-      )
-    } finally {
-      busySection.value = ''
-    }
-  }
-
-  async function handleUploadTestcaseZip(){
-    if (!canUploadTestcaseZip.value || !authState.token || !testcaseZipFile.value) {
-      return
-    }
-
-    busySection.value = 'upload'
-    const uploadFile = testcaseZipFile.value
-
-    try {
-      const response = await uploadProblemTestcaseZip(selectedProblemId.value, uploadFile, authState.token)
-      testcaseZipFile.value = null
-      testcaseZipInputKey.value += 1
-      applyProblemVersion(selectedProblemId.value, response.version)
-      await Promise.all([
-        loadProblems(),
-        loadSelectedProblemData()
-      ])
-
-      const uploadedTestcaseCount = Number(response.testcase_count ?? 0)
-      showSuccessNotice(`테스트케이스 ${formatCount(uploadedTestcaseCount)}개를 업로드했습니다.`)
-    } catch (error) {
-      showErrorNotice(
-        error instanceof Error
-          ? error.message
-          : '테스트케이스 ZIP을 업로드하지 못했습니다.'
-      )
-    } finally {
-      busySection.value = ''
-    }
-  }
-
-  async function handleDeleteSelectedTestcase(){
-    if (!canDeleteSelectedTestcase.value || !authState.token || !selectedTestcaseSummary.value) {
-      return
-    }
-
-    const deletedTestcaseOrder = selectedTestcaseSummary.value.testcase_order
-
-    busySection.value = 'delete-selected'
-
-    try {
-      const response = await deleteProblemTestcase(
-        selectedProblemId.value,
-        deletedTestcaseOrder,
-        authState.token
-      )
-      applyProblemVersion(selectedProblemId.value, response.version)
-      testcaseItems.value = testcaseItems.value
-        .filter((testcase) => testcase.testcase_order !== deletedTestcaseOrder)
-        .map((testcase) => ({
-          ...testcase,
-          testcase_order: testcase.testcase_order > deletedTestcaseOrder
-            ? testcase.testcase_order - 1
-            : testcase.testcase_order
-        }))
-      syncSelectedTestcase(deletedTestcaseOrder)
-      showSuccessNotice(`테스트케이스 ${deletedTestcaseOrder}번을 삭제했습니다.`)
-    } catch (error) {
-      showErrorNotice(
-        error instanceof Error
-          ? error.message
-          : '테스트케이스를 삭제하지 못했습니다.'
-      )
-    } finally {
-      busySection.value = ''
-    }
-  }
-
-  function reorderTestcaseItems(sourceTestcaseOrder, targetTestcaseOrder){
-    const nextTestcaseItems = testcaseItems.value.map((testcase) => {
-      if (testcase.testcase_order === sourceTestcaseOrder) {
-        return {
-          ...testcase,
-          testcase_order: targetTestcaseOrder
-        }
-      }
-
-      if (
-        sourceTestcaseOrder < targetTestcaseOrder &&
-        testcase.testcase_order > sourceTestcaseOrder &&
-        testcase.testcase_order <= targetTestcaseOrder
-      ) {
-        return {
-          ...testcase,
-          testcase_order: testcase.testcase_order - 1
-        }
-      }
-
-      if (
-        sourceTestcaseOrder > targetTestcaseOrder &&
-        testcase.testcase_order >= targetTestcaseOrder &&
-        testcase.testcase_order < sourceTestcaseOrder
-      ) {
-        return {
-          ...testcase,
-          testcase_order: testcase.testcase_order + 1
-        }
-      }
-
-      return testcase
-    })
-
-    nextTestcaseItems.sort((left, right) => left.testcase_order - right.testcase_order)
-    testcaseItems.value = nextTestcaseItems
-  }
-
-  async function handleMoveTestcase({ sourceTestcaseOrder, targetTestcaseOrder }){
-    if (!canMoveTestcases.value || !authState.token) {
-      return
-    }
-
-    const normalizedSourceOrder = Number(sourceTestcaseOrder)
-    const normalizedTargetOrder = Number(targetTestcaseOrder)
-
-    if (
-      !Number.isInteger(normalizedSourceOrder) ||
-      !Number.isInteger(normalizedTargetOrder) ||
-      normalizedSourceOrder <= 0 ||
-      normalizedTargetOrder <= 0 ||
-      normalizedSourceOrder === normalizedTargetOrder
-    ) {
-      return
-    }
-
-    const selectedTestcaseId = Number(selectedTestcaseSummary.value?.testcase_id ?? 0)
-    busySection.value = 'move'
-
-    try {
-      const response = await moveProblemTestcase(
-        selectedProblemId.value,
-        {
-          source_testcase_order: normalizedSourceOrder,
-          target_testcase_order: normalizedTargetOrder
-        },
-        authState.token
-      )
-
-      applyProblemVersion(selectedProblemId.value, response.version)
-      reorderTestcaseItems(normalizedSourceOrder, normalizedTargetOrder)
-      syncSelectedTestcaseById(selectedTestcaseId, normalizedTargetOrder)
-      showSuccessNotice(
-        `테스트케이스 ${normalizedSourceOrder}번을 ${normalizedTargetOrder}번으로 이동했습니다.`
-      )
-    } catch (error) {
-      showErrorNotice(
-        error instanceof Error
-          ? error.message
-          : '테스트케이스 순서를 변경하지 못했습니다.'
-      )
-    } finally {
-      busySection.value = ''
-    }
-  }
-
-  async function handleSaveSelectedTestcase(){
-    if (!selectedTestcase.value || !canSaveSelectedTestcase.value || !authState.token) {
-      return
-    }
-
-    busySection.value = 'save'
-
-    const testcaseOrder = selectedTestcase.value.testcase_order
-    const nextTestcaseInput = selectedTestcaseInputDraft.value
-    const nextTestcaseOutput = selectedTestcaseOutputDraft.value
-
-    try {
-      const response = await updateProblemTestcase(
-        selectedProblemId.value,
-        testcaseOrder,
-        {
-          testcase_input: nextTestcaseInput,
-          testcase_output: nextTestcaseOutput
-        },
-        authState.token
-      )
-
-      applyProblemVersion(selectedProblemId.value, response.version)
-      selectedTestcase.value = normalizeTestcaseDetail(response)
-      await loadTestcases(testcaseOrder)
-      showSuccessNotice(`테스트케이스 ${testcaseOrder}번을 저장했습니다.`)
-    } catch (error) {
-      showErrorNotice(
-        error instanceof Error
-          ? error.message
-          : '테스트케이스를 저장하지 못했습니다.'
-      )
-    } finally {
-      busySection.value = ''
-    }
+    await listResource.loadSelectedProblemData()
   }
 
   onMounted(async () => {
     await initializeAuth()
 
     if (!canManageProblems.value) {
-      isLoadingProblems.value = false
-      isLoadingProblem.value = false
-      isLoadingTestcases.value = false
+      listResource.isLoadingProblems.value = false
+      listResource.isLoadingProblem.value = false
+      listResource.isLoadingTestcases.value = false
       return
     }
 
-    syncSearchControlsFromRoute()
-    await loadProblems({
+    query.syncSearchControlsFromRoute()
+    await listResource.loadProblems({
       preferredProblemId:
-        routeSearchMode.value === 'problem-id'
-          ? routeProblemIdSearch.value || selectedProblemId.value
-          : selectedProblemId.value
+        query.routeSearchMode.value === 'problem-id'
+          ? query.routeProblemIdSearch.value || query.selectedProblemId.value
+          : query.selectedProblemId.value
     })
-    await loadSelectedProblemData()
+    await listResource.loadSelectedProblemData()
   })
 
   return {
     authState,
     isAuthenticated,
     canManageProblems,
-    selectedProblemId,
-    isLoadingProblems,
-    isLoadingProblem,
-    isLoadingTestcases,
-    isLoadingSelectedTestcase,
-    listErrorMessage,
-    problemErrorMessage,
-    testcaseErrorMessage,
-    selectedTestcaseErrorMessage,
-    searchMode,
-    titleSearchInput,
-    problemIdSearchInput,
-    problems,
-    problemDetail,
-    testcaseItems,
-    newTestcaseInput,
-    newTestcaseOutput,
-    testcaseZipInputKey,
-    selectedTestcaseOrder,
-    selectedTestcaseInputDraft,
-    selectedTestcaseOutputDraft,
-    viewTestcaseOrderInput,
+    selectedProblemId: query.selectedProblemId,
+    isLoadingProblems: listResource.isLoadingProblems,
+    isLoadingProblem: listResource.isLoadingProblem,
+    isLoadingTestcases: listResource.isLoadingTestcases,
+    isLoadingSelectedTestcase: listResource.isLoadingSelectedTestcase,
+    listErrorMessage: listResource.listErrorMessage,
+    problemErrorMessage: listResource.problemErrorMessage,
+    testcaseErrorMessage: listResource.testcaseErrorMessage,
+    selectedTestcaseErrorMessage: listResource.selectedTestcaseErrorMessage,
+    searchMode: query.searchMode,
+    titleSearchInput: query.titleSearchInput,
+    problemIdSearchInput: query.problemIdSearchInput,
+    problems: listResource.problems,
+    problemDetail: listResource.problemDetail,
+    testcaseItems: listResource.testcaseItems,
+    newTestcaseInput: draft.newTestcaseInput,
+    newTestcaseOutput: draft.newTestcaseOutput,
+    testcaseZipInputKey: draft.testcaseZipInputKey,
+    selectedTestcaseOrder: draft.selectedTestcaseOrder,
+    selectedTestcaseInputDraft: draft.selectedTestcaseInputDraft,
+    selectedTestcaseOutputDraft: draft.selectedTestcaseOutputDraft,
+    viewTestcaseOrderInput: draft.viewTestcaseOrderInput,
     busySection,
-    problemCount,
+    problemCount: listResource.problemCount,
     toolbarStatusLabel,
     toolbarStatusTone,
-    hasAppliedSearch,
-    problemListCaption,
-    emptyProblemListMessage,
-    isCreatingTestcase,
-    isUploadingTestcaseZip,
-    isDeletingSelectedTestcase,
-    isMovingTestcase,
-    isSavingSelectedTestcase,
-    selectedTestcaseZipName,
-    selectedTestcase,
-    canCreateTestcase,
-    canUploadTestcaseZip,
-    canDeleteSelectedTestcase,
-    canMoveTestcases,
-    canSaveSelectedTestcase,
-    canViewSpecificTestcase,
+    hasAppliedSearch: query.hasAppliedSearch,
+    problemListCaption: query.problemListCaption,
+    emptyProblemListMessage: query.emptyProblemListMessage,
+    isCreatingTestcase: uploadActions.isCreatingTestcase,
+    isUploadingTestcaseZip: uploadActions.isUploadingTestcaseZip,
+    isDeletingSelectedTestcase: uploadActions.isDeletingSelectedTestcase,
+    isMovingTestcase: reorderActions.isMovingTestcase,
+    isSavingSelectedTestcase: uploadActions.isSavingSelectedTestcase,
+    selectedTestcaseZipName: draft.selectedTestcaseZipName,
+    selectedTestcase: listResource.selectedTestcase,
+    canCreateTestcase: uploadActions.canCreateTestcase,
+    canUploadTestcaseZip: uploadActions.canUploadTestcaseZip,
+    canDeleteSelectedTestcase: uploadActions.canDeleteSelectedTestcase,
+    canMoveTestcases: reorderActions.canMoveTestcases,
+    canSaveSelectedTestcase: draft.canSaveSelectedTestcase,
+    canViewSpecificTestcase: draft.canViewSpecificTestcase,
     formatCount,
     formatProblemLimit,
     describeTestcaseContent,
     isLastTestcase,
-    setSearchMode,
-    handleProblemIdSearchInput,
-    submitSearch,
-    resetSearch,
-    selectProblem,
+    setSearchMode: query.setSearchMode,
+    handleProblemIdSearchInput: query.handleProblemIdSearchInput,
+    submitSearch: query.submitSearch,
+    resetSearch: query.resetSearch,
+    selectProblem: query.selectProblem,
     refreshPage,
-    handleTestcaseZipFileChange,
-    handleUploadTestcaseZip,
-    handleCreateTestcase,
+    handleTestcaseZipFileChange: draft.handleTestcaseZipFileChange,
+    handleUploadTestcaseZip: uploadActions.handleUploadTestcaseZip,
+    handleCreateTestcase: uploadActions.handleCreateTestcase,
     selectTestcase,
-    handleDeleteSelectedTestcase,
-    handleMoveTestcase,
-    handleSaveSelectedTestcase,
+    handleDeleteSelectedTestcase: uploadActions.handleDeleteSelectedTestcase,
+    handleMoveTestcase: reorderActions.handleMoveTestcase,
+    handleSaveSelectedTestcase: uploadActions.handleSaveSelectedTestcase,
     handleViewSelectedTestcase,
     setTestcaseSummaryElement
   }
