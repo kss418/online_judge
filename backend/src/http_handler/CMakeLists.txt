@@ -3,7 +3,8 @@ target_sources(lib
         auth_handler.cpp
         problem_handler.cpp
         problem_content_handler.cpp
-        submission_handler.cpp
+        submission_command_handler.cpp
+        submission_query_handler.cpp
         system_handler.cpp
         testcase_handler.cpp
         user_handler.cpp

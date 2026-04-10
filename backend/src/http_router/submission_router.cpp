@@ -1,5 +1,7 @@
 #include "http_router/submission_router.hpp"
 
+#include "http_handler/submission_command_handler.hpp"
+#include "http_handler/submission_query_handler.hpp"
 #include "http_router/route_table.hpp"
 
 #include <array>
@@ -16,8 +18,11 @@ namespace{
         path_segment_matcher::literal("status"),
         path_segment_matcher::literal("batch")
     };
-    inline constexpr std::array submission_pattern{
+    inline constexpr std::array submission_detail_pattern{
         path_segment_matcher::positive_int64("submission_id")
+    };
+    inline constexpr std::array problem_submission_pattern{
+        path_segment_matcher::positive_int64("problem_id")
     };
     inline constexpr std::array submission_history_pattern{
         path_segment_matcher::positive_int64("submission_id"),
@@ -44,7 +49,7 @@ submission_router::response_type submission_router::route(
             .pattern = http_route::empty_path_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return submission_handler::get_submissions(context_value);
+                return submission_query_handler::get_submissions(context_value);
             }
         },
         endpoint_descriptor{
@@ -53,16 +58,16 @@ submission_router::response_type submission_router::route(
             .pattern = status_batch_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return submission_handler::post_submission_status_batch(context_value);
+                return submission_query_handler::post_submission_status_batch(context_value);
             }
         },
         endpoint_descriptor{
             .name = "get_submission",
             .method = http_verb::get,
-            .pattern = submission_pattern,
+            .pattern = submission_detail_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return submission_handler::get_submission(
+                return submission_query_handler::get_submission(
                     context_value,
                     route_match_value.int64_param("submission_id")
                 );
@@ -71,12 +76,12 @@ submission_router::response_type submission_router::route(
         endpoint_descriptor{
             .name = "post_submission",
             .method = http_verb::post,
-            .pattern = submission_pattern,
+            .pattern = problem_submission_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return submission_handler::post_submission(
+                return submission_command_handler::post_submission(
                     context_value,
-                    route_match_value.int64_param("submission_id")
+                    route_match_value.int64_param("problem_id")
                 );
             }
         },
@@ -86,7 +91,7 @@ submission_router::response_type submission_router::route(
             .pattern = submission_history_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return submission_handler::get_submission_history(
+                return submission_query_handler::get_submission_history(
                     context_value,
                     route_match_value.int64_param("submission_id")
                 );
@@ -98,7 +103,7 @@ submission_router::response_type submission_router::route(
             .pattern = submission_source_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return submission_handler::get_submission_source(
+                return submission_query_handler::get_submission_source(
                     context_value,
                     route_match_value.int64_param("submission_id")
                 );
@@ -110,7 +115,7 @@ submission_router::response_type submission_router::route(
             .pattern = submission_rejudge_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return submission_handler::post_submission_rejudge(
+                return submission_command_handler::post_submission_rejudge(
                     context_value,
                     route_match_value.int64_param("submission_id")
                 );
