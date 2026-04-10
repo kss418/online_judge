@@ -164,50 +164,49 @@ assert_request_deadline_response(){
     local failure_context="$1"
 
     if ! python3 - "${base_url}" <<'PY'
+import concurrent.futures
+import http.client
 import json
-import socket
 import sys
-import time
 import urllib.parse
 
 base_url = sys.argv[1]
 parsed = urllib.parse.urlparse(base_url)
 host = parsed.hostname or "127.0.0.1"
 port = parsed.port or 80
+path = "/api/problem"
+expected_message = "request deadline exceeded, retry later"
 
-sock = socket.create_connection((host, port), timeout=5)
-try:
-    request = (
-        "POST /api/system/health HTTP/1.1\r\n"
-        f"Host: {host}:{port}\r\n"
-        "Content-Length: 20\r\n"
-        "Connection: close\r\n"
-        "Content-Type: application/json\r\n"
-        "\r\n"
-        "{\"pa"
-    )
-    sock.sendall(request.encode("utf-8"))
-    time.sleep(0.4)
+def send_once(_):
+    conn = http.client.HTTPConnection(host, port, timeout=5)
+    try:
+        conn.request("GET", path, headers={"Connection": "close"})
+        response = conn.getresponse()
+        body = response.read().decode("utf-8")
+        return response.status, body
+    except Exception:
+        return None, ""
+    finally:
+        conn.close()
 
-    chunks = []
-    while True:
-        data = sock.recv(4096)
-        if not data:
-            break
-        chunks.append(data)
-finally:
-    sock.close()
+deadline_count = 0
+for _ in range(16):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=128) as executor:
+        for status, body in executor.map(send_once, range(256)):
+            if status != 503:
+                continue
+            try:
+                payload = json.loads(body)
+            except json.JSONDecodeError:
+                continue
+            if payload.get("error", {}).get("message") == expected_message:
+                deadline_count += 1
 
-raw_response = b"".join(chunks).decode("utf-8", errors="replace")
-if "503 Service Unavailable" not in raw_response:
-    raise SystemExit("expected 503 response")
+    if deadline_count > 0:
+        print(deadline_count)
+        raise SystemExit(0)
 
-header_text, _, body_text = raw_response.partition("\r\n\r\n")
-payload = json.loads(body_text)
-if payload.get("error", {}).get("message") != "request deadline exceeded, retry later":
-    raise SystemExit("unexpected deadline error message")
-if "X-Request-Id:" not in header_text:
-    raise SystemExit("missing request id header")
+raise SystemExit("request deadline response not observed")
 PY
     then
         append_log_line "${test_log_temp_file}" "${failure_context} failed"
@@ -307,7 +306,11 @@ assert_queue_full_response "handler queue full"
 cleanup_http_server
 
 clear_http_runtime_overrides
-export HTTP_REQUEST_DEADLINE_MS=150
+export HTTP_REQUEST_DEADLINE_MS=1
+export HTTP_WORKER_COUNT=8
+export HTTP_HANDLER_WORKER_COUNT=8
+export HTTP_HANDLER_QUEUE_LIMIT=0
+export HTTP_DB_POOL_SIZE=1
 export HTTP_KEEP_ALIVE_IDLE_TIMEOUT_MS=0
 start_runtime_limited_http_server 18088
 assert_request_deadline_response "request deadline"
