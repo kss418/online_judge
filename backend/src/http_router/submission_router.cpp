@@ -46,7 +46,7 @@ submission_router::response_type submission_router::route(
         endpoint_descriptor{
             .name = "get_submissions",
             .method = http_verb::get,
-            .operation_kind_value = http_route::operation_kind::query,
+            .kind = http_route::operation_kind::query,
             .pattern = http_route::empty_path_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -56,7 +56,7 @@ submission_router::response_type submission_router::route(
         endpoint_descriptor{
             .name = "post_submission_status_batch",
             .method = http_verb::post,
-            .operation_kind_value = http_route::operation_kind::query,
+            .kind = http_route::operation_kind::query,
             .pattern = status_batch_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -66,7 +66,7 @@ submission_router::response_type submission_router::route(
         endpoint_descriptor{
             .name = "get_submission",
             .method = http_verb::get,
-            .operation_kind_value = http_route::operation_kind::query,
+            .kind = http_route::operation_kind::query,
             .pattern = submission_detail_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -79,7 +79,7 @@ submission_router::response_type submission_router::route(
         endpoint_descriptor{
             .name = "post_submission",
             .method = http_verb::post,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = problem_submission_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -92,7 +92,7 @@ submission_router::response_type submission_router::route(
         endpoint_descriptor{
             .name = "get_submission_history",
             .method = http_verb::get,
-            .operation_kind_value = http_route::operation_kind::query,
+            .kind = http_route::operation_kind::query,
             .pattern = submission_history_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -105,7 +105,7 @@ submission_router::response_type submission_router::route(
         endpoint_descriptor{
             .name = "get_submission_source",
             .method = http_verb::get,
-            .operation_kind_value = http_route::operation_kind::query,
+            .kind = http_route::operation_kind::query,
             .pattern = submission_source_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -118,7 +118,7 @@ submission_router::response_type submission_router::route(
         endpoint_descriptor{
             .name = "post_submission_rejudge",
             .method = http_verb::post,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = submission_rejudge_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {

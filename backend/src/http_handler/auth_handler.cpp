@@ -5,7 +5,7 @@
 #include "error/auth_error.hpp"
 #include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
-#include "http_guard/request_guard.hpp"
+#include "http_guard/request_parse_guard.hpp"
 #include "request_parser/auth_request_parser.hpp"
 #include "serializer/auth_json_serializer.hpp"
 
@@ -52,7 +52,7 @@ auth_handler::response_type auth_handler::post_sign_up(
                 boost::beast::http::status::created
             );
         },
-        request_guard::make_json_guard<auth_dto::sign_up_request>(
+        request_parse_guard::make_json_guard<auth_dto::sign_up_request>(
             auth_request_parser::parse_sign_up_request
         )
     );
@@ -75,7 +75,7 @@ auth_handler::response_type auth_handler::post_login(
                 auth_json_serializer::make_session_object
             );
         },
-        request_guard::make_json_guard<auth_dto::credentials>(
+        request_parse_guard::make_json_guard<auth_dto::credentials>(
             auth_request_parser::parse_credentials
         )
     );

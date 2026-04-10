@@ -12,7 +12,7 @@
 #include "db_service/user_statistics_service.hpp"
 #include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
-#include "http_guard/request_guard.hpp"
+#include "http_guard/request_parse_guard.hpp"
 #include "request_parser/user_request_parser.hpp"
 #include "serializer/user_json_serializer.hpp"
 
@@ -138,7 +138,7 @@ user_query_handler::response_type user_query_handler::get_public_user_list(
                 user_json_serializer::make_public_list_object
             );
         },
-        request_guard::make_query_guard<user_dto::list_filter>(
+        request_parse_guard::make_query_guard<user_dto::list_filter>(
             user_request_parser::parse_list_filter
         )
     );

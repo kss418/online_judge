@@ -5,7 +5,7 @@
 #include "dto/problem_dto.hpp"
 #include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
-#include "http_guard/request_guard.hpp"
+#include "http_guard/request_parse_guard.hpp"
 #include "request_parser/problem_request_parser.hpp"
 #include "serializer/problem_json_serializer.hpp"
 
@@ -53,7 +53,7 @@ problem_query_handler::response_type problem_query_handler::get_problems(
             );
         },
         auth_guard::make_optional_auth_guard(),
-        request_guard::make_problem_list_filter_guard()
+        request_parse_guard::make_problem_list_filter_guard()
     );
 }
 

@@ -9,7 +9,7 @@
 #include <expected>
 #include <utility>
 
-namespace submission_command_guard{
+namespace submission_guard{
     inline auto make_create_request_guard(std::int64_t problem_id){
         return http_guard::make_composite_guard(
             [problem_id](const http_guard::guard_context& composite_context,

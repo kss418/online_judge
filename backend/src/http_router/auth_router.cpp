@@ -35,7 +35,7 @@ auth_router::response_type auth_router::route(
         endpoint_descriptor{
             .name = "post_sign_up",
             .method = http_verb::post,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = sign_up_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -45,7 +45,7 @@ auth_router::response_type auth_router::route(
         endpoint_descriptor{
             .name = "post_login",
             .method = http_verb::post,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = login_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -55,7 +55,7 @@ auth_router::response_type auth_router::route(
         endpoint_descriptor{
             .name = "post_token_renew",
             .method = http_verb::post,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = token_renew_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -65,7 +65,7 @@ auth_router::response_type auth_router::route(
         endpoint_descriptor{
             .name = "post_logout",
             .method = http_verb::post,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = logout_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {

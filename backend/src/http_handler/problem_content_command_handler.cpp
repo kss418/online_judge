@@ -9,7 +9,7 @@
 #include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
-#include "http_guard/request_guard.hpp"
+#include "http_guard/request_parse_guard.hpp"
 #include "request_parser/problem_content_request_parser.hpp"
 #include "serializer/problem_json_serializer.hpp"
 
@@ -39,7 +39,7 @@ problem_content_command_handler::response_type problem_content_command_handler::
             );
         },
         auth_guard::make_admin_guard(),
-        request_guard::make_json_guard<problem_content_dto::limits>(
+        request_parse_guard::make_json_guard<problem_content_dto::limits>(
             problem_content_request_parser::parse_limits
         )
     );
@@ -69,7 +69,7 @@ problem_content_command_handler::response_type problem_content_command_handler::
             );
         },
         auth_guard::make_admin_guard(),
-        request_guard::make_json_guard<problem_content_dto::statement>(
+        request_parse_guard::make_json_guard<problem_content_dto::statement>(
             problem_content_request_parser::parse_statement
         )
     );
@@ -137,7 +137,7 @@ problem_content_command_handler::response_type problem_content_command_handler::
             );
         },
         auth_guard::make_admin_guard(),
-        request_guard::make_json_guard<problem_content_dto::sample>(
+        request_parse_guard::make_json_guard<problem_content_dto::sample>(
             problem_content_request_parser::parse_sample
         )
     );

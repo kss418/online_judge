@@ -5,7 +5,7 @@
 #include "db_service/user_service.hpp"
 #include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
-#include "http_guard/request_guard.hpp"
+#include "http_guard/request_parse_guard.hpp"
 #include "request_parser/user_request_parser.hpp"
 #include "serializer/user_json_serializer.hpp"
 
@@ -84,7 +84,7 @@ user_command_handler::response_type user_command_handler::post_user_submission_b
             );
         },
         auth_guard::make_admin_guard(),
-        request_guard::make_json_guard<user_dto::submission_ban_request>(
+        request_parse_guard::make_json_guard<user_dto::submission_ban_request>(
             user_request_parser::parse_submission_ban_request
         )
     );

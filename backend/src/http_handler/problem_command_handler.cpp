@@ -6,7 +6,7 @@
 #include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
-#include "http_guard/request_guard.hpp"
+#include "http_guard/request_parse_guard.hpp"
 #include "request_parser/problem_request_parser.hpp"
 #include "serializer/problem_json_serializer.hpp"
 
@@ -30,7 +30,7 @@ problem_command_handler::response_type problem_command_handler::post_problem(
             );
         },
         auth_guard::make_admin_guard(),
-        request_guard::make_json_guard<problem_dto::create_request>(
+        request_parse_guard::make_json_guard<problem_dto::create_request>(
             problem_request_parser::parse_create_request
         )
     );
@@ -59,7 +59,7 @@ problem_command_handler::response_type problem_command_handler::put_problem(
         },
         auth_guard::make_admin_guard(),
         problem_guard::make_exists_guard(problem_reference_value),
-        request_guard::make_json_guard<problem_dto::update_request>(
+        request_parse_guard::make_json_guard<problem_dto::update_request>(
             problem_request_parser::parse_update_request
         )
     );

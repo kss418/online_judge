@@ -8,7 +8,7 @@
 #include "error/submission_error.hpp"
 #include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
-#include "http_guard/request_guard.hpp"
+#include "http_guard/request_parse_guard.hpp"
 #include "request_parser/submission_request_parser.hpp"
 #include "serializer/submission_json_serializer.hpp"
 
@@ -129,7 +129,7 @@ submission_query_handler::response_type submission_query_handler::post_submissio
                 submission_json_serializer::make_status_snapshot_batch_object
             );
         },
-        request_guard::make_json_guard<submission_dto::status_batch_request>(
+        request_parse_guard::make_json_guard<submission_dto::status_batch_request>(
             submission_request_parser::parse_status_batch_request
         )
     );
@@ -157,6 +157,6 @@ submission_query_handler::response_type submission_query_handler::get_submission
             );
         },
         auth_guard::make_optional_auth_guard(),
-        request_guard::make_submission_list_filter_guard()
+        request_parse_guard::make_submission_list_filter_guard()
     );
 }

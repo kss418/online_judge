@@ -9,6 +9,11 @@ namespace http_route{
         command
     };
 
+    struct endpoint_metadata{
+        std::string_view name;
+        operation_kind kind;
+    };
+
     constexpr std::string_view to_string(operation_kind operation_kind_value){
         switch(operation_kind_value){
             case operation_kind::query:

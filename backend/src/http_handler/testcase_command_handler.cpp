@@ -6,7 +6,7 @@
 #include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
-#include "http_guard/request_guard.hpp"
+#include "http_guard/request_parse_guard.hpp"
 #include "http_guard/testcase_upload_guard.hpp"
 #include "request_parser/problem_request_parser.hpp"
 #include "serializer/common_json_serializer.hpp"
@@ -37,7 +37,7 @@ testcase_command_handler::response_type testcase_command_handler::post_testcase(
             );
         },
         auth_guard::make_admin_guard(),
-        request_guard::make_json_guard<problem_dto::testcase>(
+        request_parse_guard::make_json_guard<problem_dto::testcase>(
             problem_request_parser::parse_testcase
         ),
         problem_guard::make_exists_guard(problem_reference_value)
@@ -79,7 +79,7 @@ testcase_command_handler::response_type testcase_command_handler::put_testcase(
             );
         },
         auth_guard::make_admin_guard(),
-        request_guard::make_json_guard<problem_dto::testcase>(
+        request_parse_guard::make_json_guard<problem_dto::testcase>(
             problem_request_parser::parse_testcase
         )
     );
@@ -147,7 +147,7 @@ testcase_command_handler::response_type testcase_command_handler::move_testcase(
         },
         auth_guard::make_admin_guard(),
         problem_guard::make_exists_guard(problem_reference_value),
-        request_guard::make_json_guard<problem_dto::testcase_move_request>(
+        request_parse_guard::make_json_guard<problem_dto::testcase_move_request>(
             problem_request_parser::parse_testcase_move_request
         )
     );

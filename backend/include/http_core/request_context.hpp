@@ -44,17 +44,12 @@ struct request_context{
         return db_connection_ptr_ != nullptr;
     }
 
-    void clear_endpoint_metadata(){
-        endpoint_name_opt.reset();
-        operation_kind_opt.reset();
+    void clear_matched_endpoint(){
+        matched_endpoint_opt.reset();
     }
 
-    void set_endpoint_metadata(
-        std::string_view endpoint_name_value,
-        http_route::operation_kind operation_kind_value
-    ){
-        endpoint_name_opt = endpoint_name_value;
-        operation_kind_opt = operation_kind_value;
+    void set_matched_endpoint(http_route::endpoint_metadata endpoint_metadata_value){
+        matched_endpoint_opt = endpoint_metadata_value;
     }
 
     db_connection& db_connection_ref(){
@@ -69,8 +64,7 @@ struct request_context{
     std::string request_id;
     std::optional<db_connection_pool::lease> db_connection_lease_opt;
     std::optional<auth_dto::identity> auth_identity_opt;
-    std::optional<std::string_view> endpoint_name_opt;
-    std::optional<http_route::operation_kind> operation_kind_opt;
+    std::optional<http_route::endpoint_metadata> matched_endpoint_opt;
     request_observer* observer = nullptr;
 
 private:

@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace request_guard{
+namespace request_parse_guard{
     template <typename dto_type, typename factory_type, typename... arg_types>
     auto make_json_guard(factory_type&& factory, arg_types&&... args){
         using factory_storage_type = std::decay_t<factory_type>;

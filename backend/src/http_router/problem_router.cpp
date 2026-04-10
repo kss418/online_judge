@@ -80,7 +80,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "get_problems",
             .method = http_verb::get,
-            .operation_kind_value = http_route::operation_kind::query,
+            .kind = http_route::operation_kind::query,
             .pattern = http_route::empty_path_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -90,7 +90,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "post_problem",
             .method = http_verb::post,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = http_route::empty_path_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -100,7 +100,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "get_problem",
             .method = http_verb::get,
-            .operation_kind_value = http_route::operation_kind::query,
+            .kind = http_route::operation_kind::query,
             .pattern = problem_id_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -113,7 +113,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "delete_problem",
             .method = http_verb::delete_,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = problem_id_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -126,7 +126,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "put_problem_title",
             .method = http_verb::put,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = title_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -139,7 +139,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "get_problem_limits",
             .method = http_verb::get,
-            .operation_kind_value = http_route::operation_kind::query,
+            .kind = http_route::operation_kind::query,
             .pattern = limits_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -152,7 +152,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "put_problem_limits",
             .method = http_verb::put,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = limits_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -165,7 +165,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "put_problem_statement",
             .method = http_verb::put,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = statement_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -178,7 +178,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "get_problem_samples",
             .method = http_verb::get,
-            .operation_kind_value = http_route::operation_kind::query,
+            .kind = http_route::operation_kind::query,
             .pattern = samples_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -191,7 +191,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "post_problem_sample",
             .method = http_verb::post,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = samples_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -204,7 +204,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "delete_problem_sample",
             .method = http_verb::delete_,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = samples_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -217,7 +217,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "put_problem_sample",
             .method = http_verb::put,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = sample_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -231,7 +231,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "get_problem_testcases",
             .method = http_verb::get,
-            .operation_kind_value = http_route::operation_kind::query,
+            .kind = http_route::operation_kind::query,
             .pattern = testcases_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -244,7 +244,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "post_problem_testcase",
             .method = http_verb::post,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = testcases_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -257,7 +257,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "delete_problem_testcase_all",
             .method = http_verb::delete_,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = testcase_all_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -270,7 +270,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "post_problem_testcase_zip",
             .method = http_verb::post,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = testcase_zip_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -283,7 +283,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "post_problem_testcase_move",
             .method = http_verb::post,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = testcase_move_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -296,7 +296,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "get_problem_testcase",
             .method = http_verb::get,
-            .operation_kind_value = http_route::operation_kind::query,
+            .kind = http_route::operation_kind::query,
             .pattern = testcase_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -310,7 +310,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "put_problem_testcase",
             .method = http_verb::put,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = testcase_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -324,7 +324,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "delete_problem_testcase",
             .method = http_verb::delete_,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = testcase_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -338,7 +338,7 @@ problem_router::response_type problem_router::route(
         endpoint_descriptor{
             .name = "post_problem_rejudge",
             .method = http_verb::post,
-            .operation_kind_value = http_route::operation_kind::command,
+            .kind = http_route::operation_kind::command,
             .pattern = rejudge_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
