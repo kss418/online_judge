@@ -20,6 +20,17 @@
 - A basic backend regression flow suite can be run with
   [`../test/run_basic_flow_tests.sh`](../test/run_basic_flow_tests.sh).
 
+## http handler intent
+
+- HTTP handlers use `*_query_handler` and `*_command_handler` suffixes to
+  reflect read/write intent, not HTTP verb alone.
+- Query handlers should finish on read-only query/service paths.
+- Command handlers should finish on action/write-service paths; any
+  read-after-write orchestration belongs in the action/service layer, not the
+  handler.
+- `POST` endpoints can still be queries when the intent is read-only. The
+  current example is submission status batch lookup.
+
 ## structure
 
 - [`api/system_api.md`](./api/system_api.md)

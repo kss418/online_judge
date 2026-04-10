@@ -1,14 +1,14 @@
 #pragma once
 
-#include "http_handler/system_handler.hpp"
+#include "http_handler/system_query_handler.hpp"
 
 #include <string_view>
 
 class system_router{
 public:
-    using context_type = system_handler::context_type;
-    using request_type = system_handler::request_type;
-    using response_type = system_handler::response_type;
+    using context_type = system_query_handler::context_type;
+    using request_type = system_query_handler::request_type;
+    using response_type = system_query_handler::response_type;
 
     system_router() = default;
     system_router(const system_router&) = delete;

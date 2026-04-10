@@ -15,6 +15,25 @@
 
 #include <utility>
 
+namespace{
+    problem_content_command_handler::response_type delete_sample_error_response(
+        const problem_content_command_handler::request_type& request,
+        const service_error& error_value
+    ){
+        if(
+            error_value.code == service_error_code::validation_error &&
+            error_value.message == "missing sample to delete"
+        ){
+            return http_adapter::error(
+                request,
+                problem_content_error::missing_sample_to_delete()
+            );
+        }
+
+        return http_response_util::create_4xx_or_500(request, error_value);
+    }
+}
+
 problem_content_command_handler::response_type problem_content_command_handler::put_limits(
     context_type& context,
     std::int64_t problem_id
@@ -115,25 +134,16 @@ problem_content_command_handler::response_type problem_content_command_handler::
         context,
         [sample_reference_value](context_type& context_value,
             const auth_dto::identity&,
-            const problem_content_dto::sample& sample_value){
-            const auto set_sample_exp = problem_content_service::set_sample(
+            const problem_content_dto::sample& sample_value) -> response_type {
+            const auto set_sample_exp = problem_content_service::set_sample_and_get(
                 context_value.db_connection_ref(),
                 sample_reference_value,
                 sample_value
             );
-            return http_adapter::response(
+            return http_adapter::json(
                 context_value.request,
                 std::move(set_sample_exp),
-                [&context_value, &sample_reference_value]() -> response_type {
-                    return http_adapter::json(
-                        context_value.request,
-                        problem_content_service::get_sample(
-                            context_value.db_connection_ref(),
-                            sample_reference_value
-                        ),
-                        problem_json_serializer::make_sample_object
-                    );
-                }
+                problem_json_serializer::make_sample_object
             );
         },
         auth_guard::make_admin_guard(),
@@ -152,32 +162,14 @@ problem_content_command_handler::response_type problem_content_command_handler::
         context,
         [problem_reference_value](context_type& context_value,
             const auth_dto::identity&) -> response_type {
-            const auto sample_values_exp = problem_content_service::list_samples(
-                context_value.db_connection_ref(),
-                problem_reference_value
-            );
-            return http_adapter::response(
+            return http_adapter::message(
                 context_value.request,
-                std::move(sample_values_exp),
-                [&](
-                    const std::vector<problem_content_dto::sample>& sample_values
-                ) -> response_type {
-                    if(sample_values.empty()){
-                        return http_adapter::error(
-                            context_value.request,
-                            problem_content_error::missing_sample_to_delete()
-                        );
-                    }
-
-                    return http_adapter::message(
-                        context_value.request,
-                        problem_content_service::delete_sample(
-                            context_value.db_connection_ref(),
-                            problem_reference_value
-                        ),
-                        "problem sample deleted"
-                    );
-                }
+                problem_content_service::delete_sample(
+                    context_value.db_connection_ref(),
+                    problem_reference_value
+                ),
+                delete_sample_error_response,
+                "problem sample deleted"
             );
         },
         auth_guard::make_admin_guard(),

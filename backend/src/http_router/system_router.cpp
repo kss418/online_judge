@@ -32,7 +32,7 @@ system_router::response_type system_router::route(
             .pattern = health_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return system_handler::get_health(context_value);
+                return system_query_handler::get_health(context_value);
             }
         },
         endpoint_descriptor{
@@ -42,7 +42,7 @@ system_router::response_type system_router::route(
             .pattern = supported_languages_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return system_handler::get_supported_languages(context_value);
+                return system_query_handler::get_supported_languages(context_value);
             }
         }
     }};

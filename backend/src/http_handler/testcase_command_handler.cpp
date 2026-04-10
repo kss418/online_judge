@@ -58,24 +58,15 @@ testcase_command_handler::response_type testcase_command_handler::put_testcase(
         [testcase_reference_value](context_type& context_value,
             const auth_dto::identity&,
             const problem_dto::testcase& testcase_value) -> response_type {
-            const auto set_testcase_exp = testcase_service::set_testcase(
+            const auto set_testcase_exp = testcase_service::set_testcase_and_get(
                 context_value.db_connection_ref(),
                 testcase_reference_value,
                 testcase_value
             );
-            return http_adapter::response(
+            return http_adapter::json(
                 context_value.request,
                 std::move(set_testcase_exp),
-                [&context_value, &testcase_reference_value]() -> response_type {
-                    return http_adapter::json(
-                        context_value.request,
-                        testcase_service::get_testcase(
-                            context_value.db_connection_ref(),
-                            testcase_reference_value
-                        ),
-                        problem_json_serializer::make_testcase_object
-                    );
-                }
+                problem_json_serializer::make_testcase_object
             );
         },
         auth_guard::make_admin_guard(),

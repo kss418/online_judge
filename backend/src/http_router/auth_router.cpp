@@ -39,7 +39,7 @@ auth_router::response_type auth_router::route(
             .pattern = sign_up_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return auth_handler::post_sign_up(context_value);
+                return auth_command_handler::post_sign_up(context_value);
             }
         },
         endpoint_descriptor{
@@ -49,7 +49,7 @@ auth_router::response_type auth_router::route(
             .pattern = login_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return auth_handler::post_login(context_value);
+                return auth_command_handler::post_login(context_value);
             }
         },
         endpoint_descriptor{
@@ -59,7 +59,7 @@ auth_router::response_type auth_router::route(
             .pattern = token_renew_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return auth_handler::post_token_renew(context_value);
+                return auth_command_handler::post_token_renew(context_value);
             }
         },
         endpoint_descriptor{
@@ -69,7 +69,7 @@ auth_router::response_type auth_router::route(
             .pattern = logout_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return auth_handler::post_logout(context_value);
+                return auth_command_handler::post_logout(context_value);
             }
         }
     }};

@@ -1,4 +1,4 @@
-#include "http_handler/auth_handler.hpp"
+#include "http_handler/auth_command_handler.hpp"
 #include "db_service/auth_service.hpp"
 #include "db_service/login_service.hpp"
 #include "dto/auth_dto.hpp"
@@ -12,8 +12,8 @@
 #include <string>
 
 namespace{
-    auth_handler::response_type create_login_error_response(
-        const auth_handler::request_type& request,
+    auth_command_handler::response_type create_login_error_response(
+        const auth_command_handler::request_type& request,
         const service_error& error_value
     ){
         return http_adapter::error_or_4xx_or_500(
@@ -23,8 +23,8 @@ namespace{
         );
     }
 
-    auth_handler::response_type create_token_error_response(
-        const auth_handler::request_type& request,
+    auth_command_handler::response_type create_token_error_response(
+        const auth_command_handler::request_type& request,
         const service_error& error_value
     ){
         return http_adapter::error_or_4xx_or_500(
@@ -35,7 +35,7 @@ namespace{
     }
 }
 
-auth_handler::response_type auth_handler::post_sign_up(
+auth_command_handler::response_type auth_command_handler::post_sign_up(
     context_type& context
 ){
     return http_guard::run_or_respond(
@@ -58,7 +58,7 @@ auth_handler::response_type auth_handler::post_sign_up(
     );
 }
 
-auth_handler::response_type auth_handler::post_login(
+auth_command_handler::response_type auth_command_handler::post_login(
     context_type& context
 ){
     return http_guard::run_or_respond(
@@ -81,7 +81,7 @@ auth_handler::response_type auth_handler::post_login(
     );
 }
 
-auth_handler::response_type auth_handler::post_token_renew(
+auth_command_handler::response_type auth_command_handler::post_token_renew(
     context_type& context
 ){
     return http_guard::run_or_respond(
@@ -102,7 +102,7 @@ auth_handler::response_type auth_handler::post_token_renew(
     );
 }
 
-auth_handler::response_type auth_handler::post_logout(
+auth_command_handler::response_type auth_command_handler::post_logout(
     context_type& context
 ){
     return http_guard::run_or_respond(

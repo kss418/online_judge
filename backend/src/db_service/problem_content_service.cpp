@@ -215,6 +215,53 @@ std::expected<void, service_error> problem_content_service::set_sample(
     );
 }
 
+std::expected<problem_content_dto::sample, service_error>
+problem_content_service::set_sample_and_get(
+    db_connection& connection,
+    const problem_content_dto::sample_ref& sample_reference_value,
+    const problem_content_dto::sample& sample_value
+){
+    return db_service_util::with_retry_service_write_transaction(
+        connection,
+        [&](pqxx::work& transaction)
+            -> std::expected<problem_content_dto::sample, service_error> {
+            const auto set_sample_exp = problem_content_repository::set_sample(
+                transaction,
+                sample_reference_value,
+                sample_value
+            );
+            if(!set_sample_exp){
+                return std::unexpected(set_sample_exp.error());
+            }
+
+            problem_dto::reference problem_reference_value{
+                sample_reference_value.problem_id
+            };
+            const auto version_exp = problem_core_repository::increase_version(
+                transaction,
+                problem_reference_value
+            );
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
+            }
+
+            const auto publish_snapshot_exp =
+                problem_snapshot_repository::publish_current_snapshot(
+                    transaction,
+                    problem_reference_value
+                );
+            if(!publish_snapshot_exp){
+                return std::unexpected(publish_snapshot_exp.error());
+            }
+
+            return problem_content_repository::get_sample(
+                transaction,
+                sample_reference_value
+            );
+        }
+    );
+}
+
 std::expected<void, service_error> problem_content_service::delete_sample(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
@@ -230,7 +277,10 @@ std::expected<void, service_error> problem_content_service::delete_sample(
                 return std::unexpected(sample_values_exp.error());
             }
             if(sample_values_exp->empty()){
-                return std::unexpected(service_error::not_found);
+                return std::unexpected(service_error{
+                    service_error_code::validation_error,
+                    "missing sample to delete"
+                });
             }
 
             problem_content_dto::sample_ref sample_reference_value{
