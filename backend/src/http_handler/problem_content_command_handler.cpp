@@ -51,10 +51,15 @@ problem_content_command_handler::response_type problem_content_command_handler::
                 context_value.db_connection_ref(),
                 command_value
             );
-            return http_adapter::message(
+            return http_adapter::json(
                 context_value.request,
                 std::move(set_limits_exp),
-                "problem limits updated"
+                [](const problem_dto::mutation_result& mutation_value) {
+                    return problem_json_serializer::make_message_object(
+                        "problem limits updated",
+                        mutation_value
+                    );
+                }
             );
         },
         auth_guard::make_admin_guard(),
@@ -81,10 +86,15 @@ problem_content_command_handler::response_type problem_content_command_handler::
                 context_value.db_connection_ref(),
                 command_value
             );
-            return http_adapter::message(
+            return http_adapter::json(
                 context_value.request,
                 std::move(set_statement_exp),
-                "problem statement updated"
+                [](const problem_dto::mutation_result& mutation_value) {
+                    return problem_json_serializer::make_message_object(
+                        "problem statement updated",
+                        mutation_value
+                    );
+                }
             );
         },
         auth_guard::make_admin_guard(),
@@ -112,7 +122,9 @@ problem_content_command_handler::response_type problem_content_command_handler::
             return http_adapter::json(
                 context_value.request,
                 std::move(create_sample_exp),
-                problem_json_serializer::make_sample_created_object,
+                [](const problem_dto::sample_mutation_result& sample_value) {
+                    return problem_json_serializer::make_sample_created_object(sample_value);
+                },
                 boost::beast::http::status::created
             );
         },
@@ -143,7 +155,9 @@ problem_content_command_handler::response_type problem_content_command_handler::
             return http_adapter::json(
                 context_value.request,
                 std::move(set_sample_exp),
-                problem_json_serializer::make_sample_object
+                [](const problem_dto::sample_mutation_result& sample_value) {
+                    return problem_json_serializer::make_sample_object(sample_value);
+                }
             );
         },
         auth_guard::make_admin_guard(),
@@ -162,14 +176,19 @@ problem_content_command_handler::response_type problem_content_command_handler::
         context,
         [problem_reference_value](context_type& context_value,
             const auth_dto::identity&) -> response_type {
-            return http_adapter::message(
+            return http_adapter::json(
                 context_value.request,
                 problem_content_service::delete_sample(
                     context_value.db_connection_ref(),
                     problem_reference_value
                 ),
                 delete_sample_error_response,
-                "problem sample deleted"
+                [](const problem_dto::mutation_result& mutation_value) {
+                    return problem_json_serializer::make_message_object(
+                        "problem sample deleted",
+                        mutation_value
+                    );
+                }
             );
         },
         auth_guard::make_admin_guard(),

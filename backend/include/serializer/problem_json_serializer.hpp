@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace problem_json_serializer{
@@ -38,6 +39,10 @@ namespace problem_json_serializer{
         const problem_dto::testcase& testcase_value
     );
 
+    boost::json::object make_testcase_object(
+        const problem_dto::testcase_mutation_result& testcase_value
+    );
+
     boost::json::object make_testcase_summary_object(
         const problem_dto::testcase_summary& testcase_summary_value
     );
@@ -54,8 +59,16 @@ namespace problem_json_serializer{
         const problem_dto::testcase& testcase_value
     );
 
+    boost::json::object make_testcase_created_object(
+        const problem_dto::testcase_mutation_result& testcase_value
+    );
+
     boost::json::object make_sample_object(
         const problem_content_dto::sample& sample_value
+    );
+
+    boost::json::object make_sample_object(
+        const problem_dto::sample_mutation_result& sample_value
     );
 
     boost::json::object make_sample_list_object(
@@ -64,5 +77,19 @@ namespace problem_json_serializer{
 
     boost::json::object make_sample_created_object(
         const problem_content_dto::sample& sample_value
+    );
+
+    boost::json::object make_sample_created_object(
+        const problem_dto::sample_mutation_result& sample_value
+    );
+
+    boost::json::object make_message_object(
+        std::string_view message,
+        const problem_dto::mutation_result& mutation_value
+    );
+
+    boost::json::object make_testcase_count_message_object(
+        std::string_view message,
+        const problem_dto::testcase_count_mutation_result& testcase_count_value
     );
 }

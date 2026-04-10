@@ -13,7 +13,7 @@ namespace set_problem_statement_action{
         problem_content_dto::statement statement_value;
     };
 
-    std::expected<void, service_error> execute(
+    std::expected<problem_dto::mutation_result, service_error> execute(
         db_connection& connection,
         const command& command_value
     );

@@ -42,7 +42,7 @@ namespace problem_core_service{
         db_connection& connection,
         const problem_dto::create_request& create_request_value
     );
-    std::expected<void, service_error> update_problem(
+    std::expected<problem_dto::mutation_result, service_error> update_problem(
         db_connection& connection,
         const problem_dto::reference& problem_reference_value,
         const problem_dto::update_request& update_request_value

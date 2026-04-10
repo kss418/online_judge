@@ -113,5 +113,11 @@ export function createSubmission(problemId, payload, token){
     method: 'POST',
     body: payload,
     bearerToken: token
-  })
+  }).then((response) => ({
+    ...response,
+    submission_id: Number(response.submission_id ?? 0),
+    problem_version: Number.isInteger(Number(response.problem_version))
+      ? Number(response.problem_version)
+      : null
+  }))
 }

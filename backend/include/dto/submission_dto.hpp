@@ -44,6 +44,7 @@ namespace submission_dto{
     struct created{
         std::int64_t submission_id = 0;
         std::string status;
+        std::optional<std::int32_t> problem_version_opt = std::nullopt;
     };
 
     struct summary{
@@ -156,7 +157,8 @@ namespace submission_dto{
     bool is_valid(const finalize_request& finalize_request_value);
     created make_created(
         std::int64_t submission_id,
-        submission_status submission_status_value
+        submission_status submission_status_value,
+        std::optional<std::int32_t> problem_version_opt = std::nullopt
     );
     std::optional<submission_status> make_submission_status(std::string_view submission_status_string);
     status_update make_status_update(

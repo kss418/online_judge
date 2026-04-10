@@ -13,7 +13,7 @@ namespace replace_testcases_action{
         std::vector<problem_dto::testcase> testcase_values;
     };
 
-    std::expected<problem_dto::testcase_count, service_error> execute(
+    std::expected<problem_dto::testcase_count_mutation_result, service_error> execute(
         db_connection& connection,
         const command& command_value
     );

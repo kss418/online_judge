@@ -139,6 +139,9 @@ boost::json::object submission_json_serializer::make_created_object(
     boost::json::object response_object;
     response_object["submission_id"] = created_value.submission_id;
     response_object["status"] = created_value.status;
+    if(created_value.problem_version_opt){
+        response_object["problem_version"] = *created_value.problem_version_opt;
+    }
     return response_object;
 }
 

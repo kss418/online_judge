@@ -47,6 +47,11 @@ namespace problem_dto{
         std::int32_t version = 0;
     };
 
+    struct mutation_result{
+        std::int64_t problem_id = 0;
+        std::int32_t version = 0;
+    };
+
     struct detail{
         reference problem_reference_value;
         title title_value;
@@ -79,6 +84,11 @@ namespace problem_dto{
         std::string output;
     };
 
+    struct testcase_mutation_result{
+        testcase testcase_value;
+        mutation_result problem_value;
+    };
+
     struct testcase_summary{
         std::int64_t id = 0;
         std::int32_t order = 0;
@@ -96,6 +106,16 @@ namespace problem_dto{
         std::optional<std::string> direction_opt = std::nullopt;
         std::optional<std::int32_t> limit_opt = std::nullopt;
         std::optional<std::int64_t> offset_opt = std::nullopt;
+    };
+
+    struct testcase_count_mutation_result{
+        testcase_count testcase_count_value;
+        mutation_result problem_value;
+    };
+
+    struct sample_mutation_result{
+        problem_content_dto::sample sample_value;
+        mutation_result problem_value;
     };
 
     bool is_valid(const reference& reference_value);

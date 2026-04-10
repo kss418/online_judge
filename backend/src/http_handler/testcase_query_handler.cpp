@@ -30,7 +30,9 @@ testcase_query_handler::response_type testcase_query_handler::get_testcase(
             return http_adapter::json(
                 context_value.request,
                 std::move(testcase_exp),
-                problem_json_serializer::make_testcase_object
+                [](const problem_dto::testcase& testcase_value) {
+                    return problem_json_serializer::make_testcase_object(testcase_value);
+                }
             );
         },
         auth_guard::make_admin_guard(),

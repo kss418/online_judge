@@ -349,7 +349,7 @@ std::expected<void, repository_error> problem_core_repository::set_limits(
     return {};
 }
 
-std::expected<void, repository_error> problem_core_repository::increase_version(
+std::expected<problem_dto::version, repository_error> problem_core_repository::increase_version(
     pqxx::transaction_base& transaction,
     const problem_dto::reference& problem_reference_value
 ){
@@ -361,13 +361,16 @@ std::expected<void, repository_error> problem_core_repository::increase_version(
     const auto update_result = transaction.exec(
         "UPDATE problems "
         "SET version = version + 1 "
-        "WHERE problem_id = $1",
+        "WHERE problem_id = $1 "
+        "RETURNING version",
         pqxx::params{problem_id}
     );
 
-    if(update_result.affected_rows() == 0){
+    if(update_result.empty()){
         return std::unexpected(repository_error::not_found);
     }
 
-    return {};
+    problem_dto::version version_value;
+    version_value.version = update_result[0][0].as<std::int32_t>();
+    return version_value;
 }

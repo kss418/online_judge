@@ -335,7 +335,7 @@ std::expected<submission_dto::created, repository_error> submission_repository::
         "    $4 "
         "FROM problems problem_table "
         "WHERE problem_table.problem_id = $2 "
-        "RETURNING submission_id",
+        "RETURNING submission_id, problem_version",
         pqxx::params{
             create_request_value.user_id,
             create_request_value.problem_id,
@@ -349,6 +349,7 @@ std::expected<submission_dto::created, repository_error> submission_repository::
     }
 
     const std::int64_t submission_id = create_submission_result[0][0].as<std::int64_t>();
+    const std::int32_t problem_version = create_submission_result[0][1].as<std::int32_t>();
     transaction.exec(
         "INSERT INTO submission_status_history(submission_id, from_status, to_status, reason) "
         "VALUES($1, NULL, $2::submission_status, NULL)",
@@ -357,7 +358,8 @@ std::expected<submission_dto::created, repository_error> submission_repository::
 
     return submission_dto::make_created(
         submission_id,
-        submission_status::queued
+        submission_status::queued,
+        problem_version
     );
 }
 

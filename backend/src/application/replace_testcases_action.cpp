@@ -3,7 +3,7 @@
 #include "db_service/problem_core_service.hpp"
 #include "db_service/testcase_service.hpp"
 
-std::expected<problem_dto::testcase_count, service_error>
+std::expected<problem_dto::testcase_count_mutation_result, service_error>
 replace_testcases_action::execute(
     db_connection& connection,
     const command& command_value

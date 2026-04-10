@@ -8,6 +8,18 @@
 
 #include <utility>
 
+namespace{
+    problem_dto::mutation_result make_mutation_result(
+        const problem_dto::reference& problem_reference_value,
+        const problem_dto::version& version_value
+    ){
+        return problem_dto::mutation_result{
+            .problem_id = problem_reference_value.problem_id,
+            .version = version_value.version
+        };
+    }
+}
+
 std::expected<void, service_error> problem_core_service::ensure_problem_exists(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
@@ -238,14 +250,15 @@ std::expected<problem_dto::created, service_error> problem_core_service::create_
     );
 }
 
-std::expected<void, service_error> problem_core_service::update_problem(
+std::expected<problem_dto::mutation_result, service_error> problem_core_service::update_problem(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value,
     const problem_dto::update_request& update_request_value
 ){
     return db_service_util::with_retry_service_write_transaction(
         connection,
-        [&](pqxx::work& transaction) -> std::expected<void, service_error> {
+        [&](pqxx::work& transaction)
+            -> std::expected<problem_dto::mutation_result, service_error> {
             problem_dto::title title_value;
             title_value.value = update_request_value.title;
 
@@ -275,7 +288,10 @@ std::expected<void, service_error> problem_core_service::update_problem(
                 return std::unexpected(publish_snapshot_exp.error());
             }
 
-            return {};
+            return make_mutation_result(
+                problem_reference_value,
+                *version_exp
+            );
         }
     );
 }

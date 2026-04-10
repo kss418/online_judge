@@ -306,12 +306,16 @@ Example:
 | field | type | note |
 |---|---|---|
 | `message` | `string` | always `problem updated` |
+| `problem_id` | `int64` | updated problem id |
+| `version` | `int32` | current problem version after the update |
 
 Example:
 
 ```json
 {
-  "message": "problem updated"
+  "message": "problem updated",
+  "problem_id": 1000,
+  "version": 4
 }
 ```
 
@@ -462,12 +466,16 @@ Example:
 | field | type | note |
 |---|---|---|
 | `message` | `string` | always `problem limits updated` |
+| `problem_id` | `int64` | updated problem id |
+| `version` | `int32` | current problem version after the update |
 
 Example:
 
 ```json
 {
-  "message": "problem limits updated"
+  "message": "problem limits updated",
+  "problem_id": 1000,
+  "version": 4
 }
 ```
 
@@ -544,12 +552,16 @@ Example:
 | field | type | note |
 |---|---|---|
 | `message` | `string` | always `problem statement updated` |
+| `problem_id` | `int64` | updated problem id |
+| `version` | `int32` | current problem version after the update |
 
 Example:
 
 ```json
 {
-  "message": "problem statement updated"
+  "message": "problem statement updated",
+  "problem_id": 1000,
+  "version": 4
 }
 ```
 
@@ -633,13 +645,17 @@ Append one public sample to an existing problem. Samples are part of the stateme
 |---|---|---|
 | `sample_id` | `int64` | created sample id |
 | `sample_order` | `int32` | assigned sample order |
+| `problem_id` | `int64` | related problem id |
+| `version` | `int32` | current problem version after the request |
 
 Example:
 
 ```json
 {
   "sample_id": 1,
-  "sample_order": 1
+  "sample_order": 1,
+  "problem_id": 1000,
+  "version": 1
 }
 ```
 
@@ -692,6 +708,8 @@ Replace one public sample of an existing problem. This endpoint is admin-only an
 | `sample_order` | `int32` | updated sample order |
 | `sample_input` | `string` | updated sample input |
 | `sample_output` | `string` | updated sample output |
+| `problem_id` | `int64` | related problem id |
+| `version` | `int32` | current problem version after the update |
 
 #### error response
 
@@ -732,12 +750,16 @@ Delete the last public sample of an existing problem. Samples are part of the st
 | field | type | note |
 |---|---|---|
 | `message` | `string` | always `problem sample deleted` |
+| `problem_id` | `int64` | related problem id |
+| `version` | `int32` | current problem version after the delete |
 
 Example:
 
 ```json
 {
-  "message": "problem sample deleted"
+  "message": "problem sample deleted",
+  "problem_id": 1000,
+  "version": 5
 }
 ```
 
@@ -853,13 +875,17 @@ Example:
 |---|---|---|
 | `testcase_id` | `int64` | created hidden testcase id |
 | `testcase_order` | `int32` | appended order starting from 1 |
+| `problem_id` | `int64` | related problem id |
+| `version` | `int32` | current problem version after the create |
 
 Example:
 
 ```json
 {
   "testcase_id": 1,
-  "testcase_order": 1
+  "testcase_order": 1,
+  "problem_id": 1000,
+  "version": 2
 }
 ```
 
@@ -912,13 +938,17 @@ Replace all hidden testcases of an existing problem from a ZIP archive. This end
 |---|---|---|
 | `message` | `string` | always `problem testcases uploaded` |
 | `testcase_count` | `int32` | number of uploaded hidden testcases |
+| `problem_id` | `int64` | related problem id |
+| `version` | `int32` | current problem version after the upload |
 
 Example:
 
 ```json
 {
   "message": "problem testcases uploaded",
-  "testcase_count": 3
+  "testcase_count": 3,
+  "problem_id": 1000,
+  "version": 7
 }
 ```
 
@@ -970,6 +1000,8 @@ Replace one hidden testcase of an existing problem. This endpoint is admin-only.
 | `testcase_order` | `int32` | updated testcase order |
 | `testcase_input` | `string` | updated testcase input |
 | `testcase_output` | `string` | updated testcase output |
+| `problem_id` | `int64` | related problem id |
+| `version` | `int32` | current problem version after the update |
 
 #### error response
 
@@ -1026,12 +1058,16 @@ Example:
 | field | type | note |
 |---|---|---|
 | `message` | `string` | always `problem testcase moved` |
+| `problem_id` | `int64` | related problem id |
+| `version` | `int32` | current problem version after the move |
 
 Example:
 
 ```json
 {
-  "message": "problem testcase moved"
+  "message": "problem testcase moved",
+  "problem_id": 1000,
+  "version": 6
 }
 ```
 
@@ -1076,12 +1112,16 @@ Delete one hidden testcase of an existing problem and shift all later testcase o
 | field | type | note |
 |---|---|---|
 | `message` | `string` | always `problem testcase deleted` |
+| `problem_id` | `int64` | related problem id |
+| `version` | `int32` | current problem version after the delete |
 
 Example:
 
 ```json
 {
-  "message": "problem testcase deleted"
+  "message": "problem testcase deleted",
+  "problem_id": 1000,
+  "version": 7
 }
 ```
 
@@ -1133,12 +1173,16 @@ Delete all hidden testcases of an existing problem. If no hidden testcases exist
 | field | type | note |
 |---|---|---|
 | `message` | `string` | always `problem testcases deleted` |
+| `problem_id` | `int64` | related problem id |
+| `version` | `int32` | current problem version after the request |
 
 Example:
 
 ```json
 {
-  "message": "problem testcases deleted"
+  "message": "problem testcases deleted",
+  "problem_id": 1000,
+  "version": 7
 }
 ```
 

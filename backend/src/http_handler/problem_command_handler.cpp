@@ -51,10 +51,15 @@ problem_command_handler::response_type problem_command_handler::put_problem(
                 problem_reference_value,
                 update_request
             );
-            return http_adapter::message(
+            return http_adapter::json(
                 context_value.request,
                 std::move(update_problem_exp),
-                "problem updated"
+                [](const problem_dto::mutation_result& mutation_value) {
+                    return problem_json_serializer::make_message_object(
+                        "problem updated",
+                        mutation_value
+                    );
+                }
             );
         },
         auth_guard::make_admin_guard(),

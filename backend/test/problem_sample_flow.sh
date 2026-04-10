@@ -156,19 +156,24 @@ send_http_request_and_assert_status \
     "first sample create" \
     "${sign_up_token}"
 
-python3 - "${create_sample_response_file}" <<'PY'
+python3 - "${create_sample_response_file}" "${problem_id}" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as response_file:
     response = json.load(response_file)
 
+problem_id = int(sys.argv[2])
 sample_id = response.get("sample_id")
 sample_order = response.get("sample_order")
 if not isinstance(sample_id, int) or sample_id <= 0:
     raise SystemExit("invalid sample_id after first sample create")
 if sample_order != 1:
     raise SystemExit("unexpected sample_order after first sample create")
+if response.get("problem_id") != problem_id:
+    raise SystemExit("unexpected problem_id after first sample create")
+if response.get("version") != 1:
+    raise SystemExit("unexpected version after first sample create")
 PY
 
 print_success_log "problem sample first create success"
@@ -181,19 +186,24 @@ send_http_request_and_assert_status \
     "empty sample create" \
     "${sign_up_token}"
 
-python3 - "${create_empty_sample_response_file}" <<'PY'
+python3 - "${create_empty_sample_response_file}" "${problem_id}" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as response_file:
     response = json.load(response_file)
 
+problem_id = int(sys.argv[2])
 sample_id = response.get("sample_id")
 sample_order = response.get("sample_order")
 if not isinstance(sample_id, int) or sample_id <= 0:
     raise SystemExit("invalid sample_id after empty sample create")
 if sample_order != 2:
     raise SystemExit("unexpected sample_order after empty sample create")
+if response.get("problem_id") != problem_id:
+    raise SystemExit("unexpected problem_id after empty sample create")
+if response.get("version") != 1:
+    raise SystemExit("unexpected version after empty sample create")
 PY
 
 print_success_log "problem sample empty create success"
@@ -334,13 +344,14 @@ send_http_request_and_assert_status \
     "${sign_up_token}" \
     "${update_sample_request_body}"
 
-python3 - "${update_sample_response_file}" <<'PY'
+python3 - "${update_sample_response_file}" "${problem_id}" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as response_file:
     response = json.load(response_file)
 
+problem_id = int(sys.argv[2])
 sample_id = response.get("sample_id")
 if not isinstance(sample_id, int) or sample_id <= 0:
     raise SystemExit("invalid sample_id after update")
@@ -350,6 +361,10 @@ if response.get("sample_input") != "10 20\n":
     raise SystemExit("unexpected sample_input after update")
 if response.get("sample_output") != "30\n":
     raise SystemExit("unexpected sample_output after update")
+if response.get("problem_id") != problem_id:
+    raise SystemExit("unexpected problem_id after update")
+if response.get("version") != 2:
+    raise SystemExit("unexpected version after update")
 PY
 
 send_http_request_and_assert_status \
@@ -463,6 +478,18 @@ assert_json_message \
     "${delete_sample_response_file}" \
     "problem sample deleted" \
     "delete sample"
+assert_json_field_equals \
+    "${delete_sample_response_file}" \
+    "problem_id" \
+    "${problem_id}" \
+    "delete sample problem_id" \
+    "int"
+assert_json_field_equals \
+    "${delete_sample_response_file}" \
+    "version" \
+    "3" \
+    "delete sample version" \
+    "int"
 
 send_http_request_and_assert_status \
     "GET" \

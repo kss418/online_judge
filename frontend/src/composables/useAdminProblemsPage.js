@@ -506,19 +506,22 @@ export function useAdminProblemsPage(){
     sampleDrafts.value = normalizedSamples.map(makeSampleDraft)
   }
 
-  function incrementSelectedProblemVersion(problemId){
-    const selectedProblem = selectedProblemDetail.value
-    if (!selectedProblem || selectedProblem.problem_id !== problemId) {
+  function applySelectedProblemVersion(problemId, version){
+    const normalizedVersion = Number(version)
+    if (!Number.isInteger(normalizedVersion) || normalizedVersion <= 0) {
       return
     }
 
-    const nextVersion = selectedProblem.version + 1
-    selectedProblemDetail.value = {
-      ...selectedProblem,
-      version: nextVersion
+    const selectedProblem = selectedProblemDetail.value
+    if (selectedProblem && selectedProblem.problem_id === problemId) {
+      selectedProblemDetail.value = {
+        ...selectedProblem,
+        version: normalizedVersion
+      }
     }
+
     mergeProblemSummary(problemId, {
-      version: nextVersion
+      version: normalizedVersion
     })
   }
 
@@ -740,7 +743,7 @@ export function useAdminProblemsPage(){
 
     try {
       const nextTitle = titleDraft.value.trim()
-      await updateProblemTitle(selectedProblemDetail.value.problem_id, {
+      const response = await updateProblemTitle(selectedProblemDetail.value.problem_id, {
         title: nextTitle
       }, authState.token)
 
@@ -749,6 +752,7 @@ export function useAdminProblemsPage(){
         title: nextTitle
       }
       titleDraft.value = nextTitle
+      applySelectedProblemVersion(selectedProblemDetail.value.problem_id, response.version)
       mergeProblemSummary(selectedProblemDetail.value.problem_id, {
         title: nextTitle
       })
@@ -778,7 +782,7 @@ export function useAdminProblemsPage(){
     actionMessage.value = ''
 
     try {
-      await updateProblemLimits(selectedProblemDetail.value.problem_id, {
+      const response = await updateProblemLimits(selectedProblemDetail.value.problem_id, {
         time_limit_ms: nextTimeLimit,
         memory_limit_mb: nextMemoryLimit
       }, authState.token)
@@ -792,6 +796,7 @@ export function useAdminProblemsPage(){
       }
       timeLimitDraft.value = String(nextTimeLimit)
       memoryLimitDraft.value = String(nextMemoryLimit)
+      applySelectedProblemVersion(selectedProblemDetail.value.problem_id, response.version)
       mergeProblemSummary(selectedProblemDetail.value.problem_id, {
         time_limit_ms: nextTimeLimit,
         memory_limit_mb: nextMemoryLimit
@@ -823,7 +828,11 @@ export function useAdminProblemsPage(){
         note: noteDraft.value === '' ? null : noteDraft.value
       }
 
-      await updateProblemStatement(selectedProblemDetail.value.problem_id, nextStatement, authState.token)
+      const response = await updateProblemStatement(
+        selectedProblemDetail.value.problem_id,
+        nextStatement,
+        authState.token
+      )
 
       selectedProblemDetail.value = {
         ...selectedProblemDetail.value,
@@ -834,6 +843,7 @@ export function useAdminProblemsPage(){
           note: noteDraft.value
         }
       }
+      applySelectedProblemVersion(selectedProblemDetail.value.problem_id, response.version)
       actionMessage.value = `문제 #${formatCount(selectedProblemDetail.value.problem_id)} 설명을 저장했습니다.`
     } catch (error) {
       actionErrorMessage.value = error instanceof Error
@@ -866,6 +876,7 @@ export function useAdminProblemsPage(){
           sample_output: ''
         }
       ])
+      applySelectedProblemVersion(problemId, response.version)
       actionMessage.value = `예제 ${formatCount(nextSampleOrder)}를 추가했습니다.`
     } catch (error) {
       actionErrorMessage.value = error instanceof Error
@@ -906,7 +917,7 @@ export function useAdminProblemsPage(){
           }
           : sample
       ))
-      incrementSelectedProblemVersion(problemId)
+      applySelectedProblemVersion(problemId, response.version)
       actionMessage.value = `예제 ${formatCount(sampleOrder)}를 저장했습니다.`
     } catch (error) {
       actionErrorMessage.value = error instanceof Error
@@ -933,11 +944,11 @@ export function useAdminProblemsPage(){
     actionMessage.value = ''
 
     try {
-      await deleteProblemSample(problemId, authState.token)
+      const response = await deleteProblemSample(problemId, authState.token)
       setSelectedProblemSamples(selectedProblemDetail.value.samples.filter(
         (sample) => sample.sample_order !== lastSample.sample_order
       ))
-      incrementSelectedProblemVersion(problemId)
+      applySelectedProblemVersion(problemId, response.version)
       actionMessage.value = `예제 ${formatCount(lastSample.sample_order)}를 삭제했습니다.`
     } catch (error) {
       actionErrorMessage.value = error instanceof Error
@@ -980,6 +991,7 @@ export function useAdminProblemsPage(){
 
     try {
       const response = await uploadProblemTestcaseZip(problemId, uploadFile, authState.token)
+      applySelectedProblemVersion(problemId, response.version)
       await loadSelectedProblem(problemId)
 
       const testcaseCount = Number(response.testcase_count ?? 0)

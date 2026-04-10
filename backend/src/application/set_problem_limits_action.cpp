@@ -3,7 +3,7 @@
 #include "db_service/problem_content_service.hpp"
 #include "db_service/problem_core_service.hpp"
 
-std::expected<void, service_error> set_problem_limits_action::execute(
+std::expected<problem_dto::mutation_result, service_error> set_problem_limits_action::execute(
     db_connection& connection,
     const command& command_value
 ){

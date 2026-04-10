@@ -263,8 +263,38 @@ export function useAdminProblemTestcasesPage(){
     return {
       ...detail,
       problem_id: Number(detail.problem_id ?? 0),
+      version: Number(detail.version ?? 1),
       title: detail.title || ''
     }
+  }
+
+  function mergeProblemSummary(problemId, patch){
+    problems.value = problems.value.map((problem) =>
+      problem.problem_id === problemId
+        ? {
+          ...problem,
+          ...patch
+        }
+        : problem
+    )
+  }
+
+  function applyProblemVersion(problemId, version){
+    const normalizedVersion = Number(version)
+    if (!Number.isInteger(normalizedVersion) || normalizedVersion <= 0) {
+      return
+    }
+
+    if (problemDetail.value?.problem_id === problemId) {
+      problemDetail.value = {
+        ...problemDetail.value,
+        version: normalizedVersion
+      }
+    }
+
+    mergeProblemSummary(problemId, {
+      version: normalizedVersion
+    })
   }
 
   function normalizeTestcaseList(response){
@@ -657,6 +687,10 @@ export function useAdminProblemTestcasesPage(){
       }
 
       problemDetail.value = normalizeProblemDetail(response)
+      mergeProblemSummary(selectedProblemId.value, {
+        title: problemDetail.value.title,
+        version: problemDetail.value.version
+      })
     } catch (error) {
       if (requestId !== latestProblemRequestId) {
         return
@@ -802,6 +836,7 @@ export function useAdminProblemTestcasesPage(){
         authState.token
       )
 
+      applyProblemVersion(selectedProblemId.value, response.version)
       await loadTestcases(Number(response.testcase_order ?? 0))
       newTestcaseInput.value = ''
       newTestcaseOutput.value = ''
@@ -829,6 +864,7 @@ export function useAdminProblemTestcasesPage(){
       const response = await uploadProblemTestcaseZip(selectedProblemId.value, uploadFile, authState.token)
       testcaseZipFile.value = null
       testcaseZipInputKey.value += 1
+      applyProblemVersion(selectedProblemId.value, response.version)
       await Promise.all([
         loadProblems(),
         loadSelectedProblemData()
@@ -857,11 +893,12 @@ export function useAdminProblemTestcasesPage(){
     busySection.value = 'delete-selected'
 
     try {
-      await deleteProblemTestcase(
+      const response = await deleteProblemTestcase(
         selectedProblemId.value,
         deletedTestcaseOrder,
         authState.token
       )
+      applyProblemVersion(selectedProblemId.value, response.version)
       testcaseItems.value = testcaseItems.value
         .filter((testcase) => testcase.testcase_order !== deletedTestcaseOrder)
         .map((testcase) => ({
@@ -943,7 +980,7 @@ export function useAdminProblemTestcasesPage(){
     busySection.value = 'move'
 
     try {
-      await moveProblemTestcase(
+      const response = await moveProblemTestcase(
         selectedProblemId.value,
         {
           source_testcase_order: normalizedSourceOrder,
@@ -952,6 +989,7 @@ export function useAdminProblemTestcasesPage(){
         authState.token
       )
 
+      applyProblemVersion(selectedProblemId.value, response.version)
       reorderTestcaseItems(normalizedSourceOrder, normalizedTargetOrder)
       syncSelectedTestcaseById(selectedTestcaseId, normalizedTargetOrder)
       showSuccessNotice(
@@ -990,6 +1028,7 @@ export function useAdminProblemTestcasesPage(){
         authState.token
       )
 
+      applyProblemVersion(selectedProblemId.value, response.version)
       selectedTestcase.value = normalizeTestcaseDetail(response)
       await loadTestcases(testcaseOrder)
       showSuccessNotice(`테스트케이스 ${testcaseOrder}번을 저장했습니다.`)

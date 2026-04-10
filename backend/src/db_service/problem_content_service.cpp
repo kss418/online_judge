@@ -6,6 +6,32 @@
 
 #include <utility>
 
+namespace{
+    problem_dto::mutation_result make_mutation_result(
+        const problem_dto::reference& problem_reference_value,
+        const problem_dto::version& version_value
+    ){
+        return problem_dto::mutation_result{
+            .problem_id = problem_reference_value.problem_id,
+            .version = version_value.version
+        };
+    }
+
+    problem_dto::sample_mutation_result make_sample_mutation_result(
+        const problem_content_dto::sample& sample_value,
+        const problem_dto::reference& problem_reference_value,
+        const problem_dto::version& version_value
+    ){
+        return problem_dto::sample_mutation_result{
+            .sample_value = sample_value,
+            .problem_value = make_mutation_result(
+                problem_reference_value,
+                version_value
+            )
+        };
+    }
+}
+
 std::expected<problem_content_dto::limits, service_error> problem_content_service::get_limits(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
@@ -22,14 +48,15 @@ std::expected<problem_content_dto::limits, service_error> problem_content_servic
     );
 }
 
-std::expected<void, service_error> problem_content_service::set_limits(
+std::expected<problem_dto::mutation_result, service_error> problem_content_service::set_limits(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value,
     const problem_content_dto::limits& limits_value
 ){
     return db_service_util::with_retry_service_write_transaction(
         connection,
-        [&](pqxx::work& transaction) -> std::expected<void, service_error> {
+        [&](pqxx::work& transaction)
+            -> std::expected<problem_dto::mutation_result, service_error> {
             const auto set_limits_exp = problem_core_repository::set_limits(
                 transaction,
                 problem_reference_value,
@@ -56,7 +83,10 @@ std::expected<void, service_error> problem_content_service::set_limits(
                 return std::unexpected(publish_snapshot_exp.error());
             }
 
-            return {};
+            return make_mutation_result(
+                problem_reference_value,
+                *version_exp
+            );
         }
     );
 }
@@ -78,14 +108,15 @@ problem_content_service::get_statement(
     );
 }
 
-std::expected<void, service_error> problem_content_service::set_statement(
+std::expected<problem_dto::mutation_result, service_error> problem_content_service::set_statement(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value,
     const problem_content_dto::statement& statement
 ){
     return db_service_util::with_retry_service_write_transaction(
         connection,
-        [&](pqxx::work& transaction) -> std::expected<void, service_error> {
+        [&](pqxx::work& transaction)
+            -> std::expected<problem_dto::mutation_result, service_error> {
             const auto set_statement_exp = problem_content_repository::set_statement(
                 transaction,
                 problem_reference_value,
@@ -112,12 +143,16 @@ std::expected<void, service_error> problem_content_service::set_statement(
                 return std::unexpected(publish_snapshot_exp.error());
             }
 
-            return {};
+            return make_mutation_result(
+                problem_reference_value,
+                *version_exp
+            );
         }
     );
 }
 
-std::expected<problem_content_dto::sample, service_error> problem_content_service::create_sample(
+std::expected<problem_dto::sample_mutation_result, service_error>
+problem_content_service::create_sample(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value,
     const problem_content_dto::sample& sample_value
@@ -125,7 +160,7 @@ std::expected<problem_content_dto::sample, service_error> problem_content_servic
     return db_service_util::with_retry_service_write_transaction(
         connection,
         [&](pqxx::work& transaction)
-            -> std::expected<problem_content_dto::sample, service_error> {
+            -> std::expected<problem_dto::sample_mutation_result, service_error> {
             const auto created_sample_exp = problem_content_repository::create_sample(
                 transaction,
                 problem_reference_value,
@@ -135,7 +170,19 @@ std::expected<problem_content_dto::sample, service_error> problem_content_servic
                 return std::unexpected(created_sample_exp.error());
             }
 
-            return *created_sample_exp;
+            const auto version_exp = problem_core_repository::get_version(
+                transaction,
+                problem_reference_value
+            );
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
+            }
+
+            return make_sample_mutation_result(
+                *created_sample_exp,
+                problem_reference_value,
+                *version_exp
+            );
         }
     );
 }
@@ -215,7 +262,7 @@ std::expected<void, service_error> problem_content_service::set_sample(
     );
 }
 
-std::expected<problem_content_dto::sample, service_error>
+std::expected<problem_dto::sample_mutation_result, service_error>
 problem_content_service::set_sample_and_get(
     db_connection& connection,
     const problem_content_dto::sample_ref& sample_reference_value,
@@ -224,7 +271,7 @@ problem_content_service::set_sample_and_get(
     return db_service_util::with_retry_service_write_transaction(
         connection,
         [&](pqxx::work& transaction)
-            -> std::expected<problem_content_dto::sample, service_error> {
+            -> std::expected<problem_dto::sample_mutation_result, service_error> {
             const auto set_sample_exp = problem_content_repository::set_sample(
                 transaction,
                 sample_reference_value,
@@ -254,21 +301,31 @@ problem_content_service::set_sample_and_get(
                 return std::unexpected(publish_snapshot_exp.error());
             }
 
-            return problem_content_repository::get_sample(
+            const auto updated_sample_exp = problem_content_repository::get_sample(
                 transaction,
                 sample_reference_value
+            );
+            if(!updated_sample_exp){
+                return std::unexpected(updated_sample_exp.error());
+            }
+
+            return make_sample_mutation_result(
+                *updated_sample_exp,
+                problem_reference_value,
+                *version_exp
             );
         }
     );
 }
 
-std::expected<void, service_error> problem_content_service::delete_sample(
+std::expected<problem_dto::mutation_result, service_error> problem_content_service::delete_sample(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
     return db_service_util::with_retry_service_write_transaction(
         connection,
-        [&](pqxx::work& transaction) -> std::expected<void, service_error> {
+        [&](pqxx::work& transaction)
+            -> std::expected<problem_dto::mutation_result, service_error> {
             const auto sample_values_exp = problem_content_repository::list_samples(
                 transaction,
                 problem_reference_value
@@ -312,7 +369,10 @@ std::expected<void, service_error> problem_content_service::delete_sample(
                 return std::unexpected(publish_snapshot_exp.error());
             }
 
-            return {};
+            return make_mutation_result(
+                problem_reference_value,
+                *version_exp
+            );
         }
     );
 }

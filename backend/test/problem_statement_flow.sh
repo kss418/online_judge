@@ -181,6 +181,18 @@ assert_json_message \
     "${set_statement_response_file}" \
     "problem statement updated" \
     "set statement"
+assert_json_field_equals \
+    "${set_statement_response_file}" \
+    "problem_id" \
+    "${problem_id}" \
+    "set statement problem_id" \
+    "int"
+assert_json_field_equals \
+    "${set_statement_response_file}" \
+    "version" \
+    "2" \
+    "set statement version" \
+    "int"
 
 print_success_log "problem statement initial update success"
 
@@ -266,6 +278,18 @@ assert_json_message \
     "${clear_statement_response_file}" \
     "problem statement updated" \
     "clear statement"
+assert_json_field_equals \
+    "${clear_statement_response_file}" \
+    "problem_id" \
+    "${problem_id}" \
+    "clear statement problem_id" \
+    "int"
+assert_json_field_equals \
+    "${clear_statement_response_file}" \
+    "version" \
+    "3" \
+    "clear statement version" \
+    "int"
 
 send_http_request_and_assert_status \
     "GET" \
@@ -332,6 +356,18 @@ assert_json_message \
     "${set_limits_response_file}" \
     "problem limits updated" \
     "set limits"
+assert_json_field_equals \
+    "${set_limits_response_file}" \
+    "problem_id" \
+    "${problem_id}" \
+    "set limits problem_id" \
+    "int"
+assert_json_field_equals \
+    "${set_limits_response_file}" \
+    "version" \
+    "4" \
+    "set limits version" \
+    "int"
 
 send_http_request_and_assert_status \
     "GET" \

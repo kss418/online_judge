@@ -88,6 +88,7 @@ register_temp_file sign_up_response_file
 register_temp_file submission_response_file
 register_temp_file invalid_language_response_file
 register_temp_file missing_problem_submission_response_file
+register_temp_file update_problem_limits_response_file
 
 trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
 
@@ -229,12 +230,16 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
 
 submission_id = submission_response.get("submission_id")
 status = submission_response.get("status")
+problem_version = submission_response.get("problem_version")
 
 if not isinstance(submission_id, int) or submission_id <= 0:
     raise SystemExit("invalid submission_id in submission response")
 
 if status != "queued":
     raise SystemExit("expected submission status to be queued")
+
+if problem_version != 1:
+    raise SystemExit("expected first submission problem_version to be 1")
 
 print(submission_id)
 PY
@@ -444,6 +449,52 @@ if response.get("submission_banned_until", "__missing__") is not None:
 PY
 print_success_log "self submission ban cleared status success"
 
+updated_limits_request_body="$(
+    python3 <<'PY'
+import json
+
+print(
+    json.dumps(
+        {
+            "memory_limit_mb": 512,
+            "time_limit_ms": 2000,
+        }
+    )
+)
+PY
+)"
+
+updated_limits_status_code="$(
+    send_http_request \
+        "PUT" \
+        "${base_url}/api/problem/${problem_id}/limits" \
+        "${update_problem_limits_response_file}" \
+        "${admin_user_token}" \
+        "${updated_limits_request_body}"
+)"
+assert_status_code \
+    "${updated_limits_status_code}" \
+    "200" \
+    "${update_problem_limits_response_file}" \
+    "problem limits update before second submission"
+assert_json_message \
+    "${update_problem_limits_response_file}" \
+    "problem limits updated" \
+    "problem limits update before second submission"
+assert_json_field_equals \
+    "${update_problem_limits_response_file}" \
+    "problem_id" \
+    "${problem_id}" \
+    "problem limits update before second submission problem_id" \
+    "int"
+assert_json_field_equals \
+    "${update_problem_limits_response_file}" \
+    "version" \
+    "2" \
+    "problem limits update before second submission version" \
+    "int"
+print_success_log "problem version bump before second submission success"
+
 second_submission_status_code="$(
     send_http_request \
         "POST" \
@@ -465,12 +516,16 @@ with open(sys.argv[1], encoding="utf-8") as response_file:
 
 submission_id = submission_response.get("submission_id")
 status = submission_response.get("status")
+problem_version = submission_response.get("problem_version")
 
 if not isinstance(submission_id, int) or submission_id <= 0:
     raise SystemExit("invalid submission_id in second submission response")
 
 if status != "queued":
     raise SystemExit("expected second submission status to be queued")
+
+if problem_version != 2:
+    raise SystemExit("expected second submission problem_version to be 2")
 
 print(submission_id)
 PY

@@ -16,7 +16,7 @@ namespace problem_content_service{
         const problem_dto::reference& problem_reference_value
     );
 
-    std::expected<void, service_error> set_limits(
+    std::expected<problem_dto::mutation_result, service_error> set_limits(
         db_connection& connection,
         const problem_dto::reference& problem_reference_value,
         const problem_content_dto::limits& limits_value
@@ -27,13 +27,13 @@ namespace problem_content_service{
         const problem_dto::reference& problem_reference_value
     );
 
-    std::expected<void, service_error> set_statement(
+    std::expected<problem_dto::mutation_result, service_error> set_statement(
         db_connection& connection,
         const problem_dto::reference& problem_reference_value,
         const problem_content_dto::statement& statement
     );
 
-    std::expected<problem_content_dto::sample, service_error> create_sample(
+    std::expected<problem_dto::sample_mutation_result, service_error> create_sample(
         db_connection& connection,
         const problem_dto::reference& problem_reference_value,
         const problem_content_dto::sample& sample_value
@@ -51,12 +51,12 @@ namespace problem_content_service{
         const problem_content_dto::sample_ref& sample_reference_value,
         const problem_content_dto::sample& sample_value
     );
-    std::expected<problem_content_dto::sample, service_error> set_sample_and_get(
+    std::expected<problem_dto::sample_mutation_result, service_error> set_sample_and_get(
         db_connection& connection,
         const problem_content_dto::sample_ref& sample_reference_value,
         const problem_content_dto::sample& sample_value
     );
-    std::expected<void, service_error> delete_sample(
+    std::expected<problem_dto::mutation_result, service_error> delete_sample(
         db_connection& connection,
         const problem_dto::reference& problem_reference_value
     );

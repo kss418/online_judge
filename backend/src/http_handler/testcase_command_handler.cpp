@@ -9,7 +9,6 @@
 #include "http_guard/request_parse_guard.hpp"
 #include "http_guard/testcase_upload_guard.hpp"
 #include "request_parser/problem_request_parser.hpp"
-#include "serializer/common_json_serializer.hpp"
 #include "serializer/problem_json_serializer.hpp"
 
 #include <utility>
@@ -32,7 +31,9 @@ testcase_command_handler::response_type testcase_command_handler::post_testcase(
             return http_adapter::json(
                 context_value.request,
                 std::move(create_testcase_exp),
-                problem_json_serializer::make_testcase_created_object,
+                [](const problem_dto::testcase_mutation_result& testcase_value) {
+                    return problem_json_serializer::make_testcase_created_object(testcase_value);
+                },
                 boost::beast::http::status::created
             );
         },
@@ -66,7 +67,9 @@ testcase_command_handler::response_type testcase_command_handler::put_testcase(
             return http_adapter::json(
                 context_value.request,
                 std::move(set_testcase_exp),
-                problem_json_serializer::make_testcase_object
+                [](const problem_dto::testcase_mutation_result& testcase_value) {
+                    return problem_json_serializer::make_testcase_object(testcase_value);
+                }
             );
         },
         auth_guard::make_admin_guard(),
@@ -96,13 +99,11 @@ testcase_command_handler::response_type testcase_command_handler::post_testcase_
             return http_adapter::json(
                 context_value.request,
                 std::move(replace_testcases_exp),
-                [](const problem_dto::testcase_count& testcase_count) {
-                    boost::json::object response_object =
-                        common_json_serializer::make_message_object(
-                            "problem testcases uploaded"
-                        );
-                    response_object["testcase_count"] = testcase_count.testcase_count;
-                    return response_object;
+                [](const problem_dto::testcase_count_mutation_result& testcase_count_value) {
+                    return problem_json_serializer::make_testcase_count_message_object(
+                        "problem testcases uploaded",
+                        testcase_count_value
+                    );
                 }
             );
         },
@@ -130,10 +131,15 @@ testcase_command_handler::response_type testcase_command_handler::move_testcase(
                 testcase_reference_value,
                 testcase_move_request.target_testcase_order
             );
-            return http_adapter::message(
+            return http_adapter::json(
                 context_value.request,
                 std::move(move_testcase_exp),
-                "problem testcase moved"
+                [](const problem_dto::mutation_result& mutation_value) {
+                    return problem_json_serializer::make_message_object(
+                        "problem testcase moved",
+                        mutation_value
+                    );
+                }
             );
         },
         auth_guard::make_admin_guard(),
@@ -161,10 +167,15 @@ testcase_command_handler::response_type testcase_command_handler::delete_testcas
                 context_value.db_connection_ref(),
                 testcase_reference_value
             );
-            return http_adapter::message(
+            return http_adapter::json(
                 context_value.request,
                 std::move(delete_testcase_exp),
-                "problem testcase deleted"
+                [](const problem_dto::mutation_result& mutation_value) {
+                    return problem_json_serializer::make_message_object(
+                        "problem testcase deleted",
+                        mutation_value
+                    );
+                }
             );
         },
         auth_guard::make_admin_guard()
@@ -184,10 +195,15 @@ testcase_command_handler::response_type testcase_command_handler::delete_all_tes
                 context_value.db_connection_ref(),
                 problem_reference_value
             );
-            return http_adapter::message(
+            return http_adapter::json(
                 context_value.request,
                 std::move(delete_all_testcases_exp),
-                "problem testcases deleted"
+                [](const problem_dto::mutation_result& mutation_value) {
+                    return problem_json_serializer::make_message_object(
+                        "problem testcases deleted",
+                        mutation_value
+                    );
+                }
             );
         },
         auth_guard::make_admin_guard(),

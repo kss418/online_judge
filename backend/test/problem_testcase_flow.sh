@@ -276,19 +276,24 @@ send_http_request_and_assert_status \
     "${sign_up_token}" \
     "${testcase_request_body}"
 
-python3 - "${create_testcase_response_file}" <<'PY'
+python3 - "${create_testcase_response_file}" "${problem_id}" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as response_file:
     response = json.load(response_file)
 
+problem_id = int(sys.argv[2])
 testcase_id = response.get("testcase_id")
 testcase_order = response.get("testcase_order")
 if not isinstance(testcase_id, int) or testcase_id <= 0:
     raise SystemExit("invalid testcase_id after first testcase create")
 if testcase_order != 1:
     raise SystemExit("unexpected testcase_order after first testcase create")
+if response.get("problem_id") != problem_id:
+    raise SystemExit("unexpected problem_id after first testcase create")
+if response.get("version") != 2:
+    raise SystemExit("unexpected version after first testcase create")
 PY
 
 print_success_log "problem testcase first create success"
@@ -317,19 +322,24 @@ send_http_request_and_assert_status \
     "${sign_up_token}" \
     "${empty_testcase_request_body}"
 
-python3 - "${create_empty_testcase_response_file}" <<'PY'
+python3 - "${create_empty_testcase_response_file}" "${problem_id}" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as response_file:
     response = json.load(response_file)
 
+problem_id = int(sys.argv[2])
 testcase_id = response.get("testcase_id")
 testcase_order = response.get("testcase_order")
 if not isinstance(testcase_id, int) or testcase_id <= 0:
     raise SystemExit("invalid testcase_id after empty testcase create")
 if testcase_order != 2:
     raise SystemExit("unexpected testcase_order after empty testcase create")
+if response.get("problem_id") != problem_id:
+    raise SystemExit("unexpected problem_id after empty testcase create")
+if response.get("version") != 3:
+    raise SystemExit("unexpected version after empty testcase create")
 PY
 
 print_success_log "problem testcase empty create success"
@@ -498,13 +508,14 @@ send_http_request_and_assert_status \
     "${sign_up_token}" \
     "${update_testcase_request_body}"
 
-python3 - "${update_testcase_response_file}" <<'PY'
+python3 - "${update_testcase_response_file}" "${problem_id}" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as response_file:
     response = json.load(response_file)
 
+problem_id = int(sys.argv[2])
 if response.get("testcase_order") != 1:
     raise SystemExit("unexpected testcase_order after update")
 if response.get("testcase_input") != "10 20\n":
@@ -514,6 +525,10 @@ if response.get("testcase_output") != "30\n":
 testcase_id = response.get("testcase_id")
 if not isinstance(testcase_id, int) or testcase_id <= 0:
     raise SystemExit("invalid testcase_id after update")
+if response.get("problem_id") != problem_id:
+    raise SystemExit("unexpected problem_id after update")
+if response.get("version") != 4:
+    raise SystemExit("unexpected version after update")
 PY
 
 print_success_log "problem testcase update success"
@@ -601,6 +616,18 @@ assert_json_message \
     "${move_testcase_response_file}" \
     "problem testcase moved" \
     "move testcase"
+assert_json_field_equals \
+    "${move_testcase_response_file}" \
+    "problem_id" \
+    "${problem_id}" \
+    "move testcase problem_id" \
+    "int"
+assert_json_field_equals \
+    "${move_testcase_response_file}" \
+    "version" \
+    "5" \
+    "move testcase version" \
+    "int"
 
 print_success_log "problem testcase move success"
 
@@ -687,6 +714,18 @@ assert_json_message \
     "${delete_testcase_response_file}" \
     "problem testcase deleted" \
     "delete testcase"
+assert_json_field_equals \
+    "${delete_testcase_response_file}" \
+    "problem_id" \
+    "${problem_id}" \
+    "delete testcase problem_id" \
+    "int"
+assert_json_field_equals \
+    "${delete_testcase_response_file}" \
+    "version" \
+    "6" \
+    "delete testcase version" \
+    "int"
 
 print_success_log "problem testcase delete success"
 
@@ -759,6 +798,18 @@ assert_json_message \
     "${delete_all_testcases_response_file}" \
     "problem testcases deleted" \
     "delete all testcases"
+assert_json_field_equals \
+    "${delete_all_testcases_response_file}" \
+    "problem_id" \
+    "${problem_id}" \
+    "delete all testcases problem_id" \
+    "int"
+assert_json_field_equals \
+    "${delete_all_testcases_response_file}" \
+    "version" \
+    "7" \
+    "delete all testcases version" \
+    "int"
 
 print_success_log "problem testcase delete all success"
 
@@ -815,6 +866,18 @@ assert_json_message \
     "${delete_all_empty_testcases_response_file}" \
     "problem testcases deleted" \
     "delete all empty testcases"
+assert_json_field_equals \
+    "${delete_all_empty_testcases_response_file}" \
+    "problem_id" \
+    "${problem_id}" \
+    "delete all empty testcases problem_id" \
+    "int"
+assert_json_field_equals \
+    "${delete_all_empty_testcases_response_file}" \
+    "version" \
+    "7" \
+    "delete all empty testcases version" \
+    "int"
 
 send_http_request_and_assert_status \
     "GET" \
@@ -859,6 +922,18 @@ assert_json_message \
     "${upload_testcase_zip_response_file}" \
     "problem testcases uploaded" \
     "upload testcase zip"
+assert_json_field_equals \
+    "${upload_testcase_zip_response_file}" \
+    "problem_id" \
+    "${problem_id}" \
+    "upload testcase zip problem_id" \
+    "int"
+assert_json_field_equals \
+    "${upload_testcase_zip_response_file}" \
+    "version" \
+    "8" \
+    "upload testcase zip version" \
+    "int"
 assert_json_field_equals \
     "${upload_testcase_zip_response_file}" \
     "testcase_count" \
@@ -958,6 +1033,18 @@ assert_json_message \
     "${replace_testcase_zip_response_file}" \
     "problem testcases uploaded" \
     "replace testcase zip"
+assert_json_field_equals \
+    "${replace_testcase_zip_response_file}" \
+    "problem_id" \
+    "${problem_id}" \
+    "replace testcase zip problem_id" \
+    "int"
+assert_json_field_equals \
+    "${replace_testcase_zip_response_file}" \
+    "version" \
+    "9" \
+    "replace testcase zip version" \
+    "int"
 assert_json_field_equals \
     "${replace_testcase_zip_response_file}" \
     "testcase_count" \

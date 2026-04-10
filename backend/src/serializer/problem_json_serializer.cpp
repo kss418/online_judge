@@ -1,8 +1,18 @@
 #include "serializer/problem_json_serializer.hpp"
 
+#include "serializer/common_json_serializer.hpp"
+
 #include <utility>
 
 namespace{
+    void append_problem_version_fields(
+        boost::json::object& response_object,
+        const problem_dto::mutation_result& mutation_value
+    ){
+        response_object["problem_id"] = mutation_value.problem_id;
+        response_object["version"] = mutation_value.version;
+    }
+
     boost::json::object make_summary_object(
         const problem_dto::summary& summary_value
     ){
@@ -195,6 +205,17 @@ boost::json::object problem_json_serializer::make_testcase_object(
     return response_object;
 }
 
+boost::json::object problem_json_serializer::make_testcase_object(
+    const problem_dto::testcase_mutation_result& testcase_value
+){
+    auto response_object = make_testcase_object(testcase_value.testcase_value);
+    append_problem_version_fields(
+        response_object,
+        testcase_value.problem_value
+    );
+    return response_object;
+}
+
 boost::json::object problem_json_serializer::make_testcase_summary_object(
     const problem_dto::testcase_summary& testcase_summary_value
 ){
@@ -235,6 +256,17 @@ boost::json::object problem_json_serializer::make_testcase_created_object(
     return response_object;
 }
 
+boost::json::object problem_json_serializer::make_testcase_created_object(
+    const problem_dto::testcase_mutation_result& testcase_value
+){
+    auto response_object = make_testcase_created_object(testcase_value.testcase_value);
+    append_problem_version_fields(
+        response_object,
+        testcase_value.problem_value
+    );
+    return response_object;
+}
+
 boost::json::object problem_json_serializer::make_sample_object(
     const problem_content_dto::sample& sample_value
 ){
@@ -243,6 +275,17 @@ boost::json::object problem_json_serializer::make_sample_object(
     response_object["sample_order"] = sample_value.order;
     response_object["sample_input"] = sample_value.input;
     response_object["sample_output"] = sample_value.output;
+    return response_object;
+}
+
+boost::json::object problem_json_serializer::make_sample_object(
+    const problem_dto::sample_mutation_result& sample_value
+){
+    auto response_object = make_sample_object(sample_value.sample_value);
+    append_problem_version_fields(
+        response_object,
+        sample_value.problem_value
+    );
     return response_object;
 }
 
@@ -261,5 +304,37 @@ boost::json::object problem_json_serializer::make_sample_created_object(
     boost::json::object response_object;
     response_object["sample_id"] = sample_value.id;
     response_object["sample_order"] = sample_value.order;
+    return response_object;
+}
+
+boost::json::object problem_json_serializer::make_sample_created_object(
+    const problem_dto::sample_mutation_result& sample_value
+){
+    auto response_object = make_sample_created_object(sample_value.sample_value);
+    append_problem_version_fields(
+        response_object,
+        sample_value.problem_value
+    );
+    return response_object;
+}
+
+boost::json::object problem_json_serializer::make_message_object(
+    std::string_view message,
+    const problem_dto::mutation_result& mutation_value
+){
+    auto response_object = common_json_serializer::make_message_object(message);
+    append_problem_version_fields(response_object, mutation_value);
+    return response_object;
+}
+
+boost::json::object problem_json_serializer::make_testcase_count_message_object(
+    std::string_view message,
+    const problem_dto::testcase_count_mutation_result& testcase_count_value
+){
+    auto response_object = make_message_object(
+        message,
+        testcase_count_value.problem_value
+    );
+    response_object["testcase_count"] = testcase_count_value.testcase_count_value.testcase_count;
     return response_object;
 }

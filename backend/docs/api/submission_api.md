@@ -49,13 +49,15 @@ Example:
 |---|---|---|
 | `submission_id` | `int64` | created submission id |
 | `status` | `string` | initial submission status, currently `queued` |
+| `problem_version` | `int32` | problem version captured and stored on the submission row |
 
 Example:
 
 ```json
 {
   "submission_id": 1,
-  "status": "queued"
+  "status": "queued",
+  "problem_version": 4
 }
 ```
 

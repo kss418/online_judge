@@ -80,7 +80,7 @@ namespace problem_core_repository{
         const problem_content_dto::limits& limits_value
     );
 
-    std::expected<void, repository_error> increase_version(
+    std::expected<problem_dto::version, repository_error> increase_version(
         pqxx::transaction_base& transaction,
         const problem_dto::reference& problem_reference_value
     );

@@ -5,6 +5,7 @@
 #include <boost/json.hpp>
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace submission_json_serializer{
