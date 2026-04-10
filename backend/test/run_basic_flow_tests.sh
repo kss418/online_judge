@@ -10,6 +10,7 @@ clean_build="${BASIC_FLOW_TESTS_CLEAN_BUILD:-1}"
 default_tests=(
     system_flow.sh
     auth_flow.sh
+    user_flow.sh
     problem_get_flow.sh
     problem_list_flow.sh
     problem_lifecycle_flow.sh

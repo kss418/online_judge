@@ -10,5 +10,6 @@ target_sources(lib
         system_handler.cpp
         testcase_command_handler.cpp
         testcase_query_handler.cpp
-        user_handler.cpp
+        user_command_handler.cpp
+        user_query_handler.cpp
 )

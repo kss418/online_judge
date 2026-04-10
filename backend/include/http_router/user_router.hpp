@@ -1,6 +1,6 @@
 #pragma once
 
-#include "http_handler/user_handler.hpp"
+#include "http_core/request_context.hpp"
 
 #include <cstdint>
 #include <string>
@@ -8,9 +8,9 @@
 
 class user_router{
 public:
-    using context_type = user_handler::context_type;
-    using request_type = user_handler::request_type;
-    using response_type = user_handler::response_type;
+    using context_type = request_context;
+    using request_type = context_type::request_type;
+    using response_type = context_type::response_type;
 
     user_router(const user_router&) = delete;
     user_router& operator=(const user_router&) = delete;

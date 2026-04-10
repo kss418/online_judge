@@ -1,5 +1,7 @@
 #include "http_router/user_router.hpp"
 
+#include "http_handler/user_command_handler.hpp"
+#include "http_handler/user_query_handler.hpp"
 #include "http_router/route_table.hpp"
 
 #include <array>
@@ -78,7 +80,7 @@ user_router::response_type user_router::route(
             .pattern = http_route::empty_path_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return user_handler::get_user_list(context_value);
+                return user_query_handler::get_user_list(context_value);
             }
         },
         endpoint_descriptor{
@@ -87,7 +89,7 @@ user_router::response_type user_router::route(
             .pattern = public_user_list_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return user_handler::get_public_user_list(context_value);
+                return user_query_handler::get_public_user_list(context_value);
             }
         },
         endpoint_descriptor{
@@ -96,7 +98,7 @@ user_router::response_type user_router::route(
             .pattern = me_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return user_handler::get_me(context_value);
+                return user_query_handler::get_me(context_value);
             }
         },
         endpoint_descriptor{
@@ -105,7 +107,7 @@ user_router::response_type user_router::route(
             .pattern = me_statistics_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return user_handler::get_me_submission_statistics(context_value);
+                return user_query_handler::get_me_submission_statistics(context_value);
             }
         },
         endpoint_descriptor{
@@ -114,7 +116,7 @@ user_router::response_type user_router::route(
             .pattern = me_submission_ban_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return user_handler::get_me_submission_ban(context_value);
+                return user_query_handler::get_me_submission_ban(context_value);
             }
         },
         endpoint_descriptor{
@@ -123,7 +125,7 @@ user_router::response_type user_router::route(
             .pattern = me_solved_problems_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return user_handler::get_me_solved_problems(context_value);
+                return user_query_handler::get_me_solved_problems(context_value);
             }
         },
         endpoint_descriptor{
@@ -132,7 +134,7 @@ user_router::response_type user_router::route(
             .pattern = me_wrong_problems_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return user_handler::get_me_wrong_problems(context_value);
+                return user_query_handler::get_me_wrong_problems(context_value);
             }
         },
         endpoint_descriptor{
@@ -141,7 +143,7 @@ user_router::response_type user_router::route(
             .pattern = user_summary_by_login_id_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return user_handler::get_user_summary_by_login_id(
+                return user_query_handler::get_user_summary_by_login_id(
                     context_value,
                     route_match_value.string_param("user_login_id")
                 );
@@ -153,7 +155,7 @@ user_router::response_type user_router::route(
             .pattern = user_statistics_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return user_handler::get_user_submission_statistics(
+                return user_query_handler::get_user_submission_statistics(
                     context_value,
                     route_match_value.int64_param("user_id")
                 );
@@ -165,7 +167,7 @@ user_router::response_type user_router::route(
             .pattern = user_solved_problems_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return user_handler::get_user_solved_problems(
+                return user_query_handler::get_user_solved_problems(
                     context_value,
                     route_match_value.int64_param("user_id")
                 );
@@ -177,7 +179,7 @@ user_router::response_type user_router::route(
             .pattern = user_wrong_problems_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return user_handler::get_user_wrong_problems(
+                return user_query_handler::get_user_wrong_problems(
                     context_value,
                     route_match_value.int64_param("user_id")
                 );
@@ -189,7 +191,7 @@ user_router::response_type user_router::route(
             .pattern = user_id_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return user_handler::get_user_summary(
+                return user_query_handler::get_user_summary(
                     context_value,
                     route_match_value.int64_param("user_id")
                 );
@@ -201,7 +203,7 @@ user_router::response_type user_router::route(
             .pattern = user_admin_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return user_handler::put_user_admin(
+                return user_command_handler::put_user_admin(
                     context_value,
                     route_match_value.int64_param("user_id")
                 );
@@ -213,7 +215,7 @@ user_router::response_type user_router::route(
             .pattern = user_regular_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return user_handler::put_user_regular(
+                return user_command_handler::put_user_regular(
                     context_value,
                     route_match_value.int64_param("user_id")
                 );
@@ -225,7 +227,7 @@ user_router::response_type user_router::route(
             .pattern = user_submission_ban_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return user_handler::get_user_submission_ban(
+                return user_query_handler::get_user_submission_ban(
                     context_value,
                     route_match_value.int64_param("user_id")
                 );
@@ -237,7 +239,7 @@ user_router::response_type user_router::route(
             .pattern = user_submission_ban_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return user_handler::post_user_submission_ban(
+                return user_command_handler::post_user_submission_ban(
                     context_value,
                     route_match_value.int64_param("user_id")
                 );
@@ -249,7 +251,7 @@ user_router::response_type user_router::route(
             .pattern = user_submission_ban_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return user_handler::delete_user_submission_ban(
+                return user_command_handler::delete_user_submission_ban(
                     context_value,
                     route_match_value.int64_param("user_id")
                 );
