@@ -6,7 +6,6 @@
 
 namespace{
     using endpoint_descriptor = http_route::endpoint_descriptor<
-        user_router,
         user_router::context_type,
         user_router::response_type
     >;
@@ -77,8 +76,7 @@ user_router::response_type user_router::route(
             .name = "get_user_list",
             .method = http_verb::get,
             .pattern = http_route::empty_path_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return user_handler::get_user_list(context_value);
             }
@@ -87,8 +85,7 @@ user_router::response_type user_router::route(
             .name = "get_public_user_list",
             .method = http_verb::get,
             .pattern = public_user_list_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return user_handler::get_public_user_list(context_value);
             }
@@ -97,8 +94,7 @@ user_router::response_type user_router::route(
             .name = "get_me",
             .method = http_verb::get,
             .pattern = me_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return user_handler::get_me(context_value);
             }
@@ -107,8 +103,7 @@ user_router::response_type user_router::route(
             .name = "get_me_submission_statistics",
             .method = http_verb::get,
             .pattern = me_statistics_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return user_handler::get_me_submission_statistics(context_value);
             }
@@ -117,8 +112,7 @@ user_router::response_type user_router::route(
             .name = "get_me_submission_ban",
             .method = http_verb::get,
             .pattern = me_submission_ban_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return user_handler::get_me_submission_ban(context_value);
             }
@@ -127,8 +121,7 @@ user_router::response_type user_router::route(
             .name = "get_me_solved_problems",
             .method = http_verb::get,
             .pattern = me_solved_problems_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return user_handler::get_me_solved_problems(context_value);
             }
@@ -137,8 +130,7 @@ user_router::response_type user_router::route(
             .name = "get_me_wrong_problems",
             .method = http_verb::get,
             .pattern = me_wrong_problems_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return user_handler::get_me_wrong_problems(context_value);
             }
@@ -147,8 +139,7 @@ user_router::response_type user_router::route(
             .name = "get_user_summary_by_login_id",
             .method = http_verb::get,
             .pattern = user_summary_by_login_id_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return user_handler::get_user_summary_by_login_id(
                     context_value,
@@ -160,8 +151,7 @@ user_router::response_type user_router::route(
             .name = "get_user_submission_statistics",
             .method = http_verb::get,
             .pattern = user_statistics_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return user_handler::get_user_submission_statistics(
                     context_value,
@@ -173,8 +163,7 @@ user_router::response_type user_router::route(
             .name = "get_user_solved_problems",
             .method = http_verb::get,
             .pattern = user_solved_problems_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return user_handler::get_user_solved_problems(
                     context_value,
@@ -186,8 +175,7 @@ user_router::response_type user_router::route(
             .name = "get_user_wrong_problems",
             .method = http_verb::get,
             .pattern = user_wrong_problems_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return user_handler::get_user_wrong_problems(
                     context_value,
@@ -199,8 +187,7 @@ user_router::response_type user_router::route(
             .name = "get_user_summary",
             .method = http_verb::get,
             .pattern = user_id_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return user_handler::get_user_summary(
                     context_value,
@@ -212,8 +199,7 @@ user_router::response_type user_router::route(
             .name = "put_user_admin",
             .method = http_verb::put,
             .pattern = user_admin_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return user_handler::put_user_admin(
                     context_value,
@@ -225,8 +211,7 @@ user_router::response_type user_router::route(
             .name = "put_user_regular",
             .method = http_verb::put,
             .pattern = user_regular_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return user_handler::put_user_regular(
                     context_value,
@@ -238,8 +223,7 @@ user_router::response_type user_router::route(
             .name = "get_user_submission_ban",
             .method = http_verb::get,
             .pattern = user_submission_ban_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return user_handler::get_user_submission_ban(
                     context_value,
@@ -251,8 +235,7 @@ user_router::response_type user_router::route(
             .name = "post_user_submission_ban",
             .method = http_verb::post,
             .pattern = user_submission_ban_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return user_handler::post_user_submission_ban(
                     context_value,
@@ -264,8 +247,7 @@ user_router::response_type user_router::route(
             .name = "delete_user_submission_ban",
             .method = http_verb::delete_,
             .pattern = user_submission_ban_pattern,
-            .invoke = [](user_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return user_handler::delete_user_submission_ban(
                     context_value,
@@ -276,7 +258,6 @@ user_router::response_type user_router::route(
     }};
 
     return http_route::dispatch_route_table(
-        *this,
         context,
         path,
         user_route_table

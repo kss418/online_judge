@@ -8,7 +8,6 @@
 
 namespace{
     using endpoint_descriptor = http_route::endpoint_descriptor<
-        problem_router,
         problem_router::context_type,
         problem_router::response_type
     >;
@@ -78,8 +77,7 @@ problem_router::response_type problem_router::route(
             .name = "get_problems",
             .method = http_verb::get,
             .pattern = http_route::empty_path_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return problem_handler::get_problems(context_value);
             }
@@ -88,8 +86,7 @@ problem_router::response_type problem_router::route(
             .name = "post_problem",
             .method = http_verb::post,
             .pattern = http_route::empty_path_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return problem_handler::post_problem(context_value);
             }
@@ -98,8 +95,7 @@ problem_router::response_type problem_router::route(
             .name = "get_problem",
             .method = http_verb::get,
             .pattern = problem_id_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return problem_handler::get_problem(
                     context_value,
@@ -111,8 +107,7 @@ problem_router::response_type problem_router::route(
             .name = "delete_problem",
             .method = http_verb::delete_,
             .pattern = problem_id_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return problem_handler::delete_problem(
                     context_value,
@@ -124,8 +119,7 @@ problem_router::response_type problem_router::route(
             .name = "put_problem_title",
             .method = http_verb::put,
             .pattern = title_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return problem_handler::put_problem(
                     context_value,
@@ -137,8 +131,7 @@ problem_router::response_type problem_router::route(
             .name = "get_problem_limits",
             .method = http_verb::get,
             .pattern = limits_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return problem_content_handler::get_limits(
                     context_value,
@@ -150,8 +143,7 @@ problem_router::response_type problem_router::route(
             .name = "put_problem_limits",
             .method = http_verb::put,
             .pattern = limits_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return problem_content_handler::put_limits(
                     context_value,
@@ -163,8 +155,7 @@ problem_router::response_type problem_router::route(
             .name = "put_problem_statement",
             .method = http_verb::put,
             .pattern = statement_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return problem_content_handler::put_statement(
                     context_value,
@@ -176,8 +167,7 @@ problem_router::response_type problem_router::route(
             .name = "get_problem_samples",
             .method = http_verb::get,
             .pattern = samples_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return problem_content_handler::get_samples(
                     context_value,
@@ -189,8 +179,7 @@ problem_router::response_type problem_router::route(
             .name = "post_problem_sample",
             .method = http_verb::post,
             .pattern = samples_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return problem_content_handler::post_sample(
                     context_value,
@@ -202,8 +191,7 @@ problem_router::response_type problem_router::route(
             .name = "delete_problem_sample",
             .method = http_verb::delete_,
             .pattern = samples_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return problem_content_handler::delete_sample(
                     context_value,
@@ -215,8 +203,7 @@ problem_router::response_type problem_router::route(
             .name = "put_problem_sample",
             .method = http_verb::put,
             .pattern = sample_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return problem_content_handler::put_sample(
                     context_value,
@@ -229,8 +216,7 @@ problem_router::response_type problem_router::route(
             .name = "get_problem_testcases",
             .method = http_verb::get,
             .pattern = testcases_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return testcase_handler::get_testcases(
                     context_value,
@@ -242,8 +228,7 @@ problem_router::response_type problem_router::route(
             .name = "post_problem_testcase",
             .method = http_verb::post,
             .pattern = testcases_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return testcase_handler::post_testcase(
                     context_value,
@@ -255,8 +240,7 @@ problem_router::response_type problem_router::route(
             .name = "delete_problem_testcase_all",
             .method = http_verb::delete_,
             .pattern = testcase_all_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return testcase_handler::delete_all_testcases(
                     context_value,
@@ -268,8 +252,7 @@ problem_router::response_type problem_router::route(
             .name = "post_problem_testcase_zip",
             .method = http_verb::post,
             .pattern = testcase_zip_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return testcase_handler::post_testcase_zip(
                     context_value,
@@ -281,8 +264,7 @@ problem_router::response_type problem_router::route(
             .name = "post_problem_testcase_move",
             .method = http_verb::post,
             .pattern = testcase_move_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return testcase_handler::move_testcase(
                     context_value,
@@ -294,8 +276,7 @@ problem_router::response_type problem_router::route(
             .name = "get_problem_testcase",
             .method = http_verb::get,
             .pattern = testcase_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return testcase_handler::get_testcase(
                     context_value,
@@ -308,8 +289,7 @@ problem_router::response_type problem_router::route(
             .name = "put_problem_testcase",
             .method = http_verb::put,
             .pattern = testcase_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return testcase_handler::put_testcase(
                     context_value,
@@ -322,8 +302,7 @@ problem_router::response_type problem_router::route(
             .name = "delete_problem_testcase",
             .method = http_verb::delete_,
             .pattern = testcase_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return testcase_handler::delete_testcase(
                     context_value,
@@ -336,8 +315,7 @@ problem_router::response_type problem_router::route(
             .name = "post_problem_rejudge",
             .method = http_verb::post,
             .pattern = rejudge_pattern,
-            .invoke = [](problem_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return problem_handler::post_problem_rejudge(
                     context_value,
@@ -348,7 +326,6 @@ problem_router::response_type problem_router::route(
     }};
 
     return http_route::dispatch_route_table(
-        *this,
         context,
         path,
         problem_route_table

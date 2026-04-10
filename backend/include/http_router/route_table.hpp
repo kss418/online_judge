@@ -170,13 +170,9 @@ namespace http_route{
         return true;
     }
 
-    template <typename router_type, typename context_type, typename response_type>
+    template <typename context_type, typename response_type>
     struct endpoint_descriptor{
-        using invoke_type = response_type (*)(
-            router_type& router,
-            context_type& context,
-            const route_match& route_match_value
-        );
+        using invoke_type = response_type (*)(context_type& context, const route_match&);
 
         std::string_view name;
         boost::beast::http::verb method;
@@ -184,12 +180,11 @@ namespace http_route{
         invoke_type invoke;
     };
 
-    template <typename router_type, typename context_type, typename response_type>
+    template <typename context_type, typename response_type>
     response_type dispatch_route_table(
-        router_type& router,
         context_type& context,
         std::string_view path,
-        std::span<const endpoint_descriptor<router_type, context_type, response_type>>
+        std::span<const endpoint_descriptor<context_type, response_type>>
             endpoint_descriptors
     ){
         const auto path_segments_opt = request_parser::parse_path("", path);
@@ -214,7 +209,6 @@ namespace http_route{
             }
 
             return endpoint_descriptor_value.invoke(
-                router,
                 context,
                 route_match_value
             );
@@ -227,28 +221,21 @@ namespace http_route{
         return http_response_util::create_not_found(context.request);
     }
 
-    template <
-        typename router_type,
-        typename context_type,
-        typename response_type,
-        std::size_t endpoint_count
-    >
+    template <typename context_type, typename response_type, std::size_t endpoint_count>
     response_type dispatch_route_table(
-        router_type& router,
         context_type& context,
         std::string_view path,
         const std::array<
-            endpoint_descriptor<router_type, context_type, response_type>,
+            endpoint_descriptor<context_type, response_type>,
             endpoint_count
         >& endpoint_descriptors
     ){
         return dispatch_route_table(
-            router,
             context,
             path,
-            std::span<
-                const endpoint_descriptor<router_type, context_type, response_type>
-            >{endpoint_descriptors}
+            std::span<const endpoint_descriptor<context_type, response_type>>{
+                endpoint_descriptors
+            }
         );
     }
 }

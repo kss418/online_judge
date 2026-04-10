@@ -6,7 +6,6 @@
 
 namespace{
     using endpoint_descriptor = http_route::endpoint_descriptor<
-        submission_router,
         submission_router::context_type,
         submission_router::response_type
     >;
@@ -43,8 +42,7 @@ submission_router::response_type submission_router::route(
             .name = "get_submissions",
             .method = http_verb::get,
             .pattern = http_route::empty_path_pattern,
-            .invoke = [](submission_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return submission_handler::get_submissions(context_value);
             }
@@ -53,8 +51,7 @@ submission_router::response_type submission_router::route(
             .name = "post_submission_status_batch",
             .method = http_verb::post,
             .pattern = status_batch_pattern,
-            .invoke = [](submission_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return submission_handler::post_submission_status_batch(context_value);
             }
@@ -63,8 +60,7 @@ submission_router::response_type submission_router::route(
             .name = "get_submission",
             .method = http_verb::get,
             .pattern = submission_pattern,
-            .invoke = [](submission_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return submission_handler::get_submission(
                     context_value,
@@ -76,8 +72,7 @@ submission_router::response_type submission_router::route(
             .name = "post_submission",
             .method = http_verb::post,
             .pattern = submission_pattern,
-            .invoke = [](submission_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return submission_handler::post_submission(
                     context_value,
@@ -89,8 +84,7 @@ submission_router::response_type submission_router::route(
             .name = "get_submission_history",
             .method = http_verb::get,
             .pattern = submission_history_pattern,
-            .invoke = [](submission_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return submission_handler::get_submission_history(
                     context_value,
@@ -102,8 +96,7 @@ submission_router::response_type submission_router::route(
             .name = "get_submission_source",
             .method = http_verb::get,
             .pattern = submission_source_pattern,
-            .invoke = [](submission_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return submission_handler::get_submission_source(
                     context_value,
@@ -115,8 +108,7 @@ submission_router::response_type submission_router::route(
             .name = "post_submission_rejudge",
             .method = http_verb::post,
             .pattern = submission_rejudge_pattern,
-            .invoke = [](submission_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
                 return submission_handler::post_submission_rejudge(
                     context_value,
@@ -127,7 +119,6 @@ submission_router::response_type submission_router::route(
     }};
 
     return http_route::dispatch_route_table(
-        *this,
         context,
         path,
         submission_route_table

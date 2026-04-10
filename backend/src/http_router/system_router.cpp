@@ -6,7 +6,6 @@
 
 namespace{
     using endpoint_descriptor = http_route::endpoint_descriptor<
-        system_router,
         system_router::context_type,
         system_router::response_type
     >;
@@ -30,28 +29,23 @@ system_router::response_type system_router::route(
             .name = "get_health",
             .method = http_verb::get,
             .pattern = health_pattern,
-            .invoke = [](system_router& router,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return router.system_handler_.handle_health_get(context_value);
+                return system_handler::get_health(context_value);
             }
         },
         endpoint_descriptor{
             .name = "get_supported_languages",
             .method = http_verb::get,
             .pattern = supported_languages_pattern,
-            .invoke = [](system_router& router,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return router.system_handler_.handle_supported_languages_get(
-                    context_value
-                );
+                return system_handler::get_supported_languages(context_value);
             }
         }
     }};
 
     return http_route::dispatch_route_table(
-        *this,
         context,
         path,
         system_route_table

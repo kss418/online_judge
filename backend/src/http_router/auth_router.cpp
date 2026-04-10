@@ -6,7 +6,6 @@
 
 namespace{
     using endpoint_descriptor = http_route::endpoint_descriptor<
-        auth_router,
         auth_router::context_type,
         auth_router::response_type
     >;
@@ -37,8 +36,7 @@ auth_router::response_type auth_router::route(
             .name = "post_sign_up",
             .method = http_verb::post,
             .pattern = sign_up_pattern,
-            .invoke = [](auth_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return auth_handler::post_sign_up(context_value);
             }
@@ -47,8 +45,7 @@ auth_router::response_type auth_router::route(
             .name = "post_login",
             .method = http_verb::post,
             .pattern = login_pattern,
-            .invoke = [](auth_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return auth_handler::post_login(context_value);
             }
@@ -57,8 +54,7 @@ auth_router::response_type auth_router::route(
             .name = "post_token_renew",
             .method = http_verb::post,
             .pattern = token_renew_pattern,
-            .invoke = [](auth_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return auth_handler::post_token_renew(context_value);
             }
@@ -67,8 +63,7 @@ auth_router::response_type auth_router::route(
             .name = "post_logout",
             .method = http_verb::post,
             .pattern = logout_pattern,
-            .invoke = [](auth_router&,
-                context_type& context_value,
+            .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return auth_handler::post_logout(context_value);
             }
@@ -76,7 +71,6 @@ auth_router::response_type auth_router::route(
     }};
 
     return http_route::dispatch_route_table(
-        *this,
         context,
         path,
         auth_route_table

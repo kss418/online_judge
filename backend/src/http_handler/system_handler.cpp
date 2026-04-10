@@ -4,7 +4,7 @@
 #include "serializer/common_json_serializer.hpp"
 #include "serializer/system_json_serializer.hpp"
 
-system_handler::response_type system_handler::handle_health_get(context_type& context){
+system_handler::response_type system_handler::get_health(context_type& context){
     return http_response_util::create_json(
         context.request,
         boost::beast::http::status::ok,
@@ -12,7 +12,7 @@ system_handler::response_type system_handler::handle_health_get(context_type& co
     );
 }
 
-system_handler::response_type system_handler::handle_supported_languages_get(
+system_handler::response_type system_handler::get_supported_languages(
     context_type& context
 ){
     return http_response_util::create_json(
