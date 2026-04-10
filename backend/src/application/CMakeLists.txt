@@ -1,0 +1,19 @@
+target_sources(lib
+    PRIVATE
+        create_submission_action.cpp
+        get_problem_detail_query.cpp
+        get_public_user_list_query.cpp
+        get_submission_detail_query.cpp
+        get_submission_history_query.cpp
+        get_submission_source_query.cpp
+        get_user_submission_statistics_query.cpp
+        get_user_summary_by_login_id_query.cpp
+        get_user_summary_query.cpp
+        list_problems_query.cpp
+        list_submissions_query.cpp
+        list_user_solved_problems_query.cpp
+        list_user_wrong_problems_query.cpp
+        replace_testcases_action.cpp
+        set_problem_limits_action.cpp
+        set_problem_statement_action.cpp
+)

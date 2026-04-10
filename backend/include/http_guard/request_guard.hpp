@@ -5,7 +5,6 @@
 #include "http_core/request_dto.hpp"
 #include "http_core/request_list_filter_dto.hpp"
 #include "http_guard/guard_runner.hpp"
-#include "http_guard/problem_guard.hpp"
 #include "request_parser/submission_request_parser.hpp"
 
 #include <cstdint>
@@ -84,14 +83,6 @@ namespace request_guard{
                 );
                 if(!create_request_exp){
                     return std::unexpected(std::move(create_request_exp.error()));
-                }
-
-                auto problem_exists_exp = problem_guard::require_exists(
-                    composite_context.request_context_ref(),
-                    problem_dto::reference{problem_id}
-                );
-                if(!problem_exists_exp){
-                    return std::unexpected(std::move(problem_exists_exp.error()));
                 }
 
                 return create_request_exp;

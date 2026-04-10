@@ -1,6 +1,8 @@
 #include "http_handler/testcase_handler.hpp"
 
+#include "application/replace_testcases_action.hpp"
 #include "dto/problem_dto.hpp"
+#include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
 #include "http_guard/request_guard.hpp"
@@ -31,7 +33,7 @@ testcase_handler::response_type testcase_handler::get_testcase(
                 context_value.db_connection_ref(),
                 testcase_reference_value
             );
-            return http_response_util::create_json_or_4xx_or_500(
+            return http_adapter::json(
                 context_value.request,
                 std::move(testcase_exp),
                 problem_json_serializer::make_testcase_object
@@ -55,7 +57,7 @@ testcase_handler::response_type testcase_handler::get_testcases(
                 context_value.db_connection_ref(),
                 problem_reference_value
             );
-            return http_response_util::create_json_or_4xx_or_500(
+            return http_adapter::json(
                 context_value.request,
                 std::move(testcase_summary_values_exp),
                 problem_json_serializer::make_testcase_summary_list_object
@@ -81,7 +83,7 @@ testcase_handler::response_type testcase_handler::post_testcase(
                 problem_reference_value,
                 testcase_value
             );
-            return http_response_util::create_json_or_4xx_or_500(
+            return http_adapter::json(
                 context_value.request,
                 std::move(create_testcase_exp),
                 problem_json_serializer::make_testcase_created_object,
@@ -115,11 +117,11 @@ testcase_handler::response_type testcase_handler::put_testcase(
                 testcase_reference_value,
                 testcase_value
             );
-            return http_response_util::create_response_or_4xx_or_500(
+            return http_adapter::response(
                 context_value.request,
                 std::move(set_testcase_exp),
                 [&context_value, &testcase_reference_value]() -> response_type {
-                    return http_response_util::create_json_or_4xx_or_500(
+                    return http_adapter::json(
                         context_value.request,
                         testcase_service::get_testcase(
                             context_value.db_connection_ref(),
@@ -141,18 +143,20 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
     context_type& context,
     std::int64_t problem_id
 ){
-    problem_dto::reference problem_reference_value{problem_id};
     return http_guard::run_or_respond(
         context,
-        [problem_reference_value](context_type& context_value,
+        [problem_id](context_type& context_value,
             const auth_dto::identity&,
             const std::vector<problem_dto::testcase>& testcase_values) -> response_type {
-            const auto replace_testcases_exp = testcase_service::replace_testcases(
+            replace_testcases_action::command command_value{
+                .problem_reference_value = problem_dto::reference{problem_id},
+                .testcase_values = testcase_values
+            };
+            const auto replace_testcases_exp = replace_testcases_action::execute(
                 context_value.db_connection_ref(),
-                problem_reference_value,
-                testcase_values
+                command_value
             );
-            return http_response_util::create_json_or_4xx_or_500(
+            return http_adapter::json(
                 context_value.request,
                 std::move(replace_testcases_exp),
                 [](const problem_dto::testcase_count& testcase_count) {
@@ -166,7 +170,6 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
             );
         },
         auth_guard::make_admin_guard(),
-        problem_guard::make_exists_guard(problem_reference_value),
         testcase_upload_guard::make_testcase_zip_guard()
     );
 }
@@ -190,7 +193,7 @@ testcase_handler::response_type testcase_handler::move_testcase(
                 testcase_reference_value,
                 testcase_move_request.target_testcase_order
             );
-            return http_response_util::create_message_or_4xx_or_500(
+            return http_adapter::message(
                 context_value.request,
                 std::move(move_testcase_exp),
                 "problem testcase moved"
@@ -221,7 +224,7 @@ testcase_handler::response_type testcase_handler::delete_testcase(
                 context_value.db_connection_ref(),
                 testcase_reference_value
             );
-            return http_response_util::create_message_or_4xx_or_500(
+            return http_adapter::message(
                 context_value.request,
                 std::move(delete_testcase_exp),
                 "problem testcase deleted"
@@ -244,7 +247,7 @@ testcase_handler::response_type testcase_handler::delete_all_testcases(
                 context_value.db_connection_ref(),
                 problem_reference_value
             );
-            return http_response_util::create_message_or_4xx_or_500(
+            return http_adapter::message(
                 context_value.request,
                 std::move(delete_all_testcases_exp),
                 "problem testcases deleted"

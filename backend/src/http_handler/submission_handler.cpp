@@ -1,17 +1,62 @@
 #include "http_handler/submission_handler.hpp"
+#include "application/create_submission_action.hpp"
+#include "application/get_submission_detail_query.hpp"
+#include "application/get_submission_history_query.hpp"
+#include "application/get_submission_source_query.hpp"
+#include "application/list_submissions_query.hpp"
 #include "common/submission_status.hpp"
 #include "db_service/submission_service.hpp"
 #include "dto/submission_dto.hpp"
 #include "error/submission_error.hpp"
+#include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/request_guard.hpp"
-#include "http_guard/submission_guard.hpp"
 #include "request_parser/submission_request_parser.hpp"
 #include "serializer/submission_json_serializer.hpp"
 
 namespace{
-    bool is_submission_banned_error(const service_error& code){
-        return code == service_error::forbidden;
+    submission_handler::response_type create_submission_error_response(
+        const submission_handler::request_type& request,
+        const create_submission_action::error& error_value
+    ){
+        return http_adapter::error_or_4xx_or_500(
+            request,
+            error_value,
+            [](const create_submission_action::error& mapped_error_value)
+                -> std::optional<http_error> {
+                if(mapped_error_value.is_submission_banned()){
+                    return submission_error::submission_banned();
+                }
+
+                return std::nullopt;
+            },
+            [](const create_submission_action::error& mapped_error_value)
+                -> const service_error& {
+                return mapped_error_value.service_error_value;
+            }
+        );
+    }
+
+    submission_handler::response_type get_submission_source_error_response(
+        const submission_handler::request_type& request,
+        const get_submission_source_query::error& error_value
+    ){
+        return http_adapter::error_or_4xx_or_500(
+            request,
+            error_value,
+            [](const get_submission_source_query::error& mapped_error_value)
+                -> std::optional<http_error> {
+                if(mapped_error_value.is_source_access_denied()){
+                    return submission_error::source_access_denied();
+                }
+
+                return std::nullopt;
+            },
+            [](const get_submission_source_query::error& mapped_error_value)
+                -> const service_error& {
+                return mapped_error_value.service_error_value;
+            }
+        );
     }
 }
 
@@ -22,19 +67,25 @@ submission_handler::response_type submission_handler::get_submission_history(
     return http_guard::run_or_respond(
         context,
         [submission_id](context_type& context_value,
-            const auth_dto::identity&,
-            const submission_dto::history_list& history_values) -> response_type {
-            return http_response_util::create_json(
+            const auth_dto::identity&) -> response_type {
+            get_submission_history_query::command command_value{
+                .submission_id = submission_id
+            };
+            return http_adapter::json(
                 context_value.request,
-                boost::beast::http::status::ok,
-                submission_json_serializer::make_history_list_object(
-                    submission_id,
-                    history_values
-                )
+                get_submission_history_query::execute(
+                    context_value.db_connection_ref(),
+                    command_value
+                ),
+                [submission_id](const submission_dto::history_list& history_values) {
+                    return submission_json_serializer::make_history_list_object(
+                        submission_id,
+                        history_values
+                    );
+                }
             );
         },
-        auth_guard::make_admin_guard(),
-        submission_guard::make_history_guard(submission_id)
+        auth_guard::make_admin_guard()
     );
 }
 
@@ -44,15 +95,23 @@ submission_handler::response_type submission_handler::get_submission_source(
 ){
     return http_guard::run_or_respond(
         context,
-        [](context_type& context_value,
-            const submission_dto::source_detail& source_detail_value) -> response_type {
-            return http_response_util::create_json(
+        [submission_id](context_type& context_value,
+            const auth_dto::identity& auth_identity_value) -> response_type {
+            get_submission_source_query::command command_value{
+                .submission_id = submission_id,
+                .viewer_identity = auth_identity_value
+            };
+            return http_adapter::json(
                 context_value.request,
-                boost::beast::http::status::ok,
-                submission_json_serializer::make_source_object(source_detail_value)
+                get_submission_source_query::execute(
+                    context_value.db_connection_ref(),
+                    command_value
+                ),
+                get_submission_source_error_response,
+                submission_json_serializer::make_source_object
             );
         },
-        submission_guard::make_readable_source_guard(submission_id)
+        auth_guard::make_auth_guard()
     );
 }
 
@@ -62,15 +121,19 @@ submission_handler::response_type submission_handler::get_submission(
 ){
     return http_guard::run_or_respond(
         context,
-        [](context_type& context_value,
-            const submission_dto::detail& submission_detail_value) -> response_type {
-            return http_response_util::create_json(
+        [submission_id](context_type& context_value) -> response_type {
+            get_submission_detail_query::command command_value{
+                .submission_id = submission_id
+            };
+            return http_adapter::json(
                 context_value.request,
-                boost::beast::http::status::ok,
-                submission_json_serializer::make_detail_object(submission_detail_value)
+                get_submission_detail_query::execute(
+                    context_value.db_connection_ref(),
+                    command_value
+                ),
+                submission_json_serializer::make_detail_object
             );
-        },
-        submission_guard::make_detail_guard(submission_id)
+        }
     );
 }
 
@@ -81,7 +144,7 @@ submission_handler::response_type submission_handler::post_submission_status_bat
         context,
         [](context_type& context_value,
             const submission_dto::status_batch_request& batch_request) -> response_type {
-            return http_response_util::create_json_or_4xx_or_500(
+            return http_adapter::json(
                 context_value.request,
                 submission_service::get_submission_status_snapshots(
                     context_value.db_connection_ref(),
@@ -104,34 +167,16 @@ submission_handler::response_type submission_handler::post_submission(
         context,
         [](context_type& context_value,
             const submission_dto::create_request& create_request) -> response_type {
-            const auto create_submission_exp = submission_service::create_submission(
+            const auto create_submission_exp = create_submission_action::execute(
                 context_value.db_connection_ref(),
                 create_request
             );
-            return http_response_util::create_response_or_error(
+            return http_adapter::json(
                 context_value.request,
                 std::move(create_submission_exp),
-                [&](const request_type& error_request,
-                    const service_error& code) {
-                    if(is_submission_banned_error(code)){
-                        return http_response_util::create_error(
-                            error_request,
-                            submission_error::submission_banned()
-                        );
-                    }
-
-                    return http_response_util::create_4xx_or_500(
-                        error_request,
-                        code
-                    );
-                },
-                [&](const submission_dto::created& created_value) {
-                    return http_response_util::create_json(
-                        context_value.request,
-                        boost::beast::http::status::created,
-                        submission_json_serializer::make_created_object(created_value)
-                    );
-                }
+                create_submission_error_response,
+                submission_json_serializer::make_created_object,
+                boost::beast::http::status::created
             );
         },
         request_guard::make_submission_create_request_guard(problem_id)
@@ -146,7 +191,7 @@ submission_handler::response_type submission_handler::post_submission_rejudge(
         context,
         [submission_id](context_type& context_value,
             const auth_dto::identity&) -> response_type {
-            return http_response_util::create_json_or_4xx_or_500(
+            return http_adapter::json(
                 context_value.request,
                 submission_service::rejudge(
                     context_value.db_connection_ref(),
@@ -172,16 +217,15 @@ submission_handler::response_type submission_handler::get_submissions(
         [](context_type& context_value,
             const std::optional<auth_dto::identity>& auth_identity_opt,
             const submission_dto::list_filter& filter_value) -> response_type {
-            const auto viewer_user_id_opt = auth_guard::get_viewer_user_id(
-                auth_identity_opt
-            );
-
-            return http_response_util::create_json_or_4xx_or_500(
+            list_submissions_query::command command_value{
+                .filter_value = filter_value,
+                .viewer_user_id_opt = auth_guard::get_viewer_user_id(auth_identity_opt)
+            };
+            return http_adapter::json(
                 context_value.request,
-                submission_service::list_submissions(
+                list_submissions_query::execute(
                     context_value.db_connection_ref(),
-                    filter_value,
-                    viewer_user_id_opt
+                    command_value
                 ),
                 submission_json_serializer::make_list_object
             );

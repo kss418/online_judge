@@ -3,12 +3,37 @@
 #include "db_service/login_service.hpp"
 #include "dto/auth_dto.hpp"
 #include "error/auth_error.hpp"
+#include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/request_guard.hpp"
 #include "request_parser/auth_request_parser.hpp"
 #include "serializer/auth_json_serializer.hpp"
 
 #include <string>
+
+namespace{
+    auth_handler::response_type create_login_error_response(
+        const auth_handler::request_type& request,
+        const service_error& error_value
+    ){
+        return http_adapter::error_or_4xx_or_500(
+            request,
+            error_value,
+            auth_error::map_login_service_error
+        );
+    }
+
+    auth_handler::response_type create_token_error_response(
+        const auth_handler::request_type& request,
+        const service_error& error_value
+    ){
+        return http_adapter::error_or_4xx_or_500(
+            request,
+            error_value,
+            auth_error::map_token_service_error
+        );
+    }
+}
 
 auth_handler::response_type auth_handler::post_sign_up(
     context_type& context
@@ -17,13 +42,12 @@ auth_handler::response_type auth_handler::post_sign_up(
         context,
         [](context_type& context_value,
             const auth_dto::sign_up_request& sign_up_request) -> response_type {
-            const auto sign_up_exp = login_service::sign_up(
-                context_value.db_connection_ref(),
-                sign_up_request
-            );
-            return http_response_util::create_json_or_4xx_or_500(
+            return http_adapter::json(
                 context_value.request,
-                std::move(sign_up_exp),
+                login_service::sign_up(
+                    context_value.db_connection_ref(),
+                    sign_up_request
+                ),
                 auth_json_serializer::make_session_object,
                 boost::beast::http::status::created
             );
@@ -41,31 +65,14 @@ auth_handler::response_type auth_handler::post_login(
         context,
         [](context_type& context_value,
             const auth_dto::credentials& credentials_value) -> response_type {
-            const auto login_exp = login_service::login(
-                context_value.db_connection_ref(),
-                credentials_value
-            );
-            if(!login_exp){
-                const auto mapped_error_opt = auth_error::map_login_service_error(
-                    login_exp.error()
-                );
-                if(mapped_error_opt){
-                    return http_response_util::create_error(
-                        context_value.request,
-                        *mapped_error_opt
-                    );
-                }
-
-                return http_response_util::create_4xx_or_500(
-                    context_value.request,
-                    login_exp.error()
-                );
-            }
-
-            return http_response_util::create_json(
+            return http_adapter::json(
                 context_value.request,
-                boost::beast::http::status::ok,
-                auth_json_serializer::make_session_object(*login_exp)
+                login_service::login(
+                    context_value.db_connection_ref(),
+                    credentials_value
+                ),
+                create_login_error_response,
+                auth_json_serializer::make_session_object
             );
         },
         request_guard::make_json_guard<auth_dto::credentials>(
@@ -81,30 +88,13 @@ auth_handler::response_type auth_handler::post_token_renew(
         context,
         [](context_type& context_value,
             const auth_dto::token& token_value) -> response_type {
-            const auto renew_token_exp = auth_service::renew_token(
-                context_value.db_connection_ref(),
-                token_value
-            );
-            if(!renew_token_exp){
-                const auto mapped_error_opt = auth_error::map_token_service_error(
-                    renew_token_exp.error()
-                );
-                if(mapped_error_opt){
-                    return http_response_util::create_error(
-                        context_value.request,
-                        *mapped_error_opt
-                    );
-                }
-
-                return http_response_util::create_4xx_or_500(
-                    context_value.request,
-                    renew_token_exp.error()
-                );
-            }
-
-            return http_response_util::create_message(
+            return http_adapter::message(
                 context_value.request,
-                boost::beast::http::status::ok,
+                auth_service::renew_token(
+                    context_value.db_connection_ref(),
+                    token_value
+                ),
+                create_token_error_response,
                 "token renewed"
             );
         },
@@ -119,30 +109,13 @@ auth_handler::response_type auth_handler::post_logout(
         context,
         [](context_type& context_value,
             const auth_dto::token& token_value) -> response_type {
-            const auto revoke_token_exp = auth_service::revoke_token(
-                context_value.db_connection_ref(),
-                token_value
-            );
-            if(!revoke_token_exp){
-                const auto mapped_error_opt = auth_error::map_token_service_error(
-                    revoke_token_exp.error()
-                );
-                if(mapped_error_opt){
-                    return http_response_util::create_error(
-                        context_value.request,
-                        *mapped_error_opt
-                    );
-                }
-
-                return http_response_util::create_4xx_or_500(
-                    context_value.request,
-                    revoke_token_exp.error()
-                );
-            }
-
-            return http_response_util::create_message(
+            return http_adapter::message(
                 context_value.request,
-                boost::beast::http::status::ok,
+                auth_service::revoke_token(
+                    context_value.db_connection_ref(),
+                    token_value
+                ),
+                create_token_error_response,
                 "logged out"
             );
         },

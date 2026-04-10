@@ -1,5 +1,8 @@
 #include "http_handler/problem_handler.hpp"
+#include "application/get_problem_detail_query.hpp"
+#include "application/list_problems_query.hpp"
 #include "dto/problem_dto.hpp"
+#include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
 #include "http_guard/request_guard.hpp"
@@ -21,51 +24,35 @@ problem_handler::response_type problem_handler::get_problems(
                 auth_identity_opt
             );
 
+            list_problems_query::command command_value{
+                .filter_value = filter_value,
+                .viewer_user_id_opt = viewer_user_id_opt
+            };
             const auto filter_validation_exp =
                 problem_request_parser::validate_list_filter_for_viewer(
-                    filter_value,
+                    command_value.filter_value,
                     viewer_user_id_opt.has_value()
                 );
             if(!filter_validation_exp){
-                return http_response_util::create_error(
+                return http_adapter::error(
                     context_value.request,
                     filter_validation_exp.error()
                 );
             }
 
-            const auto summary_values_exp = problem_core_service::list_problems(
+            const auto result_exp = list_problems_query::execute(
                 context_value.db_connection_ref(),
-                filter_value,
-                viewer_user_id_opt
+                command_value
             );
-            if(!summary_values_exp){
-                return http_response_util::create_internal_server_error(
-                    context_value.request,
-                    "list_problems",
-                    to_string(summary_values_exp.error())
-                );
-            }
-
-            const auto total_problem_count_exp = problem_core_service::count_problems(
-                context_value.db_connection_ref(),
-                filter_value,
-                viewer_user_id_opt
-            );
-            if(!total_problem_count_exp){
-                return http_response_util::create_internal_server_error(
-                    context_value.request,
-                    "count_problems",
-                    to_string(total_problem_count_exp.error())
-                );
-            }
-
-            return http_response_util::create_json(
+            return http_adapter::json(
                 context_value.request,
-                boost::beast::http::status::ok,
-                problem_json_serializer::make_list_object(
-                    *summary_values_exp,
-                    *total_problem_count_exp
-                )
+                std::move(result_exp),
+                [](const list_problems_query::result& result_value) {
+                    return problem_json_serializer::make_list_object(
+                        result_value.summary_values,
+                        result_value.total_problem_count
+                    );
+                }
             );
         },
         auth_guard::make_optional_auth_guard(),
@@ -77,18 +64,26 @@ problem_handler::response_type problem_handler::get_problem(
     context_type& context,
     std::int64_t problem_id
 ){
-    problem_dto::reference problem_reference_value{problem_id};
     return http_guard::run_or_respond(
         context,
-        [](context_type& context_value,
-            const problem_dto::detail& problem_detail) -> response_type {
-            return http_response_util::create_json(
+        [problem_id](context_type& context_value,
+            const std::optional<auth_dto::identity>& auth_identity_opt) -> response_type {
+            get_problem_detail_query::command command_value{
+                .problem_reference_value = problem_dto::reference{problem_id},
+                .viewer_user_id_opt = auth_guard::get_viewer_user_id(auth_identity_opt)
+            };
+            return http_adapter::json(
                 context_value.request,
-                boost::beast::http::status::ok,
-                problem_json_serializer::make_detail_object(problem_detail)
+                get_problem_detail_query::execute(
+                    context_value.db_connection_ref(),
+                    command_value
+                ),
+                [](const problem_dto::detail& problem_detail) {
+                    return problem_json_serializer::make_detail_object(problem_detail);
+                }
             );
         },
-        problem_guard::make_readable_detail_guard(problem_reference_value)
+        auth_guard::make_optional_auth_guard()
     );
 }
 
@@ -104,7 +99,7 @@ problem_handler::response_type problem_handler::post_problem(
                 context_value.db_connection_ref(),
                 create_request
             );
-            return http_response_util::create_json_or_4xx_or_500(
+            return http_adapter::json(
                 context_value.request,
                 std::move(create_problem_exp),
                 problem_json_serializer::make_created_object,
@@ -133,7 +128,7 @@ problem_handler::response_type problem_handler::put_problem(
                 problem_reference_value,
                 update_request
             );
-            return http_response_util::create_message_or_4xx_or_500(
+            return http_adapter::message(
                 context_value.request,
                 std::move(update_problem_exp),
                 "problem updated"
@@ -160,7 +155,7 @@ problem_handler::response_type problem_handler::delete_problem(
                 context_value.db_connection_ref(),
                 problem_reference_value
             );
-            return http_response_util::create_message_or_4xx_or_500(
+            return http_adapter::message(
                 context_value.request,
                 std::move(delete_problem_exp),
                 "problem deleted"
@@ -184,7 +179,7 @@ problem_handler::response_type problem_handler::post_problem_rejudge(
                 context_value.db_connection_ref(),
                 problem_id
             );
-            return http_response_util::create_message_or_4xx_or_500(
+            return http_adapter::message(
                 context_value.request,
                 std::move(rejudge_problem_exp),
                 "problem submissions requeued"
