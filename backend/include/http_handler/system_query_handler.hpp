@@ -13,4 +13,5 @@ namespace system_query_handler{
 
     response_type get_health(context_type& context);
     response_type get_supported_languages(context_type& context);
+    response_type get_status(context_type& context);
 }

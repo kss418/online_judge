@@ -100,6 +100,24 @@ namespace{
             std::chrono::milliseconds{*parsed_value_exp}
         };
     }
+
+    std::expected<std::chrono::milliseconds, infra_error>
+    parse_nonnegative_timeout_ms_env(
+        const char* key,
+        std::chrono::milliseconds default_value
+    ){
+        const char* value = std::getenv(key);
+        if(value == nullptr || *value == '\0'){
+            return default_value;
+        }
+
+        const auto parsed_value_exp = parse_nonnegative_int64_env(key);
+        if(!parsed_value_exp){
+            return std::unexpected(parsed_value_exp.error());
+        }
+
+        return std::chrono::milliseconds{*parsed_value_exp};
+    }
 }
 
 std::expected<http_runtime_config, infra_error> http_runtime_config::load(
@@ -190,6 +208,15 @@ std::expected<http_runtime_config, infra_error> http_runtime_config::load(
         return std::unexpected(keep_alive_idle_timeout_exp.error());
     }
     config.keep_alive_idle_timeout_opt = *keep_alive_idle_timeout_exp;
+
+    const auto judge_heartbeat_stale_after_exp = parse_nonnegative_timeout_ms_env(
+        "JUDGE_HEARTBEAT_STALE_AFTER_MS",
+        std::chrono::milliseconds{15000}
+    );
+    if(!judge_heartbeat_stale_after_exp){
+        return std::unexpected(judge_heartbeat_stale_after_exp.error());
+    }
+    config.judge_heartbeat_stale_after = *judge_heartbeat_stale_after_exp;
 
     return config;
 }

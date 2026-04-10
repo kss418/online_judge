@@ -5,13 +5,14 @@
 std::expected<testcase_snapshot_facade, judge_error> testcase_snapshot_facade::create(
     const db_connection_config& db_config,
     std::filesystem::path testcase_root_path,
-    std::shared_ptr<problem_lock_registry> problem_lock_registry
+    std::shared_ptr<problem_lock_registry> problem_lock_registry,
+    std::shared_ptr<judge_runtime_registry> judge_runtime_registry
 ){
-    if(!problem_lock_registry){
+    if(!problem_lock_registry || !judge_runtime_registry){
         return std::unexpected(
             judge_error{
                 judge_error_code::internal,
-                "problem lock registry is not configured"
+                "judge runtime dependencies are not configured"
             }
         );
     }
@@ -40,7 +41,8 @@ std::expected<testcase_snapshot_facade, judge_error> testcase_snapshot_facade::c
     auto testcase_snapshot_acquirer_exp =
         testcase_snapshot_acquirer::create(
         std::move(*testcase_source_facade_exp),
-        std::move(*testcase_store_exp)
+        std::move(*testcase_store_exp),
+        std::move(judge_runtime_registry)
     );
     if(!testcase_snapshot_acquirer_exp){
         return std::unexpected(testcase_snapshot_acquirer_exp.error());

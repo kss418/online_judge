@@ -49,10 +49,16 @@ http_server::http_server(
     db_connection_pool_(std::move(db_connection_pool)),
     response_worker_pool_(std::move(response_worker_pool)),
     request_observer_(),
+    http_runtime_status_provider_(
+        db_connection_pool_,
+        *response_worker_pool_,
+        runtime_config_.judge_heartbeat_stale_after
+    ),
     http_dispatcher_(
         db_connection_pool_,
         runtime_config_.db_acquire_timeout_opt,
-        &request_observer_
+        &request_observer_,
+        &http_runtime_status_provider_
     ){}
 
 void http_server::async_handle(
@@ -105,7 +111,12 @@ void http_server::observe_request_completion(
     const response_type& response,
     request_observer::duration_type duration
 ){
-    request_context context(request, std::string{request_id}, &request_observer_);
+    request_context context(
+        request,
+        std::string{request_id},
+        &request_observer_,
+        &http_runtime_status_provider_
+    );
     request_observer_.on_request_complete(context, response, duration);
 }
 

@@ -11,6 +11,7 @@
 #include <utility>
 
 class request_observer;
+class http_runtime_status_provider;
 
 struct request_context{
     using request_type = http_response_util::request_type;
@@ -19,21 +20,25 @@ struct request_context{
     explicit request_context(
         const request_type& request_value,
         std::string request_id_value = {},
-        request_observer* observer_value = nullptr
+        request_observer* observer_value = nullptr,
+        const http_runtime_status_provider* http_runtime_status_provider_value = nullptr
     ) :
         request(request_value),
         request_id(std::move(request_id_value)),
-        observer(observer_value){}
+        observer(observer_value),
+        http_runtime_status_provider_ptr(http_runtime_status_provider_value){}
 
     request_context(
         const request_type& request_value,
         db_connection_pool::lease db_connection_lease_value,
         std::string request_id_value = {},
-        request_observer* observer_value = nullptr
+        request_observer* observer_value = nullptr,
+        const http_runtime_status_provider* http_runtime_status_provider_value = nullptr
     ) :
         request(request_value),
         request_id(std::move(request_id_value)),
         observer(observer_value),
+        http_runtime_status_provider_ptr(http_runtime_status_provider_value),
         db_connection_lease_opt(std::move(db_connection_lease_value)){
         if(db_connection_lease_opt.has_value()){
             db_connection_ptr_ = &db_connection_lease_opt->connection();
@@ -60,12 +65,21 @@ struct request_context{
         return *db_connection_ptr_;
     }
 
+    bool has_http_runtime_status_provider() const{
+        return http_runtime_status_provider_ptr != nullptr;
+    }
+
+    const http_runtime_status_provider& http_runtime_status_provider_ref() const{
+        return *http_runtime_status_provider_ptr;
+    }
+
     const request_type& request;
     std::string request_id;
     std::optional<db_connection_pool::lease> db_connection_lease_opt;
     std::optional<auth_dto::identity> auth_identity_opt;
     std::optional<http_route::endpoint_metadata> matched_endpoint_opt;
     request_observer* observer = nullptr;
+    const http_runtime_status_provider* http_runtime_status_provider_ptr = nullptr;
 
 private:
     db_connection* db_connection_ptr_ = nullptr;

@@ -2,17 +2,20 @@
 
 #include "error/judge_error.hpp"
 #include "judge_core/gateway/testcase_source_facade.hpp"
+#include "judge_core/infrastructure/judge_runtime_registry.hpp"
 #include "judge_core/testcase_snapshot/testcase_snapshot.hpp"
 #include "judge_core/testcase_snapshot/testcase_store.hpp"
 
 #include <cstdint>
 #include <expected>
+#include <memory>
 
 class testcase_snapshot_acquirer{
 public:
     static std::expected<testcase_snapshot_acquirer, judge_error> create(
         testcase_source_facade testcase_source_facade_value,
-        testcase_store testcase_store_value
+        testcase_store testcase_store_value,
+        std::shared_ptr<judge_runtime_registry> judge_runtime_registry
     );
 
     testcase_snapshot_acquirer(testcase_snapshot_acquirer&& other) noexcept;
@@ -30,7 +33,8 @@ public:
 private:
     testcase_snapshot_acquirer(
         testcase_source_facade testcase_source_facade_value,
-        testcase_store testcase_store_value
+        testcase_store testcase_store_value,
+        std::shared_ptr<judge_runtime_registry> judge_runtime_registry
     );
 
     std::expected<void, judge_error> download_all(
@@ -44,4 +48,5 @@ private:
 
     testcase_source_facade testcase_source_facade_;
     testcase_store testcase_store_;
+    std::shared_ptr<judge_runtime_registry> judge_runtime_registry_;
 };

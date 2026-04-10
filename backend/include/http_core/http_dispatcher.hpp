@@ -2,6 +2,7 @@
 
 #include "common/db_connection_pool.hpp"
 #include "http_core/http_runtime_config.hpp"
+#include "http_core/http_runtime_status_provider.hpp"
 #include "http_core/request_context.hpp"
 #include "http_core/request_observer.hpp"
 #include "http_router/auth_router.hpp"
@@ -29,7 +30,8 @@ public:
     explicit http_dispatcher(
         db_connection_pool& db_connection_pool,
         std::optional<std::chrono::milliseconds> db_connection_acquire_timeout_opt,
-        request_observer* request_observer = nullptr
+        request_observer* request_observer = nullptr,
+        const http_runtime_status_provider* http_runtime_status_provider = nullptr
     );
     response_type handle(
         const request_type& request,
@@ -42,7 +44,12 @@ private:
         std::string_view path
     );
     static bool has_db_route_prefix(std::string_view path);
-    std::optional<response_type> try_handle_system_route(
+    static bool is_db_backed_system_route(std::string_view path);
+    std::optional<response_type> try_handle_public_system_route(
+        request_context& context,
+        std::string_view path
+    );
+    std::optional<response_type> try_handle_db_backed_system_route(
         request_context& context,
         std::string_view path
     );
@@ -60,5 +67,6 @@ private:
     db_connection_pool& db_connection_pool_;
     std::optional<std::chrono::milliseconds> db_connection_acquire_timeout_opt_;
     request_observer* request_observer_ = nullptr;
+    const http_runtime_status_provider* http_runtime_status_provider_ = nullptr;
     system_router system_router_;
 };

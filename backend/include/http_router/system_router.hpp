@@ -16,5 +16,6 @@ public:
     system_router(system_router&&) noexcept = delete;
     system_router& operator=(system_router&&) noexcept = delete;
 
+    response_type route_public(context_type& context, std::string_view path);
     response_type route(context_type& context, std::string_view path);
 };

@@ -47,20 +47,24 @@ namespace{
 std::expected<testcase_snapshot_acquirer, judge_error>
 testcase_snapshot_acquirer::create(
     testcase_source_facade testcase_source_facade_value,
-    testcase_store testcase_store_value
+    testcase_store testcase_store_value,
+    std::shared_ptr<judge_runtime_registry> judge_runtime_registry
 ){
     return testcase_snapshot_acquirer(
         std::move(testcase_source_facade_value),
-        std::move(testcase_store_value)
+        std::move(testcase_store_value),
+        std::move(judge_runtime_registry)
     );
 }
 
 testcase_snapshot_acquirer::testcase_snapshot_acquirer(
     testcase_source_facade testcase_source_facade_value,
-    testcase_store testcase_store_value
+    testcase_store testcase_store_value,
+    std::shared_ptr<judge_runtime_registry> judge_runtime_registry
 ) :
     testcase_source_facade_(std::move(testcase_source_facade_value)),
-    testcase_store_(std::move(testcase_store_value)){}
+    testcase_store_(std::move(testcase_store_value)),
+    judge_runtime_registry_(std::move(judge_runtime_registry)){}
 
 testcase_snapshot_acquirer::testcase_snapshot_acquirer(
     testcase_snapshot_acquirer&& other
@@ -163,7 +167,16 @@ testcase_snapshot_acquirer::acquire_testcase_snapshot(
         return std::unexpected(snapshot_exists_exp.error());
     }
 
-    if(!snapshot_exists_exp.value()){
+    if(snapshot_exists_exp.value()){
+        if(judge_runtime_registry_){
+            judge_runtime_registry_->record_snapshot_cache_hit();
+        }
+    }
+    else{
+        if(judge_runtime_registry_){
+            judge_runtime_registry_->record_snapshot_cache_miss();
+        }
+
         const auto manifest_exp = testcase_source_facade_.fetch_manifest(
             problem_id,
             problem_version

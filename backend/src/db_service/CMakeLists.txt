@@ -6,6 +6,7 @@ target_sources(lib
         problem_core_service.cpp
         problem_statistics_service.cpp
         submission_service.cpp
+        system_service.cpp
         testcase_service.cpp
         user_service.cpp
         user_statistics_service.cpp

@@ -17,6 +17,7 @@ struct http_runtime_config{
     std::optional<std::chrono::milliseconds> db_acquire_timeout_opt;
     std::optional<std::chrono::milliseconds> request_deadline_opt;
     std::optional<std::chrono::milliseconds> keep_alive_idle_timeout_opt;
+    std::chrono::milliseconds judge_heartbeat_stale_after{15000};
 
     static std::expected<http_runtime_config, infra_error> load(
         std::size_t default_http_worker_count

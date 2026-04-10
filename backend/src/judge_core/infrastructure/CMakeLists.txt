@@ -9,6 +9,7 @@ target_sources(lib
         program_executor.cpp
         nsjail_util.cpp
         sandbox_runner.cpp
+        judge_runtime_status_reporter.cpp
         submission_queue_source.cpp
         testcase_runner.cpp
 )

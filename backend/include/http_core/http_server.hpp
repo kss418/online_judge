@@ -5,6 +5,7 @@
 #include "error/http_server_error.hpp"
 #include "http_core/http_dispatcher.hpp"
 #include "http_core/http_runtime_config.hpp"
+#include "http_core/http_runtime_status_provider.hpp"
 #include "http_core/request_observer.hpp"
 
 #include <boost/beast/http/message.hpp>
@@ -59,5 +60,6 @@ private:
     db_connection_pool db_connection_pool_;
     std::unique_ptr<worker_pool> response_worker_pool_;
     logging_request_observer request_observer_;
+    http_runtime_status_provider http_runtime_status_provider_;
     http_dispatcher http_dispatcher_;
 };

@@ -133,6 +133,27 @@ CREATE TABLE IF NOT EXISTS submission_queue(
     CONSTRAINT submission_queue_attempt_no_check CHECK(attempt_no >= 0)
 );
 
+CREATE TABLE IF NOT EXISTS judge_instances(
+    instance_id TEXT PRIMARY KEY,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_heartbeat_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    configured_worker_count BIGINT NOT NULL DEFAULT 0,
+    busy_worker_count BIGINT NOT NULL DEFAULT 0,
+    snapshot_cache_hit_count BIGINT NOT NULL DEFAULT 0,
+    snapshot_cache_miss_count BIGINT NOT NULL DEFAULT 0,
+    last_sandbox_self_check_status TEXT,
+    last_sandbox_self_check_at TIMESTAMPTZ,
+    last_sandbox_self_check_message TEXT,
+    CONSTRAINT judge_instances_configured_worker_count_check
+        CHECK(configured_worker_count >= 0),
+    CONSTRAINT judge_instances_busy_worker_count_check
+        CHECK(busy_worker_count >= 0),
+    CONSTRAINT judge_instances_snapshot_cache_hit_count_check
+        CHECK(snapshot_cache_hit_count >= 0),
+    CONSTRAINT judge_instances_snapshot_cache_miss_count_check
+        CHECK(snapshot_cache_miss_count >= 0)
+);
+
 ALTER TABLE submissions
     ADD COLUMN IF NOT EXISTS problem_version INTEGER;
 
@@ -204,8 +225,14 @@ CREATE INDEX IF NOT EXISTS submission_queue_available_priority_created_idx
 CREATE INDEX IF NOT EXISTS submission_queue_leased_until_idx
     ON submission_queue(leased_until);
 
+CREATE INDEX IF NOT EXISTS judge_instances_last_heartbeat_idx
+    ON judge_instances(last_heartbeat_at DESC);
+
+CREATE INDEX IF NOT EXISTS judge_instances_last_self_check_idx
+    ON judge_instances(last_sandbox_self_check_at DESC);
+
 INSERT INTO schema_migrations(version)
-VALUES('submission_schema_v7')
+VALUES('submission_schema_v8')
 ON CONFLICT(version) DO NOTHING;
 
 COMMIT;

@@ -30,11 +30,13 @@ namespace{
 http_dispatcher::http_dispatcher(
     db_connection_pool& db_connection_pool,
     std::optional<std::chrono::milliseconds> db_connection_acquire_timeout_opt,
-    request_observer* request_observer
+    request_observer* request_observer,
+    const http_runtime_status_provider* http_runtime_status_provider
 ) :
     db_connection_pool_(db_connection_pool),
     db_connection_acquire_timeout_opt_(db_connection_acquire_timeout_opt),
     request_observer_(request_observer),
+    http_runtime_status_provider_(http_runtime_status_provider),
     system_router_(){}
 
 std::optional<std::string_view> http_dispatcher::strip_path_prefix(
@@ -55,18 +57,37 @@ std::optional<std::string_view> http_dispatcher::strip_path_prefix(
 
 bool http_dispatcher::has_db_route_prefix(std::string_view path){
     return
+        is_db_backed_system_route(path) ||
         strip_path_prefix(auth_path_prefix_, path).has_value() ||
         strip_path_prefix(submission_path_prefix_, path).has_value() ||
         strip_path_prefix(problem_path_prefix_, path).has_value() ||
         strip_path_prefix(user_path_prefix_, path).has_value();
 }
 
-std::optional<http_dispatcher::response_type> http_dispatcher::try_handle_system_route(
+bool http_dispatcher::is_db_backed_system_route(std::string_view path){
+    const auto system_path_opt = strip_path_prefix(system_path_prefix_, path);
+    return system_path_opt.has_value() && *system_path_opt == "/status";
+}
+
+std::optional<http_dispatcher::response_type> http_dispatcher::try_handle_public_system_route(
     request_context& context,
     std::string_view path
 ){
     const auto system_path_opt = strip_path_prefix(system_path_prefix_, path);
-    if(system_path_opt){
+    if(system_path_opt && *system_path_opt != "/status"){
+        return system_router_.route_public(context, *system_path_opt);
+    }
+
+    return std::nullopt;
+}
+
+std::optional<http_dispatcher::response_type>
+http_dispatcher::try_handle_db_backed_system_route(
+    request_context& context,
+    std::string_view path
+){
+    const auto system_path_opt = strip_path_prefix(system_path_prefix_, path);
+    if(system_path_opt && *system_path_opt == "/status"){
         return system_router_.route(context, *system_path_opt);
     }
 
@@ -114,9 +135,14 @@ http_dispatcher::response_type http_dispatcher::handle(
         request.target().size()
     };
     const auto path = request_parser::get_target_path(target);
-    request_context context(request, request_id, request_observer_);
+    request_context context(
+        request,
+        request_id,
+        request_observer_,
+        http_runtime_status_provider_
+    );
 
-    const auto system_response_opt = try_handle_system_route(context, path);
+    const auto system_response_opt = try_handle_public_system_route(context, path);
     if(system_response_opt.has_value()){
         return finalize_response(
             context,
@@ -163,8 +189,21 @@ http_dispatcher::response_type http_dispatcher::handle(
         request,
         std::move(*db_connection_lease_exp),
         request_id,
-        request_observer_
+        request_observer_,
+        http_runtime_status_provider_
     );
+    const auto db_system_response_opt = try_handle_db_backed_system_route(
+        db_context,
+        path
+    );
+    if(db_system_response_opt.has_value()){
+        return finalize_response(
+            db_context,
+            std::move(db_system_response_opt.value()),
+            started_at
+        );
+    }
+
     const auto response_opt = try_handle_route(db_context, path);
     if(response_opt.has_value()){
         return finalize_response(

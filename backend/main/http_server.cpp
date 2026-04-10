@@ -97,6 +97,10 @@ int main(){
             runtime_config.keep_alive_idle_timeout_opt.has_value()
                 ? runtime_config.keep_alive_idle_timeout_opt->count()
                 : 0
+        )
+        .field(
+            "judge_heartbeat_stale_after_ms",
+            runtime_config.judge_heartbeat_stale_after.count()
         );
 
     std::vector<std::thread> worker_threads;

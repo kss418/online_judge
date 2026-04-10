@@ -18,9 +18,12 @@ namespace{
     inline constexpr std::array supported_languages_pattern{
         path_segment_matcher::literal("supported-languages")
     };
+    inline constexpr std::array status_pattern{
+        path_segment_matcher::literal("status")
+    };
 }
 
-system_router::response_type system_router::route(
+system_router::response_type system_router::route_public(
     context_type& context,
     std::string_view path
 ){
@@ -43,6 +46,50 @@ system_router::response_type system_router::route(
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
                 return system_query_handler::get_supported_languages(context_value);
+            }
+        }
+    }};
+
+    return http_route::dispatch_route_table(
+        context,
+        path,
+        system_route_table
+    );
+}
+
+system_router::response_type system_router::route(
+    context_type& context,
+    std::string_view path
+){
+    static const std::array<endpoint_descriptor, 3> system_route_table{{
+        endpoint_descriptor{
+            .name = "get_health",
+            .method = http_verb::get,
+            .kind = http_route::operation_kind::query,
+            .pattern = health_pattern,
+            .invoke = [](context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return system_query_handler::get_health(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_supported_languages",
+            .method = http_verb::get,
+            .kind = http_route::operation_kind::query,
+            .pattern = supported_languages_pattern,
+            .invoke = [](context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return system_query_handler::get_supported_languages(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_status",
+            .method = http_verb::get,
+            .kind = http_route::operation_kind::query,
+            .pattern = status_pattern,
+            .invoke = [](context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return system_query_handler::get_status(context_value);
             }
         }
     }};

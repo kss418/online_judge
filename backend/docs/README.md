@@ -21,6 +21,11 @@
   `JUDGE_NSJAIL_PATH` / `JUDGE_JAVA_COMPILER_PATH` environment variables.
 - `JUDGE_WORKER_COUNT` is optional. If omitted, `judge_server` starts one
   worker thread per detected hardware thread.
+- `JUDGE_HEARTBEAT_INTERVAL_MS` is optional. Default is `5000`; it controls
+  how often `judge_server` publishes runtime status into `judge_instances`.
+- `JUDGE_HEARTBEAT_STALE_AFTER_MS` is optional. Default is `15000`; HTTP
+  treats judge rows older than this as non-live when aggregating
+  `/api/system/status`.
 - PostgreSQL profiling helpers for `pg_stat_statements`, `log_lock_waits`, and
   `deadlock_timeout` are documented in
   [`db_performance_debugging.md`](./db_performance_debugging.md).

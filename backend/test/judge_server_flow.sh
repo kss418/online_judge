@@ -126,6 +126,7 @@ problem_response_file="$(mktemp)"
 authenticated_problem_response_file="$(mktemp)"
 submission_source_response_file="$(mktemp)"
 submission_history_response_file="$(mktemp)"
+system_status_response_file="$(mktemp)"
 
 cleanup_judge_server(){
     if [[ -n "${judge_server_pid:-}" ]]; then
@@ -160,7 +161,8 @@ cleanup(){
         "${problem_response_file}" \
         "${authenticated_problem_response_file}" \
         "${submission_source_response_file}" \
-        "${submission_history_response_file}"
+        "${submission_history_response_file}" \
+        "${system_status_response_file}"
 }
 
 print_success_log(){
@@ -356,6 +358,144 @@ create_legacy_testcase_cache_directory(){
     printf '1 2\n' >"${version_directory_path}/001.in"
     printf '999\n' >"${version_directory_path}/001.out"
     printf 'legacy cache without manifest\n' >"${version_directory_path}/legacy.txt"
+}
+
+wait_for_live_system_status(){
+    local auth_token="$1"
+    local response_file_path="$2"
+    local attempt=0
+
+    while (( attempt < 120 )); do
+        local status_code=""
+        status_code="$(
+            send_http_request \
+                "GET" \
+                "${base_url}/api/system/status" \
+                "${response_file_path}" \
+                "${auth_token}"
+        )"
+        if [[ "${status_code}" != "200" ]]; then
+            append_log_line "${test_log_temp_file}" "system status poll failed: status=${status_code}"
+            publish_all_failure_logs
+            echo "system status poll failed: expected status 200, got ${status_code}" >&2
+            cat "${response_file_path}" >&2
+            exit 1
+        fi
+
+        local live_instance_count
+        local configured_worker_count
+        local self_check_status
+        live_instance_count="$(read_json_field "${response_file_path}" "judge.live_instance_count" "int")"
+        configured_worker_count="$(read_json_field "${response_file_path}" "judge.configured_worker_count" "int")"
+        self_check_status="$(read_json_field "${response_file_path}" "judge.last_sandbox_self_check.status" "string")"
+
+        append_log_line "${test_log_temp_file}" "system status poll: attempt=${attempt}, live_instance_count=${live_instance_count}, configured_worker_count=${configured_worker_count}, self_check_status=${self_check_status}"
+
+        if (( live_instance_count >= 1 )) && (( configured_worker_count == 1 )) && [[ "${self_check_status}" == "passed" ]]; then
+            return 0
+        fi
+
+        sleep 0.1
+        attempt=$((attempt + 1))
+    done
+
+    append_log_line "${test_log_temp_file}" "system status live poll timeout"
+    publish_all_failure_logs
+    echo "timed out waiting for live system status" >&2
+    cat "${response_file_path}" >&2
+    exit 1
+}
+
+wait_for_active_judge_workers(){
+    local auth_token="$1"
+    local response_file_path="$2"
+    local expected_active_worker_count="$3"
+    local minimum_queue_depth="$4"
+    local attempt=0
+
+    while (( attempt < 120 )); do
+        local status_code=""
+        status_code="$(
+            send_http_request \
+                "GET" \
+                "${base_url}/api/system/status" \
+                "${response_file_path}" \
+                "${auth_token}"
+        )"
+        if [[ "${status_code}" != "200" ]]; then
+            append_log_line "${test_log_temp_file}" "active worker status poll failed: status=${status_code}"
+            publish_all_failure_logs
+            echo "active worker status poll failed: expected status 200, got ${status_code}" >&2
+            cat "${response_file_path}" >&2
+            exit 1
+        fi
+
+        local active_worker_count
+        local queue_depth
+        active_worker_count="$(read_json_field "${response_file_path}" "judge.active_worker_count" "int")"
+        queue_depth="$(read_json_field "${response_file_path}" "judge.queue_depth" "int")"
+
+        append_log_line "${test_log_temp_file}" "active worker poll: attempt=${attempt}, active_worker_count=${active_worker_count}, queue_depth=${queue_depth}"
+
+        if (( active_worker_count == expected_active_worker_count )) && (( queue_depth >= minimum_queue_depth )); then
+            return 0
+        fi
+
+        sleep 0.05
+        attempt=$((attempt + 1))
+    done
+
+    append_log_line "${test_log_temp_file}" "active worker poll timeout"
+    publish_all_failure_logs
+    echo "timed out waiting for active judge worker status" >&2
+    cat "${response_file_path}" >&2
+    exit 1
+}
+
+wait_for_snapshot_cache_counts(){
+    local auth_token="$1"
+    local response_file_path="$2"
+    local expected_hit_count="$3"
+    local expected_miss_count="$4"
+    local attempt=0
+
+    while (( attempt < 120 )); do
+        local status_code=""
+        status_code="$(
+            send_http_request \
+                "GET" \
+                "${base_url}/api/system/status" \
+                "${response_file_path}" \
+                "${auth_token}"
+        )"
+        if [[ "${status_code}" != "200" ]]; then
+            append_log_line "${test_log_temp_file}" "snapshot cache status poll failed: status=${status_code}"
+            publish_all_failure_logs
+            echo "snapshot cache status poll failed: expected status 200, got ${status_code}" >&2
+            cat "${response_file_path}" >&2
+            exit 1
+        fi
+
+        local hit_count
+        local miss_count
+        hit_count="$(read_json_field "${response_file_path}" "judge.snapshot_cache.hit_count" "int")"
+        miss_count="$(read_json_field "${response_file_path}" "judge.snapshot_cache.miss_count" "int")"
+
+        append_log_line "${test_log_temp_file}" "snapshot cache poll: attempt=${attempt}, hit_count=${hit_count}, miss_count=${miss_count}"
+
+        if (( hit_count == expected_hit_count )) && (( miss_count == expected_miss_count )); then
+            return 0
+        fi
+
+        sleep 0.1
+        attempt=$((attempt + 1))
+    done
+
+    append_log_line "${test_log_temp_file}" "snapshot cache poll timeout"
+    publish_all_failure_logs
+    echo "timed out waiting for snapshot cache counts" >&2
+    cat "${response_file_path}" >&2
+    exit 1
 }
 
 wait_for_submission_final_status(){
@@ -699,6 +839,9 @@ create_test_database
 test_database_url="postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${test_db_name}"
 export DB_NAME="${test_db_name}"
 export HTTP_PORT="${http_port}"
+export JUDGE_WORKER_COUNT="${JUDGE_SERVER_FLOW_TEST_WORKER_COUNT:-1}"
+export JUDGE_HEARTBEAT_INTERVAL_MS="${JUDGE_SERVER_FLOW_TEST_HEARTBEAT_INTERVAL_MS:-200}"
+export JUDGE_HEARTBEAT_STALE_AFTER_MS="${JUDGE_SERVER_FLOW_TEST_HEARTBEAT_STALE_AFTER_MS:-2000}"
 export WORKER_ID="judge_server_flow_$$"
 export MAX_CONCURRENT_JOBS="${MAX_CONCURRENT_JOBS:-1}"
 export JUDGE_SOURCE_ROOT="${judge_source_root}"
@@ -781,6 +924,8 @@ print_success_log "legacy testcase cache setup success"
 
 ensure_judge_server
 print_success_log "judge server start success"
+wait_for_live_system_status "${sign_up_token}" "${system_status_response_file}"
+print_success_log "judge system status live validation success"
 
 accepted_submission_request_body="$(
     make_submission_request_body "cpp" "${accepted_source_code}"
@@ -815,31 +960,6 @@ PY
 )"
 
 append_log_line "${test_log_temp_file}" "accepted submission created: submission_id=${accepted_submission_id}"
-wait_for_submission_final_status \
-    "${accepted_submission_id}" \
-    "accepted" \
-    "${accepted_submission_detail_response_file}"
-validate_submission_detail \
-    "${accepted_submission_detail_response_file}" \
-    "${accepted_submission_id}" \
-    "${sign_up_user_id}" \
-    "${problem_id}" \
-    "cpp" \
-    "accepted" \
-    "100" \
-    "null" \
-    "null" \
-    "non_negative_int" \
-    "non_negative_int"
-validate_submission_status_history "${accepted_submission_id}" "accepted"
-print_success_log "accepted submission judged successfully"
-validate_testcase_cache_layout \
-    "${problem_id}" \
-    "3" \
-    "1" \
-    "${problem_memory_limit_mb}" \
-    "${problem_time_limit_ms}"
-print_success_log "testcase version directory manifest validated"
 
 python_accepted_submission_request_body="$(
     make_submission_request_body "python" "${python_accepted_source_code}"
@@ -874,6 +994,37 @@ PY
 )"
 
 append_log_line "${test_log_temp_file}" "python accepted submission created: submission_id=${python_accepted_submission_id}"
+wait_for_active_judge_workers \
+    "${sign_up_token}" \
+    "${system_status_response_file}" \
+    "1" \
+    "1"
+print_success_log "judge system status active worker validation success"
+wait_for_submission_final_status \
+    "${accepted_submission_id}" \
+    "accepted" \
+    "${accepted_submission_detail_response_file}"
+validate_submission_detail \
+    "${accepted_submission_detail_response_file}" \
+    "${accepted_submission_id}" \
+    "${sign_up_user_id}" \
+    "${problem_id}" \
+    "cpp" \
+    "accepted" \
+    "100" \
+    "null" \
+    "null" \
+    "non_negative_int" \
+    "non_negative_int"
+validate_submission_status_history "${accepted_submission_id}" "accepted"
+print_success_log "accepted submission judged successfully"
+validate_testcase_cache_layout \
+    "${problem_id}" \
+    "3" \
+    "1" \
+    "${problem_memory_limit_mb}" \
+    "${problem_time_limit_ms}"
+print_success_log "testcase version directory manifest validated"
 wait_for_submission_final_status \
     "${python_accepted_submission_id}" \
     "accepted" \
@@ -892,6 +1043,12 @@ validate_submission_detail \
     "non_negative_int"
 validate_submission_status_history "${python_accepted_submission_id}" "accepted"
 print_success_log "python accepted submission judged successfully"
+wait_for_snapshot_cache_counts \
+    "${sign_up_token}" \
+    "${system_status_response_file}" \
+    "1" \
+    "1"
+print_success_log "judge snapshot cache metrics validated"
 
 if [[ "${run_java_submission}" == "1" ]]; then
     java_accepted_submission_request_body="$(

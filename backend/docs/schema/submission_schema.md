@@ -90,6 +90,26 @@ Indexes:
 - `submission_queue_available_priority_created_idx (available_at, priority desc, created_at asc)`
 - `submission_queue_leased_until_idx (leased_until)`
 
+### `judge_instances`
+
+| column | type | nullable | default | note |
+|---|---|---|---|---|
+| `instance_id` | `text` | no | | pk, per-process judge runtime row |
+| `started_at` | `timestamptz` | no | `now()` | judge process start timestamp |
+| `last_heartbeat_at` | `timestamptz` | no | `now()` | last runtime heartbeat written by the judge process |
+| `configured_worker_count` | `bigint` | no | `0` | configured worker count, `>= 0` |
+| `busy_worker_count` | `bigint` | no | `0` | currently busy worker count, `>= 0` |
+| `snapshot_cache_hit_count` | `bigint` | no | `0` | cumulative snapshot cache hit count, `>= 0` |
+| `snapshot_cache_miss_count` | `bigint` | no | `0` | cumulative snapshot cache miss count, `>= 0` |
+| `last_sandbox_self_check_status` | `text` | yes | | latest reported startup self-check status |
+| `last_sandbox_self_check_at` | `timestamptz` | yes | | timestamp of latest reported self-check |
+| `last_sandbox_self_check_message` | `text` | yes | | failure detail or informational note |
+
+Indexes:
+
+- `judge_instances_last_heartbeat_idx (last_heartbeat_at desc)`
+- `judge_instances_last_self_check_idx (last_sandbox_self_check_at desc)`
+
 ## cross-schema relation
 
 - `submissions.user_id -> users.user_id`
@@ -101,6 +121,8 @@ Indexes:
 - Basic rejudge re-enqueues the same submission and preserves `submissions.problem_version`, so it re-evaluates the original published problem version.
 - HTTP create/rejudge success responses should expose this same pinned `problem_version` value.
 - Rejudging against the latest problem version should be implemented as a separate admin workflow rather than mutating the existing submission.
+- `/api/system/status` combines `submission_queue` depth with aggregate
+  `judge_instances` heartbeats for operational visibility.
 
 ## internal build outcome model
 

@@ -77,6 +77,14 @@ public:
             return std::unexpected(pool_error::internal);
         }
     }
+
+    std::size_t queued_task_count() const noexcept{
+        return queued_task_count_.load(std::memory_order_relaxed);
+    }
+
+    std::optional<std::size_t> queue_limit_opt() const noexcept{
+        return queue_limit_opt_;
+    }
 private:
     explicit worker_pool(
         std::size_t worker_count,

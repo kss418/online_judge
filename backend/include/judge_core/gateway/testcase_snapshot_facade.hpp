@@ -2,6 +2,7 @@
 
 #include "common/db_connection.hpp"
 #include "error/judge_error.hpp"
+#include "judge_core/infrastructure/judge_runtime_registry.hpp"
 #include "judge_core/infrastructure/problem_lock_registry.hpp"
 #include "judge_core/testcase_snapshot/testcase_snapshot.hpp"
 #include "judge_core/testcase_snapshot/testcase_snapshot_acquirer.hpp"
@@ -17,7 +18,8 @@ public:
     static std::expected<testcase_snapshot_facade, judge_error> create(
         const db_connection_config& db_config,
         std::filesystem::path testcase_root_path,
-        std::shared_ptr<problem_lock_registry> problem_lock_registry
+        std::shared_ptr<problem_lock_registry> problem_lock_registry,
+        std::shared_ptr<judge_runtime_registry> judge_runtime_registry
     );
 
     testcase_snapshot_facade(testcase_snapshot_facade&& other) noexcept;
