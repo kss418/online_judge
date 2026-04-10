@@ -133,15 +133,13 @@ namespace{
     }
 }
 
-boost::json::object submission_json_serializer::make_created_object(
-    const submission_dto::created& created_value
+boost::json::object submission_json_serializer::make_queued_response_object(
+    const submission_dto::queued_response& queued_response_value
 ){
     boost::json::object response_object;
-    response_object["submission_id"] = created_value.submission_id;
-    response_object["status"] = created_value.status;
-    if(created_value.problem_version_opt){
-        response_object["problem_version"] = *created_value.problem_version_opt;
-    }
+    response_object["submission_id"] = queued_response_value.submission_id;
+    response_object["status"] = queued_response_value.status;
+    response_object["problem_version"] = queued_response_value.problem_version;
     return response_object;
 }
 

@@ -25,7 +25,7 @@ bool create_submission_action::error::is_submission_banned() const{
     return kind_value == kind::submission_banned;
 }
 
-std::expected<submission_dto::created, create_submission_action::error>
+std::expected<submission_dto::queued_response, create_submission_action::error>
 create_submission_action::execute(
     db_connection& connection,
     const command& command_value

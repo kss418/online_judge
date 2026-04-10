@@ -298,13 +298,15 @@ Requeue a finished submission for judging again. This endpoint requires an admin
 |---|---|---|
 | `submission_id` | `int64` | requeued submission id |
 | `status` | `string` | reset status, currently `queued` |
+| `problem_version` | `int32` | pinned problem version already stored on the submission row |
 
 Example:
 
 ```json
 {
   "submission_id": 12,
-  "status": "queued"
+  "status": "queued",
+  "problem_version": 4
 }
 ```
 

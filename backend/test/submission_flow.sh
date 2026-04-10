@@ -815,6 +815,9 @@ if rejudge_response.get("submission_id") != expected_submission_id:
 if rejudge_response.get("status") != "queued":
     raise SystemExit("expected rejudge response status to be queued")
 
+if rejudge_response.get("problem_version") != 1:
+    raise SystemExit("expected rejudge response problem_version to remain pinned at 1")
+
 if detail_response.get("submission_id") != expected_submission_id:
     raise SystemExit("submission_id mismatch in rejudge detail response")
 
@@ -865,6 +868,10 @@ SELECT priority
 FROM submission_queue
 WHERE submission_id = :'submission_id';
 
+SELECT problem_version
+FROM submissions
+WHERE submission_id = :'submission_id';
+
 SELECT accepted_submission_count, failed_submission_count
 FROM user_problem_attempt_summary
 WHERE
@@ -873,10 +880,10 @@ WHERE
 SQL
 )
 
-if [[ "${#rejudge_db_values[@]}" -ne 4 ]]; then
+if [[ "${#rejudge_db_values[@]}" -ne 5 ]]; then
     append_log_line "${test_log_temp_file}" "rejudge db validation failed: unexpected row count"
     publish_failure_logs
-    echo "rejudge db validation failed: expected 4 rows, got ${#rejudge_db_values[@]}" >&2
+    echo "rejudge db validation failed: expected 5 rows, got ${#rejudge_db_values[@]}" >&2
     exit 1
 fi
 
@@ -901,10 +908,17 @@ if [[ "${rejudge_db_values[2]}" != "0" ]]; then
     exit 1
 fi
 
-if [[ "${rejudge_db_values[3]}" != "0|0" ]]; then
-    append_log_line "${test_log_temp_file}" "rejudge db validation failed: summary_counts=${rejudge_db_values[3]}"
+if [[ "${rejudge_db_values[3]}" != "1" ]]; then
+    append_log_line "${test_log_temp_file}" "rejudge db validation failed: problem_version=${rejudge_db_values[3]}"
     publish_failure_logs
-    echo "rejudge db validation failed: expected summary counts 0|0, got ${rejudge_db_values[3]}" >&2
+    echo "rejudge db validation failed: expected pinned problem_version 1, got ${rejudge_db_values[3]}" >&2
+    exit 1
+fi
+
+if [[ "${rejudge_db_values[4]}" != "0|0" ]]; then
+    append_log_line "${test_log_temp_file}" "rejudge db validation failed: summary_counts=${rejudge_db_values[4]}"
+    publish_failure_logs
+    echo "rejudge db validation failed: expected summary counts 0|0, got ${rejudge_db_values[4]}" >&2
     exit 1
 fi
 

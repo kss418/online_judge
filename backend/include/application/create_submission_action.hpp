@@ -24,7 +24,7 @@ namespace create_submission_action{
         bool is_submission_banned() const;
     };
 
-    std::expected<submission_dto::created, error> execute(
+    std::expected<submission_dto::queued_response, error> execute(
         db_connection& connection,
         const command& command_value
     );

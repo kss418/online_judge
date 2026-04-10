@@ -34,16 +34,16 @@ bool submission_dto::is_valid(const finalize_request& finalize_request_value){
         !finalize_request_value.lease_token.empty();
 }
 
-submission_dto::created submission_dto::make_created(
+submission_dto::queued_response submission_dto::make_queued_response(
     std::int64_t submission_id,
     submission_status submission_status_value,
-    std::optional<std::int32_t> problem_version_opt
+    std::int32_t problem_version
 ){
-    created created_value;
-    created_value.submission_id = submission_id;
-    created_value.status = to_string(submission_status_value);
-    created_value.problem_version_opt = std::move(problem_version_opt);
-    return created_value;
+    queued_response queued_response_value;
+    queued_response_value.submission_id = submission_id;
+    queued_response_value.status = to_string(submission_status_value);
+    queued_response_value.problem_version = problem_version;
+    return queued_response_value;
 }
 
 std::optional<submission_status> submission_dto::make_submission_status(

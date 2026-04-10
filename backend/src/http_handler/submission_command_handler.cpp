@@ -1,7 +1,6 @@
 #include "http_handler/submission_command_handler.hpp"
 
 #include "application/create_submission_action.hpp"
-#include "common/submission_status.hpp"
 #include "db_service/submission_service.hpp"
 #include "dto/submission_dto.hpp"
 #include "error/submission_error.hpp"
@@ -50,7 +49,7 @@ submission_command_handler::response_type submission_command_handler::post_submi
                 context_value.request,
                 std::move(create_submission_exp),
                 create_submission_error_response,
-                submission_json_serializer::make_created_object,
+                submission_json_serializer::make_queued_response_object,
                 boost::beast::http::status::created
             );
         },
@@ -72,12 +71,7 @@ submission_command_handler::response_type submission_command_handler::post_submi
                     context_value.db_connection_ref(),
                     submission_id
                 ),
-                [submission_id]{
-                    submission_dto::created created_value;
-                    created_value.submission_id = submission_id;
-                    created_value.status = to_string(submission_status::queued);
-                    return submission_json_serializer::make_created_object(created_value);
-                }
+                submission_json_serializer::make_queued_response_object
             );
         },
         auth_guard::make_admin_guard()

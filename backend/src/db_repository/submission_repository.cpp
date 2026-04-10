@@ -31,6 +31,7 @@ namespace{
             "SELECT "
             "submission_table.user_id, "
             "submission_table.problem_id, "
+            "submission_table.problem_version, "
             "submission_table.status::text "
             "FROM submissions submission_table "
             "JOIN submission_queue queue_table "
@@ -55,7 +56,7 @@ namespace{
 
         const auto submission_status_exp = submission_row_mapper::map_submission_status_row(
             submission_result[0],
-            2
+            3
         );
         if(!submission_status_exp){
             return std::unexpected(submission_status_exp.error());
@@ -64,6 +65,7 @@ namespace{
         submission_repository::locked_submission_context context_value;
         context_value.user_id = submission_result[0][0].as<std::int64_t>();
         context_value.problem_id = submission_result[0][1].as<std::int64_t>();
+        context_value.problem_version = submission_result[0][2].as<std::int32_t>();
         context_value.status = *submission_status_exp;
         return context_value;
     }
@@ -79,7 +81,7 @@ submission_repository::get_locked_submission_context(
     }
 
     const auto submission_result = transaction.exec(
-        "SELECT user_id, problem_id, status::text "
+        "SELECT user_id, problem_id, problem_version, status::text "
         "FROM submissions "
         "WHERE submission_id = $1 "
         "FOR UPDATE",
@@ -91,7 +93,7 @@ submission_repository::get_locked_submission_context(
 
     const auto submission_status_exp = submission_row_mapper::map_submission_status_row(
         submission_result[0],
-        2
+        3
     );
     if(!submission_status_exp){
         return std::unexpected(submission_status_exp.error());
@@ -100,6 +102,7 @@ submission_repository::get_locked_submission_context(
     locked_submission_context context_value;
     context_value.user_id = submission_result[0][0].as<std::int64_t>();
     context_value.problem_id = submission_result[0][1].as<std::int64_t>();
+    context_value.problem_version = submission_result[0][2].as<std::int32_t>();
     context_value.status = *submission_status_exp;
     return context_value;
 }
@@ -317,7 +320,7 @@ std::expected<submission_status, repository_error> submission_repository::get_su
     );
 }
 
-std::expected<submission_dto::created, repository_error> submission_repository::create_submission(
+std::expected<submission_dto::queued_response, repository_error> submission_repository::create_submission(
     pqxx::transaction_base& transaction,
     const submission_dto::create_request& create_request_value
 ){
@@ -356,7 +359,7 @@ std::expected<submission_dto::created, repository_error> submission_repository::
         pqxx::params{submission_id, to_string(submission_status::queued)}
     );
 
-    return submission_dto::make_created(
+    return submission_dto::make_queued_response(
         submission_id,
         submission_status::queued,
         problem_version
@@ -460,7 +463,7 @@ std::expected<void, repository_error> submission_repository::clear_submission_re
     return {};
 }
 
-std::expected<void, repository_error> submission_repository::rejudge_submission(
+std::expected<submission_dto::queued_response, repository_error> submission_repository::rejudge_submission(
     pqxx::transaction_base& transaction,
     std::int64_t submission_id
 ){
@@ -535,7 +538,11 @@ std::expected<void, repository_error> submission_repository::rejudge_submission(
         return std::unexpected(enqueue_submission_exp.error());
     }
 
-    return {};
+    return submission_dto::make_queued_response(
+        submission_id,
+        submission_status::queued,
+        locked_submission_exp->problem_version
+    );
 }
 
 std::expected<std::optional<submission_dto::leased_submission>, repository_error>

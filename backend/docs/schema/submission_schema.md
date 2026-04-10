@@ -99,6 +99,7 @@ Indexes:
 
 - Judge workers lease ownership from `submission_queue`, but the pinned evaluation target is always read from `submissions.problem_version`.
 - Basic rejudge re-enqueues the same submission and preserves `submissions.problem_version`, so it re-evaluates the original published problem version.
+- HTTP create/rejudge success responses should expose this same pinned `problem_version` value.
 - Rejudging against the latest problem version should be implemented as a separate admin workflow rather than mutating the existing submission.
 
 ## internal build outcome model

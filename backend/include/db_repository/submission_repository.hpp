@@ -18,6 +18,7 @@ namespace submission_repository{
     struct locked_submission_context{
         std::int64_t user_id = 0;
         std::int64_t problem_id = 0;
+        std::int32_t problem_version = 0;
         submission_status status = submission_status::queued;
     };
 
@@ -63,7 +64,7 @@ namespace submission_repository{
         const std::optional<std::string>& reason_opt
     );
 
-    std::expected<submission_dto::created, repository_error> create_submission(
+    std::expected<submission_dto::queued_response, repository_error> create_submission(
         pqxx::transaction_base& transaction,
         const submission_dto::create_request& create_request_value
     );
@@ -84,7 +85,7 @@ namespace submission_repository{
         std::int64_t submission_id
     );
 
-    std::expected<void, repository_error> rejudge_submission(
+    std::expected<submission_dto::queued_response, repository_error> rejudge_submission(
         pqxx::transaction_base& transaction,
         std::int64_t submission_id
     );

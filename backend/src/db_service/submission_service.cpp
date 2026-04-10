@@ -144,7 +144,7 @@ submission_service::get_wa_or_ac_submissions(
     );
 }
 
-std::expected<submission_dto::created, service_error> submission_service::create_submission(
+std::expected<submission_dto::queued_response, service_error> submission_service::create_submission(
     db_connection& connection,
     const submission_dto::create_request& create_request_value
 ){
@@ -153,7 +153,7 @@ std::expected<submission_dto::created, service_error> submission_service::create
     return db_service_util::with_retry_service_write_transaction(
         connection,
         [&](pqxx::work& transaction)
-            -> std::expected<submission_dto::created, service_error> {
+            -> std::expected<submission_dto::queued_response, service_error> {
             const auto active_submission_ban_exp =
                 user_repository::get_active_submission_banned_until(
                     transaction,
@@ -229,13 +229,14 @@ std::expected<void, service_error> submission_service::mark_judging(
     );
 }
 
-std::expected<void, service_error> submission_service::rejudge(
+std::expected<submission_dto::queued_response, service_error> submission_service::rejudge(
     db_connection& connection,
     std::int64_t submission_id
 ){
     return db_service_util::with_retry_service_write_transaction(
         connection,
-        [&](pqxx::work& transaction) -> std::expected<void, service_error> {
+        [&](pqxx::work& transaction)
+            -> std::expected<submission_dto::queued_response, service_error> {
             return submission_repository::rejudge_submission(
                 transaction,
                 submission_id

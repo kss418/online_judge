@@ -1,6 +1,16 @@
 import { requestJson } from '@/api/http'
 import { normalizeProblemStateRecords } from '@/utils/problemState'
 
+function normalizeQueuedSubmissionResponse(response){
+  return {
+    ...response,
+    submission_id: Number(response.submission_id ?? 0),
+    problem_version: Number.isInteger(Number(response.problem_version))
+      ? Number(response.problem_version)
+      : null
+  }
+}
+
 export async function getSubmissionList(options = {}){
   const { bearerToken = '' } = options
   const searchParams = new URLSearchParams()
@@ -105,7 +115,7 @@ export function rejudgeSubmission(submissionId, token){
   return requestJson(`/submission/${submissionId}/rejudge`, {
     method: 'POST',
     bearerToken: token
-  })
+  }).then(normalizeQueuedSubmissionResponse)
 }
 
 export function createSubmission(problemId, payload, token){
@@ -113,11 +123,5 @@ export function createSubmission(problemId, payload, token){
     method: 'POST',
     body: payload,
     bearerToken: token
-  }).then((response) => ({
-    ...response,
-    submission_id: Number(response.submission_id ?? 0),
-    problem_version: Number.isInteger(Number(response.problem_version))
-      ? Number(response.problem_version)
-      : null
-  }))
+  }).then(normalizeQueuedSubmissionResponse)
 }

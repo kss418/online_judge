@@ -9,8 +9,8 @@
 #include <vector>
 
 namespace submission_json_serializer{
-    boost::json::object make_created_object(
-        const submission_dto::created& created_value
+    boost::json::object make_queued_response_object(
+        const submission_dto::queued_response& queued_response_value
     );
 
     boost::json::object make_history_list_object(

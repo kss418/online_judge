@@ -34,7 +34,7 @@ namespace submission_service{
         db_connection& connection,
         std::int64_t problem_id
     );
-    std::expected<submission_dto::created, service_error> create_submission(
+    std::expected<submission_dto::queued_response, service_error> create_submission(
         db_connection& connection,
         const submission_dto::create_request& create_request_value
     );
@@ -47,7 +47,7 @@ namespace submission_service{
         db_connection& connection,
         const submission_dto::leased_submission& leased_submission_value
     );
-    std::expected<void, service_error> rejudge(
+    std::expected<submission_dto::queued_response, service_error> rejudge(
         db_connection& connection,
         std::int64_t submission_id
     );
