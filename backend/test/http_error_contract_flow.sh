@@ -406,6 +406,7 @@ auth_contract_cases="$(cat <<EOF
 invalid credentials login|POST|${base_url}/api/auth/login||${invalid_login_request_body}|401|invalid_credentials|invalid credentials|
 invalid token renew|POST|${base_url}/api/auth/token/renew|${invalid_token}||401|invalid_or_expired_token|invalid, expired, or revoked token|
 invalid token logout|POST|${base_url}/api/auth/logout|${invalid_token}||401|invalid_or_expired_token|invalid, expired, or revoked token|
+auth sign-up method not allowed|GET|${base_url}/api/auth/sign-up|||405|method_not_allowed|method not allowed|
 EOF
 )"
 run_error_contract_table "auth contract" "${auth_contract_cases}"
@@ -416,6 +417,7 @@ missing user statistics by id|GET|${base_url}/api/user/${missing_user_id}/statis
 missing user submission ban get|GET|${base_url}/api/user/${missing_user_id}/submission-ban|${admin_user_token}||404|not_found|not found|
 missing user submission ban create|POST|${base_url}/api/user/${missing_user_id}/submission-ban|${admin_user_token}|${submission_ban_request_body}|404|not_found|not found|
 missing user submission ban delete|DELETE|${base_url}/api/user/${missing_user_id}/submission-ban|${admin_user_token}||404|not_found|not found|
+user me method not allowed|POST|${base_url}/api/user/me|${admin_user_token}||405|method_not_allowed|method not allowed|
 EOF
 )"
 run_error_contract_table "user contract" "${user_contract_cases}"
@@ -427,6 +429,18 @@ missing sample update|PUT|${base_url}/api/problem/${problem_id}/sample/${missing
 EOF
 )"
 run_error_contract_table "sample contract" "${sample_contract_cases}"
+
+problem_route_contract_cases="$(cat <<EOF
+problem collection method not allowed|PUT|${base_url}/api/problem|||405|method_not_allowed|method not allowed|
+problem detail method not allowed|POST|${base_url}/api/problem/${problem_id}|||405|method_not_allowed|method not allowed|
+problem sample item method not allowed|DELETE|${base_url}/api/problem/${problem_id}/sample/1|||405|method_not_allowed|method not allowed|
+problem testcase all method not allowed|GET|${base_url}/api/problem/${problem_id}/testcase/all|||405|method_not_allowed|method not allowed|
+invalid problem id route|GET|${base_url}/api/problem/not-a-number|||404|not_found|not found|
+invalid sample order route|PUT|${base_url}/api/problem/${problem_id}/sample/not-a-number|${admin_user_token}|${sample_request_body}|404|not_found|not found|
+invalid testcase order route|DELETE|${base_url}/api/problem/${problem_id}/testcase/not-a-number|||404|not_found|not found|
+EOF
+)"
+run_error_contract_table "problem route contract" "${problem_route_contract_cases}"
 
 create_testcase_fixture "${testcase_request_body}" "contract testcase fixture create #1"
 create_testcase_fixture "${second_testcase_request_body}" "contract testcase fixture create #2"
@@ -451,9 +465,17 @@ print_success_log "contract submission fixture ready"
 submission_contract_cases="$(cat <<EOF
 missing problem submission create|POST|${base_url}/api/submission/${missing_problem_id}|${user_token}|${valid_submission_request_body}|404|not_found|not found|
 queued submission rejudge|POST|${base_url}/api/submission/${submission_id}/rejudge|${admin_user_token}||409|conflict|conflict|
+submission detail method not allowed|DELETE|${base_url}/api/submission/${submission_id}|${admin_user_token}||405|method_not_allowed|method not allowed|
+submission status batch method not allowed|GET|${base_url}/api/submission/status/batch|||405|method_not_allowed|method not allowed|
 EOF
 )"
 run_error_contract_table "submission contract" "${submission_contract_cases}"
+
+system_contract_cases="$(cat <<EOF
+system health method not allowed|POST|${base_url}/api/system/health|||405|method_not_allowed|method not allowed|
+EOF
+)"
+run_error_contract_table "system contract" "${system_contract_cases}"
 
 run_error_contract_case \
     "submission contract: missing submission detail" \

@@ -1,294 +1,284 @@
 #include "http_router/user_router.hpp"
 
-#include "common/string_util.hpp"
-#include "http_core/request_parser.hpp"
-#include "http_core/http_response_util.hpp"
+#include "http_router/route_table.hpp"
+
+#include <array>
+
+namespace{
+    using endpoint_descriptor = http_route::endpoint_descriptor<
+        user_router,
+        user_router::context_type,
+        user_router::response_type
+    >;
+    using path_segment_matcher = http_route::path_segment_matcher;
+    using http_verb = boost::beast::http::verb;
+
+    inline constexpr std::array public_user_list_pattern{
+        path_segment_matcher::literal("list")
+    };
+    inline constexpr std::array me_pattern{
+        path_segment_matcher::literal("me")
+    };
+    inline constexpr std::array me_statistics_pattern{
+        path_segment_matcher::literal("me"),
+        path_segment_matcher::literal("statistics")
+    };
+    inline constexpr std::array me_submission_ban_pattern{
+        path_segment_matcher::literal("me"),
+        path_segment_matcher::literal("submission-ban")
+    };
+    inline constexpr std::array me_solved_problems_pattern{
+        path_segment_matcher::literal("me"),
+        path_segment_matcher::literal("solved-problems")
+    };
+    inline constexpr std::array me_wrong_problems_pattern{
+        path_segment_matcher::literal("me"),
+        path_segment_matcher::literal("wrong-problems")
+    };
+    inline constexpr std::array user_summary_by_login_id_pattern{
+        path_segment_matcher::literal("id"),
+        path_segment_matcher::percent_decoded_string("user_login_id")
+    };
+    inline constexpr std::array user_id_pattern{
+        path_segment_matcher::positive_int64("user_id")
+    };
+    inline constexpr std::array user_statistics_pattern{
+        path_segment_matcher::positive_int64("user_id"),
+        path_segment_matcher::literal("statistics")
+    };
+    inline constexpr std::array user_solved_problems_pattern{
+        path_segment_matcher::positive_int64("user_id"),
+        path_segment_matcher::literal("solved-problems")
+    };
+    inline constexpr std::array user_wrong_problems_pattern{
+        path_segment_matcher::positive_int64("user_id"),
+        path_segment_matcher::literal("wrong-problems")
+    };
+    inline constexpr std::array user_admin_pattern{
+        path_segment_matcher::positive_int64("user_id"),
+        path_segment_matcher::literal("admin")
+    };
+    inline constexpr std::array user_regular_pattern{
+        path_segment_matcher::positive_int64("user_id"),
+        path_segment_matcher::literal("user")
+    };
+    inline constexpr std::array user_submission_ban_pattern{
+        path_segment_matcher::positive_int64("user_id"),
+        path_segment_matcher::literal("submission-ban")
+    };
+}
 
 user_router::response_type user_router::route(
     context_type& context,
     std::string_view path
 ){
-    const auto path_segments_opt = request_parser::parse_path("", path);
-    if(!path_segments_opt){
-        return http_response_util::create_not_found(context.request);
-    }
-
-    const auto& path_segments = *path_segments_opt;
-    if(path_segments.empty()){
-        return handle_user_list(context);
-    }
-
-    if(path_segments.size() == 1 && path_segments[0] == "list"){
-        return handle_public_user_list(context);
-    }
-
-    if(path_segments.size() == 2
-        && path_segments[0] == "me"
-        && path_segments[1] == "statistics"){
-        return handle_user_me_statistics(context);
-    }
-
-    if(path_segments.size() == 2
-        && path_segments[0] == "me"
-        && path_segments[1] == "submission-ban"){
-        return handle_user_me_submission_ban(context);
-    }
-
-    if(path_segments.size() == 2
-        && path_segments[0] == "me"
-        && path_segments[1] == "solved-problems"){
-        return handle_user_me_solved_problems(context);
-    }
-
-    if(path_segments.size() == 2
-        && path_segments[0] == "me"
-        && path_segments[1] == "wrong-problems"){
-        return handle_user_me_wrong_problems(context);
-    }
-
-    if(path_segments.size() == 1 && path_segments[0] == "me"){
-        return handle_user_me(context);
-    }
-
-    if(path_segments.size() == 2 && path_segments[0] == "id"){
-        const auto decoded_user_login_id_opt = string_util::decode_percent_encoded(
-            path_segments[1]
-        );
-        if(
-            !decoded_user_login_id_opt ||
-            decoded_user_login_id_opt->empty()
-        ){
-            return http_response_util::create_not_found(context.request);
+    static const std::array<endpoint_descriptor, 17> user_route_table{{
+        endpoint_descriptor{
+            .name = "get_user_list",
+            .method = http_verb::get,
+            .pattern = http_route::empty_path_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return user_handler::get_user_list(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_public_user_list",
+            .method = http_verb::get,
+            .pattern = public_user_list_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return user_handler::get_public_user_list(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_me",
+            .method = http_verb::get,
+            .pattern = me_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return user_handler::get_me(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_me_submission_statistics",
+            .method = http_verb::get,
+            .pattern = me_statistics_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return user_handler::get_me_submission_statistics(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_me_submission_ban",
+            .method = http_verb::get,
+            .pattern = me_submission_ban_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return user_handler::get_me_submission_ban(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_me_solved_problems",
+            .method = http_verb::get,
+            .pattern = me_solved_problems_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return user_handler::get_me_solved_problems(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_me_wrong_problems",
+            .method = http_verb::get,
+            .pattern = me_wrong_problems_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return user_handler::get_me_wrong_problems(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_user_summary_by_login_id",
+            .method = http_verb::get,
+            .pattern = user_summary_by_login_id_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return user_handler::get_user_summary_by_login_id(
+                    context_value,
+                    route_match_value.string_param("user_login_id")
+                );
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_user_submission_statistics",
+            .method = http_verb::get,
+            .pattern = user_statistics_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return user_handler::get_user_submission_statistics(
+                    context_value,
+                    route_match_value.int64_param("user_id")
+                );
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_user_solved_problems",
+            .method = http_verb::get,
+            .pattern = user_solved_problems_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return user_handler::get_user_solved_problems(
+                    context_value,
+                    route_match_value.int64_param("user_id")
+                );
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_user_wrong_problems",
+            .method = http_verb::get,
+            .pattern = user_wrong_problems_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return user_handler::get_user_wrong_problems(
+                    context_value,
+                    route_match_value.int64_param("user_id")
+                );
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_user_summary",
+            .method = http_verb::get,
+            .pattern = user_id_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return user_handler::get_user_summary(
+                    context_value,
+                    route_match_value.int64_param("user_id")
+                );
+            }
+        },
+        endpoint_descriptor{
+            .name = "put_user_admin",
+            .method = http_verb::put,
+            .pattern = user_admin_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return user_handler::put_user_admin(
+                    context_value,
+                    route_match_value.int64_param("user_id")
+                );
+            }
+        },
+        endpoint_descriptor{
+            .name = "put_user_regular",
+            .method = http_verb::put,
+            .pattern = user_regular_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return user_handler::put_user_regular(
+                    context_value,
+                    route_match_value.int64_param("user_id")
+                );
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_user_submission_ban",
+            .method = http_verb::get,
+            .pattern = user_submission_ban_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return user_handler::get_user_submission_ban(
+                    context_value,
+                    route_match_value.int64_param("user_id")
+                );
+            }
+        },
+        endpoint_descriptor{
+            .name = "post_user_submission_ban",
+            .method = http_verb::post,
+            .pattern = user_submission_ban_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return user_handler::post_user_submission_ban(
+                    context_value,
+                    route_match_value.int64_param("user_id")
+                );
+            }
+        },
+        endpoint_descriptor{
+            .name = "delete_user_submission_ban",
+            .method = http_verb::delete_,
+            .pattern = user_submission_ban_pattern,
+            .invoke = [](user_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return user_handler::delete_user_submission_ban(
+                    context_value,
+                    route_match_value.int64_param("user_id")
+                );
+            }
         }
+    }};
 
-        return handle_user_summary_by_login_id(
-            context,
-            *decoded_user_login_id_opt
-        );
-    }
-
-    if(path_segments.size() == 2 && path_segments[1] == "statistics"){
-        const auto user_id_opt = string_util::parse_positive_int64(path_segments[0]);
-        if(!user_id_opt){
-            return http_response_util::create_not_found(context.request);
-        }
-
-        return handle_user_statistics(context, *user_id_opt);
-    }
-
-    if(path_segments.size() == 2 && path_segments[1] == "solved-problems"){
-        const auto user_id_opt = string_util::parse_positive_int64(path_segments[0]);
-        if(!user_id_opt){
-            return http_response_util::create_not_found(context.request);
-        }
-
-        return handle_user_solved_problems(context, *user_id_opt);
-    }
-
-    if(path_segments.size() == 2 && path_segments[1] == "wrong-problems"){
-        const auto user_id_opt = string_util::parse_positive_int64(path_segments[0]);
-        if(!user_id_opt){
-            return http_response_util::create_not_found(context.request);
-        }
-
-        return handle_user_wrong_problems(context, *user_id_opt);
-    }
-
-    if(path_segments.size() == 1){
-        const auto user_id_opt = string_util::parse_positive_int64(path_segments[0]);
-        if(!user_id_opt){
-            return http_response_util::create_not_found(context.request);
-        }
-
-        return handle_user_summary(context, *user_id_opt);
-    }
-
-    if(path_segments.size() == 2 && path_segments[1] == "admin"){
-        const auto user_id_opt = string_util::parse_positive_int64(path_segments[0]);
-        if(!user_id_opt){
-            return http_response_util::create_not_found(context.request);
-        }
-
-        return handle_user_admin(context, *user_id_opt);
-    }
-
-    if(path_segments.size() == 2 && path_segments[1] == "user"){
-        const auto user_id_opt = string_util::parse_positive_int64(path_segments[0]);
-        if(!user_id_opt){
-            return http_response_util::create_not_found(context.request);
-        }
-
-        return handle_user_regular(context, *user_id_opt);
-    }
-
-    if(path_segments.size() == 2 && path_segments[1] == "submission-ban"){
-        const auto user_id_opt = string_util::parse_positive_int64(path_segments[0]);
-        if(!user_id_opt){
-            return http_response_util::create_not_found(context.request);
-        }
-
-        return handle_user_submission_ban(context, *user_id_opt);
-    }
-
-    return http_response_util::create_not_found(context.request);
-}
-
-user_router::response_type user_router::handle_user_list(context_type& context){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return user_handler::get_user_list(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-user_router::response_type user_router::handle_public_user_list(
-    context_type& context
-){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return user_handler::get_public_user_list(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-user_router::response_type user_router::handle_user_me(context_type& context){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return user_handler::get_me(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-user_router::response_type user_router::handle_user_me_statistics(context_type& context){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return user_handler::get_me_submission_statistics(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-user_router::response_type user_router::handle_user_me_submission_ban(
-    context_type& context
-){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return user_handler::get_me_submission_ban(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-user_router::response_type user_router::handle_user_me_solved_problems(
-    context_type& context
-){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return user_handler::get_me_solved_problems(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-user_router::response_type user_router::handle_user_me_wrong_problems(
-    context_type& context
-){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return user_handler::get_me_wrong_problems(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-user_router::response_type user_router::handle_user_summary_by_login_id(
-    context_type& context,
-    const std::string& user_login_id
-){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return user_handler::get_user_summary_by_login_id(context, user_login_id);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-user_router::response_type user_router::handle_user_summary(
-    context_type& context,
-    std::int64_t user_id
-){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return user_handler::get_user_summary(context, user_id);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-user_router::response_type user_router::handle_user_statistics(
-    context_type& context,
-    std::int64_t user_id
-){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return user_handler::get_user_submission_statistics(context, user_id);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-user_router::response_type user_router::handle_user_solved_problems(
-    context_type& context,
-    std::int64_t user_id
-){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return user_handler::get_user_solved_problems(context, user_id);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-user_router::response_type user_router::handle_user_wrong_problems(
-    context_type& context,
-    std::int64_t user_id
-){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return user_handler::get_user_wrong_problems(context, user_id);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-user_router::response_type user_router::handle_user_admin(
-    context_type& context,
-    std::int64_t user_id
-){
-    if(context.request.method() == boost::beast::http::verb::put){
-        return user_handler::put_user_admin(context, user_id);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-user_router::response_type user_router::handle_user_regular(
-    context_type& context,
-    std::int64_t user_id
-){
-    if(context.request.method() == boost::beast::http::verb::put){
-        return user_handler::put_user_regular(context, user_id);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-user_router::response_type user_router::handle_user_submission_ban(
-    context_type& context,
-    std::int64_t user_id
-){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return user_handler::get_user_submission_ban(context, user_id);
-    }
-
-    if(context.request.method() == boost::beast::http::verb::post){
-        return user_handler::post_user_submission_ban(context, user_id);
-    }
-
-    if(context.request.method() == boost::beast::http::verb::delete_){
-        return user_handler::delete_user_submission_ban(context, user_id);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
+    return http_route::dispatch_route_table(
+        *this,
+        context,
+        path,
+        user_route_table
+    );
 }

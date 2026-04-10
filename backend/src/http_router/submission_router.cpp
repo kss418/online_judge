@@ -1,128 +1,135 @@
 #include "http_router/submission_router.hpp"
 
-#include "common/string_util.hpp"
-#include "http_core/request_parser.hpp"
-#include "http_core/http_response_util.hpp"
+#include "http_router/route_table.hpp"
+
+#include <array>
+
+namespace{
+    using endpoint_descriptor = http_route::endpoint_descriptor<
+        submission_router,
+        submission_router::context_type,
+        submission_router::response_type
+    >;
+    using path_segment_matcher = http_route::path_segment_matcher;
+    using http_verb = boost::beast::http::verb;
+
+    inline constexpr std::array status_batch_pattern{
+        path_segment_matcher::literal("status"),
+        path_segment_matcher::literal("batch")
+    };
+    inline constexpr std::array submission_pattern{
+        path_segment_matcher::positive_int64("submission_id")
+    };
+    inline constexpr std::array submission_history_pattern{
+        path_segment_matcher::positive_int64("submission_id"),
+        path_segment_matcher::literal("history")
+    };
+    inline constexpr std::array submission_source_pattern{
+        path_segment_matcher::positive_int64("submission_id"),
+        path_segment_matcher::literal("source")
+    };
+    inline constexpr std::array submission_rejudge_pattern{
+        path_segment_matcher::positive_int64("submission_id"),
+        path_segment_matcher::literal("rejudge")
+    };
+}
 
 submission_router::response_type submission_router::route(
     context_type& context,
     std::string_view path
 ){
-    const auto path_segments_opt = request_parser::parse_path("", path);
-    if(!path_segments_opt){
-        return http_response_util::create_not_found(context.request);
-    }
-
-    const auto& path_segments = *path_segments_opt;
-    if(path_segments.empty()){
-        return handle_submissions(context);
-    }
-
-    if(path_segments.size() == 2 && path_segments[0] == "status" && path_segments[1] == "batch"){
-        return handle_submission_status_batch(context);
-    }
-
-    if(path_segments.size() == 1){
-        const auto resource_id_opt = string_util::parse_positive_int64(path_segments[0]);
-        if(!resource_id_opt){
-            return http_response_util::create_not_found(context.request);
+    static const std::array<endpoint_descriptor, 7> submission_route_table{{
+        endpoint_descriptor{
+            .name = "get_submissions",
+            .method = http_verb::get,
+            .pattern = http_route::empty_path_pattern,
+            .invoke = [](submission_router&,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return submission_handler::get_submissions(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "post_submission_status_batch",
+            .method = http_verb::post,
+            .pattern = status_batch_pattern,
+            .invoke = [](submission_router&,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return submission_handler::post_submission_status_batch(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_submission",
+            .method = http_verb::get,
+            .pattern = submission_pattern,
+            .invoke = [](submission_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return submission_handler::get_submission(
+                    context_value,
+                    route_match_value.int64_param("submission_id")
+                );
+            }
+        },
+        endpoint_descriptor{
+            .name = "post_submission",
+            .method = http_verb::post,
+            .pattern = submission_pattern,
+            .invoke = [](submission_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return submission_handler::post_submission(
+                    context_value,
+                    route_match_value.int64_param("submission_id")
+                );
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_submission_history",
+            .method = http_verb::get,
+            .pattern = submission_history_pattern,
+            .invoke = [](submission_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return submission_handler::get_submission_history(
+                    context_value,
+                    route_match_value.int64_param("submission_id")
+                );
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_submission_source",
+            .method = http_verb::get,
+            .pattern = submission_source_pattern,
+            .invoke = [](submission_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return submission_handler::get_submission_source(
+                    context_value,
+                    route_match_value.int64_param("submission_id")
+                );
+            }
+        },
+        endpoint_descriptor{
+            .name = "post_submission_rejudge",
+            .method = http_verb::post,
+            .pattern = submission_rejudge_pattern,
+            .invoke = [](submission_router&,
+                context_type& context_value,
+                const http_route::route_match& route_match_value) -> response_type {
+                return submission_handler::post_submission_rejudge(
+                    context_value,
+                    route_match_value.int64_param("submission_id")
+                );
+            }
         }
+    }};
 
-        return handle_submission(context, *resource_id_opt);
-    }
-
-    if(path_segments.size() == 2 && path_segments[1] == "history"){
-        const auto resource_id_opt = string_util::parse_positive_int64(path_segments[0]);
-        if(!resource_id_opt){
-            return http_response_util::create_not_found(context.request);
-        }
-
-        return handle_submission_history(context, *resource_id_opt);
-    }
-
-    if(path_segments.size() == 2 && path_segments[1] == "source"){
-        const auto resource_id_opt = string_util::parse_positive_int64(path_segments[0]);
-        if(!resource_id_opt){
-            return http_response_util::create_not_found(context.request);
-        }
-
-        return handle_submission_source(context, *resource_id_opt);
-    }
-
-    if(path_segments.size() == 2 && path_segments[1] == "rejudge"){
-        const auto resource_id_opt = string_util::parse_positive_int64(path_segments[0]);
-        if(!resource_id_opt){
-            return http_response_util::create_not_found(context.request);
-        }
-
-        return handle_submission_rejudge(context, *resource_id_opt);
-    }
-
-    return http_response_util::create_not_found(context.request);
-}
-
-submission_router::response_type submission_router::handle_submissions(context_type& context){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return submission_handler::get_submissions(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-submission_router::response_type submission_router::handle_submission_status_batch(
-    context_type& context
-){
-    if(context.request.method() == boost::beast::http::verb::post){
-        return submission_handler::post_submission_status_batch(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-submission_router::response_type submission_router::handle_submission(
-    context_type& context,
-    std::int64_t resource_id
-){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return submission_handler::get_submission(context, resource_id);
-    }
-
-    if(context.request.method() == boost::beast::http::verb::post){
-        return submission_handler::post_submission(context, resource_id);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-submission_router::response_type submission_router::handle_submission_history(
-    context_type& context,
-    std::int64_t resource_id
-){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return submission_handler::get_submission_history(context, resource_id);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-submission_router::response_type submission_router::handle_submission_source(
-    context_type& context,
-    std::int64_t resource_id
-){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return submission_handler::get_submission_source(context, resource_id);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-submission_router::response_type submission_router::handle_submission_rejudge(
-    context_type& context,
-    std::int64_t resource_id
-){
-    if(context.request.method() == boost::beast::http::verb::post){
-        return submission_handler::post_submission_rejudge(context, resource_id);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
+    return http_route::dispatch_route_table(
+        *this,
+        context,
+        path,
+        submission_route_table
+    );
 }

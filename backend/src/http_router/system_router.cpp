@@ -1,36 +1,59 @@
 #include "http_router/system_router.hpp"
 
-#include "http_core/http_response_util.hpp"
+#include "http_router/route_table.hpp"
+
+#include <array>
+
+namespace{
+    using endpoint_descriptor = http_route::endpoint_descriptor<
+        system_router,
+        system_router::context_type,
+        system_router::response_type
+    >;
+    using path_segment_matcher = http_route::path_segment_matcher;
+    using http_verb = boost::beast::http::verb;
+
+    inline constexpr std::array health_pattern{
+        path_segment_matcher::literal("health")
+    };
+    inline constexpr std::array supported_languages_pattern{
+        path_segment_matcher::literal("supported-languages")
+    };
+}
 
 system_router::response_type system_router::route(
     context_type& context,
     std::string_view path
 ){
-    if(path == "/health"){
-        return handle_health(context);
-    }
+    static const std::array<endpoint_descriptor, 2> system_route_table{{
+        endpoint_descriptor{
+            .name = "get_health",
+            .method = http_verb::get,
+            .pattern = health_pattern,
+            .invoke = [](system_router& router,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return router.system_handler_.handle_health_get(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "get_supported_languages",
+            .method = http_verb::get,
+            .pattern = supported_languages_pattern,
+            .invoke = [](system_router& router,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return router.system_handler_.handle_supported_languages_get(
+                    context_value
+                );
+            }
+        }
+    }};
 
-    if(path == "/supported-languages"){
-        return handle_supported_languages(context);
-    }
-
-    return http_response_util::create_not_found(context.request);
-}
-
-system_router::response_type system_router::handle_health(context_type& context){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return system_handler_.handle_health_get(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-system_router::response_type system_router::handle_supported_languages(
-    context_type& context
-){
-    if(context.request.method() == boost::beast::http::verb::get){
-        return system_handler_.handle_supported_languages_get(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
+    return http_route::dispatch_route_table(
+        *this,
+        context,
+        path,
+        system_route_table
+    );
 }

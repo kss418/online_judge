@@ -1,58 +1,84 @@
 #include "http_router/auth_router.hpp"
 
-#include "http_core/http_response_util.hpp"
+#include "http_router/route_table.hpp"
+
+#include <array>
+
+namespace{
+    using endpoint_descriptor = http_route::endpoint_descriptor<
+        auth_router,
+        auth_router::context_type,
+        auth_router::response_type
+    >;
+    using path_segment_matcher = http_route::path_segment_matcher;
+    using http_verb = boost::beast::http::verb;
+
+    inline constexpr std::array sign_up_pattern{
+        path_segment_matcher::literal("sign-up")
+    };
+    inline constexpr std::array login_pattern{
+        path_segment_matcher::literal("login")
+    };
+    inline constexpr std::array token_renew_pattern{
+        path_segment_matcher::literal("token"),
+        path_segment_matcher::literal("renew")
+    };
+    inline constexpr std::array logout_pattern{
+        path_segment_matcher::literal("logout")
+    };
+}
 
 auth_router::response_type auth_router::route(
     context_type& context,
     std::string_view path
 ){
-    if(path == "/sign-up"){
-        return handle_sign_up(context);
-    }
+    static const std::array<endpoint_descriptor, 4> auth_route_table{{
+        endpoint_descriptor{
+            .name = "post_sign_up",
+            .method = http_verb::post,
+            .pattern = sign_up_pattern,
+            .invoke = [](auth_router&,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return auth_handler::post_sign_up(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "post_login",
+            .method = http_verb::post,
+            .pattern = login_pattern,
+            .invoke = [](auth_router&,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return auth_handler::post_login(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "post_token_renew",
+            .method = http_verb::post,
+            .pattern = token_renew_pattern,
+            .invoke = [](auth_router&,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return auth_handler::post_token_renew(context_value);
+            }
+        },
+        endpoint_descriptor{
+            .name = "post_logout",
+            .method = http_verb::post,
+            .pattern = logout_pattern,
+            .invoke = [](auth_router&,
+                context_type& context_value,
+                const http_route::route_match&) -> response_type {
+                return auth_handler::post_logout(context_value);
+            }
+        }
+    }};
 
-    if(path == "/login"){
-        return handle_login(context);
-    }
-
-    if(path == "/token/renew"){
-        return handle_token_renew(context);
-    }
-
-    if(path == "/logout"){
-        return handle_logout(context);
-    }
-
-    return http_response_util::create_not_found(context.request);
-}
-
-auth_router::response_type auth_router::handle_sign_up(context_type& context){
-    if(context.request.method() == boost::beast::http::verb::post){
-        return auth_handler::post_sign_up(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-auth_router::response_type auth_router::handle_login(context_type& context){
-    if(context.request.method() == boost::beast::http::verb::post){
-        return auth_handler::post_login(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-auth_router::response_type auth_router::handle_token_renew(context_type& context){
-    if(context.request.method() == boost::beast::http::verb::post){
-        return auth_handler::post_token_renew(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
-}
-
-auth_router::response_type auth_router::handle_logout(context_type& context){
-    if(context.request.method() == boost::beast::http::verb::post){
-        return auth_handler::post_logout(context);
-    }
-
-    return http_response_util::create_method_not_allowed(context.request);
+    return http_route::dispatch_route_table(
+        *this,
+        context,
+        path,
+        auth_route_table
+    );
 }
