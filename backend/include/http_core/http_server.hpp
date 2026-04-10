@@ -54,11 +54,11 @@ private:
     explicit http_server(
         http_runtime_config runtime_config,
         db_connection_pool&& db_connection_pool,
-        std::unique_ptr<worker_pool> response_worker_pool
+        std::unique_ptr<worker_pool> handler_worker_pool
     );
     http_runtime_config runtime_config_;
     db_connection_pool db_connection_pool_;
-    std::unique_ptr<worker_pool> response_worker_pool_;
+    std::unique_ptr<worker_pool> handler_worker_pool_;
     logging_request_observer request_observer_;
     http_runtime_status_provider http_runtime_status_provider_;
     http_dispatcher http_dispatcher_;

@@ -23,19 +23,19 @@ std::expected<std::shared_ptr<http_server>, http_server_error> http_server::crea
         return std::unexpected(http_server_error(db_connection_pool_exp.error()));
     }
 
-    auto response_worker_pool_exp = worker_pool::create(
+    auto handler_worker_pool_exp = worker_pool::create(
         runtime_config.handler_worker_count,
         runtime_config.handler_queue_limit_opt
     );
-    if(!response_worker_pool_exp){
-        return std::unexpected(http_server_error(response_worker_pool_exp.error()));
+    if(!handler_worker_pool_exp){
+        return std::unexpected(http_server_error(handler_worker_pool_exp.error()));
     }
 
     return std::shared_ptr<http_server>(
         new http_server(
             runtime_config,
             std::move(*db_connection_pool_exp),
-            std::move(*response_worker_pool_exp)
+            std::move(*handler_worker_pool_exp)
         )
     );
 }
@@ -43,15 +43,15 @@ std::expected<std::shared_ptr<http_server>, http_server_error> http_server::crea
 http_server::http_server(
     http_runtime_config runtime_config,
     db_connection_pool&& db_connection_pool,
-    std::unique_ptr<worker_pool> response_worker_pool
+    std::unique_ptr<worker_pool> handler_worker_pool
 ) :
     runtime_config_(std::move(runtime_config)),
     db_connection_pool_(std::move(db_connection_pool)),
-    response_worker_pool_(std::move(response_worker_pool)),
+    handler_worker_pool_(std::move(handler_worker_pool)),
     request_observer_(),
     http_runtime_status_provider_(
         db_connection_pool_,
-        *response_worker_pool_,
+        *handler_worker_pool_,
         runtime_config_.judge_heartbeat_stale_after
     ),
     http_dispatcher_(
@@ -68,7 +68,7 @@ void http_server::async_handle(
     handle_callback callback
 ){
     auto callback_ptr = std::make_shared<handle_callback>(std::move(callback));
-    auto post_exp = response_worker_pool_->post(
+    auto post_exp = handler_worker_pool_->post(
         [this, request_ptr, request_id, started_at, callback_ptr]() mutable {
             (*callback_ptr)(handle(*request_ptr, std::move(request_id), started_at));
         }

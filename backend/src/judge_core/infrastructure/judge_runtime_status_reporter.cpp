@@ -7,44 +7,12 @@
 #include <utility>
 
 namespace{
-    std::expected<void, service_error> upsert_judge_instance_heartbeat(
-        pqxx::work& transaction,
-        std::string_view instance_id,
-        const judge_runtime_registry& judge_runtime_registry
-    ){
-        transaction.exec(
-            "INSERT INTO judge_instances("
-            "    instance_id, "
-            "    started_at, "
-            "    last_heartbeat_at, "
-            "    configured_worker_count, "
-            "    busy_worker_count, "
-            "    snapshot_cache_hit_count, "
-            "    snapshot_cache_miss_count"
-            ") "
-            "VALUES($1, NOW(), NOW(), $2, $3, $4, $5) "
-            "ON CONFLICT(instance_id) DO UPDATE SET "
-            "    last_heartbeat_at = NOW(), "
-            "    configured_worker_count = EXCLUDED.configured_worker_count, "
-            "    busy_worker_count = EXCLUDED.busy_worker_count, "
-            "    snapshot_cache_hit_count = EXCLUDED.snapshot_cache_hit_count, "
-            "    snapshot_cache_miss_count = EXCLUDED.snapshot_cache_miss_count",
-            pqxx::params{
-                instance_id,
-                judge_runtime_registry.configured_worker_count(),
-                judge_runtime_registry.busy_worker_count(),
-                judge_runtime_registry.snapshot_cache_hit_count(),
-                judge_runtime_registry.snapshot_cache_miss_count()
-            }
-        );
-        return {};
-    }
-
-    std::expected<void, service_error> upsert_judge_instance_self_check(
+    std::expected<void, service_error> upsert_judge_instance_status(
         pqxx::work& transaction,
         std::string_view instance_id,
         const judge_runtime_registry& judge_runtime_registry,
-        std::string_view status,
+        bool should_update_self_check,
+        const std::optional<std::string>& self_check_status_opt,
         const std::optional<std::string>& message_opt
     ){
         transaction.exec(
@@ -60,23 +28,38 @@ namespace{
             "    last_sandbox_self_check_at, "
             "    last_sandbox_self_check_message"
             ") "
-            "VALUES($1, NOW(), NOW(), $2, $3, $4, $5, $6, NOW(), $7) "
+            "VALUES($1, NOW(), NOW(), $2, $3, $4, $5, $6, "
+            "    CASE WHEN $7 THEN NOW() ELSE NULL END, "
+            "    $8) "
             "ON CONFLICT(instance_id) DO UPDATE SET "
             "    last_heartbeat_at = NOW(), "
             "    configured_worker_count = EXCLUDED.configured_worker_count, "
             "    busy_worker_count = EXCLUDED.busy_worker_count, "
             "    snapshot_cache_hit_count = EXCLUDED.snapshot_cache_hit_count, "
             "    snapshot_cache_miss_count = EXCLUDED.snapshot_cache_miss_count, "
-            "    last_sandbox_self_check_status = EXCLUDED.last_sandbox_self_check_status, "
-            "    last_sandbox_self_check_at = NOW(), "
-            "    last_sandbox_self_check_message = EXCLUDED.last_sandbox_self_check_message",
+            "    last_sandbox_self_check_status = CASE "
+            "        WHEN $7 "
+            "            THEN EXCLUDED.last_sandbox_self_check_status "
+            "        ELSE judge_instances.last_sandbox_self_check_status "
+            "    END, "
+            "    last_sandbox_self_check_at = CASE "
+            "        WHEN $7 "
+            "            THEN NOW() "
+            "        ELSE judge_instances.last_sandbox_self_check_at "
+            "    END, "
+            "    last_sandbox_self_check_message = CASE "
+            "        WHEN $7 "
+            "            THEN EXCLUDED.last_sandbox_self_check_message "
+            "        ELSE judge_instances.last_sandbox_self_check_message "
+            "    END",
             pqxx::params{
                 instance_id,
                 judge_runtime_registry.configured_worker_count(),
                 judge_runtime_registry.busy_worker_count(),
                 judge_runtime_registry.snapshot_cache_hit_count(),
                 judge_runtime_registry.snapshot_cache_miss_count(),
-                status,
+                self_check_status_opt,
+                should_update_self_check,
                 message_opt
             }
         );
@@ -129,10 +112,13 @@ std::expected<void, judge_error> judge_runtime_status_reporter::publish_heartbea
     const auto publish_exp = db_service_util::with_retry_service_write_transaction(
         db_connection_,
         [&](pqxx::work& transaction) -> std::expected<void, service_error> {
-            return upsert_judge_instance_heartbeat(
+            return upsert_judge_instance_status(
                 transaction,
                 instance_id_,
-                *judge_runtime_registry_
+                *judge_runtime_registry_,
+                false,
+                std::nullopt,
+                std::nullopt
             );
         }
     );
@@ -150,11 +136,15 @@ std::expected<void, judge_error> judge_runtime_status_reporter::publish_self_che
     const auto publish_exp = db_service_util::with_retry_service_write_transaction(
         db_connection_,
         [&](pqxx::work& transaction) -> std::expected<void, service_error> {
-            return upsert_judge_instance_self_check(
+            const std::optional<std::string> self_check_status_opt{
+                std::string{status}
+            };
+            return upsert_judge_instance_status(
                 transaction,
                 instance_id_,
                 *judge_runtime_registry_,
-                status,
+                true,
+                self_check_status_opt,
                 message_opt
             );
         }
