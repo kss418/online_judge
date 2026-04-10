@@ -1,5 +1,6 @@
 target_sources(lib
     PRIVATE
+        http_runtime_config.cpp
         http_dispatcher.cpp
         http_response_util.cpp
         request_list_filter_dto.cpp

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/db_connection_pool.hpp"
+#include "http_core/http_runtime_config.hpp"
 #include "http_core/request_context.hpp"
 #include "http_core/request_observer.hpp"
 #include "http_router/auth_router.hpp"
@@ -10,7 +11,9 @@
 #include "http_router/user_router.hpp"
 
 #include <expected>
+#include <chrono>
 #include <optional>
+#include <string>
 #include <string_view>
 
 class http_dispatcher{
@@ -25,9 +28,14 @@ public:
 
     explicit http_dispatcher(
         db_connection_pool& db_connection_pool,
+        std::optional<std::chrono::milliseconds> db_connection_acquire_timeout_opt,
         request_observer* request_observer = nullptr
     );
-    response_type handle(const request_type& request);
+    response_type handle(
+        const request_type& request,
+        std::string request_id,
+        std::chrono::steady_clock::time_point started_at
+    );
 private:
     static std::optional<std::string_view> strip_path_prefix(
         std::string_view prefix_path,
@@ -50,6 +58,7 @@ private:
     static constexpr std::string_view user_path_prefix_ = "/api/user";
 
     db_connection_pool& db_connection_pool_;
+    std::optional<std::chrono::milliseconds> db_connection_acquire_timeout_opt_;
     request_observer* request_observer_ = nullptr;
     system_router system_router_;
 };

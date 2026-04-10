@@ -1,38 +1,18 @@
 #include "http_core/acceptor.hpp"
+#include "http_core/http_runtime_config.hpp"
 #include "http_core/http_server.hpp"
 #include "common/env_util.hpp"
 #include "common/logger.hpp"
-#include "common/string_util.hpp"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <cstdlib>
 #include <cstdint>
-#include <limits>
-#include <string_view>
 #include <thread>
 #include <vector>
 
 std::uint32_t default_http_worker_count(){
     const std::uint32_t hardware_thread_count = std::thread::hardware_concurrency();
     return hardware_thread_count == 0 ? std::uint32_t{1} : hardware_thread_count;
-}
-
-std::expected<std::uint32_t, infra_error> resolve_http_worker_count(){
-    const char* worker_count_text = std::getenv("HTTP_WORKER_COUNT");
-    if(worker_count_text == nullptr || *worker_count_text == '\0'){
-        return default_http_worker_count();
-    }
-
-    const auto worker_count_opt = string_util::parse_positive_int64(worker_count_text);
-    if(
-        !worker_count_opt ||
-        *worker_count_opt > static_cast<std::int64_t>(std::numeric_limits<std::uint32_t>::max())
-    ){
-        return std::unexpected(infra_error::invalid_argument);
-    }
-
-    return static_cast<std::uint32_t>(*worker_count_opt);
 }
 
 int main(){
@@ -44,35 +24,20 @@ int main(){
         return 1;
     }
 
-    const char* http_port_text = std::getenv("HTTP_PORT");
-    if(http_port_text == nullptr || std::string_view{http_port_text}.empty()){
+    const auto runtime_config_exp = http_runtime_config::load(default_http_worker_count());
+    if(!runtime_config_exp){
         logger::cerr()
             .log("http_server_startup_error")
-            .field("reason", "http_port_missing");
+            .field("reason", "invalid_http_runtime_config")
+            .field("error", to_string(runtime_config_exp.error()));
         return 1;
     }
+    const auto& runtime_config = *runtime_config_exp;
 
-    const auto port_opt = string_util::parse_positive_int16(http_port_text);
-    if(!port_opt){
-        logger::cerr()
-            .log("http_server_startup_error")
-            .field("reason", "invalid_http_port")
-            .field("http_port", http_port_text);
-        return 1;
-    }
-    const std::uint16_t port = *port_opt;
-
-    const auto worker_count_exp = resolve_http_worker_count();
-    if(!worker_count_exp){
-        logger::cerr()
-            .log("http_server_startup_error")
-            .field("reason", "invalid_http_worker_count");
-        return 1;
-    }
-    const std::uint32_t worker_count = *worker_count_exp;
-
-    boost::asio::io_context io_context{static_cast<int>(worker_count)};
-    auto http_server_exp = http_server::create(static_cast<std::size_t>(worker_count));
+    boost::asio::io_context io_context{
+        static_cast<int>(runtime_config.io_worker_count)
+    };
+    auto http_server_exp = http_server::create(runtime_config);
     if(!http_server_exp){
         logger::cerr()
             .log("http_server_create_failed")
@@ -82,7 +47,7 @@ int main(){
 
     auto acceptor_exp = acceptor::create(
         io_context,
-        acceptor::tcp::endpoint{acceptor::tcp::v4(), port},
+        acceptor::tcp::endpoint{acceptor::tcp::v4(), runtime_config.port},
         *http_server_exp
     );
     
@@ -90,7 +55,7 @@ int main(){
         logger::cerr()
             .log("http_acceptor_create_failed")
             .field("error", to_string(acceptor_exp.error()))
-            .field("port", port);
+            .field("port", runtime_config.port);
         return 1;
     }
 
@@ -99,18 +64,50 @@ int main(){
         logger::cerr()
             .log("http_acceptor_run_failed")
             .field("error", to_string(run_exp.error()))
-            .field("port", port);
+            .field("port", runtime_config.port);
         return 1;
     }
 
     logger::cerr()
         .log("http_server_start")
-        .field("port", port)
-        .field("worker_count", worker_count);
+        .field("port", runtime_config.port)
+        .field("worker_count", runtime_config.io_worker_count)
+        .field("handler_worker_count", runtime_config.handler_worker_count)
+        .field("db_pool_size", runtime_config.db_pool_size)
+        .field(
+            "db_acquire_timeout_ms",
+            runtime_config.db_acquire_timeout_opt.has_value()
+                ? runtime_config.db_acquire_timeout_opt->count()
+                : 0
+        )
+        .field(
+            "handler_queue_limit",
+            runtime_config.handler_queue_limit_opt.has_value()
+                ? *runtime_config.handler_queue_limit_opt
+                : 0
+        )
+        .field(
+            "request_deadline_ms",
+            runtime_config.request_deadline_opt.has_value()
+                ? runtime_config.request_deadline_opt->count()
+                : 0
+        )
+        .field(
+            "keep_alive_idle_timeout_ms",
+            runtime_config.keep_alive_idle_timeout_opt.has_value()
+                ? runtime_config.keep_alive_idle_timeout_opt->count()
+                : 0
+        );
 
     std::vector<std::thread> worker_threads;
-    worker_threads.reserve(worker_count > 0 ? worker_count - 1 : 0);
-    for(std::uint32_t worker_index = 1; worker_index < worker_count; ++worker_index){
+    worker_threads.reserve(
+        runtime_config.io_worker_count > 0 ? runtime_config.io_worker_count - 1 : 0
+    );
+    for(
+        std::size_t worker_index = 1;
+        worker_index < runtime_config.io_worker_count;
+        ++worker_index
+    ){
         worker_threads.emplace_back(
             [&io_context]{
                 io_context.run();

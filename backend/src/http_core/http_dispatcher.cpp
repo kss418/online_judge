@@ -9,8 +9,6 @@
 namespace{
     using request_clock = std::chrono::steady_clock;
 
-    constexpr std::chrono::milliseconds DB_CONNECTION_ACQUIRE_TIMEOUT{100};
-
     http_dispatcher::response_type finalize_response(
         request_context& context,
         http_dispatcher::response_type response,
@@ -31,9 +29,11 @@ namespace{
 
 http_dispatcher::http_dispatcher(
     db_connection_pool& db_connection_pool,
+    std::optional<std::chrono::milliseconds> db_connection_acquire_timeout_opt,
     request_observer* request_observer
 ) :
     db_connection_pool_(db_connection_pool),
+    db_connection_acquire_timeout_opt_(db_connection_acquire_timeout_opt),
     request_observer_(request_observer),
     system_router_(){}
 
@@ -104,9 +104,11 @@ std::optional<http_dispatcher::response_type> http_dispatcher::try_handle_route(
     return std::nullopt;
 }
 
-http_dispatcher::response_type http_dispatcher::handle(const request_type& request){
-    const auto started_at = request_clock::now();
-    const std::string request_id = request_id_util::make_request_id();
+http_dispatcher::response_type http_dispatcher::handle(
+    const request_type& request,
+    std::string request_id,
+    request_clock::time_point started_at
+){
     const std::string_view target{
         request.target().data(),
         request.target().size()
@@ -131,7 +133,9 @@ http_dispatcher::response_type http_dispatcher::handle(const request_type& reque
         );
     }
 
-    auto db_connection_lease_exp = db_connection_pool_.acquire_for(DB_CONNECTION_ACQUIRE_TIMEOUT);
+    auto db_connection_lease_exp = db_connection_acquire_timeout_opt_.has_value()
+        ? db_connection_pool_.acquire_for(*db_connection_acquire_timeout_opt_)
+        : db_connection_pool_.acquire();
     if(!db_connection_lease_exp){
         if(db_connection_lease_exp.error() == pool_error::timed_out){
             return finalize_response(
