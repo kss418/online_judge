@@ -46,11 +46,6 @@ namespace problem_content_service{
         db_connection& connection,
         const problem_dto::reference& problem_reference_value
     );
-    std::expected<void, service_error> set_sample(
-        db_connection& connection,
-        const problem_content_dto::sample_ref& sample_reference_value,
-        const problem_content_dto::sample& sample_value
-    );
     std::expected<problem_dto::sample_mutation_result, service_error> set_sample_and_get(
         db_connection& connection,
         const problem_content_dto::sample_ref& sample_reference_value,

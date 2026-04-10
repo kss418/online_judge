@@ -31,11 +31,6 @@ namespace testcase_service{
         db_connection& connection,
         const problem_dto::reference& problem_reference_value
     );
-    std::expected<void, service_error> set_testcase(
-        db_connection& connection,
-        const problem_dto::testcase_ref& testcase_reference_value,
-        const problem_dto::testcase& testcase_value
-    );
     std::expected<problem_dto::testcase_mutation_result, service_error> set_testcase_and_get(
         db_connection& connection,
         const problem_dto::testcase_ref& testcase_reference_value,

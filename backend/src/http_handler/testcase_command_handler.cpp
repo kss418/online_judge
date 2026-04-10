@@ -31,9 +31,7 @@ testcase_command_handler::response_type testcase_command_handler::post_testcase(
             return http_adapter::json(
                 context_value.request,
                 std::move(create_testcase_exp),
-                [](const problem_dto::testcase_mutation_result& testcase_value) {
-                    return problem_json_serializer::make_testcase_created_object(testcase_value);
-                },
+                problem_json_serializer::make_versioned_testcase_created_object,
                 boost::beast::http::status::created
             );
         },
@@ -67,9 +65,7 @@ testcase_command_handler::response_type testcase_command_handler::put_testcase(
             return http_adapter::json(
                 context_value.request,
                 std::move(set_testcase_exp),
-                [](const problem_dto::testcase_mutation_result& testcase_value) {
-                    return problem_json_serializer::make_testcase_object(testcase_value);
-                }
+                problem_json_serializer::make_versioned_testcase_object
             );
         },
         auth_guard::make_admin_guard(),

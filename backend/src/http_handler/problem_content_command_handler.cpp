@@ -122,9 +122,7 @@ problem_content_command_handler::response_type problem_content_command_handler::
             return http_adapter::json(
                 context_value.request,
                 std::move(create_sample_exp),
-                [](const problem_dto::sample_mutation_result& sample_value) {
-                    return problem_json_serializer::make_sample_created_object(sample_value);
-                },
+                problem_json_serializer::make_versioned_sample_created_object,
                 boost::beast::http::status::created
             );
         },
@@ -155,9 +153,7 @@ problem_content_command_handler::response_type problem_content_command_handler::
             return http_adapter::json(
                 context_value.request,
                 std::move(set_sample_exp),
-                [](const problem_dto::sample_mutation_result& sample_value) {
-                    return problem_json_serializer::make_sample_object(sample_value);
-                }
+                problem_json_serializer::make_versioned_sample_object
             );
         },
         auth_guard::make_admin_guard(),

@@ -174,48 +174,6 @@ testcase_service::list_testcase_summaries(
     );
 }
 
-std::expected<void, service_error> testcase_service::set_testcase(
-    db_connection& connection,
-    const problem_dto::testcase_ref& testcase_reference_value,
-    const problem_dto::testcase& testcase_value
-){
-    return db_service_util::with_retry_service_write_transaction(
-        connection,
-        [&](pqxx::work& transaction) -> std::expected<void, service_error> {
-            const auto set_testcase_exp = testcase_repository::set_testcase(
-                transaction,
-                testcase_reference_value,
-                testcase_value
-            );
-            if(!set_testcase_exp){
-                return std::unexpected(set_testcase_exp.error());
-            }
-
-            problem_dto::reference problem_reference_value{
-                testcase_reference_value.problem_id
-            };
-            const auto version_exp = problem_core_repository::increase_version(
-                transaction,
-                problem_reference_value
-            );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
-            const auto publish_snapshot_exp =
-                problem_snapshot_repository::publish_current_snapshot(
-                    transaction,
-                    problem_reference_value
-                );
-            if(!publish_snapshot_exp){
-                return std::unexpected(publish_snapshot_exp.error());
-            }
-
-            return {};
-        }
-    );
-}
-
 std::expected<problem_dto::testcase_mutation_result, service_error>
 testcase_service::set_testcase_and_get(
     db_connection& connection,

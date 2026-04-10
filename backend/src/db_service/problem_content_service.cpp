@@ -220,48 +220,6 @@ problem_content_service::list_samples(
     );
 }
 
-std::expected<void, service_error> problem_content_service::set_sample(
-    db_connection& connection,
-    const problem_content_dto::sample_ref& sample_reference_value,
-    const problem_content_dto::sample& sample_value
-){
-    return db_service_util::with_retry_service_write_transaction(
-        connection,
-        [&](pqxx::work& transaction) -> std::expected<void, service_error> {
-            const auto set_sample_exp = problem_content_repository::set_sample(
-                transaction,
-                sample_reference_value,
-                sample_value
-            );
-            if(!set_sample_exp){
-                return std::unexpected(set_sample_exp.error());
-            }
-
-            problem_dto::reference problem_reference_value{
-                sample_reference_value.problem_id
-            };
-            const auto version_exp = problem_core_repository::increase_version(
-                transaction,
-                problem_reference_value
-            );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
-            const auto publish_snapshot_exp =
-                problem_snapshot_repository::publish_current_snapshot(
-                    transaction,
-                    problem_reference_value
-                );
-            if(!publish_snapshot_exp){
-                return std::unexpected(publish_snapshot_exp.error());
-            }
-
-            return {};
-        }
-    );
-}
-
 std::expected<problem_dto::sample_mutation_result, service_error>
 problem_content_service::set_sample_and_get(
     db_connection& connection,

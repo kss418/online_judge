@@ -39,7 +39,7 @@ namespace problem_json_serializer{
         const problem_dto::testcase& testcase_value
     );
 
-    boost::json::object make_testcase_object(
+    boost::json::object make_versioned_testcase_object(
         const problem_dto::testcase_mutation_result& testcase_value
     );
 
@@ -59,7 +59,7 @@ namespace problem_json_serializer{
         const problem_dto::testcase& testcase_value
     );
 
-    boost::json::object make_testcase_created_object(
+    boost::json::object make_versioned_testcase_created_object(
         const problem_dto::testcase_mutation_result& testcase_value
     );
 
@@ -67,7 +67,7 @@ namespace problem_json_serializer{
         const problem_content_dto::sample& sample_value
     );
 
-    boost::json::object make_sample_object(
+    boost::json::object make_versioned_sample_object(
         const problem_dto::sample_mutation_result& sample_value
     );
 
@@ -79,7 +79,7 @@ namespace problem_json_serializer{
         const problem_content_dto::sample& sample_value
     );
 
-    boost::json::object make_sample_created_object(
+    boost::json::object make_versioned_sample_created_object(
         const problem_dto::sample_mutation_result& sample_value
     );
 
