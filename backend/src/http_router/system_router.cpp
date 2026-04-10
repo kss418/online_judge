@@ -28,6 +28,7 @@ system_router::response_type system_router::route(
         endpoint_descriptor{
             .name = "get_health",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = health_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -37,6 +38,7 @@ system_router::response_type system_router::route(
         endpoint_descriptor{
             .name = "get_supported_languages",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = supported_languages_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {

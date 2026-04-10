@@ -7,7 +7,7 @@
 #include "error/submission_error.hpp"
 #include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
-#include "http_guard/request_guard.hpp"
+#include "http_guard/submission_command_guard.hpp"
 #include "serializer/submission_json_serializer.hpp"
 
 namespace{
@@ -54,7 +54,7 @@ submission_command_handler::response_type submission_command_handler::post_submi
                 boost::beast::http::status::created
             );
         },
-        request_guard::make_submission_create_request_guard(problem_id)
+        submission_command_guard::make_create_request_guard(problem_id)
     );
 }
 

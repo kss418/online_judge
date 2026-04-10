@@ -27,12 +27,19 @@ void logging_request_observer::on_request_complete(
         const auto auth_user_id_opt = context.auth_identity_opt.has_value()
             ? std::optional<std::int64_t>{context.auth_identity_opt->user_id}
             : std::nullopt;
+        const auto operation_kind_text_opt = context.operation_kind_opt.has_value()
+            ? std::optional<std::string_view>{
+                http_route::to_string(*context.operation_kind_opt)
+            }
+            : std::nullopt;
 
         logger::clog()
             .log("http_request_completed")
             .field("request_id", context.request_id)
             .field("method", method)
             .field("target", target)
+            .optional_field("endpoint_name", context.endpoint_name_opt)
+            .optional_field("operation_kind", operation_kind_text_opt)
             .field("status", response.result_int())
             .field("duration_us", duration_us)
             .field("response_bytes", response.body().size())

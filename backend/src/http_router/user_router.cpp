@@ -77,6 +77,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "get_user_list",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = http_route::empty_path_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -86,6 +87,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "get_public_user_list",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = public_user_list_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -95,6 +97,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "get_me",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = me_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -104,6 +107,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "get_me_submission_statistics",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = me_statistics_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -113,6 +117,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "get_me_submission_ban",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = me_submission_ban_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -122,6 +127,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "get_me_solved_problems",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = me_solved_problems_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -131,6 +137,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "get_me_wrong_problems",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = me_wrong_problems_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
@@ -140,6 +147,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "get_user_summary_by_login_id",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = user_summary_by_login_id_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -152,6 +160,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "get_user_submission_statistics",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = user_statistics_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -164,6 +173,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "get_user_solved_problems",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = user_solved_problems_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -176,6 +186,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "get_user_wrong_problems",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = user_wrong_problems_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -188,6 +199,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "get_user_summary",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = user_id_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -200,6 +212,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "put_user_admin",
             .method = http_verb::put,
+            .operation_kind_value = http_route::operation_kind::command,
             .pattern = user_admin_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -212,6 +225,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "put_user_regular",
             .method = http_verb::put,
+            .operation_kind_value = http_route::operation_kind::command,
             .pattern = user_regular_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -224,6 +238,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "get_user_submission_ban",
             .method = http_verb::get,
+            .operation_kind_value = http_route::operation_kind::query,
             .pattern = user_submission_ban_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -236,6 +251,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "post_user_submission_ban",
             .method = http_verb::post,
+            .operation_kind_value = http_route::operation_kind::command,
             .pattern = user_submission_ban_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
@@ -248,6 +264,7 @@ user_router::response_type user_router::route(
         endpoint_descriptor{
             .name = "delete_user_submission_ban",
             .method = http_verb::delete_,
+            .operation_kind_value = http_route::operation_kind::command,
             .pattern = user_submission_ban_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {

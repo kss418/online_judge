@@ -3,6 +3,7 @@
 #include "common/string_util.hpp"
 #include "http_core/http_response_util.hpp"
 #include "http_core/request_parser.hpp"
+#include "http_router/operation_kind.hpp"
 
 #include <boost/beast/http/verb.hpp>
 
@@ -176,6 +177,7 @@ namespace http_route{
 
         std::string_view name;
         boost::beast::http::verb method;
+        http_route::operation_kind operation_kind_value;
         std::span<const path_segment_matcher> pattern;
         invoke_type invoke;
     };
@@ -192,6 +194,7 @@ namespace http_route{
             return http_response_util::create_not_found(context.request);
         }
 
+        context.clear_endpoint_metadata();
         bool matched_path = false;
         for(const auto& endpoint_descriptor_value : endpoint_descriptors){
             route_match route_match_value;
@@ -208,6 +211,10 @@ namespace http_route{
                 continue;
             }
 
+            context.set_endpoint_metadata(
+                endpoint_descriptor_value.name,
+                endpoint_descriptor_value.operation_kind_value
+            );
             return endpoint_descriptor_value.invoke(
                 context,
                 route_match_value

@@ -3,9 +3,11 @@
 #include "common/db_connection_pool.hpp"
 #include "dto/auth_dto.hpp"
 #include "http_core/http_response_util.hpp"
+#include "http_router/operation_kind.hpp"
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 class request_observer;
@@ -42,6 +44,19 @@ struct request_context{
         return db_connection_ptr_ != nullptr;
     }
 
+    void clear_endpoint_metadata(){
+        endpoint_name_opt.reset();
+        operation_kind_opt.reset();
+    }
+
+    void set_endpoint_metadata(
+        std::string_view endpoint_name_value,
+        http_route::operation_kind operation_kind_value
+    ){
+        endpoint_name_opt = endpoint_name_value;
+        operation_kind_opt = operation_kind_value;
+    }
+
     db_connection& db_connection_ref(){
         return *db_connection_ptr_;
     }
@@ -54,6 +69,8 @@ struct request_context{
     std::string request_id;
     std::optional<db_connection_pool::lease> db_connection_lease_opt;
     std::optional<auth_dto::identity> auth_identity_opt;
+    std::optional<std::string_view> endpoint_name_opt;
+    std::optional<http_route::operation_kind> operation_kind_opt;
     request_observer* observer = nullptr;
 
 private:
