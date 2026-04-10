@@ -1,7 +1,11 @@
 #include "http_router/problem_router.hpp"
 
-#include "http_handler/problem_content_handler.hpp"
-#include "http_handler/testcase_handler.hpp"
+#include "http_handler/problem_command_handler.hpp"
+#include "http_handler/problem_content_command_handler.hpp"
+#include "http_handler/problem_content_query_handler.hpp"
+#include "http_handler/problem_query_handler.hpp"
+#include "http_handler/testcase_command_handler.hpp"
+#include "http_handler/testcase_query_handler.hpp"
 #include "http_router/route_table.hpp"
 
 #include <array>
@@ -79,7 +83,7 @@ problem_router::response_type problem_router::route(
             .pattern = http_route::empty_path_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return problem_handler::get_problems(context_value);
+                return problem_query_handler::get_problems(context_value);
             }
         },
         endpoint_descriptor{
@@ -88,7 +92,7 @@ problem_router::response_type problem_router::route(
             .pattern = http_route::empty_path_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match&) -> response_type {
-                return problem_handler::post_problem(context_value);
+                return problem_command_handler::post_problem(context_value);
             }
         },
         endpoint_descriptor{
@@ -97,7 +101,7 @@ problem_router::response_type problem_router::route(
             .pattern = problem_id_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return problem_handler::get_problem(
+                return problem_query_handler::get_problem(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );
@@ -109,7 +113,7 @@ problem_router::response_type problem_router::route(
             .pattern = problem_id_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return problem_handler::delete_problem(
+                return problem_command_handler::delete_problem(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );
@@ -121,7 +125,7 @@ problem_router::response_type problem_router::route(
             .pattern = title_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return problem_handler::put_problem(
+                return problem_command_handler::put_problem(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );
@@ -133,7 +137,7 @@ problem_router::response_type problem_router::route(
             .pattern = limits_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return problem_content_handler::get_limits(
+                return problem_content_query_handler::get_limits(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );
@@ -145,7 +149,7 @@ problem_router::response_type problem_router::route(
             .pattern = limits_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return problem_content_handler::put_limits(
+                return problem_content_command_handler::put_limits(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );
@@ -157,7 +161,7 @@ problem_router::response_type problem_router::route(
             .pattern = statement_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return problem_content_handler::put_statement(
+                return problem_content_command_handler::put_statement(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );
@@ -169,7 +173,7 @@ problem_router::response_type problem_router::route(
             .pattern = samples_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return problem_content_handler::get_samples(
+                return problem_content_query_handler::get_samples(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );
@@ -181,7 +185,7 @@ problem_router::response_type problem_router::route(
             .pattern = samples_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return problem_content_handler::post_sample(
+                return problem_content_command_handler::post_sample(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );
@@ -193,7 +197,7 @@ problem_router::response_type problem_router::route(
             .pattern = samples_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return problem_content_handler::delete_sample(
+                return problem_content_command_handler::delete_sample(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );
@@ -205,7 +209,7 @@ problem_router::response_type problem_router::route(
             .pattern = sample_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return problem_content_handler::put_sample(
+                return problem_content_command_handler::put_sample(
                     context_value,
                     route_match_value.int64_param("problem_id"),
                     route_match_value.int32_param("sample_order")
@@ -218,7 +222,7 @@ problem_router::response_type problem_router::route(
             .pattern = testcases_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return testcase_handler::get_testcases(
+                return testcase_query_handler::get_testcases(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );
@@ -230,7 +234,7 @@ problem_router::response_type problem_router::route(
             .pattern = testcases_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return testcase_handler::post_testcase(
+                return testcase_command_handler::post_testcase(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );
@@ -242,7 +246,7 @@ problem_router::response_type problem_router::route(
             .pattern = testcase_all_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return testcase_handler::delete_all_testcases(
+                return testcase_command_handler::delete_all_testcases(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );
@@ -254,7 +258,7 @@ problem_router::response_type problem_router::route(
             .pattern = testcase_zip_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return testcase_handler::post_testcase_zip(
+                return testcase_command_handler::post_testcase_zip(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );
@@ -266,7 +270,7 @@ problem_router::response_type problem_router::route(
             .pattern = testcase_move_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return testcase_handler::move_testcase(
+                return testcase_command_handler::move_testcase(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );
@@ -278,7 +282,7 @@ problem_router::response_type problem_router::route(
             .pattern = testcase_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return testcase_handler::get_testcase(
+                return testcase_query_handler::get_testcase(
                     context_value,
                     route_match_value.int64_param("problem_id"),
                     route_match_value.int32_param("testcase_order")
@@ -291,7 +295,7 @@ problem_router::response_type problem_router::route(
             .pattern = testcase_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return testcase_handler::put_testcase(
+                return testcase_command_handler::put_testcase(
                     context_value,
                     route_match_value.int64_param("problem_id"),
                     route_match_value.int32_param("testcase_order")
@@ -304,7 +308,7 @@ problem_router::response_type problem_router::route(
             .pattern = testcase_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return testcase_handler::delete_testcase(
+                return testcase_command_handler::delete_testcase(
                     context_value,
                     route_match_value.int64_param("problem_id"),
                     route_match_value.int32_param("testcase_order")
@@ -317,7 +321,7 @@ problem_router::response_type problem_router::route(
             .pattern = rejudge_pattern,
             .invoke = [](context_type& context_value,
                 const http_route::route_match& route_match_value) -> response_type {
-                return problem_handler::post_problem_rejudge(
+                return problem_command_handler::post_problem_rejudge(
                     context_value,
                     route_match_value.int64_param("problem_id")
                 );

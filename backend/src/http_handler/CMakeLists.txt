@@ -1,11 +1,14 @@
 target_sources(lib
     PRIVATE
         auth_handler.cpp
-        problem_handler.cpp
-        problem_content_handler.cpp
+        problem_command_handler.cpp
+        problem_content_command_handler.cpp
+        problem_content_query_handler.cpp
+        problem_query_handler.cpp
         submission_command_handler.cpp
         submission_query_handler.cpp
         system_handler.cpp
-        testcase_handler.cpp
+        testcase_command_handler.cpp
+        testcase_query_handler.cpp
         user_handler.cpp
 )

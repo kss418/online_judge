@@ -1,74 +1,20 @@
-#include "http_handler/testcase_handler.hpp"
+#include "http_handler/testcase_command_handler.hpp"
 
 #include "application/replace_testcases_action.hpp"
+#include "db_service/testcase_service.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
 #include "http_guard/request_guard.hpp"
 #include "http_guard/testcase_upload_guard.hpp"
-
-#include "db_service/testcase_service.hpp"
 #include "request_parser/problem_request_parser.hpp"
 #include "serializer/common_json_serializer.hpp"
 #include "serializer/problem_json_serializer.hpp"
 
 #include <utility>
 
-testcase_handler::response_type testcase_handler::get_testcase(
-    context_type& context,
-    std::int64_t problem_id,
-    std::int32_t testcase_order
-){
-    problem_dto::reference problem_reference_value{problem_id};
-    problem_dto::testcase_ref testcase_reference_value{
-        .problem_id = problem_id,
-        .testcase_order = testcase_order
-    };
-    return http_guard::run_or_respond(
-        context,
-        [testcase_reference_value](context_type& context_value,
-            const auth_dto::identity&) -> response_type {
-            const auto testcase_exp = testcase_service::get_testcase(
-                context_value.db_connection_ref(),
-                testcase_reference_value
-            );
-            return http_adapter::json(
-                context_value.request,
-                std::move(testcase_exp),
-                problem_json_serializer::make_testcase_object
-            );
-        },
-        auth_guard::make_admin_guard(),
-        problem_guard::make_exists_guard(problem_reference_value)
-    );
-}
-
-testcase_handler::response_type testcase_handler::get_testcases(
-    context_type& context,
-    std::int64_t problem_id
-){
-    problem_dto::reference problem_reference_value{problem_id};
-    return http_guard::run_or_respond(
-        context,
-        [problem_reference_value](context_type& context_value,
-            const auth_dto::identity&) -> response_type {
-            const auto testcase_summary_values_exp = testcase_service::list_testcase_summaries(
-                context_value.db_connection_ref(),
-                problem_reference_value
-            );
-            return http_adapter::json(
-                context_value.request,
-                std::move(testcase_summary_values_exp),
-                problem_json_serializer::make_testcase_summary_list_object
-            );
-        },
-        auth_guard::make_admin_guard(),
-        problem_guard::make_exists_guard(problem_reference_value)
-    );
-}
-
-testcase_handler::response_type testcase_handler::post_testcase(
+testcase_command_handler::response_type testcase_command_handler::post_testcase(
     context_type& context,
     std::int64_t problem_id
 ){
@@ -98,7 +44,7 @@ testcase_handler::response_type testcase_handler::post_testcase(
     );
 }
 
-testcase_handler::response_type testcase_handler::put_testcase(
+testcase_command_handler::response_type testcase_command_handler::put_testcase(
     context_type& context,
     std::int64_t problem_id,
     std::int32_t testcase_order
@@ -139,7 +85,7 @@ testcase_handler::response_type testcase_handler::put_testcase(
     );
 }
 
-testcase_handler::response_type testcase_handler::post_testcase_zip(
+testcase_command_handler::response_type testcase_command_handler::post_testcase_zip(
     context_type& context,
     std::int64_t problem_id
 ){
@@ -174,7 +120,7 @@ testcase_handler::response_type testcase_handler::post_testcase_zip(
     );
 }
 
-testcase_handler::response_type testcase_handler::move_testcase(
+testcase_command_handler::response_type testcase_command_handler::move_testcase(
     context_type& context,
     std::int64_t problem_id
 ){
@@ -207,7 +153,7 @@ testcase_handler::response_type testcase_handler::move_testcase(
     );
 }
 
-testcase_handler::response_type testcase_handler::delete_testcase(
+testcase_command_handler::response_type testcase_command_handler::delete_testcase(
     context_type& context,
     std::int64_t problem_id,
     std::int32_t testcase_order
@@ -234,7 +180,7 @@ testcase_handler::response_type testcase_handler::delete_testcase(
     );
 }
 
-testcase_handler::response_type testcase_handler::delete_all_testcases(
+testcase_command_handler::response_type testcase_command_handler::delete_all_testcases(
     context_type& context,
     std::int64_t problem_id
 ){
