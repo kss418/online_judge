@@ -7,12 +7,12 @@ import { useSubmissionFilterQuery } from '@/composables/submissions/useSubmissio
 import {
   formatElapsedMs,
   formatMemory,
-  listLimit,
-  submissionStatusOptions
+  listLimit
 } from '@/composables/submissions/submissionHelpers'
 import { useSubmissionListResource } from '@/composables/submissions/useSubmissionListResource'
 import { useSubmissionPagination } from '@/composables/submissions/useSubmissionPagination'
 import { useSubmissionPolling } from '@/composables/submissions/useSubmissionPolling'
+import { submissionStatusOptions } from '@/queryState/submissionFilters'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
 
@@ -72,6 +72,7 @@ export function useSubmissionsPage(){
     isAuthenticated,
     authenticatedBearerToken,
     isMineScope: query.isMineScope,
+    routeFilterState: query.routeState,
     numericProblemId: query.numericProblemId,
     activeUserId: computed(() => {
       if (query.isMineScope.value) {
@@ -83,7 +84,6 @@ export function useSubmissionsPage(){
 
       return null
     }),
-    activeUserLoginId: query.activeUserLoginId,
     appliedLanguageFilter: query.appliedLanguageFilter,
     appliedStatusFilter: query.appliedStatusFilter,
     selectedLanguageFilter: query.selectedLanguageFilter,

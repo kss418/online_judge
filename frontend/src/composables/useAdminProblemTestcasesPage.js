@@ -61,9 +61,7 @@ export function useAdminProblemTestcasesPage(){
   listResource = useProblemTestcaseListResource({
     authState,
     selectedProblemId: query.selectedProblemId,
-    routeSearchMode: query.routeSearchMode,
-    routeTitleSearch: query.routeTitleSearch,
-    routeProblemIdSearch: query.routeProblemIdSearch,
+    routeQueryState: query.routeState,
     replaceProblemRoute: query.replaceProblemRoute,
     syncSelectedTestcase: draft.syncSelectedTestcase,
     resetSelectedTestcaseState: draft.resetSelectedTestcaseState

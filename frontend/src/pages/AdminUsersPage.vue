@@ -176,9 +176,12 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import PaginationBar from '@/components/PaginationBar.vue'
 import { demoteUserToUser, getUserList, promoteUserToAdmin } from '@/api/user'
+import { getRoleName } from '@/api/normalizers/permission'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useNotice } from '@/composables/useNotice'
+import { formatApiError } from '@/utils/apiError'
+import { formatRelativeTimestamp } from '@/utils/dateTime'
 import { buildPaginationItems } from '@/utils/pagination'
 
 const { authState, isAuthenticated, initializeAuth, refreshCurrentUser } = useAuth()
@@ -297,30 +300,16 @@ async function loadUsers(){
       return
     }
 
-    const responseUsers = Array.isArray(response.users) ? response.users : []
-
-    users.value = responseUsers.map((user) => {
-      const permissionLevel = normalizePermissionLevel(user.permission_level)
-      const normalizedUserLoginId =
-        typeof user.user_login_id === 'string' ? user.user_login_id : ''
-      return {
-        user_id: Number(user.user_id ?? 0),
-        user_login_id: normalizedUserLoginId,
-        permission_level: permissionLevel,
-        role_name: user.role_name || getRoleName(permissionLevel),
-        created_at: typeof user.created_at === 'string' ? user.created_at : '',
-        ...normalizeCreatedAt(user.created_at)
-      }
-    })
+    users.value = Array.isArray(response.users) ? response.users : []
   } catch (error) {
     if (requestId !== latestLoadRequestId) {
       return
     }
 
     users.value = []
-    errorMessage.value = error instanceof Error
-      ? error.message
-      : '유저 목록을 불러오지 못했습니다.'
+    errorMessage.value = formatApiError(error, {
+      fallback: '유저 목록을 불러오지 못했습니다.'
+    })
   } finally {
     if (requestId === latestLoadRequestId) {
       isLoading.value = false
@@ -404,9 +393,9 @@ async function handleRoleAction(user, nextPermissionLevel){
       ? `${user.user_login_id} 님을 어드민으로 승격했습니다.`
       : `${user.user_login_id} 님을 유저로 강등했습니다.`
   } catch (error) {
-    actionErrorMessage.value = error instanceof Error
-      ? error.message
-      : '권한 변경을 적용하지 못했습니다.'
+    actionErrorMessage.value = formatApiError(error, {
+      fallback: '권한 변경을 적용하지 못했습니다.'
+    })
   } finally {
     savingUserId.value = 0
   }
@@ -417,36 +406,6 @@ const permissionLevelToRole = Object.freeze({
   admin: 1,
   superadmin: 2
 })
-
-function normalizePermissionLevel(value){
-  const numericValue = Number(value)
-
-  if (Number.isInteger(numericValue) && numericValue >= 0 && numericValue <= 2) {
-    return numericValue
-  }
-
-  if (Number.isInteger(numericValue) && numericValue >= 100) {
-    return 2
-  }
-
-  if (Number.isInteger(numericValue) && numericValue >= 10) {
-    return 1
-  }
-
-  return 0
-}
-
-function getRoleName(permissionLevel){
-  if (permissionLevel >= 2) {
-    return 'superadmin'
-  }
-
-  if (permissionLevel >= 1) {
-    return 'admin'
-  }
-
-  return 'user'
-}
 
 function formatPermissionLabel(permissionLevel){
   if (permissionLevel >= 2) {
@@ -472,75 +431,8 @@ function getPermissionTone(permissionLevel){
   return 'neutral'
 }
 
-function normalizeCreatedAt(value){
-  if (typeof value !== 'string' || !value.trim()) {
-    return {
-      created_at_timestamp: null,
-      created_at_label: ''
-    }
-  }
-
-  const trimmedValue = value.trim()
-  const matchedTimestamp = trimmedValue.match(
-    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?([+-]\d{2})(?::?(\d{2}))?$/
-  )
-
-  if (matchedTimestamp) {
-    const [, datePart, timePart, fractionPart = '', offsetHour, offsetMinute = '00'] =
-      matchedTimestamp
-    const normalizedFraction = fractionPart
-      ? `.${fractionPart.slice(0, 3).padEnd(3, '0')}`
-      : ''
-    const parsedTimestamp = Date.parse(
-      `${datePart}T${timePart}${normalizedFraction}${offsetHour}:${offsetMinute}`
-    )
-
-    return {
-      created_at_timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
-      created_at_label: `${datePart} ${timePart}`
-    }
-  }
-
-  const parsedTimestamp = Date.parse(trimmedValue.replace(' ', 'T'))
-  return {
-    created_at_timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
-    created_at_label: trimmedValue
-  }
-}
-
 function formatRelativeCreatedAt(timestamp){
-  if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
-    return '-'
-  }
-
-  const elapsedSeconds = Math.max(1, Math.floor((nowTimestamp.value - timestamp) / 1000))
-
-  if (elapsedSeconds < 60) {
-    return `${elapsedSeconds}초 전`
-  }
-
-  const elapsedMinutes = Math.floor(elapsedSeconds / 60)
-  if (elapsedMinutes < 60) {
-    return `${elapsedMinutes}분 전`
-  }
-
-  const elapsedHours = Math.floor(elapsedMinutes / 60)
-  if (elapsedHours < 24) {
-    return `${elapsedHours}시간 전`
-  }
-
-  const elapsedDays = Math.floor(elapsedHours / 24)
-  if (elapsedDays < 30) {
-    return `${elapsedDays}일 전`
-  }
-
-  const elapsedMonths = Math.floor(elapsedDays / 30)
-  if (elapsedMonths < 12) {
-    return `${elapsedMonths}달 전`
-  }
-
-  const elapsedYears = Math.floor(elapsedDays / 365)
-  return `${elapsedYears}년 전`
+  return formatRelativeTimestamp(nowTimestamp.value, timestamp)
 }
 
 function stopRelativeTimeRefresh(){

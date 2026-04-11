@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 
 import { rejudgeSubmission } from '@/api/submission'
 import { finishedSubmissionStatuses } from '@/composables/submissions/submissionHelpers'
+import { formatApiError } from '@/utils/apiError'
 
 export function useSubmissionActions({ authState, formatCount, patchSubmission }){
   const actionMessage = ref('')
@@ -61,9 +62,9 @@ export function useSubmissionActions({ authState, formatCount, patchSubmission }
       })
       actionMessage.value = `제출 #${formatCount(submissionId)} 재채점을 요청했습니다.`
     } catch (error) {
-      actionErrorMessage.value = error instanceof Error
-        ? error.message
-        : '제출 재채점을 요청하지 못했습니다.'
+      actionErrorMessage.value = formatApiError(error, {
+        fallback: '제출 재채점을 요청하지 못했습니다.'
+      })
     } finally {
       removeRejudgingSubmission(submissionId)
     }

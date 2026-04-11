@@ -7,56 +7,46 @@ import {
   getProblemTestcases
 } from '@/api/problem'
 import { useAsyncResource } from '@/composables/useAsyncResource'
-import {
-  normalizeProblemDetail,
-  normalizeProblemItem,
-  normalizeTestcaseDetail,
-  normalizeTestcaseList
-} from '@/composables/adminProblemTestcases/testcaseHelpers'
+import { buildApiQuery as buildProblemAdminSearchApiQuery } from '@/queryState/problemAdminSearch'
+import { formatApiError } from '@/utils/apiError'
 
 export function useProblemTestcaseListResource({
   authState,
   selectedProblemId,
-  routeSearchMode,
-  routeTitleSearch,
-  routeProblemIdSearch,
+  routeQueryState,
   replaceProblemRoute,
   syncSelectedTestcase,
   resetSelectedTestcaseState
 }){
   const problemListResource = useAsyncResource({
     initialData: [],
-    async load({ activeTitleSearch, activeProblemIdSearch }){
+    async load({ routeQuery }){
+      const apiQuery = buildProblemAdminSearchApiQuery(routeQuery)
       const response = await getProblemList({
-        title: activeTitleSearch,
+        title: apiQuery.title,
+        problemId: apiQuery.problemId,
         bearerToken: authState.token || ''
       })
-      const responseProblems = Array.isArray(response.problems) ? response.problems : []
-      const filteredProblems = activeProblemIdSearch == null
-        ? responseProblems
-        : responseProblems.filter((problem) => Number(problem.problem_id ?? 0) === activeProblemIdSearch)
 
-      return filteredProblems.map(normalizeProblemItem)
+      return response.problems
     },
     getErrorMessage(error){
-      return error instanceof Error
-        ? error.message
-        : '문제 목록을 불러오지 못했습니다.'
+      return formatApiError(error, {
+        fallback: '문제 목록을 불러오지 못했습니다.'
+      })
     }
   })
   const problemDetailResource = useAsyncResource({
     initialData: null,
     async load(problemId){
-      const response = await getProblemDetail(problemId, {
+      return getProblemDetail(problemId, {
         bearerToken: authState.token || ''
       })
-
-      return normalizeProblemDetail(response)
     },
     getErrorMessage(error){
-      return error instanceof Error
-        ? error.message
-        : '문제 정보를 불러오지 못했습니다.'
+      return formatApiError(error, {
+        fallback: '문제 정보를 불러오지 못했습니다.'
+      })
     }
   })
   const testcaseListResource = useAsyncResource({
@@ -66,27 +56,25 @@ export function useProblemTestcaseListResource({
         bearerToken: authState.token
       })
 
-      return normalizeTestcaseList(response)
+      return response.testcases
     },
     getErrorMessage(error){
-      return error instanceof Error
-        ? error.message
-        : '테스트케이스를 불러오지 못했습니다.'
+      return formatApiError(error, {
+        fallback: '테스트케이스를 불러오지 못했습니다.'
+      })
     }
   })
   const selectedTestcaseResource = useAsyncResource({
     initialData: null,
     async load({ problemId, testcaseOrder }){
-      const response = await getProblemTestcase(problemId, testcaseOrder, {
+      return getProblemTestcase(problemId, testcaseOrder, {
         bearerToken: authState.token || ''
       })
-
-      return normalizeTestcaseDetail(response)
     },
     getErrorMessage(error){
-      return error instanceof Error
-        ? error.message
-        : '테스트케이스 본문을 불러오지 못했습니다.'
+      return formatApiError(error, {
+        fallback: '테스트케이스 본문을 불러오지 못했습니다.'
+      })
     }
   })
 
@@ -157,16 +145,9 @@ export function useProblemTestcaseListResource({
 
   async function loadProblems(options = {}){
     const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
-    const activeTitleSearch = routeSearchMode.value === 'title'
-      ? routeTitleSearch.value
-      : ''
-    const activeProblemIdSearch = routeSearchMode.value === 'problem-id'
-      ? routeProblemIdSearch.value
-      : null
 
     const result = await problemListResource.run({
-      activeTitleSearch,
-      activeProblemIdSearch
+      routeQuery: routeQueryState.value
     }, {
       resetDataOnError: true
     })

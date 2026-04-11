@@ -2,10 +2,7 @@ import { ref } from 'vue'
 
 import { getProblemDetail } from '@/api/problem'
 import { useAsyncResource } from '@/composables/useAsyncResource'
-import {
-  normalizeProblemDetail,
-  normalizeProblemSamples
-} from '@/composables/adminProblems/problemHelpers'
+import { formatApiError } from '@/utils/apiError'
 
 export function useProblemDetailResource({
   authState,
@@ -18,16 +15,14 @@ export function useProblemDetailResource({
   const detailResource = useAsyncResource({
     initialData: null,
     async load(problemId){
-      const response = await getProblemDetail(problemId, {
+      return getProblemDetail(problemId, {
         bearerToken: authState.token || ''
       })
-
-      return normalizeProblemDetail(response)
     },
     getErrorMessage(error){
-      return error instanceof Error
-        ? error.message
-        : '문제 정보를 불러오지 못했습니다.'
+      return formatApiError(error, {
+        fallback: '문제 정보를 불러오지 못했습니다.'
+      })
     }
   })
 
@@ -48,7 +43,7 @@ export function useProblemDetailResource({
 
     selectedProblemDetail.value = {
       ...selectedProblemDetail.value,
-      samples: normalizeProblemSamples(samples)
+      samples: Array.isArray(samples) ? samples : []
     }
   }
 

@@ -1,11 +1,12 @@
 import { computed, ref } from 'vue'
 
 import { useRouteQueryState } from '@/composables/useRouteQueryState'
-import { parsePositiveInteger } from '@/composables/adminProblemTestcases/testcaseHelpers'
-
-function normalizeSearchMode(value){
-  return value === 'problem-id' ? 'problem-id' : 'title'
-}
+import {
+  buildRouteQuery as buildProblemAdminSearchRouteQuery,
+  normalizeSearchMode,
+  parsePositiveInteger,
+  parseRouteQuery as parseProblemAdminSearchRouteQuery
+} from '@/queryState/problemAdminSearch'
 
 export function useProblemSelectionQuery({
   route,
@@ -22,35 +23,8 @@ export function useProblemSelectionQuery({
   const queryState = useRouteQueryState({
     route,
     router,
-    parseQuery(query){
-      return {
-        searchMode: normalizeSearchMode(query.searchMode),
-        titleSearch: String(query.searchTitle ?? '').trim(),
-        problemIdSearch: parsePositiveInteger(query.searchProblemId)
-      }
-    },
-    buildQuery(state){
-      const nextQuery = {}
-      const searchMode = normalizeSearchMode(state.searchMode)
-
-      if (searchMode === 'problem-id') {
-        const nextProblemId = parsePositiveInteger(state.problemIdSearch)
-        if (nextProblemId != null) {
-          nextQuery.searchMode = 'problem-id'
-          nextQuery.searchProblemId = String(nextProblemId)
-        }
-
-        return nextQuery
-      }
-
-      const nextTitle = String(state.titleSearch ?? '').trim()
-      if (nextTitle) {
-        nextQuery.searchMode = 'title'
-        nextQuery.searchTitle = nextTitle
-      }
-
-      return nextQuery
-    },
+    parseQuery: parseProblemAdminSearchRouteQuery,
+    buildQuery: buildProblemAdminSearchRouteQuery,
     createLocalState(){
       return {
         searchMode: ref('title'),
@@ -205,6 +179,7 @@ export function useProblemSelectionQuery({
     routeSearchMode,
     routeTitleSearch,
     routeProblemIdSearch,
+    routeState: queryState.routeState,
     hasAppliedSearch,
     problemListCaption,
     emptyProblemListMessage,

@@ -80,9 +80,7 @@ export function useAdminProblemsPage(){
   problemListResource = useProblemListResource({
     authState,
     canManageProblems,
-    routeSearchMode: problemQuery.routeSearchMode,
-    routeTitleSearch: problemQuery.routeTitleSearch,
-    routeProblemIdSearch: problemQuery.routeProblemIdSearch,
+    routeQueryState: problemQuery.routeState,
     selectedProblemId: problemDetailResource.selectedProblemId,
     selectedProblemDetail: problemDetailResource.selectedProblemDetail,
     detailErrorMessage: problemDetailResource.detailErrorMessage,

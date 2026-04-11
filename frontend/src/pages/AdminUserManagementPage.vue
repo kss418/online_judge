@@ -221,6 +221,7 @@ import PaginationBar from '@/components/PaginationBar.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useNotice } from '@/composables/useNotice'
+import { formatApiError } from '@/utils/apiError'
 import { buildPaginationItems } from '@/utils/pagination'
 
 const countFormatter = new Intl.NumberFormat('ko-KR')
@@ -324,7 +325,14 @@ async function loadUsers(){
 
     const responseUsers = Array.isArray(response.users) ? response.users : []
     users.value = await loadSubmissionBanStatuses(
-      responseUsers.map(normalizeListUser),
+      responseUsers.map((user) => ({
+        ...user,
+        submission_banned_until: null,
+        submission_banned_until_timestamp: null,
+        submission_banned_until_label: '',
+        submission_ban_status_loading: true,
+        submission_ban_status_error: false
+      })),
       requestId
     )
   } catch (error) {
@@ -333,9 +341,9 @@ async function loadUsers(){
     }
 
     users.value = []
-    errorMessage.value = error instanceof Error
-      ? error.message
-      : '유저 목록을 불러오지 못했습니다.'
+    errorMessage.value = formatApiError(error, {
+      fallback: '유저 목록을 불러오지 못했습니다.'
+    })
   } finally {
     if (requestId === latestLoadRequestId) {
       isLoading.value = false
@@ -354,10 +362,7 @@ async function loadSubmissionBanStatuses(baseUsers, requestId){
         const response = await getUserSubmissionBan(user.user_id, authState.token)
         return {
           user_id: user.user_id,
-          submission_banned_until:
-            typeof response.submission_banned_until === 'string'
-              ? response.submission_banned_until
-              : null,
+          ...response,
           has_error: false
         }
       } catch (error) {
@@ -395,12 +400,11 @@ async function loadSubmissionBanStatuses(baseUsers, requestId){
       }
     }
 
-    const submissionBan = normalizeDateTime(statusResult.submission_banned_until)
     return {
       ...user,
       submission_banned_until: statusResult.submission_banned_until,
-      submission_banned_until_timestamp: submissionBan.timestamp,
-      submission_banned_until_label: submissionBan.label,
+      submission_banned_until_timestamp: statusResult.submission_banned_until_timestamp,
+      submission_banned_until_label: statusResult.submission_banned_until_label,
       submission_ban_status_loading: false,
       submission_ban_status_error: statusResult.has_error
     }
@@ -443,9 +447,9 @@ async function handleCreateSubmissionBan(user){
     showSuccessNotice(`${user.user_login_id} 님의 제출을 ${durationMinutes}분 동안 제한했습니다.`)
   } catch (error) {
     showErrorNotice(
-      error instanceof Error
-        ? error.message
-        : '제출 밴을 설정하지 못했습니다.',
+      formatApiError(error, {
+        fallback: '제출 밴을 설정하지 못했습니다.'
+      }),
       { duration: 5000 }
     )
   } finally {
@@ -503,9 +507,9 @@ async function handleClearSubmissionBan(user){
     showSuccessNotice(`${user.user_login_id} 님의 제출 제한을 해제했습니다.`)
   } catch (error) {
     showErrorNotice(
-      error instanceof Error
-        ? error.message
-        : '제출 밴을 해제하지 못했습니다.',
+      formatApiError(error, {
+        fallback: '제출 밴을 해제하지 못했습니다.'
+      }),
       { duration: 5000 }
     )
   } finally {
@@ -520,44 +524,11 @@ function patchUser(userId, nextValue){
       return user
     }
 
-    const submissionBanSource = Object.prototype.hasOwnProperty.call(
-      nextValue,
-      'submission_banned_until'
-    )
-      ? nextValue.submission_banned_until
-      : user.submission_banned_until
-    const normalizedSubmissionBan = normalizeDateTime(submissionBanSource)
-
     return {
       ...user,
-      ...nextValue,
-      submission_banned_until:
-        typeof submissionBanSource === 'string' ? submissionBanSource : null,
-      submission_banned_until_timestamp: normalizedSubmissionBan.timestamp,
-      submission_banned_until_label: normalizedSubmissionBan.label
+      ...nextValue
     }
   })
-}
-
-function normalizeListUser(user){
-  const permissionLevel = normalizePermissionLevel(user.permission_level)
-  const createdAt = normalizeDateTime(user.created_at)
-  const submissionBan = normalizeDateTime(user.submission_banned_until)
-
-  return {
-    user_id: Number(user.user_id ?? 0),
-    user_login_id: typeof user.user_login_id === 'string' ? user.user_login_id : '',
-    permission_level: permissionLevel,
-    role_name: user.role_name || getRoleName(permissionLevel),
-    created_at: typeof user.created_at === 'string' ? user.created_at : '',
-    created_at_timestamp: createdAt.timestamp,
-    created_at_label: createdAt.label,
-    submission_banned_until: null,
-    submission_banned_until_timestamp: submissionBan.timestamp,
-    submission_banned_until_label: submissionBan.label,
-    submission_ban_status_loading: true,
-    submission_ban_status_error: false
-  }
 }
 
 function getDurationDraft(userId){
@@ -588,36 +559,6 @@ function parseDurationDraft(userId){
   return durationMinutes
 }
 
-function normalizePermissionLevel(value){
-  const numericValue = Number(value)
-
-  if (Number.isInteger(numericValue) && numericValue >= 0 && numericValue <= 2) {
-    return numericValue
-  }
-
-  if (Number.isInteger(numericValue) && numericValue >= 100) {
-    return 2
-  }
-
-  if (Number.isInteger(numericValue) && numericValue >= 10) {
-    return 1
-  }
-
-  return 0
-}
-
-function getRoleName(permissionLevel){
-  if (permissionLevel >= 2) {
-    return 'superadmin'
-  }
-
-  if (permissionLevel >= 1) {
-    return 'admin'
-  }
-
-  return 'user'
-}
-
 function formatPermissionLabel(permissionLevel){
   if (permissionLevel >= 2) {
     return 'SuperAdmin'
@@ -640,42 +581,6 @@ function getPermissionTone(permissionLevel){
   }
 
   return 'neutral'
-}
-
-function normalizeDateTime(value){
-  if (typeof value !== 'string' || !value.trim()) {
-    return {
-      timestamp: null,
-      label: ''
-    }
-  }
-
-  const trimmedValue = value.trim()
-  const matchedTimestamp = trimmedValue.match(
-    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?([+-]\d{2})(?::?(\d{2}))?$/
-  )
-
-  if (matchedTimestamp) {
-    const [, datePart, timePart, fractionPart = '', offsetHour, offsetMinute = '00'] =
-      matchedTimestamp
-    const normalizedFraction = fractionPart
-      ? `.${fractionPart.slice(0, 3).padEnd(3, '0')}`
-      : ''
-    const parsedTimestamp = Date.parse(
-      `${datePart}T${timePart}${normalizedFraction}${offsetHour}:${offsetMinute}`
-    )
-
-    return {
-      timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
-      label: `${datePart} ${timePart}`
-    }
-  }
-
-  const parsedTimestamp = Date.parse(trimmedValue.replace(' ', 'T'))
-  return {
-    timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
-    label: trimmedValue
-  }
 }
 
 function getSubmissionBanState(user){

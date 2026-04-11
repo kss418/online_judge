@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { formatApiError } from '@/utils/apiError'
 
 function resolveInitialData(initialData){
   return typeof initialData === 'function'
@@ -92,9 +93,7 @@ export function useAsyncResource({ initialData, load, getErrorMessage }){
       if (setErrorOnError) {
         errorMessage.value = typeof getErrorMessage === 'function'
           ? getErrorMessage(error)
-          : error instanceof Error
-            ? error.message
-            : '요청을 처리하지 못했습니다.'
+          : formatApiError(error)
       }
 
       if (resetDataOnError) {

@@ -7,9 +7,9 @@ import {
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import {
   fallbackCopyText,
-  formatHistoryTransition,
-  normalizeSubmissionHistoryEntry
+  formatHistoryTransition
 } from '@/composables/submissions/submissionHelpers'
+import { formatApiError } from '@/utils/apiError'
 
 export function useSubmissionDialogs({
   authState,
@@ -27,15 +27,18 @@ export function useSubmissionDialogs({
       const response = await getSubmissionHistory(submissionId, authState.token)
 
       return Array.isArray(response.histories)
-        ? response.histories.map((historyEntry, index) =>
-          normalizeSubmissionHistoryEntry(historyEntry, index)
-        )
+        ? response.histories.map((historyEntry, index) => ({
+          ...historyEntry,
+          history_key: historyEntry.history_id
+            ? `history-${historyEntry.history_id}`
+            : `history-fallback-${index}-${historyEntry.created_at_label || '-'}`
+        }))
         : []
     },
     getErrorMessage(error){
-      return error instanceof Error
-        ? error.message
-        : '채점 내역을 불러오지 못했습니다.'
+      return formatApiError(error, {
+        fallback: '채점 내역을 불러오지 못했습니다.'
+      })
     }
   })
   const sourceResource = useAsyncResource({
@@ -44,17 +47,17 @@ export function useSubmissionDialogs({
       const response = await getSubmissionSource(submission.submission_id, authState.token)
 
       return {
-        submission_id: Number(response.submission_id),
+        submission_id: response.submission_id,
         language: response.language || submission.language,
-        source_code: response.source_code || '',
-        compile_output: typeof response.compile_output === 'string' ? response.compile_output : '',
-        judge_output: typeof response.judge_output === 'string' ? response.judge_output : ''
+        source_code: response.source_code,
+        compile_output: response.compile_output,
+        judge_output: response.judge_output
       }
     },
     getErrorMessage(error){
-      return error instanceof Error
-        ? error.message
-        : '소스 코드를 불러오지 못했습니다.'
+      return formatApiError(error, {
+        fallback: '소스 코드를 불러오지 못했습니다.'
+      })
     }
   })
 

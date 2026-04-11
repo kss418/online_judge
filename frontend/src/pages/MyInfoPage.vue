@@ -284,7 +284,13 @@ import {
 import StatusBadge from '@/components/StatusBadge.vue'
 import SubmissionStatusBadge from '@/components/submissions/SubmissionStatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
-import { getProblemStateTextClass, normalizeProblemState } from '@/utils/problemState'
+import { formatApiError } from '@/utils/apiError'
+import {
+  formatRemainingDuration,
+  formatRelativeTimestamp,
+  formatTimestamp
+} from '@/utils/dateTime'
+import { getProblemStateTextClass } from '@/utils/problemState'
 
 const route = useRoute()
 const { authState, isAuthenticated, initializeAuth } = useAuth()
@@ -470,7 +476,7 @@ const mySubmissionBanWindowText = computed(() => {
   }
 
   if (isMySubmissionBanActive.value) {
-    return `${formatRelativeRemainingTime(mySubmissionBan.value.timestamp)} 남음`
+    return `${formatRemainingDuration(nowTimestamp.value, mySubmissionBan.value.timestamp)} 남음`
   }
 
   return '이전 제출 제한이 만료되었습니다.'
@@ -735,220 +741,8 @@ const statisticsItems = computed(() => {
   ]
 })
 
-function normalizeCount(value){
-  const numericValue = Number(value)
-  return Number.isFinite(numericValue) ? numericValue : 0
-}
-
-function normalizeSubmissionStatistics(payload){
-  return {
-    user_id: Number(payload?.user_id ?? 0),
-    submission_count: normalizeCount(payload?.submission_count),
-    accepted_submission_count: normalizeCount(payload?.accepted_submission_count),
-    wrong_answer_submission_count: normalizeCount(payload?.wrong_answer_submission_count),
-    time_limit_exceeded_submission_count: normalizeCount(
-      payload?.time_limit_exceeded_submission_count
-    ),
-    memory_limit_exceeded_submission_count: normalizeCount(
-      payload?.memory_limit_exceeded_submission_count
-    ),
-    runtime_error_submission_count: normalizeCount(payload?.runtime_error_submission_count),
-    compile_error_submission_count: normalizeCount(payload?.compile_error_submission_count),
-    output_exceeded_submission_count: normalizeCount(payload?.output_exceeded_submission_count),
-    queued_submission_count: normalizeCount(payload?.queued_submission_count),
-    judging_submission_count: normalizeCount(payload?.judging_submission_count),
-    last_submission_at: typeof payload?.last_submission_at === 'string'
-      ? payload.last_submission_at
-      : null,
-    last_accepted_at: typeof payload?.last_accepted_at === 'string'
-      ? payload.last_accepted_at
-      : null
-  }
-}
-
-function normalizeSolvedProblems(payload){
-  const solvedProblemValues = Array.isArray(payload?.solved_problems)
-    ? payload.solved_problems
-    : []
-
-  return solvedProblemValues
-    .map((problem) => ({
-      problem_id: Number(problem?.problem_id ?? 0),
-      accepted_count: normalizeCount(problem?.accepted_count),
-      user_problem_state: normalizeProblemState(problem?.user_problem_state)
-    }))
-    .filter((problem) => problem.problem_id > 0)
-    .sort((leftProblem, rightProblem) => leftProblem.problem_id - rightProblem.problem_id)
-}
-
-function normalizeRecentSubmissions(payload){
-  const submissionValues = Array.isArray(payload?.submissions)
-    ? payload.submissions
-    : []
-
-  return submissionValues
-    .map((submission) => {
-      const submittedAt = normalizeSubmittedAt(submission?.created_at)
-
-      return {
-        submission_id: Number(submission?.submission_id ?? 0),
-        problem_id: Number(submission?.problem_id ?? 0),
-        problem_title: typeof submission?.problem_title === 'string'
-          ? submission.problem_title
-          : '제목 없음',
-        status: typeof submission?.status === 'string' ? submission.status : '',
-        created_at_timestamp: submittedAt.timestamp,
-        created_at_label: submittedAt.label
-      }
-    })
-    .filter((submission) =>
-      submission.submission_id > 0 &&
-      submission.problem_id > 0 &&
-      submission.status
-    )
-}
-
-function normalizeWrongProblems(payload){
-  const wrongProblemValues = Array.isArray(payload?.wrong_problems)
-    ? payload.wrong_problems
-    : []
-
-  return wrongProblemValues
-    .map((problem) => ({
-      problem_id: Number(problem?.problem_id ?? 0),
-      accepted_count: normalizeCount(problem?.accepted_count),
-      user_problem_state: normalizeProblemState(problem?.user_problem_state)
-    }))
-    .filter((problem) => problem.problem_id > 0)
-    .sort((leftProblem, rightProblem) => leftProblem.problem_id - rightProblem.problem_id)
-}
-
-function formatTimestamp(value){
-  if (typeof value !== 'string' || !value.trim()) {
-    return '-'
-  }
-
-  const trimmedValue = value.trim()
-  const directMatch = trimmedValue.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/)
-  if (directMatch) {
-    return `${directMatch[1]} ${directMatch[2]}`
-  }
-
-  const parsedDate = new Date(trimmedValue)
-  if (Number.isNaN(parsedDate.getTime())) {
-    return trimmedValue
-  }
-
-  const year = String(parsedDate.getFullYear())
-  const month = String(parsedDate.getMonth() + 1).padStart(2, '0')
-  const day = String(parsedDate.getDate()).padStart(2, '0')
-  const hours = String(parsedDate.getHours()).padStart(2, '0')
-  const minutes = String(parsedDate.getMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}`
-}
-
-function formatRelativeRemainingTime(timestamp){
-  if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
-    return '-'
-  }
-
-  const remainingSeconds = Math.max(1, Math.floor((timestamp - nowTimestamp.value) / 1000))
-  if (remainingSeconds < 60) {
-    return `${remainingSeconds}초`
-  }
-
-  const remainingMinutes = Math.floor(remainingSeconds / 60)
-  if (remainingMinutes < 60) {
-    return `${remainingMinutes}분`
-  }
-
-  const remainingHours = Math.floor(remainingMinutes / 60)
-  if (remainingHours < 24) {
-    return `${remainingHours}시간`
-  }
-
-  const remainingDays = Math.floor(remainingHours / 24)
-  if (remainingDays < 30) {
-    return `${remainingDays}일`
-  }
-
-  const remainingMonths = Math.floor(remainingDays / 30)
-  if (remainingMonths < 12) {
-    return `${remainingMonths}달`
-  }
-
-  return `${Math.floor(remainingDays / 365)}년`
-}
-
-function normalizeSubmittedAt(value){
-  if (typeof value !== 'string' || !value.trim()) {
-    return {
-      timestamp: null,
-      label: ''
-    }
-  }
-
-  const trimmedValue = value.trim()
-  const matchedTimestamp = trimmedValue.match(
-    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?([+-]\d{2})(?::?(\d{2}))?$/
-  )
-
-  if (matchedTimestamp) {
-    const [, datePart, timePart, fractionPart = '', offsetHour, offsetMinute = '00'] =
-      matchedTimestamp
-    const normalizedFraction = fractionPart
-      ? `.${fractionPart.slice(0, 3).padEnd(3, '0')}`
-      : ''
-    const parsedTimestamp = Date.parse(
-      `${datePart}T${timePart}${normalizedFraction}${offsetHour}:${offsetMinute}`
-    )
-
-    return {
-      timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
-      label: `${datePart} ${timePart}`
-    }
-  }
-
-  const parsedTimestamp = Date.parse(trimmedValue.replace(' ', 'T'))
-  return {
-    timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
-    label: trimmedValue
-  }
-}
-
 function formatRelativeSubmittedAt(timestamp, fallbackLabel = '-'){
-  if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
-    return fallbackLabel || '-'
-  }
-
-  const elapsedSeconds = Math.max(1, Math.floor((nowTimestamp.value - timestamp) / 1000))
-
-  if (elapsedSeconds < 60) {
-    return `${elapsedSeconds}초 전`
-  }
-
-  const elapsedMinutes = Math.floor(elapsedSeconds / 60)
-  if (elapsedMinutes < 60) {
-    return `${elapsedMinutes}분 전`
-  }
-
-  const elapsedHours = Math.floor(elapsedMinutes / 60)
-  if (elapsedHours < 24) {
-    return `${elapsedHours}시간 전`
-  }
-
-  const elapsedDays = Math.floor(elapsedHours / 24)
-  if (elapsedDays < 30) {
-    return `${elapsedDays}일 전`
-  }
-
-  const elapsedMonths = Math.floor(elapsedDays / 30)
-  if (elapsedMonths < 12) {
-    return `${elapsedMonths}달 전`
-  }
-
-  const elapsedYears = Math.floor(elapsedDays / 365)
-  return `${elapsedYears}년 전`
+  return formatRelativeTimestamp(nowTimestamp.value, timestamp, fallbackLabel || '-')
 }
 
 function startRelativeTimeRefresh(){
@@ -990,16 +784,16 @@ async function loadSubmissionStatistics(){
       return
     }
 
-    submissionStatistics.value = normalizeSubmissionStatistics(payload)
+    submissionStatistics.value = payload
   } catch (error) {
     if (requestId !== latestStatisticsRequestId) {
       return
     }
 
     submissionStatistics.value = null
-    statisticsErrorMessage.value = error instanceof Error
-      ? error.message
-      : '제출 통계를 불러오지 못했습니다.'
+    statisticsErrorMessage.value = formatApiError(error, {
+      fallback: '제출 통계를 불러오지 못했습니다.'
+    })
   } finally {
     if (requestId === latestStatisticsRequestId) {
       isStatisticsLoading.value = false
@@ -1031,16 +825,16 @@ async function loadRecentSubmissions(){
       return
     }
 
-    recentSubmissions.value = normalizeRecentSubmissions(payload)
+    recentSubmissions.value = Array.isArray(payload.submissions) ? payload.submissions : []
   } catch (error) {
     if (requestId !== latestRecentSubmissionsRequestId) {
       return
     }
 
     recentSubmissions.value = []
-    recentSubmissionsErrorMessage.value = error instanceof Error
-      ? error.message
-      : '최근 제출 목록을 불러오지 못했습니다.'
+    recentSubmissionsErrorMessage.value = formatApiError(error, {
+      fallback: '최근 제출 목록을 불러오지 못했습니다.'
+    })
   } finally {
     if (requestId === latestRecentSubmissionsRequestId) {
       isRecentSubmissionsLoading.value = false
@@ -1071,16 +865,16 @@ async function loadSolvedProblems(){
       return
     }
 
-    solvedProblems.value = normalizeSolvedProblems(payload)
+    solvedProblems.value = Array.isArray(payload.solved_problems) ? payload.solved_problems : []
   } catch (error) {
     if (requestId !== latestSolvedProblemsRequestId) {
       return
     }
 
     solvedProblems.value = []
-    solvedProblemsErrorMessage.value = error instanceof Error
-      ? error.message
-      : '푼 문제 목록을 불러오지 못했습니다.'
+    solvedProblemsErrorMessage.value = formatApiError(error, {
+      fallback: '푼 문제 목록을 불러오지 못했습니다.'
+    })
   } finally {
     if (requestId === latestSolvedProblemsRequestId) {
       isSolvedProblemsLoading.value = false
@@ -1111,31 +905,20 @@ async function loadWrongProblems(){
       return
     }
 
-    wrongProblems.value = normalizeWrongProblems(payload)
+    wrongProblems.value = Array.isArray(payload.wrong_problems) ? payload.wrong_problems : []
   } catch (error) {
     if (requestId !== latestWrongProblemsRequestId) {
       return
     }
 
     wrongProblems.value = []
-    wrongProblemsErrorMessage.value = error instanceof Error
-      ? error.message
-      : '틀린 문제 목록을 불러오지 못했습니다.'
+    wrongProblemsErrorMessage.value = formatApiError(error, {
+      fallback: '틀린 문제 목록을 불러오지 못했습니다.'
+    })
   } finally {
     if (requestId === latestWrongProblemsRequestId) {
       isWrongProblemsLoading.value = false
     }
-  }
-}
-
-function normalizeUserSummary(payload){
-  const normalizedUserLoginId =
-    typeof payload?.user_login_id === 'string' ? payload.user_login_id : ''
-
-  return {
-    user_id: Number(payload?.user_id ?? 0),
-    user_login_id: normalizedUserLoginId,
-    created_at: typeof payload?.created_at === 'string' ? payload.created_at : null
   }
 }
 
@@ -1158,16 +941,16 @@ async function loadPublicUserSummary(userLoginId){
       return
     }
 
-    publicUserSummary.value = normalizeUserSummary(payload)
+    publicUserSummary.value = payload
   } catch (error) {
     if (requestId !== latestPublicUserSummaryRequestId) {
       return
     }
 
     publicUserSummary.value = null
-    publicUserSummaryErrorMessage.value = error instanceof Error
-      ? error.message
-      : '사용자 정보를 불러오지 못했습니다.'
+    publicUserSummaryErrorMessage.value = formatApiError(error, {
+      fallback: '사용자 정보를 불러오지 못했습니다.'
+    })
   } finally {
     if (requestId === latestPublicUserSummaryRequestId) {
       isPublicUserSummaryLoading.value = false
@@ -1198,16 +981,10 @@ async function loadMySubmissionBan(){
       return
     }
 
-    const submissionBannedUntil =
-      typeof payload?.submission_banned_until === 'string'
-        ? payload.submission_banned_until
-        : null
-    const normalizedSubmissionBan = normalizeSubmittedAt(submissionBannedUntil)
-
     mySubmissionBan.value = {
-      submission_banned_until: submissionBannedUntil,
-      timestamp: normalizedSubmissionBan.timestamp,
-      label: normalizedSubmissionBan.label
+      submission_banned_until: payload.submission_banned_until,
+      timestamp: payload.submission_banned_until_timestamp,
+      label: payload.submission_banned_until_label
     }
   } catch (error) {
     if (requestId !== latestMySubmissionBanRequestId) {
@@ -1219,9 +996,9 @@ async function loadMySubmissionBan(){
       timestamp: null,
       label: ''
     }
-    mySubmissionBanErrorMessage.value = error instanceof Error
-      ? error.message
-      : '제출 제한 상태를 불러오지 못했습니다.'
+    mySubmissionBanErrorMessage.value = formatApiError(error, {
+      fallback: '제출 제한 상태를 불러오지 못했습니다.'
+    })
   } finally {
     if (requestId === latestMySubmissionBanRequestId) {
       isMySubmissionBanLoading.value = false

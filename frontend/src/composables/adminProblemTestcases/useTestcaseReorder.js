@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 
 import { moveProblemTestcase } from '@/api/problem'
+import { formatApiError } from '@/utils/apiError'
 
 export function useTestcaseReorder({
   authState,
@@ -98,9 +99,9 @@ export function useTestcaseReorder({
       )
     } catch (error) {
       showErrorNotice(
-        error instanceof Error
-          ? error.message
-          : '테스트케이스 순서를 변경하지 못했습니다.'
+        formatApiError(error, {
+          fallback: '테스트케이스 순서를 변경하지 못했습니다.'
+        })
       )
     } finally {
       busySection.value = ''

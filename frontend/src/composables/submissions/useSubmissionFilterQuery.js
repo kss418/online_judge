@@ -2,18 +2,13 @@ import { computed, ref } from 'vue'
 
 import { useRouteQueryState } from '@/composables/useRouteQueryState'
 import {
+  buildRouteQuery as buildSubmissionRouteQuery,
   normalizeProblemIdFilterInputValue,
-  normalizeUserIdFilterInputValue,
-  submissionStatusOptions
-} from '@/composables/submissions/submissionHelpers'
+  normalizeUserLoginIdFilterInputValue,
+  parseRouteQuery as parseSubmissionRouteQuery
+} from '@/queryState/submissionFilters'
 
 export function useSubmissionFilterQuery({ route, router, formatCount }){
-  const validSubmissionStatusFilterValues = new Set(
-    submissionStatusOptions
-      .map((option) => option.value)
-      .filter(Boolean)
-  )
-
   const fixedProblemId = computed(() => {
     const problemIdParam = Array.isArray(route.params.problemId)
       ? route.params.problemId[0]
@@ -43,53 +38,13 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
   const queryState = useRouteQueryState({
     route,
     router,
-    parseQuery(query){
-      const parsedProblemId = Number.parseInt(query.problemId, 10)
-
-      return {
-        scope: query.scope === 'mine' ? 'mine' : '',
-        problemIdFilter: Number.isInteger(parsedProblemId) && parsedProblemId > 0
-          ? String(parsedProblemId)
-          : '',
-        userLoginId: typeof query.userLoginId === 'string'
-          ? query.userLoginId.trim()
-          : '',
-        status: validSubmissionStatusFilterValues.has(query.status)
-          ? query.status
-          : '',
-        language: typeof query.language === 'string'
-          ? query.language.trim()
-          : ''
-      }
-    },
+    parseQuery: parseSubmissionRouteQuery,
     buildQuery(state){
-      const nextQuery = {}
-
-      if (
-        route.name !== 'problem-my-submissions' &&
-        route.name !== 'problem-submissions' &&
-        state.scope === 'mine'
-      ) {
-        nextQuery.scope = 'mine'
-      }
-
-      if (!hasFixedProblemId.value && state.problemIdFilter) {
-        nextQuery.problemId = String(state.problemIdFilter)
-      }
-
-      if (!isMineScope.value && state.userLoginId) {
-        nextQuery.userLoginId = state.userLoginId
-      }
-
-      if (state.status) {
-        nextQuery.status = state.status
-      }
-
-      if (state.language) {
-        nextQuery.language = state.language
-      }
-
-      return nextQuery
+      return buildSubmissionRouteQuery(state, {
+        hasFixedProblemId: hasFixedProblemId.value,
+        isMineScope: isMineScope.value,
+        routeName: String(route.name ?? '')
+      })
     },
     createLocalState(){
       return {
@@ -150,7 +105,7 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
       return ''
     }
 
-    const trimmedUserLoginId = normalizeUserIdFilterInputValue(
+    const trimmedUserLoginId = normalizeUserLoginIdFilterInputValue(
       queryState.localState.selectedUserIdFilter.value
     )
     if (!trimmedUserLoginId) {
@@ -181,7 +136,7 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
     hasAppliedStatusFilter.value ||
     Boolean(appliedLanguageFilter.value) ||
     (!isMineScope.value && (
-      Boolean(normalizeUserIdFilterInputValue(queryState.localState.selectedUserIdFilter.value)) ||
+      Boolean(normalizeUserLoginIdFilterInputValue(queryState.localState.selectedUserIdFilter.value)) ||
       Boolean(appliedUserIdFilter.value)
     )) ||
     (!hasFixedProblemId.value && (
@@ -283,6 +238,7 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
     numericProblemId,
     activeUserId,
     activeUserLoginId,
+    routeState: queryState.routeState,
     pageTitle,
     syncSelectedFiltersFromRoute,
     applySubmissionFilters,

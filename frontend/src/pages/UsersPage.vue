@@ -137,6 +137,8 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import PaginationBar from '@/components/PaginationBar.vue'
 import { getPublicUserList } from '@/api/user'
 import StatusBadge from '@/components/StatusBadge.vue'
+import { formatApiError } from '@/utils/apiError'
+import { formatRelativeTimestamp } from '@/utils/dateTime'
 import { buildPaginationItems } from '@/utils/pagination'
 
 const countFormatter = new Intl.NumberFormat('ko-KR')
@@ -175,74 +177,8 @@ function formatAcceptanceRate(acceptedSubmissionCount, submissionCount){
   return `${rateFormatter.format(rate)}%`
 }
 
-function normalizeCreatedAt(value){
-  if (typeof value !== 'string' || !value.trim()) {
-    return {
-      created_at_timestamp: null,
-      created_at_label: ''
-    }
-  }
-
-  const trimmedValue = value.trim()
-  const matchedTimestamp = trimmedValue.match(
-    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?([+-]\d{2})(?::?(\d{2}))?$/
-  )
-
-  if (matchedTimestamp) {
-    const [, datePart, timePart, fractionPart = '', offsetHour, offsetMinute = '00'] =
-      matchedTimestamp
-    const normalizedFraction = fractionPart
-      ? `.${fractionPart.slice(0, 3).padEnd(3, '0')}`
-      : ''
-    const parsedTimestamp = Date.parse(
-      `${datePart}T${timePart}${normalizedFraction}${offsetHour}:${offsetMinute}`
-    )
-
-    return {
-      created_at_timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
-      created_at_label: `${datePart} ${timePart}`
-    }
-  }
-
-  const parsedTimestamp = Date.parse(trimmedValue.replace(' ', 'T'))
-  return {
-    created_at_timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
-    created_at_label: trimmedValue
-  }
-}
-
 function formatRelativeCreatedAt(timestamp){
-  if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
-    return '-'
-  }
-
-  const elapsedSeconds = Math.max(1, Math.floor((nowTimestamp.value - timestamp) / 1000))
-
-  if (elapsedSeconds < 60) {
-    return `${elapsedSeconds}초 전`
-  }
-
-  const elapsedMinutes = Math.floor(elapsedSeconds / 60)
-  if (elapsedMinutes < 60) {
-    return `${elapsedMinutes}분 전`
-  }
-
-  const elapsedHours = Math.floor(elapsedMinutes / 60)
-  if (elapsedHours < 24) {
-    return `${elapsedHours}시간 전`
-  }
-
-  const elapsedDays = Math.floor(elapsedHours / 24)
-  if (elapsedDays < 30) {
-    return `${elapsedDays}일 전`
-  }
-
-  const elapsedMonths = Math.floor(elapsedDays / 30)
-  if (elapsedMonths < 12) {
-    return `${elapsedMonths}달 전`
-  }
-
-  return `${Math.floor(elapsedDays / 365)}년 전`
+  return formatRelativeTimestamp(nowTimestamp.value, timestamp)
 }
 
 function startRelativeTimeRefresh(){
@@ -279,22 +215,12 @@ async function loadUsers(){
 
   try {
     const response = await getPublicUserList(appliedQuery.value)
-    const responseUsers = Array.isArray(response.users) ? response.users : []
-
-    users.value = responseUsers.map((user) => ({
-      user_id: Number(user.user_id ?? 0),
-      user_login_id: typeof user.user_login_id === 'string' ? user.user_login_id : '',
-      solved_problem_count: Number(user.solved_problem_count ?? 0),
-      accepted_submission_count: Number(user.accepted_submission_count ?? 0),
-      submission_count: Number(user.submission_count ?? 0),
-      created_at: typeof user.created_at === 'string' ? user.created_at : '',
-      ...normalizeCreatedAt(user.created_at)
-    }))
+    users.value = Array.isArray(response.users) ? response.users : []
   } catch (error) {
     users.value = []
-    errorMessage.value = error instanceof Error
-      ? error.message
-      : '유저 목록을 불러오지 못했습니다.'
+    errorMessage.value = formatApiError(error, {
+      fallback: '유저 목록을 불러오지 못했습니다.'
+    })
   } finally {
     isLoading.value = false
   }

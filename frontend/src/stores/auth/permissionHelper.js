@@ -1,32 +1,7 @@
-export function normalizePermissionLevel(value){
-  const numericValue = Number(value)
-
-  if (Number.isInteger(numericValue) && numericValue >= 0 && numericValue <= 2) {
-    return numericValue
-  }
-
-  if (Number.isInteger(numericValue) && numericValue >= 100) {
-    return 2
-  }
-
-  if (Number.isInteger(numericValue) && numericValue >= 10) {
-    return 1
-  }
-
-  return 0
-}
-
-export function getRoleName(permissionLevel){
-  if (permissionLevel >= 2) {
-    return 'superadmin'
-  }
-
-  if (permissionLevel >= 1) {
-    return 'admin'
-  }
-
-  return 'user'
-}
+import {
+  getRoleName,
+  normalizePermissionLevel
+} from '@/api/normalizers/permission'
 
 export function normalizeCurrentUser(user){
   if (!user) {

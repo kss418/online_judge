@@ -6,6 +6,7 @@ import {
   updateProblemTestcase,
   uploadProblemTestcaseZip
 } from '@/api/problem'
+import { formatApiError } from '@/utils/apiError'
 
 export function useTestcaseUploadActions({
   authState,
@@ -80,9 +81,9 @@ export function useTestcaseUploadActions({
       showSuccessNotice('테스트케이스를 마지막에 추가했습니다.')
     } catch (error) {
       showErrorNotice(
-        error instanceof Error
-          ? error.message
-          : '테스트케이스를 추가하지 못했습니다.'
+        formatApiError(error, {
+          fallback: '테스트케이스를 추가하지 못했습니다.'
+        })
       )
     } finally {
       busySection.value = ''
@@ -111,9 +112,9 @@ export function useTestcaseUploadActions({
       showSuccessNotice(`테스트케이스 ${formatCount(uploadedTestcaseCount)}개를 업로드했습니다.`)
     } catch (error) {
       showErrorNotice(
-        error instanceof Error
-          ? error.message
-          : '테스트케이스 ZIP을 업로드하지 못했습니다.'
+        formatApiError(error, {
+          fallback: '테스트케이스 ZIP을 업로드하지 못했습니다.'
+        })
       )
     } finally {
       busySection.value = ''
@@ -148,9 +149,9 @@ export function useTestcaseUploadActions({
       showSuccessNotice(`테스트케이스 ${deletedTestcaseOrder}번을 삭제했습니다.`)
     } catch (error) {
       showErrorNotice(
-        error instanceof Error
-          ? error.message
-          : '테스트케이스를 삭제하지 못했습니다.'
+        formatApiError(error, {
+          fallback: '테스트케이스를 삭제하지 못했습니다.'
+        })
       )
     } finally {
       busySection.value = ''
@@ -190,9 +191,9 @@ export function useTestcaseUploadActions({
       showSuccessNotice(`테스트케이스 ${testcaseOrder}번을 저장했습니다.`)
     } catch (error) {
       showErrorNotice(
-        error instanceof Error
-          ? error.message
-          : '테스트케이스를 저장하지 못했습니다.'
+        formatApiError(error, {
+          fallback: '테스트케이스를 저장하지 못했습니다.'
+        })
       )
     } finally {
       busySection.value = ''

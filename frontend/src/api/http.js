@@ -1,5 +1,3 @@
-import { formatApiError } from '@/utils/apiError'
-
 const rawApiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
 
 export const apiBaseUrl = rawApiBaseUrl.endsWith('/')
@@ -17,11 +15,15 @@ async function parseResponse(response){
 }
 
 function createRequestError(details){
-  const error = new Error(formatApiError(details))
+  const rawMessage = typeof details.message === 'string' ? details.message : ''
+  const error = new Error(rawMessage || 'API request failed')
+
+  error.name = 'ApiError'
+  error.kind = details.kind || 'http'
   error.status = Number(details.status ?? 0)
   error.code = details.code || null
   error.field = details.field || null
-  error.rawMessage = details.message || ''
+  error.rawMessage = rawMessage
   error.payload = details.payload ?? null
   return error
 }
@@ -63,6 +65,7 @@ export async function requestJson(path, options = {}){
     })
   } catch (error) {
     throw createRequestError({
+      kind: 'network',
       status: 0,
       code: 'network_error',
       field: '',
@@ -77,6 +80,7 @@ export async function requestJson(path, options = {}){
     payload = await parseResponse(response)
   } catch (error) {
     throw createRequestError({
+      kind: 'parse',
       status: response.status,
       code: 'response_parse_error',
       field: '',
@@ -94,6 +98,7 @@ export async function requestJson(path, options = {}){
     const errorField = typeof payload?.error?.field === 'string' ? payload.error.field : ''
 
     throw createRequestError({
+      kind: 'http',
       status: response.status,
       code: errorCode,
       field: errorField,
@@ -103,12 +108,4 @@ export async function requestJson(path, options = {}){
   }
 
   return payload
-}
-
-export function getSystemHealth(){
-  return requestJson('/system/health')
-}
-
-export function getSupportedLanguages(){
-  return requestJson('/system/supported-languages')
 }

@@ -9,40 +9,17 @@ import { useRoute, useRouter } from 'vue-router'
 import { getProblemList } from '@/api/problem'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useRouteQueryState } from '@/composables/useRouteQueryState'
+import {
+  buildApiQuery as buildProblemBrowseApiQuery,
+  buildRouteQuery as buildProblemBrowseRouteQuery,
+  getDefaultProblemSortDirection,
+  parseRouteQuery as parseProblemBrowseRouteQuery,
+  problemSortOptions,
+  problemStateFilterOptions
+} from '@/queryState/problemBrowse'
 import { authStore } from '@/stores/auth/authStore'
+import { formatApiError } from '@/utils/apiError'
 import { buildPaginationItems } from '@/utils/pagination'
-
-const problemSortOptions = [
-  {
-    key: 'problem_id',
-    label: '번호',
-    defaultDirection: 'asc'
-  },
-  {
-    key: 'accepted_count',
-    label: '정답',
-    defaultDirection: 'desc'
-  },
-  {
-    key: 'acceptance_rate',
-    label: '정답률',
-    defaultDirection: 'desc'
-  },
-  {
-    key: 'submission_count',
-    label: '제출',
-    defaultDirection: 'desc'
-  }
-]
-
-const problemStateFilterOptions = [
-  { value: '', label: '전체' },
-  { value: 'solved', label: '해결' },
-  { value: 'unsolved', label: '미해결' }
-]
-
-const validProblemSortKeys = new Set(problemSortOptions.map((option) => option.key))
-const validProblemStateFilterValues = new Set(problemStateFilterOptions.map((option) => option.value))
 const pageSize = 50
 
 function createInitialProblemBrowseState(){
@@ -68,84 +45,18 @@ export function useProblemBrowse(){
     authState.initialized && isAuthenticated.value
   )
 
-  function normalizeProblemSortKey(rawValue){
-    return typeof rawValue === 'string' && validProblemSortKeys.has(rawValue)
-      ? rawValue
-      : 'problem_id'
-  }
-
-  function getDefaultSortDirection(sortKey){
-    return problemSortOptions.find((option) => option.key === sortKey)?.defaultDirection || 'asc'
-  }
-
-  function normalizeProblemSortDirection(rawValue, sortKey){
-    if (rawValue === 'asc' || rawValue === 'desc') {
-      return rawValue
-    }
-
-    return getDefaultSortDirection(sortKey)
-  }
-
-  function normalizeProblemStateFilter(rawValue){
-    return typeof rawValue === 'string' && validProblemStateFilterValues.has(rawValue)
-      ? rawValue
-      : ''
-  }
-
-  function normalizeProblemPage(rawValue){
-    const parsedPage = Number.parseInt(rawValue, 10)
-    return Number.isInteger(parsedPage) && parsedPage > 0
-      ? parsedPage
-      : 1
-  }
-
   const queryState = useRouteQueryState({
     route,
     router,
     parseQuery(query){
-      const sortKey = normalizeProblemSortKey(query.sort)
-
-      return {
-        title: String(query.title ?? '').trim(),
-        sortKey,
-        sortDirection: normalizeProblemSortDirection(query.direction, sortKey),
-        stateFilter: showProblemStateFilters.value
-          ? normalizeProblemStateFilter(query.state)
-          : '',
-        page: normalizeProblemPage(query.page)
-      }
+      return parseProblemBrowseRouteQuery(query, {
+        includeStateFilter: showProblemStateFilters.value
+      })
     },
     buildQuery(state){
-      const nextQuery = {}
-      const title = String(state.title ?? '').trim()
-      const sortKey = normalizeProblemSortKey(state.sortKey)
-      const sortDirection = normalizeProblemSortDirection(state.sortDirection, sortKey)
-      const stateFilter = showProblemStateFilters.value
-        ? normalizeProblemStateFilter(state.stateFilter)
-        : ''
-      const page = Number(state.page)
-
-      if (title) {
-        nextQuery.title = title
-      }
-
-      if (sortKey !== 'problem_id' || sortDirection !== getDefaultSortDirection('problem_id')) {
-        nextQuery.sort = sortKey
-      }
-
-      if (sortDirection !== getDefaultSortDirection(sortKey)) {
-        nextQuery.direction = sortDirection
-      }
-
-      if (showProblemStateFilters.value && stateFilter) {
-        nextQuery.state = stateFilter
-      }
-
-      if (Number.isInteger(page) && page > 1) {
-        nextQuery.page = String(page)
-      }
-
-      return nextQuery
+      return buildProblemBrowseRouteQuery(state, {
+        includeStateFilter: showProblemStateFilters.value
+      })
     },
     createLocalState(){
       return reactive({
@@ -165,36 +76,24 @@ export function useProblemBrowse(){
   })
   const problemListResource = useAsyncResource({
     initialData: createInitialProblemBrowseState,
-    async load({ requestOffset, bearerToken, title, state, sort, direction }){
+    async load({ bearerToken, routeState }){
       const response = await getProblemList({
-        title,
-        state,
-        sort,
-        direction,
-        limit: pageSize,
-        offset: requestOffset,
+        ...buildProblemBrowseApiQuery(routeState, {
+          includeStateFilter: showProblemStateFilters.value,
+          pageSize
+        }),
         bearerToken
       })
 
-      const problems = Array.isArray(response.problems)
-        ? response.problems.map((problem) => ({
-          ...problem,
-          accepted_count: Number(problem.accepted_count ?? 0),
-          submission_count: Number(problem.submission_count ?? 0)
-        }))
-        : []
-
       return {
-        problems,
-        totalProblemCount: Number(
-          response.total_problem_count ?? response.problem_count ?? problems.length
-        )
+        problems: response.problems,
+        totalProblemCount: response.total_problem_count || response.problem_count
       }
     },
     getErrorMessage(error){
-      return error instanceof Error
-        ? error.message
-        : '문제 목록을 불러오지 못했습니다.'
+      return formatApiError(error, {
+        fallback: '문제 목록을 불러오지 못했습니다.'
+      })
     }
   })
 
@@ -248,12 +147,8 @@ export function useProblemBrowse(){
 
   async function loadProblems(){
     await problemListResource.run({
-      requestOffset: (currentPage.value - 1) * pageSize,
       bearerToken: authenticatedBearerToken.value,
-      title: appliedTitleFilter.value,
-      state: appliedStateFilter.value,
-      sort: appliedSortKey.value,
-      direction: appliedSortDirection.value
+      routeState: queryState.routeState.value
     }, {
       resetDataOnError: true
     })
@@ -309,7 +204,7 @@ export function useProblemBrowse(){
   async function cycleSort(sortKey){
     const nextDirection = appliedSortKey.value === sortKey
       ? (appliedSortDirection.value === 'asc' ? 'desc' : 'asc')
-      : getDefaultSortDirection(sortKey)
+      : getDefaultProblemSortDirection(sortKey)
 
     await replaceProblemBrowseQuery({
       sortKey,

@@ -1,13 +1,13 @@
 import { computed, ref } from 'vue'
 
-import { getSupportedLanguages } from '@/api/http'
 import { getSubmissionList } from '@/api/submission'
+import { getSupportedLanguages } from '@/api/system'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import {
   listLimit,
-  normalizeSubmissionMetric,
-  normalizeSubmittedAt
 } from '@/composables/submissions/submissionHelpers'
+import { buildApiQuery as buildSubmissionApiQuery } from '@/queryState/submissionFilters'
+import { formatApiError } from '@/utils/apiError'
 
 function createInitialSubmissionListState(){
   return {
@@ -20,9 +20,9 @@ export function useSubmissionListResource({
   isAuthenticated,
   authenticatedBearerToken,
   isMineScope,
+  routeFilterState,
   numericProblemId,
   activeUserId,
-  activeUserLoginId,
   appliedLanguageFilter,
   appliedStatusFilter,
   selectedLanguageFilter,
@@ -39,50 +39,22 @@ export function useSubmissionListResource({
       targetPreviousBeforeSubmissionIds
     }){
       const response = await getSubmissionList({
-        limit: listLimit,
-        beforeSubmissionId: targetBeforeSubmissionId ?? undefined,
-        problemId: numericProblemId.value ?? undefined,
-        userId: activeUserId.value ?? undefined,
-        userLoginId: activeUserLoginId.value || undefined,
-        language: appliedLanguageFilter.value || undefined,
-        status: appliedStatusFilter.value || undefined,
+        ...buildSubmissionApiQuery(routeFilterState.value, {
+          fixedProblemId: numericProblemId.value ?? null,
+          isMineScope: isMineScope.value,
+          activeUserId: activeUserId.value ?? null,
+          beforeSubmissionId: targetBeforeSubmissionId ?? null,
+          limit: listLimit
+        }),
         bearerToken: authenticatedBearerToken.value
       })
 
-      const normalizedSubmissions = Array.isArray(response.submissions)
-        ? response.submissions
-          .map((submission) => {
-            const normalizedSubmittedAt = normalizeSubmittedAt(submission.created_at)
-
-            return {
-              ...submission,
-              submission_id: Number(submission.submission_id),
-              user_id: Number(submission.user_id),
-              problem_id: Number(submission.problem_id),
-              user_login_id:
-                (typeof submission.user_login_id === 'string' && submission.user_login_id) ||
-                `사용자 ${submission.user_id}`,
-              created_at: typeof submission.created_at === 'string' ? submission.created_at : '',
-              created_at_timestamp: normalizedSubmittedAt.timestamp,
-              created_at_label: normalizedSubmittedAt.label,
-              elapsed_ms: typeof submission.elapsed_ms === 'number' ? submission.elapsed_ms : null,
-              max_rss_kb: typeof submission.max_rss_kb === 'number' ? submission.max_rss_kb : null
-            }
-          })
-        : []
-      const normalizedHasMore = Boolean(response.has_more)
-      const normalizedNextBeforeSubmissionId =
-        Number.isInteger(response.next_before_submission_id) &&
-        response.next_before_submission_id > 0
-          ? response.next_before_submission_id
-          : null
-
       return {
-        submissions: normalizedSubmissions,
-        hasMoreSubmissions: normalizedHasMore,
+        submissions: response.submissions,
+        hasMoreSubmissions: response.has_more,
         nextBeforeSubmissionId:
-          normalizedHasMore && normalizedNextBeforeSubmissionId
-            ? normalizedNextBeforeSubmissionId
+          response.has_more && response.next_before_submission_id
+            ? response.next_before_submission_id
             : null,
         currentBeforeSubmissionId: targetBeforeSubmissionId,
         previousBeforeSubmissionIds: targetPreviousBeforeSubmissionIds,
@@ -90,9 +62,9 @@ export function useSubmissionListResource({
       }
     },
     getErrorMessage(error){
-      return error instanceof Error
-        ? error.message
-        : '제출 목록을 불러오지 못했습니다.'
+      return formatApiError(error, {
+        fallback: '제출 목록을 불러오지 못했습니다.'
+      })
     }
   })
 
@@ -152,8 +124,8 @@ export function useSubmissionListResource({
           ? statusSnapshot.status
           : undefined,
         score: statusSnapshot.score ?? null,
-        elapsed_ms: normalizeSubmissionMetric(statusSnapshot.elapsed_ms),
-        max_rss_kb: normalizeSubmissionMetric(statusSnapshot.max_rss_kb)
+        elapsed_ms: statusSnapshot.elapsed_ms,
+        max_rss_kb: statusSnapshot.max_rss_kb
       })
     })
 

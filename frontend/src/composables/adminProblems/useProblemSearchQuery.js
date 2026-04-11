@@ -1,11 +1,12 @@
 import { computed, ref } from 'vue'
 
 import { useRouteQueryState } from '@/composables/useRouteQueryState'
-import { parsePositiveInteger } from '@/composables/adminProblems/problemHelpers'
-
-function normalizeSearchMode(value){
-  return value === 'problem-id' ? 'problem-id' : 'title'
-}
+import {
+  buildRouteQuery as buildProblemAdminSearchRouteQuery,
+  normalizeSearchMode,
+  parsePositiveInteger,
+  parseRouteQuery as parseProblemAdminSearchRouteQuery
+} from '@/queryState/problemAdminSearch'
 
 export function useProblemSearchQuery({
   route,
@@ -19,39 +20,14 @@ export function useProblemSearchQuery({
     route,
     router,
     parseQuery(query){
-      return {
-        selectedProblemId: parsePositiveInteger(query.problemId) ?? 0,
-        searchMode: normalizeSearchMode(query.searchMode),
-        titleSearch: String(query.searchTitle ?? '').trim(),
-        problemIdSearch: parsePositiveInteger(query.searchProblemId)
-      }
+      return parseProblemAdminSearchRouteQuery(query, {
+        includeSelectedProblemId: true
+      })
     },
     buildQuery(state){
-      const nextQuery = {}
-      const selectedProblemId = Number(state.selectedProblemId ?? 0)
-      const searchMode = normalizeSearchMode(state.searchMode)
-
-      if (selectedProblemId > 0) {
-        nextQuery.problemId = String(selectedProblemId)
-      }
-
-      if (searchMode === 'problem-id') {
-        const nextProblemId = parsePositiveInteger(state.problemIdSearch)
-        if (nextProblemId != null) {
-          nextQuery.searchMode = 'problem-id'
-          nextQuery.searchProblemId = String(nextProblemId)
-        }
-
-        return nextQuery
-      }
-
-      const nextTitle = String(state.titleSearch ?? '').trim()
-      if (nextTitle) {
-        nextQuery.searchMode = 'title'
-        nextQuery.searchTitle = nextTitle
-      }
-
-      return nextQuery
+      return buildProblemAdminSearchRouteQuery(state, {
+        includeSelectedProblemId: true
+      })
     },
     createLocalState(){
       return {
@@ -173,6 +149,7 @@ export function useProblemSearchQuery({
     routeSearchMode,
     routeTitleSearch,
     routeProblemIdSearch,
+    routeState: queryState.routeState,
     hasAppliedSearch,
     problemListCaption,
     emptyProblemListMessage,

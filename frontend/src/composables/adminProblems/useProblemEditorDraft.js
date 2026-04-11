@@ -2,7 +2,6 @@ import { computed, ref } from 'vue'
 
 import {
   makeSampleDraft,
-  normalizeProblemSamples,
   parsePositiveInteger
 } from '@/composables/adminProblems/problemHelpers'
 
@@ -98,7 +97,7 @@ export function useProblemEditorDraft({
   }
 
   function syncSampleDrafts(samples){
-    sampleDrafts.value = normalizeProblemSamples(samples).map(makeSampleDraft)
+    sampleDrafts.value = (Array.isArray(samples) ? samples : []).map(makeSampleDraft)
   }
 
   function getSelectedProblemSample(sampleOrder){

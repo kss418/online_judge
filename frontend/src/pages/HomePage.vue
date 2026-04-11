@@ -103,8 +103,9 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 
-import { apiBaseUrl, getSupportedLanguages, getSystemHealth } from '@/api/http'
+import { apiBaseUrl, getSupportedLanguages, getSystemHealth } from '@/api/system'
 import StatusBadge from '@/components/StatusBadge.vue'
+import { formatApiError } from '@/utils/apiError'
 
 const isLoading = ref(true)
 const errorMessage = ref('')
@@ -142,9 +143,9 @@ async function loadOverview(){
       ? languageResponse.languages
       : []
   } catch (error) {
-    errorMessage.value = error instanceof Error
-      ? error.message
-      : '서비스와 연결할 수 없습니다.'
+    errorMessage.value = formatApiError(error, {
+      fallback: '서비스와 연결할 수 없습니다.'
+    })
   } finally {
     isLoading.value = false
   }

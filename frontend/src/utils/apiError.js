@@ -162,6 +162,10 @@ export function getApiErrorDetails(error){
   )
 
   return {
+    kind:
+      error && typeof error === 'object' && 'kind' in error && typeof error.kind === 'string'
+        ? error.kind
+        : '',
     status: normalizeStatus(error?.status),
     code,
     field,

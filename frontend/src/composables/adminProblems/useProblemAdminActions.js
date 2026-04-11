@@ -13,6 +13,7 @@ import {
   updateProblemTitle
 } from '@/api/problem'
 import { parsePositiveInteger } from '@/composables/adminProblems/problemHelpers'
+import { formatApiError } from '@/utils/apiError'
 
 export function useProblemAdminActions({
   authState,
@@ -151,9 +152,9 @@ export function useProblemAdminActions({
         preferredProblemId: Number(response.problem_id ?? 0)
       })
     } catch (error) {
-      actionErrorMessage.value = error instanceof Error
-        ? error.message
-        : '문제를 생성하지 못했습니다.'
+      actionErrorMessage.value = formatApiError(error, {
+        fallback: '문제를 생성하지 못했습니다.'
+      })
     } finally {
       busySection.value = ''
     }
@@ -185,9 +186,9 @@ export function useProblemAdminActions({
       })
       actionMessage.value = `문제 #${formatCount(selectedProblemDetail.value.problem_id)} 제목을 저장했습니다.`
     } catch (error) {
-      actionErrorMessage.value = error instanceof Error
-        ? error.message
-        : '문제 제목을 저장하지 못했습니다.'
+      actionErrorMessage.value = formatApiError(error, {
+        fallback: '문제 제목을 저장하지 못했습니다.'
+      })
     } finally {
       busySection.value = ''
     }
@@ -230,9 +231,9 @@ export function useProblemAdminActions({
       })
       actionMessage.value = `문제 #${formatCount(selectedProblemDetail.value.problem_id)} 제한을 저장했습니다.`
     } catch (error) {
-      actionErrorMessage.value = error instanceof Error
-        ? error.message
-        : '문제 제한을 저장하지 못했습니다.'
+      actionErrorMessage.value = formatApiError(error, {
+        fallback: '문제 제한을 저장하지 못했습니다.'
+      })
     } finally {
       busySection.value = ''
     }
@@ -273,9 +274,9 @@ export function useProblemAdminActions({
       applySelectedProblemVersion(selectedProblemDetail.value.problem_id, response.version)
       actionMessage.value = `문제 #${formatCount(selectedProblemDetail.value.problem_id)} 설명을 저장했습니다.`
     } catch (error) {
-      actionErrorMessage.value = error instanceof Error
-        ? error.message
-        : '문제 설명을 저장하지 못했습니다.'
+      actionErrorMessage.value = formatApiError(error, {
+        fallback: '문제 설명을 저장하지 못했습니다.'
+      })
     } finally {
       busySection.value = ''
     }
@@ -308,9 +309,9 @@ export function useProblemAdminActions({
       applySelectedProblemVersion(problemId, response.version)
       actionMessage.value = `예제 ${formatCount(nextSampleOrder)}를 추가했습니다.`
     } catch (error) {
-      actionErrorMessage.value = error instanceof Error
-        ? error.message
-        : '공개 예제를 추가하지 못했습니다.'
+      actionErrorMessage.value = formatApiError(error, {
+        fallback: '공개 예제를 추가하지 못했습니다.'
+      })
     } finally {
       busySection.value = ''
     }
@@ -351,9 +352,9 @@ export function useProblemAdminActions({
       applySelectedProblemVersion(problemId, response.version)
       actionMessage.value = `예제 ${formatCount(sampleOrder)}를 저장했습니다.`
     } catch (error) {
-      actionErrorMessage.value = error instanceof Error
-        ? error.message
-        : '공개 예제를 저장하지 못했습니다.'
+      actionErrorMessage.value = formatApiError(error, {
+        fallback: '공개 예제를 저장하지 못했습니다.'
+      })
     } finally {
       busySection.value = ''
     }
@@ -384,9 +385,9 @@ export function useProblemAdminActions({
       applySelectedProblemVersion(problemId, response.version)
       actionMessage.value = `예제 ${formatCount(lastSample.sample_order)}를 삭제했습니다.`
     } catch (error) {
-      actionErrorMessage.value = error instanceof Error
-        ? error.message
-        : '공개 예제를 삭제하지 못했습니다.'
+      actionErrorMessage.value = formatApiError(error, {
+        fallback: '공개 예제를 삭제하지 못했습니다.'
+      })
     } finally {
       busySection.value = ''
     }
@@ -411,9 +412,9 @@ export function useProblemAdminActions({
       const testcaseCount = Number(response.testcase_count ?? 0)
       actionMessage.value = `비공개 테스트케이스 ${formatCount(testcaseCount)}개를 업로드했습니다.`
     } catch (error) {
-      actionErrorMessage.value = error instanceof Error
-        ? error.message
-        : '비공개 테스트케이스 ZIP을 업로드하지 못했습니다.'
+      actionErrorMessage.value = formatApiError(error, {
+        fallback: '비공개 테스트케이스 ZIP을 업로드하지 못했습니다.'
+      })
     } finally {
       busySection.value = ''
     }
@@ -474,9 +475,9 @@ export function useProblemAdminActions({
       closeRejudgeDialog(true)
       actionMessage.value = `문제 #${formatCount(rejudgingProblemId)} 재채점을 요청했습니다.`
     } catch (error) {
-      actionErrorMessage.value = error instanceof Error
-        ? error.message
-        : '문제 재채점을 요청하지 못했습니다.'
+      actionErrorMessage.value = formatApiError(error, {
+        fallback: '문제 재채점을 요청하지 못했습니다.'
+      })
     } finally {
       busySection.value = ''
     }
@@ -498,9 +499,9 @@ export function useProblemAdminActions({
       actionMessage.value = `문제 #${formatCount(deletingProblemId)}를 삭제했습니다.`
       await loadProblems()
     } catch (error) {
-      actionErrorMessage.value = error instanceof Error
-        ? error.message
-        : '문제를 삭제하지 못했습니다.'
+      actionErrorMessage.value = formatApiError(error, {
+        fallback: '문제를 삭제하지 못했습니다.'
+      })
     } finally {
       busySection.value = ''
     }

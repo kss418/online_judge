@@ -129,12 +129,13 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { getSupportedLanguages } from '@/api/http'
 import { getProblemDetail } from '@/api/problem'
 import { createSubmission } from '@/api/submission'
+import { getSupportedLanguages } from '@/api/system'
 import { getMySubmissionBan } from '@/api/user'
 import { useAuth } from '@/composables/useAuth'
 import { formatApiError } from '@/utils/apiError'
+import { formatRemainingDuration, formatTimestamp } from '@/utils/dateTime'
 
 const route = useRoute()
 const router = useRouter()
@@ -261,7 +262,7 @@ const submissionBanRemainingText = computed(() => {
     return ''
   }
 
-  return `약 ${formatRemainingDuration(submissionBan.value.timestamp)} 남음`
+  return `약 ${formatRemainingDuration(nowTimestamp.value, submissionBan.value.timestamp)} 남음`
 })
 
 watch(numericProblemId, () => {
@@ -327,17 +328,7 @@ async function loadProblemDetail(){
   try {
     const response = await getProblemDetail(numericProblemId.value)
 
-    problemDetail.value = {
-      ...response,
-      limits: response.limits || {
-        memory_limit_mb: 0,
-        time_limit_ms: 0
-      },
-      statistics: {
-        accepted_count: Number(response.statistics?.accepted_count ?? 0),
-        submission_count: Number(response.statistics?.submission_count ?? 0)
-      }
-    }
+    problemDetail.value = response
   } catch (error) {
     problemErrorMessage.value = formatApiError(error, {
       fallback: '문제 정보를 불러오지 못했습니다.'
@@ -367,99 +358,6 @@ async function loadSupportedLanguageList(){
   }
 }
 
-function normalizeDateTime(value){
-  if (typeof value !== 'string' || !value.trim()) {
-    return {
-      timestamp: null,
-      label: ''
-    }
-  }
-
-  const trimmedValue = value.trim()
-  const matchedTimestamp = trimmedValue.match(
-    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?([+-]\d{2})(?::?(\d{2}))?$/
-  )
-
-  if (matchedTimestamp) {
-    const [, datePart, timePart, fractionPart = '', offsetHour, offsetMinute = '00'] =
-      matchedTimestamp
-    const normalizedFraction = fractionPart
-      ? `.${fractionPart.slice(0, 3).padEnd(3, '0')}`
-      : ''
-    const parsedTimestamp = Date.parse(
-      `${datePart}T${timePart}${normalizedFraction}${offsetHour}:${offsetMinute}`
-    )
-
-    return {
-      timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
-      label: `${datePart} ${timePart}`
-    }
-  }
-
-  const parsedTimestamp = Date.parse(trimmedValue.replace(' ', 'T'))
-  return {
-    timestamp: Number.isNaN(parsedTimestamp) ? null : parsedTimestamp,
-    label: trimmedValue
-  }
-}
-
-function formatTimestamp(value){
-  if (typeof value !== 'string' || !value.trim()) {
-    return '-'
-  }
-
-  const trimmedValue = value.trim()
-  const directMatch = trimmedValue.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/)
-  if (directMatch) {
-    return `${directMatch[1]} ${directMatch[2]}`
-  }
-
-  const parsedDate = new Date(trimmedValue)
-  if (Number.isNaN(parsedDate.getTime())) {
-    return trimmedValue
-  }
-
-  const year = String(parsedDate.getFullYear())
-  const month = String(parsedDate.getMonth() + 1).padStart(2, '0')
-  const day = String(parsedDate.getDate()).padStart(2, '0')
-  const hours = String(parsedDate.getHours()).padStart(2, '0')
-  const minutes = String(parsedDate.getMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}`
-}
-
-function formatRemainingDuration(timestamp){
-  if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
-    return '-'
-  }
-
-  const remainingSeconds = Math.max(1, Math.floor((timestamp - nowTimestamp.value) / 1000))
-  if (remainingSeconds < 60) {
-    return `${remainingSeconds}초`
-  }
-
-  const remainingMinutes = Math.floor(remainingSeconds / 60)
-  if (remainingMinutes < 60) {
-    return `${remainingMinutes}분`
-  }
-
-  const remainingHours = Math.floor(remainingMinutes / 60)
-  if (remainingHours < 24) {
-    return `${remainingHours}시간`
-  }
-
-  const remainingDays = Math.floor(remainingHours / 24)
-  if (remainingDays < 30) {
-    return `${remainingDays}일`
-  }
-
-  const remainingMonths = Math.floor(remainingDays / 30)
-  if (remainingMonths < 12) {
-    return `${remainingMonths}달`
-  }
-
-  return `${Math.floor(remainingDays / 365)}년`
-}
-
 async function loadMySubmissionBan(){
   if (!isAuthenticated.value || !authState.token) {
     submissionBan.value = {
@@ -475,15 +373,10 @@ async function loadMySubmissionBan(){
 
   try {
     const response = await getMySubmissionBan(authState.token)
-    const submissionBannedUntil =
-      typeof response?.submission_banned_until === 'string'
-        ? response.submission_banned_until
-        : null
-    const normalizedSubmissionBan = normalizeDateTime(submissionBannedUntil)
     submissionBan.value = {
-      submission_banned_until: submissionBannedUntil,
-      timestamp: normalizedSubmissionBan.timestamp,
-      label: normalizedSubmissionBan.label
+      submission_banned_until: response.submission_banned_until,
+      timestamp: response.submission_banned_until_timestamp,
+      label: response.submission_banned_until_label
     }
     return submissionBan.value
   } catch {

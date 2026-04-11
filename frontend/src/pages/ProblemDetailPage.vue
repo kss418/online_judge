@@ -170,6 +170,7 @@ import { useRoute } from 'vue-router'
 import { getProblemDetail } from '@/api/problem'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useAuth } from '@/composables/useAuth'
+import { formatApiError } from '@/utils/apiError'
 import {
   getProblemStateLabel,
   getProblemStateTone
@@ -229,33 +230,16 @@ async function loadProblemDetail(){
       return
     }
 
-    problemDetail.value = {
-      ...response,
-      limits: response.limits || {
-        memory_limit_mb: 0,
-        time_limit_ms: 0
-      },
-      statistics: {
-        accepted_count: Number(response.statistics?.accepted_count ?? 0),
-        submission_count: Number(response.statistics?.submission_count ?? 0)
-      },
-      statement: {
-        description: response.statement?.description ?? '',
-        input_format: response.statement?.input_format ?? '',
-        output_format: response.statement?.output_format ?? '',
-        note: response.statement?.note ?? ''
-      },
-      samples: Array.isArray(response.samples) ? response.samples : []
-    }
+    problemDetail.value = response
     hasLoadedOnce.value = true
   } catch (error) {
     if (requestId !== latestLoadRequestId) {
       return
     }
 
-    errorMessage.value = error instanceof Error
-      ? error.message
-      : '문제 정보를 불러오지 못했습니다.'
+    errorMessage.value = formatApiError(error, {
+      fallback: '문제 정보를 불러오지 못했습니다.'
+    })
     problemDetail.value = null
     hasLoadedOnce.value = true
   } finally {

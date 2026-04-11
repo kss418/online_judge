@@ -2,13 +2,13 @@ import { computed } from 'vue'
 
 import { getProblemList } from '@/api/problem'
 import { useAsyncResource } from '@/composables/useAsyncResource'
+import { buildApiQuery as buildProblemAdminSearchApiQuery } from '@/queryState/problemAdminSearch'
+import { formatApiError } from '@/utils/apiError'
 
 export function useProblemListResource({
   authState,
   canManageProblems,
-  routeSearchMode,
-  routeTitleSearch,
-  routeProblemIdSearch,
+  routeQueryState,
   selectedProblemId,
   selectedProblemDetail,
   detailErrorMessage,
@@ -19,28 +19,20 @@ export function useProblemListResource({
 }){
   const problemListResource = useAsyncResource({
     initialData: [],
-    async load({ activeTitleSearch, activeProblemIdSearch }){
+    async load({ routeQuery }){
+      const apiQuery = buildProblemAdminSearchApiQuery(routeQuery)
       const response = await getProblemList({
-        title: activeTitleSearch,
+        title: apiQuery.title,
+        problemId: apiQuery.problemId,
         bearerToken: authState.token
       })
-      const responseProblems = Array.isArray(response.problems) ? response.problems : []
-      const filteredProblems = activeProblemIdSearch == null
-        ? responseProblems
-        : responseProblems.filter((problem) => Number(problem.problem_id ?? 0) === activeProblemIdSearch)
 
-      return filteredProblems.map((problem) => ({
-        problem_id: Number(problem.problem_id ?? 0),
-        title: problem.title ?? '',
-        version: Number(problem.version ?? 0),
-        time_limit_ms: Number(problem.time_limit_ms ?? 0),
-        memory_limit_mb: Number(problem.memory_limit_mb ?? 0)
-      }))
+      return response.problems
     },
     getErrorMessage(error){
-      return error instanceof Error
-        ? error.message
-        : '문제 목록을 불러오지 못했습니다.'
+      return formatApiError(error, {
+        fallback: '문제 목록을 불러오지 못했습니다.'
+      })
     }
   })
 
@@ -68,18 +60,11 @@ export function useProblemListResource({
     }
 
     const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
-    const activeTitleSearch = routeSearchMode.value === 'title'
-      ? routeTitleSearch.value
-      : ''
-    const activeProblemIdSearch = routeSearchMode.value === 'problem-id'
-      ? routeProblemIdSearch.value
-      : null
 
     clearActionError()
 
     const result = await problemListResource.run({
-      activeTitleSearch,
-      activeProblemIdSearch
+      routeQuery: routeQueryState.value
     }, {
       resetDataOnError: true
     })
