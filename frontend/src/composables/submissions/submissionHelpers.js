@@ -2,7 +2,7 @@ import {
   finishedSubmissionStatuses,
   getSubmissionStatusLabel,
   submissionPollingStatuses
-} from '@/utils/submissionStatus'
+} from '@/generated/submissionStatusCatalog'
 
 export const listLimit = 50
 export const submissionPollingIntervalMs = 2000

@@ -30,11 +30,11 @@ namespace{
         return submission_decision_value;
     }
 
-    submission_dto::finalize_request make_infra_failure_finalize_request(
-        const submission_dto::leased_submission& leased_submission_value,
+    submission_internal_dto::finalize_request make_infra_failure_finalize_request(
+        const submission_domain_dto::leased_submission& leased_submission_value,
         std::string reason
     ){
-        return submission_dto::make_finalize_request(
+        return submission_internal_dto::make_finalize_request(
             leased_submission_value,
             submission_status::infra_failure,
             std::nullopt,
@@ -74,11 +74,11 @@ namespace{
         return std::nullopt;
     }
 
-    submission_dto::finalize_request make_build_resource_exceeded_finalize_request(
-        const submission_dto::leased_submission& leased_submission_value,
+    submission_internal_dto::finalize_request make_build_resource_exceeded_finalize_request(
+        const submission_domain_dto::leased_submission& leased_submission_value,
         const build_bundle::compile_resource_exceeded& compile_resource_exceeded_value
     ){
-        return submission_dto::make_finalize_request(
+        return submission_internal_dto::make_finalize_request(
             leased_submission_value,
             submission_status::build_resource_exceeded,
             std::int16_t{0},
@@ -115,7 +115,7 @@ submission_lifecycle& submission_lifecycle::operator=(
 submission_lifecycle::~submission_lifecycle() = default;
 
 std::expected<void, judge_error> submission_lifecycle::mark_judging(
-    const submission_dto::leased_submission& leased_submission_value
+    const submission_domain_dto::leased_submission& leased_submission_value
 ){
     return judge_submission_facade_.mark_judging(
         leased_submission_value
@@ -124,7 +124,7 @@ std::expected<void, judge_error> submission_lifecycle::mark_judging(
 
 std::optional<submission_lifecycle::submission_completion>
 submission_lifecycle::apply_build_policy(
-    const submission_dto::leased_submission& leased_submission_value,
+    const submission_domain_dto::leased_submission& leased_submission_value,
     const build_bundle& build_result_value
 ) const{
     if(build_result_value.success()){
@@ -158,7 +158,7 @@ submission_lifecycle::apply_build_policy(
 
 submission_lifecycle::submission_completion
 submission_lifecycle::make_decision_completion(
-    const submission_dto::leased_submission& leased_submission_value,
+    const submission_domain_dto::leased_submission& leased_submission_value,
     const submission_decision& submission_decision_value
 ) const{
     return submission_completion{
@@ -183,7 +183,7 @@ submission_lifecycle::make_infra_failure_completion(
 }
 
 std::expected<void, judge_error> submission_lifecycle::apply_completion(
-    const submission_dto::leased_submission& leased_submission_value,
+    const submission_domain_dto::leased_submission& leased_submission_value,
     const submission_completion& submission_completion_value
 ){
     if(
@@ -208,7 +208,7 @@ std::expected<void, judge_error> submission_lifecycle::apply_finalize_command(
 }
 
 std::expected<void, judge_error> submission_lifecycle::apply_infra_failure_report(
-    const submission_dto::leased_submission& leased_submission_value,
+    const submission_domain_dto::leased_submission& leased_submission_value,
     const infra_failure_report& infra_failure_report_value
 ){
     if(
@@ -221,7 +221,7 @@ std::expected<void, judge_error> submission_lifecycle::apply_infra_failure_repor
         );
     }
 
-    const submission_dto::finalize_request finalize_request_value =
+    const submission_internal_dto::finalize_request finalize_request_value =
         make_infra_failure_finalize_request(
             leased_submission_value,
             to_string(infra_failure_report_value.error)
@@ -230,7 +230,7 @@ std::expected<void, judge_error> submission_lifecycle::apply_infra_failure_repor
 }
 
 std::expected<void, judge_error> submission_lifecycle::requeue_submission(
-    const submission_dto::leased_submission& leased_submission_value,
+    const submission_domain_dto::leased_submission& leased_submission_value,
     const judge_error& error_value
 ){
     return judge_submission_facade_.requeue_submission_immediately(

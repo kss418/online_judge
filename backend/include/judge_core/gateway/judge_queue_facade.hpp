@@ -1,7 +1,8 @@
 #pragma once
 
 #include "common/db_connection.hpp"
-#include "dto/submission_dto.hpp"
+#include "dto/submission_domain_dto.hpp"
+#include "dto/submission_internal_dto.hpp"
 #include "error/judge_error.hpp"
 #include "judge_core/infrastructure/submission_queue_source.hpp"
 
@@ -22,7 +23,7 @@ public:
     judge_queue_facade(const judge_queue_facade&) = delete;
     judge_queue_facade& operator=(const judge_queue_facade&) = delete;
 
-    std::expected<std::optional<submission_dto::leased_submission>, judge_error>
+    std::expected<std::optional<submission_domain_dto::leased_submission>, judge_error>
     try_lease_next(std::chrono::seconds lease_duration);
 
     std::expected<void, judge_error> wait_for_work(

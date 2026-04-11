@@ -1,6 +1,7 @@
 #pragma once
 
-#include "dto/submission_dto.hpp"
+#include "dto/submission_domain_dto.hpp"
+#include "dto/submission_internal_dto.hpp"
 #include "judge_core/types/execution_report.hpp"
 #include "judge_core/types/judge_result.hpp"
 
@@ -16,7 +17,7 @@ struct submission_decision{
     submission_verdict_summary verdict_summary;
     execution_report::batch execution_report_value;
 
-    submission_dto::finalize_request to_finalize_request(
-        const submission_dto::leased_submission& leased_submission_value
+    submission_internal_dto::finalize_request to_finalize_request(
+        const submission_domain_dto::leased_submission& leased_submission_value
     ) const;
 };

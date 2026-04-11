@@ -1,6 +1,5 @@
 #pragma once
 
-#include "dto/submission_dto.hpp"
 #include "error/judge_error.hpp"
 #include "judge_core/application/build_bundle.hpp"
 #include "judge_core/infrastructure/build_dispatcher.hpp"

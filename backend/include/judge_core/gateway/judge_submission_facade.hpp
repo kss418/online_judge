@@ -1,7 +1,8 @@
 #pragma once
 
 #include "common/db_connection.hpp"
-#include "dto/submission_dto.hpp"
+#include "dto/submission_domain_dto.hpp"
+#include "dto/submission_internal_dto.hpp"
 #include "error/judge_error.hpp"
 
 #include <cstdint>
@@ -23,15 +24,15 @@ public:
     judge_submission_facade& operator=(const judge_submission_facade&) = delete;
 
     std::expected<void, judge_error> mark_judging(
-        const submission_dto::leased_submission& leased_submission_value
+        const submission_domain_dto::leased_submission& leased_submission_value
     );
 
     std::expected<void, judge_error> finalize_submission(
-        const submission_dto::finalize_request& finalize_request_value
+        const submission_internal_dto::finalize_request& finalize_request_value
     );
 
     std::expected<void, judge_error> requeue_submission_immediately(
-        const submission_dto::leased_submission& leased_submission_value,
+        const submission_domain_dto::leased_submission& leased_submission_value,
         std::optional<std::string> reason_opt = std::nullopt
     );
 

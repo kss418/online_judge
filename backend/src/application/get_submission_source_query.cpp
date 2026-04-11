@@ -23,7 +23,7 @@ bool get_submission_source_query::error::is_source_access_denied() const{
     return kind_value == kind::source_access_denied;
 }
 
-std::expected<submission_dto::source_detail, get_submission_source_query::error>
+std::expected<submission_response_dto::source_detail, get_submission_source_query::error>
 get_submission_source_query::execute(
     db_connection& connection,
     const command& command_value

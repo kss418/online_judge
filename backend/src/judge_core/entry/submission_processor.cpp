@@ -6,7 +6,7 @@
 
 namespace{
     execution_policy select_execution_policy(
-        const submission_dto::leased_submission& leased_submission_value,
+        const submission_domain_dto::leased_submission& leased_submission_value,
         const testcase_snapshot& testcase_snapshot_value
     ){
         (void)leased_submission_value;
@@ -15,7 +15,7 @@ namespace{
     }
 
     void log_workspace_cleanup_failure(
-        const submission_dto::leased_submission& leased_submission_value,
+        const submission_domain_dto::leased_submission& leased_submission_value,
         const std::filesystem::path& workspace_path,
         bool finalize_succeeded,
         const judge_error& error_value
@@ -31,7 +31,7 @@ namespace{
     }
 
     void close_workspace_best_effort(
-        const submission_dto::leased_submission& leased_submission_value,
+        const submission_domain_dto::leased_submission& leased_submission_value,
         workspace_session& workspace_session_value,
         const std::filesystem::path& workspace_path,
         bool finalize_succeeded
@@ -101,7 +101,7 @@ submission_processor& submission_processor::operator=(
 submission_processor::~submission_processor() = default;
 
 std::expected<void, judge_error> submission_processor::process(
-    const submission_dto::leased_submission& leased_submission_value
+    const submission_domain_dto::leased_submission& leased_submission_value
 ){
     const auto mark_judging_exp = submission_lifecycle_.mark_judging(
         leased_submission_value

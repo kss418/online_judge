@@ -1,5 +1,6 @@
 #include "query_builder/submission_query_builder.hpp"
 
+#include "common/submission_status.hpp"
 #include "common/language_util.hpp"
 #include "db_repository/sql_filter_builder.hpp"
 #include "query_builder/viewer_problem_state_sql.hpp"
@@ -9,13 +10,13 @@
 
 namespace{
     struct submission_list_query_context{
-        const submission_dto::list_filter& filter_value;
+        const submission_request_dto::list_filter& filter_value;
         std::optional<std::int64_t> viewer_user_id_opt;
         sql_filter_builder predicates;
     };
 
     std::expected<submission_list_query_context, repository_error> make_submission_list_query_context(
-        const submission_dto::list_filter& filter_value,
+        const submission_request_dto::list_filter& filter_value,
         std::optional<std::int64_t> viewer_user_id_opt
     ){
         const bool is_invalid =
@@ -44,9 +45,9 @@ namespace{
     }
 
     std::int32_t resolve_submission_list_limit(
-        const submission_dto::list_filter& filter_value
+        const submission_request_dto::list_filter& filter_value
     ){
-        return filter_value.limit_opt.value_or(submission_dto::DEFAULT_LIST_LIMIT);
+        return filter_value.limit_opt.value_or(submission_request_dto::DEFAULT_LIST_LIMIT);
     }
 
     void append_submission_list_where_clauses(
@@ -95,7 +96,7 @@ namespace{
 }
 
 submission_query_builder::submission_list_query_builder::submission_list_query_builder(
-    const submission_dto::list_filter& filter_value,
+    const submission_request_dto::list_filter& filter_value,
     std::optional<std::int64_t> viewer_user_id_opt
 ) :
     filter_value_(filter_value),

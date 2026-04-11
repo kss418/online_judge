@@ -37,15 +37,16 @@ static std::vector<submission_metrics_type> sanitize_submission_metrics(
     return values;
 }
 
-static submission_dto::summary_page sanitize_submission_metrics(
-    submission_dto::summary_page summary_page_value
+static submission_response_dto::summary_page sanitize_submission_metrics(
+    submission_response_dto::summary_page summary_page_value
 ){
     summary_page_value.submissions =
         sanitize_submission_metrics(std::move(summary_page_value.submissions));
     return summary_page_value;
 }
 
-std::expected<submission_dto::history_list, service_error> submission_service::get_submission_history(
+std::expected<submission_response_dto::history_list, service_error>
+submission_service::get_submission_history(
     db_connection& connection,
     std::int64_t submission_id
 ){
@@ -56,13 +57,14 @@ std::expected<submission_dto::history_list, service_error> submission_service::g
     return db_service_util::with_retry_service_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<submission_dto::history_list, service_error> {
+            -> std::expected<submission_response_dto::history_list, service_error> {
             return submission_repository::get_submission_history(transaction, submission_id);
         }
     );
 }
 
-std::expected<submission_dto::source_detail, service_error> submission_service::get_submission_source(
+std::expected<submission_response_dto::source_detail, service_error>
+submission_service::get_submission_source(
     db_connection& connection,
     std::int64_t submission_id
 ){
@@ -73,13 +75,14 @@ std::expected<submission_dto::source_detail, service_error> submission_service::
     return db_service_util::with_retry_service_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<submission_dto::source_detail, service_error> {
+            -> std::expected<submission_response_dto::source_detail, service_error> {
             return submission_repository::get_submission_source(transaction, submission_id);
         }
     );
 }
 
-std::expected<submission_dto::detail, service_error> submission_service::get_submission_detail(
+std::expected<submission_response_dto::detail, service_error>
+submission_service::get_submission_detail(
     db_connection& connection,
     std::int64_t submission_id
 ){
@@ -90,7 +93,7 @@ std::expected<submission_dto::detail, service_error> submission_service::get_sub
     return db_service_util::with_retry_service_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<submission_dto::detail, service_error> {
+            -> std::expected<submission_response_dto::detail, service_error> {
             auto submission_detail_exp = submission_repository::get_submission_detail(
                 transaction,
                 submission_id
@@ -104,7 +107,7 @@ std::expected<submission_dto::detail, service_error> submission_service::get_sub
     );
 }
 
-std::expected<std::vector<submission_dto::status_snapshot>, service_error>
+std::expected<std::vector<submission_response_dto::status_snapshot>, service_error>
 submission_service::get_submission_status_snapshots(
     db_connection& connection,
     const std::vector<std::int64_t>& submission_ids
@@ -112,7 +115,7 @@ submission_service::get_submission_status_snapshots(
     return db_service_util::with_retry_service_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<std::vector<submission_dto::status_snapshot>, service_error> {
+            -> std::expected<std::vector<submission_response_dto::status_snapshot>, service_error> {
             const auto snapshot_values_exp =
                 submission_repository::get_submission_status_snapshots(
                     transaction,
@@ -127,7 +130,7 @@ submission_service::get_submission_status_snapshots(
     );
 }
 
-std::expected<std::vector<submission_dto::summary>, service_error>
+std::expected<std::vector<submission_response_dto::summary>, service_error>
 submission_service::get_wa_or_ac_submissions(
     db_connection& connection,
     std::int64_t problem_id
@@ -135,7 +138,7 @@ submission_service::get_wa_or_ac_submissions(
     return db_service_util::with_retry_service_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<std::vector<submission_dto::summary>, service_error> {
+            -> std::expected<std::vector<submission_response_dto::summary>, service_error> {
             return submission_repository::get_wa_or_ac_submissions(
                 transaction,
                 problem_id
@@ -144,16 +147,17 @@ submission_service::get_wa_or_ac_submissions(
     );
 }
 
-std::expected<submission_dto::queued_response, service_error> submission_service::create_submission(
+std::expected<submission_response_dto::queued_response, service_error>
+submission_service::create_submission(
     db_connection& connection,
-    const submission_dto::create_request& create_request_value
+    const submission_internal_dto::create_submission_command& create_request_value
 ){
     problem_dto::reference problem_reference_value{create_request_value.problem_id};
 
     return db_service_util::with_retry_service_write_transaction(
         connection,
         [&](pqxx::work& transaction)
-            -> std::expected<submission_dto::queued_response, service_error> {
+            -> std::expected<submission_response_dto::queued_response, service_error> {
             const auto active_submission_ban_exp =
                 user_repository::get_active_submission_banned_until(
                     transaction,
@@ -211,10 +215,10 @@ std::expected<submission_dto::queued_response, service_error> submission_service
 
 std::expected<void, service_error> submission_service::mark_judging(
     db_connection& connection,
-    const submission_dto::leased_submission& leased_submission_value
+    const submission_domain_dto::leased_submission& leased_submission_value
 ){
-    const submission_dto::status_update status_update_value =
-        submission_dto::make_status_update(
+    const submission_internal_dto::status_update status_update_value =
+        submission_internal_dto::make_status_update(
             leased_submission_value,
             submission_status::judging
         );
@@ -229,14 +233,15 @@ std::expected<void, service_error> submission_service::mark_judging(
     );
 }
 
-std::expected<submission_dto::queued_response, service_error> submission_service::rejudge(
+std::expected<submission_response_dto::queued_response, service_error>
+submission_service::rejudge(
     db_connection& connection,
     std::int64_t submission_id
 ){
     return db_service_util::with_retry_service_write_transaction(
         connection,
         [&](pqxx::work& transaction)
-            -> std::expected<submission_dto::queued_response, service_error> {
+            -> std::expected<submission_response_dto::queued_response, service_error> {
             return submission_repository::rejudge_submission(
                 transaction,
                 submission_id
@@ -277,15 +282,15 @@ std::expected<void, service_error> submission_service::rejudge_problem(
     );
 }
 
-std::expected<std::optional<submission_dto::leased_submission>, service_error>
+std::expected<std::optional<submission_domain_dto::leased_submission>, service_error>
 submission_service::lease_submission(
     db_connection& connection,
-    const submission_dto::lease_request& lease_request_value
+    const submission_internal_dto::lease_request& lease_request_value
 ){
     return db_service_util::with_retry_service_write_transaction(
         connection,
         [&](pqxx::work& transaction)
-            -> std::expected<std::optional<submission_dto::leased_submission>, service_error> {
+            -> std::expected<std::optional<submission_domain_dto::leased_submission>, service_error> {
             auto lease_submission_exp = submission_repository::lease_submission(
                 transaction,
                 lease_request_value
@@ -301,15 +306,15 @@ submission_service::lease_submission(
 
 std::expected<void, service_error> submission_service::requeue_submission_immediately(
     db_connection& connection,
-    const submission_dto::leased_submission& leased_submission_value,
+    const submission_domain_dto::leased_submission& leased_submission_value,
     std::optional<std::string> reason_opt
 ){
     const std::optional<std::string> queued_reason_opt = std::move(reason_opt);
     return db_service_util::with_retry_service_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, service_error> {
-            const submission_dto::status_update status_update_value =
-                submission_dto::make_status_update(
+            const submission_internal_dto::status_update status_update_value =
+                submission_internal_dto::make_status_update(
                     leased_submission_value,
                     submission_status::queued,
                     queued_reason_opt
@@ -333,7 +338,7 @@ std::expected<void, service_error> submission_service::requeue_submission_immedi
 
 std::expected<void, service_error> submission_service::finalize_submission(
     db_connection& connection,
-    const submission_dto::finalize_request& finalize_request_value
+    const submission_internal_dto::finalize_request& finalize_request_value
 ){
     return db_service_util::with_retry_service_write_transaction(
         connection,
@@ -366,16 +371,16 @@ std::expected<void, service_error> submission_service::finalize_submission(
     );
 }
 
-std::expected<submission_dto::summary_page, service_error>
+std::expected<submission_response_dto::summary_page, service_error>
 submission_service::list_submissions(
     db_connection& connection,
-    const submission_dto::list_filter& filter_value,
+    const submission_request_dto::list_filter& filter_value,
     std::optional<std::int64_t> viewer_user_id_opt
 ){
     return db_service_util::with_retry_service_read_transaction(
         connection,
         [&](pqxx::read_transaction& transaction)
-            -> std::expected<submission_dto::summary_page, service_error> {
+            -> std::expected<submission_response_dto::summary_page, service_error> {
             const auto summary_page_exp = submission_repository::list_submissions(
                 transaction,
                 filter_value,

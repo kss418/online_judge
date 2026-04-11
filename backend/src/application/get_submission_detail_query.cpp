@@ -2,7 +2,7 @@
 
 #include "db_service/submission_service.hpp"
 
-std::expected<submission_dto::detail, service_error>
+std::expected<submission_response_dto::detail, service_error>
 get_submission_detail_query::execute(
     db_connection& connection,
     const command& command_value

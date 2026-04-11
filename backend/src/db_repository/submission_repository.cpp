@@ -11,9 +11,9 @@
 
 namespace{
     std::int32_t resolve_submission_list_limit(
-        const submission_dto::list_filter& filter_value
+        const submission_request_dto::list_filter& filter_value
     ){
-        return filter_value.limit_opt.value_or(submission_dto::DEFAULT_LIST_LIMIT);
+        return filter_value.limit_opt.value_or(submission_request_dto::DEFAULT_LIST_LIMIT);
     }
 
     std::expected<submission_repository::locked_submission_context, repository_error>
@@ -139,7 +139,8 @@ std::expected<void, repository_error> submission_repository::persist_submission_
     return {};
 }
 
-std::expected<submission_dto::history_list, repository_error> submission_repository::get_submission_history(
+std::expected<submission_response_dto::history_list, repository_error>
+submission_repository::get_submission_history(
     pqxx::transaction_base& transaction,
     std::int64_t submission_id
 ){
@@ -166,7 +167,8 @@ std::expected<submission_dto::history_list, repository_error> submission_reposit
     return submission_row_mapper::map_history_result(submission_history_query);
 }
 
-std::expected<submission_dto::source_detail, repository_error> submission_repository::get_submission_source(
+std::expected<submission_response_dto::source_detail, repository_error>
+submission_repository::get_submission_source(
     pqxx::transaction_base& transaction,
     std::int64_t submission_id
 ){
@@ -194,7 +196,8 @@ std::expected<submission_dto::source_detail, repository_error> submission_reposi
     return submission_row_mapper::map_source_detail_row(submission_source_query[0]);
 }
 
-std::expected<submission_dto::detail, repository_error> submission_repository::get_submission_detail(
+std::expected<submission_response_dto::detail, repository_error>
+submission_repository::get_submission_detail(
     pqxx::transaction_base& transaction,
     std::int64_t submission_id
 ){
@@ -227,13 +230,13 @@ std::expected<submission_dto::detail, repository_error> submission_repository::g
     return submission_row_mapper::map_detail_row(submission_detail_result[0]);
 }
 
-std::expected<std::vector<submission_dto::status_snapshot>, repository_error>
+std::expected<std::vector<submission_response_dto::status_snapshot>, repository_error>
 submission_repository::get_submission_status_snapshots(
     pqxx::transaction_base& transaction,
     const std::vector<std::int64_t>& submission_ids
 ){
     if(submission_ids.empty()){
-        return std::vector<submission_dto::status_snapshot>{};
+        return std::vector<submission_response_dto::status_snapshot>{};
     }
 
     const auto query_exp = submission_query_builder::build_status_snapshot_query(
@@ -250,7 +253,7 @@ submission_repository::get_submission_status_snapshots(
     return submission_row_mapper::map_status_snapshot_result(submission_status_result);
 }
 
-std::expected<std::vector<submission_dto::summary>, repository_error>
+std::expected<std::vector<submission_response_dto::summary>, repository_error>
 submission_repository::get_wa_or_ac_submissions(
     pqxx::transaction_base& transaction,
     std::int64_t problem_id
@@ -320,11 +323,12 @@ std::expected<submission_status, repository_error> submission_repository::get_su
     );
 }
 
-std::expected<submission_dto::queued_response, repository_error> submission_repository::create_submission(
+std::expected<submission_response_dto::queued_response, repository_error>
+submission_repository::create_submission(
     pqxx::transaction_base& transaction,
-    const submission_dto::create_request& create_request_value
+    const submission_internal_dto::create_submission_command& create_request_value
 ){
-    if(!submission_dto::is_valid(create_request_value)){
+    if(!submission_internal_dto::is_valid(create_request_value)){
         return std::unexpected(repository_error::invalid_input);
     }
 
@@ -359,7 +363,7 @@ std::expected<submission_dto::queued_response, repository_error> submission_repo
         pqxx::params{submission_id, to_string(submission_status::queued)}
     );
 
-    return submission_dto::make_queued_response(
+    return submission_response_dto::make_queued_response(
         submission_id,
         submission_status::queued,
         problem_version
@@ -398,9 +402,9 @@ std::expected<void, repository_error> submission_repository::enqueue_submission(
 
 std::expected<void, repository_error> submission_repository::update_submission_status(
     pqxx::transaction_base& transaction,
-    const submission_dto::status_update& status_update_value
+    const submission_internal_dto::status_update& status_update_value
 ){
-    if(!submission_dto::is_valid(status_update_value)){
+    if(!submission_internal_dto::is_valid(status_update_value)){
         return std::unexpected(repository_error::invalid_reference);
     }
 
@@ -463,7 +467,8 @@ std::expected<void, repository_error> submission_repository::clear_submission_re
     return {};
 }
 
-std::expected<submission_dto::queued_response, repository_error> submission_repository::rejudge_submission(
+std::expected<submission_response_dto::queued_response, repository_error>
+submission_repository::rejudge_submission(
     pqxx::transaction_base& transaction,
     std::int64_t submission_id
 ){
@@ -504,7 +509,7 @@ std::expected<submission_dto::queued_response, repository_error> submission_repo
         return std::unexpected(clear_submission_result_exp.error());
     }
 
-    submission_dto::status_update status_update_value;
+    submission_internal_dto::status_update status_update_value;
     status_update_value.to_status = submission_status::queued;
     const auto persist_transition_exp = persist_submission_status_transition(
         transaction,
@@ -538,20 +543,20 @@ std::expected<submission_dto::queued_response, repository_error> submission_repo
         return std::unexpected(enqueue_submission_exp.error());
     }
 
-    return submission_dto::make_queued_response(
+    return submission_response_dto::make_queued_response(
         submission_id,
         submission_status::queued,
         locked_submission_exp->problem_version
     );
 }
 
-std::expected<std::optional<submission_dto::leased_submission>, repository_error>
+std::expected<std::optional<submission_domain_dto::leased_submission>, repository_error>
 submission_repository::lease_submission(
     pqxx::transaction_base& transaction,
-    const submission_dto::lease_request& lease_request_value
+    const submission_internal_dto::lease_request& lease_request_value
 ){
     const std::chrono::seconds lease_duration = lease_request_value.lease_duration;
-    if(!submission_dto::is_valid(lease_request_value)){
+    if(!submission_internal_dto::is_valid(lease_request_value)){
         return std::unexpected(repository_error::invalid_input);
     }
 
@@ -604,10 +609,10 @@ submission_repository::lease_submission(
     );
 
     if(leased_submission_result.empty()){
-        return std::optional<submission_dto::leased_submission>{std::nullopt};
+        return std::optional<submission_domain_dto::leased_submission>{std::nullopt};
     }
 
-    return std::optional<submission_dto::leased_submission>{
+    return std::optional<submission_domain_dto::leased_submission>{
         submission_row_mapper::map_leased_submission_row(
             leased_submission_result[0]
         )
@@ -616,7 +621,7 @@ submission_repository::lease_submission(
 
 std::expected<void, repository_error> submission_repository::release_submission_lease(
     pqxx::transaction_base& transaction,
-    const submission_dto::leased_submission& leased_submission_value
+    const submission_domain_dto::leased_submission& leased_submission_value
 ){
     if(
         leased_submission_value.submission_id <= 0 ||
@@ -656,11 +661,12 @@ std::expected<void, repository_error> submission_repository::release_submission_
     return {};
 }
 
-std::expected<submission_dto::finalize_result, repository_error> submission_repository::finalize_submission(
+std::expected<submission_internal_dto::finalize_result, repository_error>
+submission_repository::finalize_submission(
     pqxx::transaction_base& transaction,
-    const submission_dto::finalize_request& finalize_request_value
+    const submission_internal_dto::finalize_request& finalize_request_value
 ){
-    if(!submission_dto::is_valid(finalize_request_value)){
+    if(!submission_internal_dto::is_valid(finalize_request_value)){
         return std::unexpected(repository_error::invalid_reference);
     }
 
@@ -728,15 +734,16 @@ std::expected<submission_dto::finalize_result, repository_error> submission_repo
         return std::unexpected(update_summary_exp.error());
     }
 
-    return submission_dto::make_finalize_result(
+    return submission_internal_dto::make_finalize_result(
         locked_submission_exp->problem_id,
         should_increase_accepted_count
     );
 }
 
-std::expected<submission_dto::summary_page, repository_error> submission_repository::list_submissions(
+std::expected<submission_response_dto::summary_page, repository_error>
+submission_repository::list_submissions(
     pqxx::transaction_base& transaction,
-    const submission_dto::list_filter& filter_value,
+    const submission_request_dto::list_filter& filter_value,
     std::optional<std::int64_t> viewer_user_id_opt
 ){
     auto query_exp = submission_query_builder::submission_list_query_builder{
@@ -754,7 +761,7 @@ std::expected<submission_dto::summary_page, repository_error> submission_reposit
 
     auto summary_values =
         submission_row_mapper::map_summary_result(submission_summary_query);
-    submission_dto::summary_page summary_page_value;
+    submission_response_dto::summary_page summary_page_value;
     summary_page_value.has_more =
         summary_values.size() >
         static_cast<std::size_t>(resolve_submission_list_limit(filter_value));

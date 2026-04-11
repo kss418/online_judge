@@ -2,7 +2,7 @@
 
 #include "db_service/submission_service.hpp"
 
-std::expected<submission_dto::summary_page, service_error> list_submissions_query::execute(
+std::expected<submission_response_dto::summary_page, service_error> list_submissions_query::execute(
     db_connection& connection,
     const command& command_value
 ){

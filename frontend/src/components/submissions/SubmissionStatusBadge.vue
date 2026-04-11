@@ -10,7 +10,10 @@
 <script setup>
 import { computed } from 'vue'
 
-import { getSubmissionStatusLabel, getSubmissionStatusTone } from '@/utils/submissionStatus'
+import {
+  getSubmissionStatusLabel,
+  getSubmissionStatusTone
+} from '@/generated/submissionStatusCatalog'
 
 const props = defineProps({
   status: {

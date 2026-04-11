@@ -6,7 +6,6 @@ target_sources(lib
         submission_request_dto.cpp
         submission_response_dto.cpp
         submission_internal_dto.cpp
-        submission_dto.cpp
         user_dto.cpp
         user_statistics_dto.cpp
 )

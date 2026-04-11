@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dto/submission_dto.hpp"
+#include "dto/submission_domain_dto.hpp"
 #include "error/judge_error.hpp"
 #include "judge_core/application/judge_evaluator.hpp"
 #include "judge_core/application/submission_builder.hpp"
@@ -36,7 +36,7 @@ public:
     submission_processor& operator=(const submission_processor&) = delete;
 
     std::expected<void, judge_error> process(
-        const submission_dto::leased_submission& leased_submission_value
+        const submission_domain_dto::leased_submission& leased_submission_value
     );
 
 private:

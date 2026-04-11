@@ -294,7 +294,7 @@ import { getProblemStateTextClass } from '@/utils/problemState'
 import {
   getSubmissionStatisticsFieldName,
   submissionStatisticsVisibleCatalog
-} from '@/utils/submissionStatus'
+} from '@/generated/submissionStatusCatalog'
 
 const route = useRoute()
 const { authState, isAuthenticated, initializeAuth } = useAuth()

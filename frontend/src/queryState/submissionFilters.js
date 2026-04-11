@@ -1,4 +1,4 @@
-import { submissionStatusOptions as generatedSubmissionStatusOptions } from '@/utils/submissionStatus'
+import { submissionStatusOptions as generatedSubmissionStatusOptions } from '@/generated/submissionStatusCatalog'
 
 export const submissionStatusOptions = generatedSubmissionStatusOptions
 

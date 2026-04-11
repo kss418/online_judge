@@ -47,9 +47,9 @@ judge_queue_facade& judge_queue_facade::operator=(
 
 judge_queue_facade::~judge_queue_facade() = default;
 
-std::expected<std::optional<submission_dto::leased_submission>, judge_error>
+std::expected<std::optional<submission_domain_dto::leased_submission>, judge_error>
 judge_queue_facade::try_lease_next(std::chrono::seconds lease_duration){
-    submission_dto::lease_request lease_request_value;
+    submission_internal_dto::lease_request lease_request_value;
     lease_request_value.lease_duration = lease_duration;
 
     auto leased_submission_opt_exp = submission_service::lease_submission(
@@ -63,7 +63,7 @@ judge_queue_facade::try_lease_next(std::chrono::seconds lease_duration){
         return std::move(*leased_submission_opt_exp);
     }
 
-    return std::optional<submission_dto::leased_submission>{};
+    return std::optional<submission_domain_dto::leased_submission>{};
 }
 
 std::expected<void, judge_error> judge_queue_facade::wait_for_work(

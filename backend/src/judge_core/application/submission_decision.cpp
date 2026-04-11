@@ -76,13 +76,13 @@ namespace{
     }
 }
 
-submission_dto::finalize_request submission_decision::to_finalize_request(
-    const submission_dto::leased_submission& leased_submission_value
+submission_internal_dto::finalize_request submission_decision::to_finalize_request(
+    const submission_domain_dto::leased_submission& leased_submission_value
 ) const{
     const submission_status submission_status_value =
         judge_policy::to_submission_status(verdict_summary.overall_verdict);
 
-    return submission_dto::make_finalize_request(
+    return submission_internal_dto::make_finalize_request(
         leased_submission_value,
         submission_status_value,
         verdict_summary.score_opt,

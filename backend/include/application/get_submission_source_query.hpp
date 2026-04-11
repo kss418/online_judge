@@ -2,7 +2,7 @@
 
 #include "common/db_connection.hpp"
 #include "dto/auth_dto.hpp"
-#include "dto/submission_dto.hpp"
+#include "dto/submission_response_dto.hpp"
 #include "error/service_error.hpp"
 
 #include <expected>
@@ -28,7 +28,7 @@ namespace get_submission_source_query{
         bool is_source_access_denied() const;
     };
 
-    std::expected<submission_dto::source_detail, error> execute(
+    std::expected<submission_response_dto::source_detail, error> execute(
         db_connection& connection,
         const command& command_value
     );
