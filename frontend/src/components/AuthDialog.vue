@@ -151,7 +151,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 
-import { useAuth } from '@/composables/useAuth'
+import { authStore } from '@/stores/auth/authStore'
 import { formatApiError } from '@/utils/apiError'
 
 const props = defineProps({
@@ -167,7 +167,11 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-const { authState, login, signUp } = useAuth()
+const {
+  state: authState,
+  login,
+  signUp
+} = authStore
 
 const activeMode = ref('login')
 const submitErrorMessage = ref('')

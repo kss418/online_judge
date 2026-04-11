@@ -8,8 +8,8 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { getProblemList } from '@/api/problem'
 import { useAsyncResource } from '@/composables/useAsyncResource'
-import { useAuth } from '@/composables/useAuth'
 import { useRouteQueryState } from '@/composables/useRouteQueryState'
+import { authStore } from '@/stores/auth/authStore'
 import { buildPaginationItems } from '@/utils/pagination'
 
 const problemSortOptions = [
@@ -55,7 +55,11 @@ function createInitialProblemBrowseState(){
 export function useProblemBrowse(){
   const route = useRoute()
   const router = useRouter()
-  const { authState, isAuthenticated, initializeAuth } = useAuth()
+  const {
+    state: authState,
+    isAuthenticated,
+    initializeAuth
+  } = authStore
 
   const authenticatedBearerToken = computed(() =>
     authState.initialized && isAuthenticated.value ? authState.token : ''

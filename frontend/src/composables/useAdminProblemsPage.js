@@ -10,19 +10,26 @@ import {
 } from '@/composables/adminProblems/problemHelpers'
 import { useProblemListResource } from '@/composables/adminProblems/useProblemListResource'
 import { useProblemSearchQuery } from '@/composables/adminProblems/useProblemSearchQuery'
-import { useAuth } from '@/composables/useAuth'
-import { useNotice } from '@/composables/useNotice'
+import { authStore } from '@/stores/auth/authStore'
+import { noticeStore } from '@/stores/notice/noticeStore'
 
 export function useAdminProblemsPage(){
-  const { authState, isAuthenticated, initializeAuth } = useAuth()
-  const { showErrorNotice, showSuccessNotice } = useNotice()
+  const {
+    state: authState,
+    isAuthenticated,
+    initializeAuth,
+    canManageProblems
+  } = authStore
+  const {
+    showErrorNotice,
+    showSuccessNotice
+  } = noticeStore
   const countFormatter = new Intl.NumberFormat()
   const route = useRoute()
   const router = useRouter()
 
   const busySection = ref('')
   const newProblemTitle = ref('')
-  const canManageProblems = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 1)
 
   let problemListResource
   let problemDetailResource
@@ -140,7 +147,7 @@ export function useAdminProblemsPage(){
   })
 
   watch(
-    () => [authState.initialized, authState.token, authState.currentUser?.permission_level],
+    () => [authState.initialized, authState.token, canManageProblems.value],
     () => {
       if (!authState.initialized) {
         problemListResource.isLoadingProblems.value = true

@@ -39,7 +39,7 @@
                 <div class="auth-session-user">
                   <strong>{{ authState.currentUser.user_login_id }}</strong>
                   <StatusBadge
-                    v-if="authState.currentUser.permission_level >= 1"
+                    v-if="canManageProblems"
                     :label="getRoleBadgeLabel(authState.currentUser)"
                     :tone="getRoleBadgeTone(authState.currentUser)"
                   />
@@ -105,12 +105,19 @@ import { useRoute } from 'vue-router'
 import AuthDialog from '@/components/AuthDialog.vue'
 import GlobalNotice from '@/components/GlobalNotice.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { useAuth } from '@/composables/useAuth'
+import { authStore } from '@/stores/auth/authStore'
 
 const route = useRoute()
 const isAuthDialogOpen = ref(false)
 const authDialogMode = ref('login')
-const { authState, isAuthenticated, initializeAuth, logout } = useAuth()
+const {
+  state: authState,
+  isAuthenticated,
+  initializeAuth,
+  logout,
+  canManageProblems,
+  isSuperAdmin
+} = authStore
 
 const navItems = computed(() => {
   const items = [
@@ -136,7 +143,7 @@ const navItems = computed(() => {
     }
   ]
 
-  if (authState.currentUser?.permission_level >= 1) {
+  if (canManageProblems.value) {
     items.push({
       to: '/admin/problems',
       label: 'Problem Admin',
@@ -155,7 +162,7 @@ const navItems = computed(() => {
       hint: '유저 관리'
     })
 
-    if (authState.currentUser.permission_level >= 2) {
+    if (isSuperAdmin.value) {
       items.push({
         to: '/admin/users',
         label: 'Privilege',

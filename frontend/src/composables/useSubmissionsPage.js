@@ -13,14 +13,21 @@ import {
 import { useSubmissionListResource } from '@/composables/submissions/useSubmissionListResource'
 import { useSubmissionPagination } from '@/composables/submissions/useSubmissionPagination'
 import { useSubmissionPolling } from '@/composables/submissions/useSubmissionPolling'
-import { useAuth } from '@/composables/useAuth'
-import { useNotice } from '@/composables/useNotice'
+import { authStore } from '@/stores/auth/authStore'
+import { noticeStore } from '@/stores/notice/noticeStore'
 
 export function useSubmissionsPage(){
   const route = useRoute()
   const router = useRouter()
-  const { authState, isAuthenticated, initializeAuth } = useAuth()
-  const { showErrorNotice, showSuccessNotice } = useNotice()
+  const {
+    state: authState,
+    isAuthenticated,
+    initializeAuth
+  } = authStore
+  const {
+    showErrorNotice,
+    showSuccessNotice
+  } = noticeStore
   const countFormatter = new Intl.NumberFormat()
 
   const formatCount = (value) => countFormatter.format(value)

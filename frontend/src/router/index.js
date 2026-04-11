@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import { useAuth } from '@/composables/useAuth'
+import { authStore } from '@/stores/auth/authStore'
 import AdminProblemTestcasesPage from '@/pages/AdminProblemTestcasesPage.vue'
 import AdminProblemsPage from '@/pages/AdminProblemsPage.vue'
 import AdminUserManagementPage from '@/pages/AdminUserManagementPage.vue'
@@ -121,7 +121,11 @@ const router = createRouter({
   }
 })
 
-const { authState, initializeAuth } = useAuth()
+const {
+  state: authState,
+  initializeAuth,
+  canManageProblems
+} = authStore
 
 router.beforeEach(async (to) => {
   const requiredPermissionLevel = Number(to.meta?.requiredPermissionLevel ?? 0)
@@ -133,12 +137,11 @@ router.beforeEach(async (to) => {
     await initializeAuth()
   }
 
-  const currentPermissionLevel = Number(authState.currentUser?.permission_level ?? 0)
-  if (currentPermissionLevel >= requiredPermissionLevel) {
+  if (authStore.hasPermissionLevel(requiredPermissionLevel)) {
     return true
   }
 
-  if (currentPermissionLevel >= 1) {
+  if (canManageProblems.value) {
     return { name: 'admin-problems' }
   }
 

@@ -27,9 +27,12 @@
 <script setup>
 import { computed } from 'vue'
 
-import { useNotice } from '@/composables/useNotice'
+import { noticeStore } from '@/stores/notice/noticeStore'
 
-const { noticeState, clearNotice } = useNotice()
+const {
+  state: noticeState,
+  clearNotice
+} = noticeStore
 const hasDangerNotice = computed(() =>
   noticeState.items.some((notice) => notice.tone === 'danger')
 )

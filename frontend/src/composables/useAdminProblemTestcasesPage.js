@@ -10,19 +10,25 @@ import {
 import { useTestcaseEditorDraft } from '@/composables/adminProblemTestcases/useTestcaseEditorDraft'
 import { useTestcaseReorder } from '@/composables/adminProblemTestcases/useTestcaseReorder'
 import { useTestcaseUploadActions } from '@/composables/adminProblemTestcases/useTestcaseUploadActions'
-import { useAuth } from '@/composables/useAuth'
-import { useNotice } from '@/composables/useNotice'
+import { authStore } from '@/stores/auth/authStore'
+import { noticeStore } from '@/stores/notice/noticeStore'
 
 export function useAdminProblemTestcasesPage(){
   const route = useRoute()
   const router = useRouter()
-  const { authState, isAuthenticated, initializeAuth } = useAuth()
-  const { showErrorNotice, showSuccessNotice } = useNotice()
+  const {
+    state: authState,
+    isAuthenticated,
+    initializeAuth,
+    canManageProblems
+  } = authStore
+  const {
+    showErrorNotice,
+    showSuccessNotice
+  } = noticeStore
   const countFormatter = new Intl.NumberFormat()
   const busySection = ref('')
   const testcaseSummaryElementMap = new Map()
-
-  const canManageProblems = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 1)
 
   let listResource
 
