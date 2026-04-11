@@ -146,12 +146,13 @@ The detail response does not expose `source_code`. Use `GET /api/submission/{sub
 Build-stage note:
 
 - The judge has richer internal build outcomes than the public `status` field.
-- Internal `CompileResourceExceeded` currently does not map to a dedicated
-  public submission status.
-- For now, both user compile errors and compile-stage resource exhaustion are
-  exposed externally as `compile_error`.
-- This public contract may evolve later if a dedicated submission status is
-  introduced for build-stage resource exhaustion.
+- Internal `CompileResourceExceeded` currently maps to the public
+  `build_resource_exceeded` status.
+- User compile errors remain exposed as `compile_error`.
+- Compile-stage resource exhaustion is exposed externally as
+  `build_resource_exceeded`.
+- The internal build classification still remains richer because
+  `CompileResourceExceeded` carries a more specific internal reason.
 
 Example:
 
@@ -436,7 +437,7 @@ List submissions using optional filters. This endpoint is public, and authentica
 | `user_id` | `int64` | no | must be positive |
 | `problem_id` | `int64` | no | must be positive |
 | `language` | `string` | no | one of the supported submission languages such as `cpp` or `python` |
-| `status` | `string` | no | one of `queued`, `judging`, `accepted`, `wrong_answer`, `time_limit_exceeded`, `memory_limit_exceeded`, `runtime_error`, `compile_error`, `output_exceeded`, `infra_failure` |
+| `status` | `string` | no | one of `queued`, `judging`, `accepted`, `wrong_answer`, `time_limit_exceeded`, `memory_limit_exceeded`, `runtime_error`, `compile_error`, `build_resource_exceeded`, `output_exceeded`, `infra_failure` |
 | `limit` | `int32` | no | page size; must be positive; defaults to 50 |
 | `before_submission_id` | `int64` | no | keyset cursor; return submissions with `submission_id` strictly less than this value |
 

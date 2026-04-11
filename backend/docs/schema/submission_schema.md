@@ -19,6 +19,7 @@ Prerequisites:
 - `memory_limit_exceeded`
 - `runtime_error`
 - `compile_error`
+- `build_resource_exceeded`
 - `output_exceeded`
 - `infra_failure`
 
@@ -147,10 +148,11 @@ Notes:
 - These outcomes are internal judge-layer facts used between builder,
   processor, and lifecycle components.
 - They are not stored 1:1 in `submissions.status`.
-- In particular, `CompileResourceExceeded` is currently an internal category and
-  does not yet have a dedicated external submission status.
-- Memory / OOM is not yet identified precisely enough to expose as a distinct
-  stable public status, so it may currently remain under internal
+- `CompileResourceExceeded` currently maps to the external
+  `build_resource_exceeded` submission status.
+- Memory / OOM is not yet identified precisely enough to expose as a more
+  specific stable public status, so it currently remains under
+  `build_resource_exceeded` with an internal reason such as
   `CompileResourceExceeded{signaled}` or `CompileResourceExceeded{unknown}`.
 
 ## current build policy
@@ -160,19 +162,21 @@ Current submission lifecycle policy is:
 - `BuildSuccess` -> acquire testcase snapshot -> execute -> evaluate -> finalize
   with the evaluated judge result
 - `UserCompileError` -> finalize as `compile_error`
-- `CompileResourceExceeded` -> currently finalize as `compile_error`
+- `CompileResourceExceeded` -> currently finalize as `build_resource_exceeded`
 - `BuildInfraFailure` -> keep the existing infra-failure policy
   (`infra_failure` finalize or immediate requeue, depending on lifecycle retry
   policy)
 
-This means internal build classification is richer than the current external
-submission status contract. Public behavior is intentionally conservative for
-now.
+This means internal build classification remains richer than the external
+submission status contract because `CompileResourceExceeded` still carries an
+internal reason, while public behavior now exposes a dedicated
+`build_resource_exceeded` status.
 
 ## future evolution
 
-- `CompileResourceExceeded` may be promoted to a dedicated external
-  `submission_status` in a later schema / API change.
+- `CompileResourceExceeded` may later be refined into more specific public
+  statuses or reason fields if the current single
+  `build_resource_exceeded` status becomes too coarse.
 - Retry behavior for some build outcomes, especially compile resource
   exhaustion, may be revisited in a separate change after operational data is
   collected.
@@ -194,7 +198,7 @@ Recommended scenario coverage:
    - input: intentionally slow compile source such as heavy C++ template
      expansion
    - expect internal outcome `CompileResourceExceeded{wall_clock}`
-   - current external status remains `compile_error`
+   - current external status is `build_resource_exceeded`
 3. Build infra failure
    - input: broken toolchain path or unavailable sandbox
    - expect internal outcome `BuildInfraFailure`

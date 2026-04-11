@@ -3,7 +3,6 @@
 #include "common/logger.hpp"
 
 #include <utility>
-#include <variant>
 
 namespace{
     execution_policy select_execution_policy(
@@ -104,14 +103,6 @@ submission_processor::~submission_processor() = default;
 std::expected<void, judge_error> submission_processor::process(
     const submission_dto::leased_submission& leased_submission_value
 ){
-    const auto complete_with_failure =
-        [&](judge_error error_value) -> std::expected<void, judge_error> {
-        return submission_lifecycle_.complete(
-            leased_submission_value,
-            submission_lifecycle::completion_outcome{std::move(error_value)}
-        );
-    };
-
     const auto mark_judging_exp = submission_lifecycle_.mark_judging(
         leased_submission_value
     );
@@ -124,47 +115,39 @@ std::expected<void, judge_error> submission_processor::process(
         leased_submission_value.attempt_no
     );
     if(!workspace_session_exp){
-        return complete_with_failure(workspace_session_exp.error());
+        return submission_lifecycle_.apply_completion(
+            leased_submission_value,
+            submission_lifecycle_.make_infra_failure_completion(
+                workspace_session_exp.error()
+            )
+        );
     }
 
     auto workspace_session_value = std::move(*workspace_session_exp);
     const auto workspace_path = workspace_session_value.path();
 
-    auto submission_outcome_value = [&]()
-        -> submission_lifecycle::completion_outcome {
+    auto submission_completion_value = [&]()
+        -> submission_lifecycle::submission_completion {
         const auto source_file_path_exp =
             workspace_session_value.write_source_file(
                 leased_submission_value.language,
                 leased_submission_value.source_code
             );
         if(!source_file_path_exp){
-            return source_file_path_exp.error();
+            return submission_lifecycle_.make_infra_failure_completion(
+                source_file_path_exp.error()
+            );
         }
 
         auto build_result_value = submission_builder_.build(
             *source_file_path_exp
         );
-        auto build_policy_value = submission_lifecycle_.apply_build_policy(
+        auto build_completion_opt = submission_lifecycle_.apply_build_policy(
             leased_submission_value,
             build_result_value
         );
-
-        if(
-            const auto direct_finalize_request_opt =
-                std::get_if<submission_dto::finalize_request>(&build_policy_value)
-        ){
-            return std::move(*direct_finalize_request_opt);
-        }
-
-        if(
-            const auto build_decision_opt =
-                std::get_if<submission_decision>(&build_policy_value)
-        ){
-            return std::move(*build_decision_opt);
-        }
-
-        if(const auto build_error_opt = std::get_if<judge_error>(&build_policy_value)){
-            return *build_error_opt;
+        if(build_completion_opt.has_value()){
+            return std::move(*build_completion_opt);
         }
 
         auto testcase_snapshot_exp = testcase_snapshot_facade_.acquire(
@@ -172,7 +155,9 @@ std::expected<void, judge_error> submission_processor::process(
             leased_submission_value.problem_version
         );
         if(!testcase_snapshot_exp){
-            return testcase_snapshot_exp.error();
+            return submission_lifecycle_.make_infra_failure_completion(
+                testcase_snapshot_exp.error()
+            );
         }
 
         const execution_policy execution_policy_value =
@@ -187,7 +172,9 @@ std::expected<void, judge_error> submission_processor::process(
             execution_policy_value
         );
         if(!execution_report_exp){
-            return execution_report_exp.error();
+            return submission_lifecycle_.make_infra_failure_completion(
+                execution_report_exp.error()
+            );
         }
 
         auto submission_decision_exp = judge_evaluator_.evaluate_execution(
@@ -195,15 +182,20 @@ std::expected<void, judge_error> submission_processor::process(
             std::move(*execution_report_exp)
         );
         if(!submission_decision_exp){
-            return submission_decision_exp.error();
+            return submission_lifecycle_.make_infra_failure_completion(
+                submission_decision_exp.error()
+            );
         }
 
-        return std::move(*submission_decision_exp);
+        return submission_lifecycle_.make_decision_completion(
+            leased_submission_value,
+            *submission_decision_exp
+        );
     }();
 
-    const auto finalize_submission_exp = submission_lifecycle_.complete(
+    const auto finalize_submission_exp = submission_lifecycle_.apply_completion(
         leased_submission_value,
-        std::move(submission_outcome_value)
+        submission_completion_value
     );
     const bool finalize_succeeded = finalize_submission_exp.has_value();
     close_workspace_best_effort(

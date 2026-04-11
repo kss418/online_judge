@@ -122,88 +122,109 @@ std::expected<void, judge_error> submission_lifecycle::mark_judging(
     );
 }
 
-std::expected<void, judge_error> submission_lifecycle::complete(
-    const submission_dto::leased_submission& leased_submission_value,
-    completion_outcome submission_outcome_value
-){
-    if(const auto decision_opt = std::get_if<submission_decision>(&submission_outcome_value)){
-        return finalize_judged_submission(
-            leased_submission_value,
-            *decision_opt
-        );
-    }
-
-    if(
-        const auto finalize_request_opt =
-            std::get_if<submission_dto::finalize_request>(&submission_outcome_value)
-    ){
-        return finalize_direct_submission(*finalize_request_opt);
-    }
-
-    return handle_infra_failure(leased_submission_value, std::get<judge_error>(submission_outcome_value));
-}
-
-submission_lifecycle::build_policy_outcome
+std::optional<submission_lifecycle::submission_completion>
 submission_lifecycle::apply_build_policy(
     const submission_dto::leased_submission& leased_submission_value,
     const build_bundle& build_result_value
 ) const{
     if(build_result_value.success()){
-        return std::monostate{};
+        return std::nullopt;
     }
 
     if(build_result_value.is_user_compile_error()){
-        return make_compile_error_decision(
-            build_result_value.user_compile_error_value().compile_execution
+        return make_decision_completion(
+            leased_submission_value,
+            make_compile_error_decision(
+                build_result_value.user_compile_error_value().compile_execution
+            )
         );
     }
 
     if(build_result_value.is_compile_resource_exceeded()){
-        return make_build_resource_exceeded_finalize_request(
-            leased_submission_value,
-            build_result_value.compile_resource_exceeded_value()
-        );
+        return submission_completion{
+            finalize_command{
+                make_build_resource_exceeded_finalize_request(
+                    leased_submission_value,
+                    build_result_value.compile_resource_exceeded_value()
+                )
+            }
+        };
     }
 
-    return build_result_value.infra_failure().error;
+    return make_infra_failure_completion(
+        build_result_value.infra_failure().error
+    );
 }
 
-std::expected<void, judge_error> submission_lifecycle::finalize_judged_submission(
+submission_lifecycle::submission_completion
+submission_lifecycle::make_decision_completion(
     const submission_dto::leased_submission& leased_submission_value,
     const submission_decision& submission_decision_value
-){
-    const submission_dto::finalize_request finalize_request_value =
-        submission_decision_value.to_finalize_request(
-            leased_submission_value
-        );
-
-    return judge_submission_facade_.finalize_submission(finalize_request_value);
+) const{
+    return submission_completion{
+        finalize_command{
+            submission_decision_value.to_finalize_request(
+                leased_submission_value
+            )
+        }
+    };
 }
 
-std::expected<void, judge_error> submission_lifecycle::finalize_direct_submission(
-    const submission_dto::finalize_request& finalize_request_value
-){
-    return judge_submission_facade_.finalize_submission(finalize_request_value);
-}
-
-std::expected<void, judge_error> submission_lifecycle::handle_infra_failure(
-    const submission_dto::leased_submission& leased_submission_value,
+submission_lifecycle::submission_completion
+submission_lifecycle::make_infra_failure_completion(
     const judge_error& error_value
+) const{
+    return submission_completion{
+        infra_failure_report{
+            .error = error_value,
+            .retry = decide_retry_directive(error_value),
+        }
+    };
+}
+
+std::expected<void, judge_error> submission_lifecycle::apply_completion(
+    const submission_dto::leased_submission& leased_submission_value,
+    const submission_completion& submission_completion_value
 ){
     if(
-        decide_retry_directive(error_value) ==
+        const auto finalize_command_opt =
+            std::get_if<finalize_command>(&submission_completion_value.storage_)
+    ){
+        return apply_finalize_command(*finalize_command_opt);
+    }
+
+    return apply_infra_failure_report(
+        leased_submission_value,
+        std::get<infra_failure_report>(submission_completion_value.storage_)
+    );
+}
+
+std::expected<void, judge_error> submission_lifecycle::apply_finalize_command(
+    const finalize_command& finalize_command_value
+){
+    return judge_submission_facade_.finalize_submission(
+        finalize_command_value.request
+    );
+}
+
+std::expected<void, judge_error> submission_lifecycle::apply_infra_failure_report(
+    const submission_dto::leased_submission& leased_submission_value,
+    const infra_failure_report& infra_failure_report_value
+){
+    if(
+        infra_failure_report_value.retry ==
         retry_directive::requeue_immediately
     ){
         return requeue_submission(
             leased_submission_value,
-            error_value
+            infra_failure_report_value.error
         );
     }
 
     const submission_dto::finalize_request finalize_request_value =
         make_infra_failure_finalize_request(
             leased_submission_value,
-            to_string(error_value)
+            to_string(infra_failure_report_value.error)
         );
     return judge_submission_facade_.finalize_submission(finalize_request_value);
 }
