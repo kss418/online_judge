@@ -8,33 +8,13 @@
 #include <string_view>
 
 namespace{
-    std::expected<std::string_view, repository_error> get_status_count_column(submission_status status){
-        switch(status){
-            case submission_status::queued:
-                return "queued_submission_count";
-            case submission_status::judging:
-                return "judging_submission_count";
-            case submission_status::accepted:
-                return "accepted_submission_count";
-            case submission_status::wrong_answer:
-                return "wrong_answer_submission_count";
-            case submission_status::time_limit_exceeded:
-                return "time_limit_exceeded_submission_count";
-            case submission_status::memory_limit_exceeded:
-                return "memory_limit_exceeded_submission_count";
-            case submission_status::runtime_error:
-                return "runtime_error_submission_count";
-            case submission_status::compile_error:
-                return "compile_error_submission_count";
-            case submission_status::build_resource_exceeded:
-                return "build_resource_exceeded_submission_count";
-            case submission_status::output_exceeded:
-                return "output_exceeded_submission_count";
-            case submission_status::infra_failure:
-                return "infra_failure_submission_count";
+    std::expected<std::string, repository_error> get_status_count_column(submission_status status){
+        const auto* spec = find_submission_status_spec(status);
+        if(spec == nullptr){
+            return std::unexpected(repository_error::invalid_input);
         }
 
-        return std::unexpected(repository_error::invalid_input);
+        return std::string{spec->statistics_bucket} + "_submission_count";
     }
 }
 

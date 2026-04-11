@@ -1,13 +1,14 @@
 #pragma once
 
 #include "common/db_connection.hpp"
-#include "dto/submission_dto.hpp"
+#include "dto/submission_internal_dto.hpp"
+#include "dto/submission_response_dto.hpp"
 #include "error/service_error.hpp"
 
 #include <expected>
 
 namespace create_submission_action{
-    using command = submission_dto::create_request;
+    using command = submission_internal_dto::create_submission_command;
 
     struct error{
         enum class kind{
@@ -24,7 +25,7 @@ namespace create_submission_action{
         bool is_submission_banned() const;
     };
 
-    std::expected<submission_dto::queued_response, error> execute(
+    std::expected<submission_response_dto::queued_response, error> execute(
         db_connection& connection,
         const command& command_value
     );

@@ -1,5 +1,6 @@
 import { requestJson } from '@/api/http'
 import { appendApiQuery } from '@/api/apiQueryBuilder'
+import { submissionStatusCatalog } from '@/generated/submissionStatusCatalog'
 import {
   normalizeArray,
   normalizePositiveInteger,
@@ -48,22 +49,17 @@ function normalizePublicUserListResponse(response){
 }
 
 function normalizeUserSubmissionStatisticsResponse(payload){
+  const normalizedStatusCounts = Object.fromEntries(
+    submissionStatusCatalog.map((statusMeta) => [
+      `${statusMeta.statistics_bucket}_submission_count`,
+      normalizePositiveInteger(payload?.[`${statusMeta.statistics_bucket}_submission_count`])
+    ])
+  )
+
   return {
     user_id: normalizePositiveInteger(payload?.user_id),
     submission_count: normalizePositiveInteger(payload?.submission_count),
-    accepted_submission_count: normalizePositiveInteger(payload?.accepted_submission_count),
-    wrong_answer_submission_count: normalizePositiveInteger(payload?.wrong_answer_submission_count),
-    time_limit_exceeded_submission_count: normalizePositiveInteger(
-      payload?.time_limit_exceeded_submission_count
-    ),
-    memory_limit_exceeded_submission_count: normalizePositiveInteger(
-      payload?.memory_limit_exceeded_submission_count
-    ),
-    runtime_error_submission_count: normalizePositiveInteger(payload?.runtime_error_submission_count),
-    compile_error_submission_count: normalizePositiveInteger(payload?.compile_error_submission_count),
-    output_exceeded_submission_count: normalizePositiveInteger(payload?.output_exceeded_submission_count),
-    queued_submission_count: normalizePositiveInteger(payload?.queued_submission_count),
-    judging_submission_count: normalizePositiveInteger(payload?.judging_submission_count),
+    ...normalizedStatusCounts,
     ...normalizeApiDateTimeField('last_submission_at', payload?.last_submission_at),
     ...normalizeApiDateTimeField('last_accepted_at', payload?.last_accepted_at)
   }

@@ -1,19 +1,13 @@
-import { getSubmissionStatusLabel } from '@/utils/submissionStatus'
-import { submissionStatusOptions } from '@/queryState/submissionFilters'
+import {
+  finishedSubmissionStatuses,
+  getSubmissionStatusLabel,
+  submissionPollingStatuses
+} from '@/utils/submissionStatus'
 
 export const listLimit = 50
 export const submissionPollingIntervalMs = 2000
-export const pollingSubmissionStatuses = new Set(['queued', 'judging'])
-
-export const finishedSubmissionStatuses = new Set([
-  'accepted',
-  'wrong_answer',
-  'time_limit_exceeded',
-  'memory_limit_exceeded',
-  'runtime_error',
-  'output_exceeded',
-  'compile_error'
-])
+export { finishedSubmissionStatuses }
+export const pollingSubmissionStatuses = submissionPollingStatuses
 
 export function formatRelativeSubmittedAt(nowTimestamp, timestamp){
   if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {

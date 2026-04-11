@@ -291,6 +291,10 @@ import {
   formatTimestamp
 } from '@/utils/dateTime'
 import { getProblemStateTextClass } from '@/utils/problemState'
+import {
+  getSubmissionStatisticsFieldName,
+  submissionStatisticsVisibleCatalog
+} from '@/utils/submissionStatus'
 
 const route = useRoute()
 const { authState, isAuthenticated, initializeAuth } = useAuth()
@@ -675,61 +679,30 @@ const wrongProblemsStatusTone = computed(() => {
 })
 
 const statisticsItems = computed(() => {
+  const defaultStatusCounts = Object.fromEntries(
+    submissionStatisticsVisibleCatalog.map((statusMeta) => [
+      getSubmissionStatisticsFieldName(statusMeta.code),
+      0
+    ])
+  )
   const statistics = submissionStatistics.value ?? {
     submission_count: 0,
-    accepted_submission_count: 0,
-    wrong_answer_submission_count: 0,
-    time_limit_exceeded_submission_count: 0,
-    memory_limit_exceeded_submission_count: 0,
-    runtime_error_submission_count: 0,
-    compile_error_submission_count: 0,
-    output_exceeded_submission_count: 0,
-    queued_submission_count: 0,
-    judging_submission_count: 0,
+    ...defaultStatusCounts,
     last_submission_at: null,
     last_accepted_at: null
   }
+  const statusItems = submissionStatisticsVisibleCatalog.map((statusMeta) => ({
+    label: statusMeta.public_label_ko,
+    value: statistics[getSubmissionStatisticsFieldName(statusMeta.code)] ?? 0,
+    status: statusMeta.code
+  }))
 
   return [
     {
       label: '전체 제출',
       value: statistics.submission_count
     },
-    {
-      label: '정답',
-      value: statistics.accepted_submission_count,
-      status: 'accepted'
-    },
-    {
-      label: '오답',
-      value: statistics.wrong_answer_submission_count,
-      status: 'wrong_answer'
-    },
-    {
-      label: '시간 초과',
-      value: statistics.time_limit_exceeded_submission_count,
-      status: 'time_limit_exceeded'
-    },
-    {
-      label: '메모리 초과',
-      value: statistics.memory_limit_exceeded_submission_count,
-      status: 'memory_limit_exceeded'
-    },
-    {
-      label: '런타임 에러',
-      value: statistics.runtime_error_submission_count,
-      status: 'runtime_error'
-    },
-    {
-      label: '컴파일 에러',
-      value: statistics.compile_error_submission_count,
-      status: 'compile_error'
-    },
-    {
-      label: '출력 초과',
-      value: statistics.output_exceeded_submission_count,
-      status: 'output_exceeded'
-    },
+    ...statusItems,
     {
       label: '최근 제출',
       value: formatTimestamp(statistics.last_submission_at)

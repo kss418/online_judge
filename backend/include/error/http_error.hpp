@@ -6,6 +6,7 @@
 
 #include <optional>
 #include <ostream>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -38,6 +39,18 @@ enum class http_error_code{
     invalid_testcase_zip,
 };
 
+struct http_error_spec{
+    http_error_code code;
+    std::string_view code_string;
+    boost::beast::http::status http_status;
+    std::string_view default_public_message_en;
+    std::string_view frontend_message_ko;
+    std::string_view frontend_field_message_ko;
+    bool requires_bearer_auth = false;
+    bool field_supported = false;
+    std::string_view category;
+};
+
 struct http_error{
     http_error_code code;
     std::string message;
@@ -58,3 +71,5 @@ struct http_error{
 };
 
 std::string_view to_code_string(http_error_code ec);
+std::span<const http_error_spec> all_http_error_specs();
+const http_error_spec* find_http_error_spec(http_error_code code);

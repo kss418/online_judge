@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dto/submission_dto.hpp"
+#include "dto/submission_response_dto.hpp"
 
 #include <boost/json.hpp>
 
@@ -10,25 +10,27 @@
 
 namespace submission_json_serializer{
     boost::json::object make_queued_response_object(
-        const submission_dto::queued_response& queued_response_value
+        const submission_response_dto::queued_response& queued_response_value
     );
 
     boost::json::object make_history_list_object(
         std::int64_t submission_id,
-        const submission_dto::history_list& history_values
+        const submission_response_dto::history_list& history_values
     );
 
     boost::json::object make_source_object(
-        const submission_dto::source_detail& source_detail_value
+        const submission_response_dto::source_detail& source_detail_value
     );
 
     boost::json::object make_detail_object(
-        const submission_dto::detail& detail_value
+        const submission_response_dto::detail& detail_value
     );
 
     boost::json::object make_status_snapshot_batch_object(
-        const std::vector<submission_dto::status_snapshot>& snapshot_values
+        const std::vector<submission_response_dto::status_snapshot>& snapshot_values
     );
 
-    boost::json::object make_list_object(const submission_dto::summary_page& summary_page_value);
+    boost::json::object make_list_object(
+        const submission_response_dto::summary_page& summary_page_value
+    );
 }

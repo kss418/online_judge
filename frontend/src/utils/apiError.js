@@ -1,3 +1,5 @@
+import { getFrontendHttpErrorMessage } from '@/generated/httpErrorCatalog'
+
 const defaultFieldLabels = {
   user_login_id: 'ID',
   raw_password: '비밀번호',
@@ -39,56 +41,9 @@ const defaultStatusMessages = {
   504: '서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.'
 }
 
-const defaultCodeMessages = {
+const frontendOnlyCodeMessages = {
   network_error: '서버에 연결하지 못했습니다. 네트워크 상태를 확인해 주세요.',
-  response_parse_error: '서버 응답을 해석하지 못했습니다.',
-  bad_request: '요청 형식이 올바르지 않습니다.',
-  payload_too_large: '요청 본문이 너무 큽니다.',
-  method_not_allowed: '지원되지 않는 요청 방식입니다.',
-  validation_error: '입력값을 다시 확인해 주세요.',
-  unauthorized: '로그인이 필요합니다.',
-  forbidden: '권한이 없습니다.',
-  not_found: '요청한 대상을 찾지 못했습니다.',
-  conflict: '이미 존재하거나 현재 상태와 충돌합니다.',
-  service_unavailable: '서비스가 일시적으로 불안정합니다. 잠시 후 다시 시도해 주세요.',
-  internal_server_error: '서버에서 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.',
-  invalid_json: '요청 본문 JSON 형식이 올바르지 않습니다.',
-  invalid_query_string: '쿼리 문자열 형식이 올바르지 않습니다.',
-  invalid_argument: ({ fieldLabel }) =>
-    fieldLabel
-      ? `${fieldLabel} 항목을 다시 확인해 주세요.`
-      : '입력값을 다시 확인해 주세요.',
-  duplicate_query_parameter: ({ fieldLabel }) =>
-    fieldLabel
-      ? `${fieldLabel} 항목이 중복되었습니다.`
-      : '같은 쿼리 항목이 중복되었습니다.',
-  invalid_query_parameter: ({ fieldLabel }) =>
-    fieldLabel
-      ? `${fieldLabel} 항목이 올바르지 않습니다.`
-      : '쿼리 항목이 올바르지 않습니다.',
-  unsupported_query_parameter: ({ fieldLabel }) =>
-    fieldLabel
-      ? `${fieldLabel} 항목은 지원되지 않습니다.`
-      : '지원되지 않는 쿼리 항목입니다.',
-  missing_field: ({ fieldLabel }) =>
-    fieldLabel
-      ? `${fieldLabel} 항목을 입력해 주세요.`
-      : '필수 입력 항목을 입력해 주세요.',
-  invalid_field: ({ fieldLabel }) =>
-    fieldLabel
-      ? `${fieldLabel} 항목이 올바르지 않습니다.`
-      : '입력 항목이 올바르지 않습니다.',
-  invalid_length: ({ fieldLabel }) =>
-    fieldLabel
-      ? `${fieldLabel} 항목 길이를 확인해 주세요.`
-      : '입력 길이가 올바르지 않습니다.',
-  missing_or_invalid_bearer_token: '로그인이 필요합니다.',
-  invalid_or_expired_token: '로그인이 만료되었습니다. 다시 로그인해 주세요.',
-  admin_bearer_token_required: '관리자 권한이 필요합니다.',
-  superadmin_bearer_token_required: '슈퍼어드민 권한이 필요합니다.',
-  invalid_credentials: 'ID 또는 비밀번호가 올바르지 않습니다.',
-  submission_banned: '현재 제출이 제한되어 있습니다.',
-  invalid_testcase_zip: 'ZIP 파일 구성이 올바르지 않습니다.'
+  response_parse_error: '서버 응답을 해석하지 못했습니다.'
 }
 
 function normalizeString(value){
@@ -181,10 +136,6 @@ export function getApiErrorField(error){
 export function formatApiError(error, options = {}){
   const details = getApiErrorDetails(error)
   const fieldLabel = resolveFieldLabel(details.field, options.fieldLabels)
-  const codeMessages = {
-    ...defaultCodeMessages,
-    ...(options.codeMessages || {})
-  }
   const context = {
     ...details,
     fieldLabel,
@@ -192,14 +143,28 @@ export function formatApiError(error, options = {}){
   }
 
   if (details.code) {
-    const codeMessage = resolveCodeMessage(codeMessages[details.code], context)
-    if (codeMessage) {
-      return codeMessage
+    const overrideCodeMessage = resolveCodeMessage(options.codeMessages?.[details.code], context)
+    if (overrideCodeMessage) {
+      return overrideCodeMessage
+    }
+
+    const frontendOnlyMessage = resolveCodeMessage(frontendOnlyCodeMessages[details.code], context)
+    if (frontendOnlyMessage) {
+      return frontendOnlyMessage
+    }
+
+    const catalogMessage = normalizeString(
+      getFrontendHttpErrorMessage(details.code, {
+        fieldLabel
+      })
+    )
+    if (catalogMessage) {
+      return catalogMessage
     }
   }
 
   if (looksLikeNetworkFailure(details.message)) {
-    return defaultCodeMessages.network_error
+    return frontendOnlyCodeMessages.network_error
   }
 
   if (details.message && details.code === '') {

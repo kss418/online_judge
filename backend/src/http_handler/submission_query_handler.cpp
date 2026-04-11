@@ -5,6 +5,8 @@
 #include "application/get_submission_source_query.hpp"
 #include "application/list_submissions_query.hpp"
 #include "db_service/submission_service.hpp"
+#include "dto/submission_request_dto.hpp"
+#include "dto/submission_response_dto.hpp"
 #include "error/submission_error.hpp"
 #include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
@@ -53,7 +55,7 @@ submission_query_handler::response_type submission_query_handler::get_submission
                     context_value.db_connection_ref(),
                     command_value
                 ),
-                [submission_id](const submission_dto::history_list& history_values) {
+                [submission_id](const submission_response_dto::history_list& history_values) {
                     return submission_json_serializer::make_history_list_object(
                         submission_id,
                         history_values
@@ -119,7 +121,7 @@ submission_query_handler::response_type submission_query_handler::post_submissio
     return http_guard::run_or_respond(
         context,
         [](context_type& context_value,
-            const submission_dto::status_batch_request& batch_request) -> response_type {
+            const submission_request_dto::status_batch_request& batch_request) -> response_type {
             return http_adapter::json(
                 context_value.request,
                 submission_service::get_submission_status_snapshots(
@@ -129,7 +131,7 @@ submission_query_handler::response_type submission_query_handler::post_submissio
                 submission_json_serializer::make_status_snapshot_batch_object
             );
         },
-        request_parse_guard::make_json_guard<submission_dto::status_batch_request>(
+        request_parse_guard::make_json_guard<submission_request_dto::status_batch_request>(
             submission_request_parser::parse_status_batch_request
         )
     );
@@ -142,7 +144,7 @@ submission_query_handler::response_type submission_query_handler::get_submission
         context,
         [](context_type& context_value,
             const std::optional<auth_dto::identity>& auth_identity_opt,
-            const submission_dto::list_filter& filter_value) -> response_type {
+            const submission_request_dto::list_filter& filter_value) -> response_type {
             list_submissions_query::command command_value{
                 .filter_value = filter_value,
                 .viewer_user_id_opt = auth_guard::get_viewer_user_id(auth_identity_opt)

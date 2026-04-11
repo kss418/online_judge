@@ -1,13 +1,6 @@
-export const submissionStatusOptions = [
-  { value: '', label: '전체' },
-  { value: 'accepted', label: '정답' },
-  { value: 'wrong_answer', label: '오답' },
-  { value: 'time_limit_exceeded', label: '시간 초과' },
-  { value: 'memory_limit_exceeded', label: '메모리 초과' },
-  { value: 'runtime_error', label: '런타임 에러' },
-  { value: 'output_exceeded', label: '출력 초과' },
-  { value: 'compile_error', label: '컴파일 에러' }
-]
+import { submissionStatusOptions as generatedSubmissionStatusOptions } from '@/utils/submissionStatus'
+
+export const submissionStatusOptions = generatedSubmissionStatusOptions
 
 const validSubmissionStatusFilterValues = new Set(
   submissionStatusOptions

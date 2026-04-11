@@ -2,7 +2,7 @@
 
 namespace{
     boost::json::object make_history_object(
-        const submission_dto::history& history_value
+        const submission_response_dto::history& history_value
     ){
         boost::json::object response_object;
         response_object["history_id"] = history_value.history_id;
@@ -24,7 +24,7 @@ namespace{
     }
 
     boost::json::array make_history_array(
-        const submission_dto::history_list& history_values
+        const submission_response_dto::history_list& history_values
     ){
         boost::json::array response_array;
         response_array.reserve(history_values.size());
@@ -35,7 +35,7 @@ namespace{
     }
 
     boost::json::object make_summary_object(
-        const submission_dto::summary& summary_value
+        const submission_response_dto::summary& summary_value
     ){
     boost::json::object response_object;
     response_object["submission_id"] = summary_value.submission_id;
@@ -80,7 +80,7 @@ namespace{
     }
 
     boost::json::array make_summary_array(
-        const std::vector<submission_dto::summary>& summary_values
+        const std::vector<submission_response_dto::summary>& summary_values
     ){
         boost::json::array response_array;
         response_array.reserve(summary_values.size());
@@ -91,7 +91,7 @@ namespace{
     }
 
     boost::json::object make_status_snapshot_object(
-        const submission_dto::status_snapshot& snapshot_value
+        const submission_response_dto::status_snapshot& snapshot_value
     ){
         boost::json::object response_object;
         response_object["submission_id"] = snapshot_value.submission_id;
@@ -122,7 +122,7 @@ namespace{
     }
 
     boost::json::array make_status_snapshot_array(
-        const std::vector<submission_dto::status_snapshot>& snapshot_values
+        const std::vector<submission_response_dto::status_snapshot>& snapshot_values
     ){
         boost::json::array response_array;
         response_array.reserve(snapshot_values.size());
@@ -134,7 +134,7 @@ namespace{
 }
 
 boost::json::object submission_json_serializer::make_queued_response_object(
-    const submission_dto::queued_response& queued_response_value
+    const submission_response_dto::queued_response& queued_response_value
 ){
     boost::json::object response_object;
     response_object["submission_id"] = queued_response_value.submission_id;
@@ -145,7 +145,7 @@ boost::json::object submission_json_serializer::make_queued_response_object(
 
 boost::json::object submission_json_serializer::make_history_list_object(
     std::int64_t submission_id,
-    const submission_dto::history_list& history_values
+    const submission_response_dto::history_list& history_values
 ){
     boost::json::object response_object;
     response_object["submission_id"] = submission_id;
@@ -155,7 +155,7 @@ boost::json::object submission_json_serializer::make_history_list_object(
 }
 
 boost::json::object submission_json_serializer::make_source_object(
-    const submission_dto::source_detail& source_detail_value
+    const submission_response_dto::source_detail& source_detail_value
 ){
     boost::json::object response_object;
     response_object["submission_id"] = source_detail_value.submission_id;
@@ -179,7 +179,7 @@ boost::json::object submission_json_serializer::make_source_object(
 }
 
 boost::json::object submission_json_serializer::make_detail_object(
-    const submission_dto::detail& detail_value
+    const submission_response_dto::detail& detail_value
 ){
     boost::json::object response_object;
     response_object["submission_id"] = detail_value.submission_id;
@@ -229,7 +229,7 @@ boost::json::object submission_json_serializer::make_detail_object(
 }
 
 boost::json::object submission_json_serializer::make_status_snapshot_batch_object(
-    const std::vector<submission_dto::status_snapshot>& snapshot_values
+    const std::vector<submission_response_dto::status_snapshot>& snapshot_values
 ){
     boost::json::object response_object;
     response_object["submission_count"] = static_cast<std::int64_t>(snapshot_values.size());
@@ -238,7 +238,7 @@ boost::json::object submission_json_serializer::make_status_snapshot_batch_objec
 }
 
 boost::json::object submission_json_serializer::make_list_object(
-    const submission_dto::summary_page& summary_page_value
+    const submission_response_dto::summary_page& summary_page_value
 ){
     boost::json::object response_object;
     response_object["submission_count"] =

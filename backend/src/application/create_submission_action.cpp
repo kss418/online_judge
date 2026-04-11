@@ -25,12 +25,12 @@ bool create_submission_action::error::is_submission_banned() const{
     return kind_value == kind::submission_banned;
 }
 
-std::expected<submission_dto::queued_response, create_submission_action::error>
+std::expected<submission_response_dto::queued_response, create_submission_action::error>
 create_submission_action::execute(
     db_connection& connection,
     const command& command_value
 ){
-    if(!submission_dto::is_valid(command_value)){
+    if(!submission_internal_dto::is_valid(command_value)){
         return std::unexpected(error::from_service_error(service_error::validation_error));
     }
 

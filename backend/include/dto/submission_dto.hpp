@@ -1,154 +1,34 @@
 #pragma once
 
 #include "common/submission_status.hpp"
+#include "dto/submission_domain_dto.hpp"
+#include "dto/submission_internal_dto.hpp"
+#include "dto/submission_request_dto.hpp"
+#include "dto/submission_response_dto.hpp"
 
-#include <cstddef>
-#include <chrono>
-#include <cstdint>
 #include <optional>
-#include <string>
-#include <vector>
+#include <string_view>
 
 namespace submission_dto{
-    inline constexpr std::int32_t DEFAULT_LIST_LIMIT = 50;
+    inline constexpr auto DEFAULT_LIST_LIMIT = submission_request_dto::DEFAULT_LIST_LIMIT;
 
-    struct history{
-        std::int64_t history_id = 0;
-        std::optional<std::string> from_status_opt = std::nullopt;
-        std::string to_status;
-        std::optional<std::string> reason_opt = std::nullopt;
-        std::string created_at;
-    };
-
-    struct source{
-        std::string language;
-        std::string source_code;
-    };
-
-    struct source_detail{
-        std::int64_t submission_id = 0;
-        std::int64_t user_id = 0;
-        std::int64_t problem_id = 0;
-        std::string language;
-        std::string source_code;
-        std::optional<std::string> compile_output_opt = std::nullopt;
-        std::optional<std::string> judge_output_opt = std::nullopt;
-    };
-
-    struct create_request{
-        std::int64_t user_id = 0;
-        std::int64_t problem_id = 0;
-        source source_value;
-    };
-
-    struct queued_response{
-        std::int64_t submission_id = 0;
-        std::string status;
-        std::int32_t problem_version = 0;
-    };
-
-    struct summary{
-        std::int64_t submission_id = 0;
-        std::int64_t user_id = 0;
-        std::string user_login_id;
-        std::int64_t problem_id = 0;
-        std::string problem_title;
-        std::string language;
-        std::string status;
-        std::optional<std::int16_t> score_opt = std::nullopt;
-        std::optional<std::int64_t> elapsed_ms_opt = std::nullopt;
-        std::optional<std::int64_t> max_rss_kb_opt = std::nullopt;
-        std::optional<std::string> user_problem_state_opt = std::nullopt;
-        std::string created_at;
-        std::string updated_at;
-    };
-
-    struct detail{
-        std::int64_t submission_id = 0;
-        std::int64_t user_id = 0;
-        std::int64_t problem_id = 0;
-        std::string language;
-        std::string status;
-        std::optional<std::int16_t> score_opt = std::nullopt;
-        std::optional<std::string> compile_output_opt = std::nullopt;
-        std::optional<std::string> judge_output_opt = std::nullopt;
-        std::optional<std::int64_t> elapsed_ms_opt = std::nullopt;
-        std::optional<std::int64_t> max_rss_kb_opt = std::nullopt;
-        std::string created_at;
-        std::string updated_at;
-    };
-
-    struct status_snapshot{
-        std::int64_t submission_id = 0;
-        std::string status;
-        std::optional<std::int16_t> score_opt = std::nullopt;
-        std::optional<std::int64_t> elapsed_ms_opt = std::nullopt;
-        std::optional<std::int64_t> max_rss_kb_opt = std::nullopt;
-    };
-
-    struct status_batch_request{
-        std::vector<std::int64_t> submission_ids;
-    };
-
-    struct summary_page{
-        std::vector<summary> submissions;
-        bool has_more = false;
-        std::optional<std::int64_t> next_before_submission_id_opt = std::nullopt;
-    };
-
-    struct list_filter{
-        std::optional<std::int64_t> user_id_opt = std::nullopt;
-        std::optional<std::string> user_login_id_opt = std::nullopt;
-        std::optional<std::int64_t> problem_id_opt = std::nullopt;
-        std::optional<std::string> language_opt = std::nullopt;
-        std::optional<std::string> status_opt = std::nullopt;
-        std::optional<std::int32_t> limit_opt = std::nullopt;
-        std::optional<std::int64_t> before_submission_id_opt = std::nullopt;
-    };
-
-    struct leased_submission{
-        std::int64_t submission_id = 0;
-        std::int64_t problem_id = 0;
-        std::int32_t problem_version = 0;
-        std::int64_t queue_wait_ms = 0;
-        std::int32_t attempt_no = 0;
-        std::string lease_token;
-        std::string leased_until;
-        std::string language;
-        std::string source_code;
-    };
-
-    struct lease_request{
-        std::chrono::seconds lease_duration{0};
-    };
-
-    struct status_update{
-        std::int64_t submission_id = 0;
-        std::int32_t attempt_no = 0;
-        std::string lease_token;
-        submission_status to_status = submission_status::queued;
-        std::optional<std::string> reason_opt = std::nullopt;
-    };
-
-    struct finalize_request{
-        std::int64_t submission_id = 0;
-        std::int32_t attempt_no = 0;
-        std::string lease_token;
-        submission_status to_status = submission_status::queued;
-        std::optional<std::int16_t> score_opt = std::nullopt;
-        std::optional<std::string> compile_output_opt = std::nullopt;
-        std::optional<std::string> judge_output_opt = std::nullopt;
-        std::optional<std::int64_t> elapsed_ms_opt = std::nullopt;
-        std::optional<std::int64_t> max_rss_kb_opt = std::nullopt;
-        std::optional<std::string> reason_opt = std::nullopt;
-    };
-
-    struct finalize_result{
-        std::int64_t problem_id = 0;
-        bool should_increase_accepted_count = false;
-    };
-
-    using history_list = std::vector<history>;
+    using history = submission_response_dto::history;
+    using source = submission_request_dto::submit_request;
+    using source_detail = submission_response_dto::source_detail;
+    using create_request = submission_internal_dto::create_submission_command;
+    using queued_response = submission_response_dto::queued_response;
+    using summary = submission_response_dto::summary;
+    using detail = submission_response_dto::detail;
+    using status_snapshot = submission_response_dto::status_snapshot;
+    using status_batch_request = submission_request_dto::status_batch_request;
+    using summary_page = submission_response_dto::summary_page;
+    using list_filter = submission_request_dto::list_filter;
+    using leased_submission = submission_domain_dto::leased_submission;
+    using lease_request = submission_internal_dto::lease_request;
+    using status_update = submission_internal_dto::status_update;
+    using finalize_request = submission_internal_dto::finalize_request;
+    using finalize_result = submission_internal_dto::finalize_result;
+    using history_list = submission_response_dto::history_list;
 
     bool is_valid(const source& source_value);
     bool is_valid(const create_request& create_request_value);

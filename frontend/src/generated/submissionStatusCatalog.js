@@ -1,0 +1,184 @@
+export const submissionStatusCatalog = [
+  {
+    "code": "queued",
+    "db_enum_value": "queued",
+    "public_label_ko": "대기 중",
+    "badge_tone": "neutral",
+    "statistics_bucket": "queued",
+    "is_terminal": false,
+    "is_failure": false,
+    "filter_visible": true,
+    "statistics_visible": false
+  },
+  {
+    "code": "judging",
+    "db_enum_value": "judging",
+    "public_label_ko": "채점 중",
+    "badge_tone": "info",
+    "statistics_bucket": "judging",
+    "is_terminal": false,
+    "is_failure": false,
+    "filter_visible": true,
+    "statistics_visible": false
+  },
+  {
+    "code": "accepted",
+    "db_enum_value": "accepted",
+    "public_label_ko": "정답",
+    "badge_tone": "success",
+    "statistics_bucket": "accepted",
+    "is_terminal": true,
+    "is_failure": false,
+    "filter_visible": true,
+    "statistics_visible": true
+  },
+  {
+    "code": "wrong_answer",
+    "db_enum_value": "wrong_answer",
+    "public_label_ko": "오답",
+    "badge_tone": "danger",
+    "statistics_bucket": "wrong_answer",
+    "is_terminal": true,
+    "is_failure": true,
+    "filter_visible": true,
+    "statistics_visible": true
+  },
+  {
+    "code": "time_limit_exceeded",
+    "db_enum_value": "time_limit_exceeded",
+    "public_label_ko": "시간 초과",
+    "badge_tone": "warning",
+    "statistics_bucket": "time_limit_exceeded",
+    "is_terminal": true,
+    "is_failure": true,
+    "filter_visible": true,
+    "statistics_visible": true
+  },
+  {
+    "code": "memory_limit_exceeded",
+    "db_enum_value": "memory_limit_exceeded",
+    "public_label_ko": "메모리 초과",
+    "badge_tone": "warning",
+    "statistics_bucket": "memory_limit_exceeded",
+    "is_terminal": true,
+    "is_failure": true,
+    "filter_visible": true,
+    "statistics_visible": true
+  },
+  {
+    "code": "runtime_error",
+    "db_enum_value": "runtime_error",
+    "public_label_ko": "런타임 에러",
+    "badge_tone": "danger",
+    "statistics_bucket": "runtime_error",
+    "is_terminal": true,
+    "is_failure": true,
+    "filter_visible": true,
+    "statistics_visible": true
+  },
+  {
+    "code": "compile_error",
+    "db_enum_value": "compile_error",
+    "public_label_ko": "컴파일 에러",
+    "badge_tone": "info",
+    "statistics_bucket": "compile_error",
+    "is_terminal": true,
+    "is_failure": true,
+    "filter_visible": true,
+    "statistics_visible": true
+  },
+  {
+    "code": "build_resource_exceeded",
+    "db_enum_value": "build_resource_exceeded",
+    "public_label_ko": "빌드 리소스 초과",
+    "badge_tone": "warning",
+    "statistics_bucket": "build_resource_exceeded",
+    "is_terminal": true,
+    "is_failure": true,
+    "filter_visible": true,
+    "statistics_visible": true
+  },
+  {
+    "code": "output_exceeded",
+    "db_enum_value": "output_exceeded",
+    "public_label_ko": "출력 초과",
+    "badge_tone": "warning",
+    "statistics_bucket": "output_exceeded",
+    "is_terminal": true,
+    "is_failure": true,
+    "filter_visible": true,
+    "statistics_visible": true
+  },
+  {
+    "code": "infra_failure",
+    "db_enum_value": "infra_failure",
+    "public_label_ko": "인프라 실패",
+    "badge_tone": "danger",
+    "statistics_bucket": "infra_failure",
+    "is_terminal": true,
+    "is_failure": true,
+    "filter_visible": true,
+    "statistics_visible": true
+  }
+]
+
+const submissionStatusMetaByCode = new Map(
+  submissionStatusCatalog.map((meta) => [meta.code, meta])
+)
+
+function normalizeStatusCode(status){
+  return typeof status === 'string' ? status.trim() : ''
+}
+
+export function getSubmissionStatusMeta(status){
+  const normalizedStatus = normalizeStatusCode(status)
+  return submissionStatusMetaByCode.get(normalizedStatus) || null
+}
+
+export function getSubmissionStatusLabel(status){
+  const meta = getSubmissionStatusMeta(status)
+  if (meta) {
+    return meta.public_label_ko
+  }
+
+  return normalizeStatusCode(status)
+}
+
+export function getSubmissionStatusTone(status){
+  return getSubmissionStatusMeta(status)?.badge_tone || 'neutral'
+}
+
+export function getSubmissionStatisticsFieldName(status){
+  const meta = getSubmissionStatusMeta(status)
+  if (!meta) {
+    return ''
+  }
+
+  return `${meta.statistics_bucket}_submission_count`
+}
+
+export const submissionStatusOptions = [
+  { value: '', label: '전체' },
+  ...submissionStatusCatalog
+    .filter((meta) => meta.filter_visible)
+    .map((meta) => ({ value: meta.code, label: meta.public_label_ko }))
+]
+
+export const submissionPollingStatuses = new Set(
+  submissionStatusCatalog
+    .filter((meta) => !meta.is_terminal)
+    .map((meta) => meta.code)
+)
+
+export const finishedSubmissionStatuses = new Set(
+  submissionStatusCatalog
+    .filter((meta) => meta.is_terminal)
+    .map((meta) => meta.code)
+)
+
+export const submissionStatisticsVisibleCatalog = submissionStatusCatalog
+  .filter((meta) => meta.statistics_visible)
+
+export const submissionStatisticsVisibleStatuses = submissionStatisticsVisibleCatalog
+  .map((meta) => meta.code)
+

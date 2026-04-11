@@ -2,7 +2,7 @@
 
 #include "application/create_submission_action.hpp"
 #include "db_service/submission_service.hpp"
-#include "dto/submission_dto.hpp"
+#include "dto/submission_internal_dto.hpp"
 #include "error/submission_error.hpp"
 #include "http_core/http_adapter.hpp"
 #include "http_guard/auth_guard.hpp"
@@ -40,7 +40,7 @@ submission_command_handler::response_type submission_command_handler::post_submi
     return http_guard::run_or_respond(
         context,
         [](context_type& context_value,
-            const submission_dto::create_request& create_request) -> response_type {
+            const submission_internal_dto::create_submission_command& create_request) -> response_type {
             const auto create_submission_exp = create_submission_action::execute(
                 context_value.db_connection_ref(),
                 create_request

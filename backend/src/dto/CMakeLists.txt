@@ -3,6 +3,9 @@ target_sources(lib
         auth_dto.cpp
         problem_content_dto.cpp
         problem_dto.cpp
+        submission_request_dto.cpp
+        submission_response_dto.cpp
+        submission_internal_dto.cpp
         submission_dto.cpp
         user_dto.cpp
         user_statistics_dto.cpp

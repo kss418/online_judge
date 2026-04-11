@@ -1,37 +1,23 @@
 #include "dto/submission_dto.hpp"
 
-#include "common/language_util.hpp"
-
 bool submission_dto::is_valid(const source& source_value){
-    return
-        !source_value.language.empty() &&
-        !source_value.source_code.empty() &&
-        language_util::find_supported_language(source_value.language).has_value();
+    return submission_request_dto::is_valid(source_value);
 }
 
 bool submission_dto::is_valid(const create_request& create_request_value){
-    return
-        create_request_value.user_id > 0 &&
-        create_request_value.problem_id > 0 &&
-        is_valid(create_request_value.source_value);
+    return submission_internal_dto::is_valid(create_request_value);
 }
 
 bool submission_dto::is_valid(const lease_request& lease_request_value){
-    return lease_request_value.lease_duration > std::chrono::seconds::zero();
+    return submission_internal_dto::is_valid(lease_request_value);
 }
 
 bool submission_dto::is_valid(const status_update& status_update_value){
-    return
-        status_update_value.submission_id > 0 &&
-        status_update_value.attempt_no > 0 &&
-        !status_update_value.lease_token.empty();
+    return submission_internal_dto::is_valid(status_update_value);
 }
 
 bool submission_dto::is_valid(const finalize_request& finalize_request_value){
-    return
-        finalize_request_value.submission_id > 0 &&
-        finalize_request_value.attempt_no > 0 &&
-        !finalize_request_value.lease_token.empty();
+    return submission_internal_dto::is_valid(finalize_request_value);
 }
 
 submission_dto::queued_response submission_dto::make_queued_response(
@@ -39,11 +25,11 @@ submission_dto::queued_response submission_dto::make_queued_response(
     submission_status submission_status_value,
     std::int32_t problem_version
 ){
-    queued_response queued_response_value;
-    queued_response_value.submission_id = submission_id;
-    queued_response_value.status = to_string(submission_status_value);
-    queued_response_value.problem_version = problem_version;
-    return queued_response_value;
+    return submission_response_dto::make_queued_response(
+        submission_id,
+        submission_status_value,
+        problem_version
+    );
 }
 
 std::optional<submission_status> submission_dto::make_submission_status(
@@ -57,13 +43,11 @@ submission_dto::status_update submission_dto::make_status_update(
     submission_status to_status,
     std::optional<std::string> reason_opt
 ){
-    status_update status_update_value;
-    status_update_value.submission_id = leased_submission_value.submission_id;
-    status_update_value.attempt_no = leased_submission_value.attempt_no;
-    status_update_value.lease_token = leased_submission_value.lease_token;
-    status_update_value.to_status = to_status;
-    status_update_value.reason_opt = std::move(reason_opt);
-    return status_update_value;
+    return submission_internal_dto::make_status_update(
+        leased_submission_value,
+        to_status,
+        std::move(reason_opt)
+    );
 }
 
 submission_dto::finalize_request submission_dto::make_finalize_request(
@@ -76,26 +60,24 @@ submission_dto::finalize_request submission_dto::make_finalize_request(
     std::optional<std::int64_t> max_rss_kb_opt,
     std::optional<std::string> reason_opt
 ){
-    finalize_request finalize_request_value;
-    finalize_request_value.submission_id = leased_submission_value.submission_id;
-    finalize_request_value.attempt_no = leased_submission_value.attempt_no;
-    finalize_request_value.lease_token = leased_submission_value.lease_token;
-    finalize_request_value.to_status = to_status;
-    finalize_request_value.score_opt = std::move(score_opt);
-    finalize_request_value.compile_output_opt = std::move(compile_output_opt);
-    finalize_request_value.judge_output_opt = std::move(judge_output_opt);
-    finalize_request_value.elapsed_ms_opt = std::move(elapsed_ms_opt);
-    finalize_request_value.max_rss_kb_opt = std::move(max_rss_kb_opt);
-    finalize_request_value.reason_opt = std::move(reason_opt);
-    return finalize_request_value;
+    return submission_internal_dto::make_finalize_request(
+        leased_submission_value,
+        to_status,
+        std::move(score_opt),
+        std::move(compile_output_opt),
+        std::move(judge_output_opt),
+        std::move(elapsed_ms_opt),
+        std::move(max_rss_kb_opt),
+        std::move(reason_opt)
+    );
 }
 
 submission_dto::finalize_result submission_dto::make_finalize_result(
     std::int64_t problem_id,
     bool should_increase_accepted_count
 ){
-    finalize_result finalize_result_value;
-    finalize_result_value.problem_id = problem_id;
-    finalize_result_value.should_increase_accepted_count = should_increase_accepted_count;
-    return finalize_result_value;
+    return submission_internal_dto::make_finalize_result(
+        problem_id,
+        should_increase_accepted_count
+    );
 }
