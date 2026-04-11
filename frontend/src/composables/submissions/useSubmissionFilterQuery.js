@@ -49,7 +49,7 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
     createLocalState(){
       return {
         selectedProblemIdFilter: ref(''),
-        selectedUserIdFilter: ref(''),
+        selectedUserLoginIdFilter: ref(''),
         selectedStatusFilter: ref(''),
         selectedLanguageFilter: ref('')
       }
@@ -58,7 +58,7 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
       localState.selectedProblemIdFilter.value = hasFixedProblemId.value
         ? ''
         : state.problemIdFilter
-      localState.selectedUserIdFilter.value = isMineScope.value
+      localState.selectedUserLoginIdFilter.value = isMineScope.value
         ? ''
         : state.userLoginId
       localState.selectedStatusFilter.value = state.status
@@ -73,11 +73,11 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
     }
   })
 
-  const showUserIdFilter = computed(() => !isMineScope.value)
+  const showUserLoginIdFilter = computed(() => !isMineScope.value)
   const appliedProblemIdFilter = computed(() => (
     hasFixedProblemId.value ? '' : queryState.routeState.value.problemIdFilter
   ))
-  const appliedUserIdFilter = computed(() => (
+  const appliedUserLoginIdFilter = computed(() => (
     isMineScope.value ? '' : queryState.routeState.value.userLoginId
   ))
   const appliedStatusFilter = computed(() => queryState.routeState.value.status)
@@ -100,13 +100,13 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
       ? String(parsedProblemId)
       : null
   })
-  const normalizedSelectedUserIdFilter = computed(() => {
+  const normalizedSelectedUserLoginIdFilter = computed(() => {
     if (isMineScope.value) {
       return ''
     }
 
     const trimmedUserLoginId = normalizeUserLoginIdFilterInputValue(
-      queryState.localState.selectedUserIdFilter.value
+      queryState.localState.selectedUserLoginIdFilter.value
     )
     if (!trimmedUserLoginId) {
       return ''
@@ -115,17 +115,18 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
     return trimmedUserLoginId
   })
   const hasInvalidProblemIdFilter = computed(() =>
-    !hasFixedProblemId.value && normalizedSelectedProblemIdFilter.value === null
+    !hasFixedProblemId.value &&
+    normalizedSelectedProblemIdFilter.value === null
   )
-  const hasInvalidUserIdFilter = computed(() => false)
   const canApplyFilters = computed(() =>
     !hasInvalidProblemIdFilter.value &&
-    !hasInvalidUserIdFilter.value &&
     (
       queryState.localState.selectedStatusFilter.value !== appliedStatusFilter.value ||
       queryState.localState.selectedLanguageFilter.value !== appliedLanguageFilter.value ||
-      (!isMineScope.value &&
-        normalizedSelectedUserIdFilter.value !== appliedUserIdFilter.value) ||
+      (
+        !isMineScope.value &&
+        normalizedSelectedUserLoginIdFilter.value !== appliedUserLoginIdFilter.value
+      ) ||
       (!hasFixedProblemId.value &&
         normalizedSelectedProblemIdFilter.value !== appliedProblemIdFilter.value)
     )
@@ -136,8 +137,10 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
     hasAppliedStatusFilter.value ||
     Boolean(appliedLanguageFilter.value) ||
     (!isMineScope.value && (
-      Boolean(normalizeUserLoginIdFilterInputValue(queryState.localState.selectedUserIdFilter.value)) ||
-      Boolean(appliedUserIdFilter.value)
+      Boolean(normalizeUserLoginIdFilterInputValue(
+        queryState.localState.selectedUserLoginIdFilter.value
+      )) ||
+      Boolean(appliedUserLoginIdFilter.value)
     )) ||
     (!hasFixedProblemId.value && (
       Boolean(normalizeProblemIdFilterInputValue(queryState.localState.selectedProblemIdFilter.value)) ||
@@ -153,20 +156,6 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
       ? Number.parseInt(appliedProblemIdFilter.value, 10)
       : null
   })
-  const activeUserId = computed(() => {
-    if (isMineScope.value) {
-      return null
-    }
-
-    return null
-  })
-  const activeUserLoginId = computed(() => {
-    if (isMineScope.value) {
-      return ''
-    }
-
-    return appliedUserIdFilter.value
-  })
   const pageTitle = computed(() =>
     isMineScope.value && numericProblemId.value
       ? `문제 #${formatCount(numericProblemId.value)} 내 제출`
@@ -177,11 +166,11 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
           : '제출 목록'
   )
 
-  function buildSubmissionQueryState(problemId, userId, status, language){
+  function buildSubmissionQueryState(problemId, userLoginId, status, language){
     return {
       scope: queryState.routeState.value.scope,
       problemIdFilter: hasFixedProblemId.value ? '' : String(problemId ?? ''),
-      userLoginId: isMineScope.value ? '' : String(userId ?? '').trim(),
+      userLoginId: isMineScope.value ? '' : String(userLoginId ?? '').trim(),
       status: String(status ?? ''),
       language: String(language ?? '')
     }
@@ -198,7 +187,7 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
 
     await queryState.navigate(buildSubmissionQueryState(
       normalizedSelectedProblemIdFilter.value || '',
-      normalizedSelectedUserIdFilter.value || '',
+      normalizedSelectedUserLoginIdFilter.value || '',
       queryState.localState.selectedStatusFilter.value,
       queryState.localState.selectedLanguageFilter.value
     ))
@@ -206,7 +195,7 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
 
   async function resetSubmissionFilters(){
     queryState.localState.selectedProblemIdFilter.value = ''
-    queryState.localState.selectedUserIdFilter.value = ''
+    queryState.localState.selectedUserLoginIdFilter.value = ''
     queryState.localState.selectedStatusFilter.value = ''
     queryState.localState.selectedLanguageFilter.value = ''
 
@@ -219,25 +208,23 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
 
   return {
     selectedProblemIdFilter: queryState.localState.selectedProblemIdFilter,
-    selectedUserIdFilter: queryState.localState.selectedUserIdFilter,
+    selectedUserLoginIdFilter: queryState.localState.selectedUserLoginIdFilter,
     selectedStatusFilter: queryState.localState.selectedStatusFilter,
     selectedLanguageFilter: queryState.localState.selectedLanguageFilter,
     fixedProblemId,
     hasFixedProblemId,
     isMineScope,
-    showUserIdFilter,
+    showUserLoginIdFilter,
     appliedProblemIdFilter,
-    appliedUserIdFilter,
+    appliedUserLoginIdFilter,
     appliedStatusFilter,
     appliedLanguageFilter,
     hasAppliedStatusFilter,
     normalizedSelectedProblemIdFilter,
-    normalizedSelectedUserIdFilter,
+    normalizedSelectedUserLoginIdFilter,
     canApplyFilters,
     canResetFilters,
     numericProblemId,
-    activeUserId,
-    activeUserLoginId,
     routeState: queryState.routeState,
     pageTitle,
     syncSelectedFiltersFromRoute,

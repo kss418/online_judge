@@ -34,6 +34,12 @@ export function useSubmissionsPage(){
   const authenticatedBearerToken = computed(() =>
     authState.initialized && isAuthenticated.value ? authState.token : ''
   )
+  const currentUserId = computed(() => {
+    const normalizedUserId = Number(authState.currentUser?.id)
+    return Number.isInteger(normalizedUserId) && normalizedUserId > 0
+      ? normalizedUserId
+      : null
+  })
 
   const query = useSubmissionFilterQuery({
     route,
@@ -68,24 +74,13 @@ export function useSubmissionsPage(){
   let actions
 
   listResource = useSubmissionListResource({
-    authState,
     isAuthenticated,
     authenticatedBearerToken,
     isMineScope: query.isMineScope,
-    routeFilterState: query.routeState,
+    routeState: query.routeState,
     numericProblemId: query.numericProblemId,
-    activeUserId: computed(() => {
-      if (query.isMineScope.value) {
-        const currentUserId = Number(authState.currentUser?.id)
-        return Number.isInteger(currentUserId) && currentUserId > 0
-          ? currentUserId
-          : null
-      }
-
-      return null
-    }),
+    currentUserId,
     appliedLanguageFilter: query.appliedLanguageFilter,
-    appliedStatusFilter: query.appliedStatusFilter,
     selectedLanguageFilter: query.selectedLanguageFilter,
     pagination,
     resetRejudgingSubmissions(){
@@ -150,7 +145,7 @@ export function useSubmissionsPage(){
     [
       () => route.name,
       query.numericProblemId,
-      query.appliedUserIdFilter,
+      query.appliedUserLoginIdFilter,
       query.isMineScope,
       query.appliedLanguageFilter,
       query.appliedStatusFilter
@@ -224,13 +219,13 @@ export function useSubmissionsPage(){
     activeSourceSubmissionId: dialogs.activeSourceSubmissionId,
     copyButtonLabel: dialogs.copyButtonLabel,
     selectedProblemIdFilter: query.selectedProblemIdFilter,
-    selectedUserIdFilter: query.selectedUserIdFilter,
+    selectedUserLoginIdFilter: query.selectedUserLoginIdFilter,
     selectedStatusFilter: query.selectedStatusFilter,
     selectedLanguageFilter: query.selectedLanguageFilter,
     submissionLanguageFilterOptions: listResource.submissionLanguageFilterOptions,
     canManageSubmissionRejudge: actions.canManageSubmissionRejudge,
     hasFixedProblemId: query.hasFixedProblemId,
-    showUserIdFilter: query.showUserIdFilter,
+    showUserLoginIdFilter: query.showUserLoginIdFilter,
     canApplyFilters: query.canApplyFilters,
     canResetFilters: query.canResetFilters,
     visibleRangeText: pagination.visibleRangeText,

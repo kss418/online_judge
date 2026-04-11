@@ -16,15 +16,13 @@ function createInitialSubmissionListState(){
 }
 
 export function useSubmissionListResource({
-  authState,
   isAuthenticated,
   authenticatedBearerToken,
   isMineScope,
-  routeFilterState,
+  routeState,
   numericProblemId,
-  activeUserId,
+  currentUserId,
   appliedLanguageFilter,
-  appliedStatusFilter,
   selectedLanguageFilter,
   pagination,
   resetRejudgingSubmissions
@@ -39,10 +37,10 @@ export function useSubmissionListResource({
       targetPreviousBeforeSubmissionIds
     }){
       const response = await getSubmissionList({
-        ...buildSubmissionApiQuery(routeFilterState.value, {
+        ...buildSubmissionApiQuery(routeState.value, {
           fixedProblemId: numericProblemId.value ?? null,
           isMineScope: isMineScope.value,
-          activeUserId: activeUserId.value ?? null,
+          currentUserId: currentUserId.value ?? null,
           beforeSubmissionId: targetBeforeSubmissionId ?? null,
           limit: listLimit
         }),

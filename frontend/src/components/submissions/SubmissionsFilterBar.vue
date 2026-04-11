@@ -20,19 +20,19 @@
       </div>
 
       <div
-        v-if="showUserIdFilter"
+        v-if="showUserLoginIdFilter"
         class="submission-filter-group"
       >
         <label class="submission-filter-label" for="submission-user-filter">ID</label>
         <input
           id="submission-user-filter"
-          :value="userIdFilter"
+          :value="userLoginIdFilter"
           class="submission-filter-input"
           type="text"
           inputmode="text"
           placeholder="ID"
           :disabled="isLoading"
-          @input="$emit('update:userIdFilter', $event.target.value)"
+          @input="$emit('update:userLoginIdFilter', $event.target.value)"
         />
       </div>
 
@@ -102,7 +102,7 @@ defineProps({
     type: String,
     default: ''
   },
-  userIdFilter: {
+  userLoginIdFilter: {
     type: String,
     default: ''
   },
@@ -118,7 +118,7 @@ defineProps({
     type: Boolean,
     required: true
   },
-  showUserIdFilter: {
+  showUserLoginIdFilter: {
     type: Boolean,
     required: true
   },
@@ -150,7 +150,7 @@ defineProps({
 
 defineEmits([
   'update:problemIdFilter',
-  'update:userIdFilter',
+  'update:userLoginIdFilter',
   'update:statusFilter',
   'update:languageFilter',
   'apply',

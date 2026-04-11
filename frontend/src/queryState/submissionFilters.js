@@ -97,7 +97,7 @@ export function buildApiQuery(state, options = {}){
   const {
     fixedProblemId = null,
     isMineScope = false,
-    activeUserId = null,
+    currentUserId = null,
     beforeSubmissionId = null,
     limit = null
   } = options
@@ -113,8 +113,8 @@ export function buildApiQuery(state, options = {}){
     problem_id: Number.isInteger(normalizedProblemId) && normalizedProblemId > 0
       ? normalizedProblemId
       : null,
-    user_id: isMineScope && Number.isInteger(activeUserId) && activeUserId > 0
-      ? activeUserId
+    user_id: isMineScope && Number.isInteger(currentUserId) && currentUserId > 0
+      ? currentUserId
       : null,
     user_login_id: !isMineScope && state.userLoginId
       ? String(state.userLoginId).trim()
