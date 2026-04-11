@@ -44,8 +44,7 @@ export function useProblemAdminActions({
   applySelectedProblemVersion,
   mergeProblemSummary,
   loadProblems,
-  loadSelectedProblem,
-  buildSearchQuery
+  loadSelectedProblem
 }){
   const actionMessage = ref('')
   const actionErrorMessage = ref('')

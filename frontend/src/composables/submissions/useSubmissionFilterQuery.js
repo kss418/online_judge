@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 
+import { useRouteQueryState } from '@/composables/useRouteQueryState'
 import {
   normalizeProblemIdFilterInputValue,
   normalizeUserIdFilterInputValue,
@@ -12,11 +13,6 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
       .map((option) => option.value)
       .filter(Boolean)
   )
-
-  const selectedProblemIdFilter = ref('')
-  const selectedUserIdFilter = ref('')
-  const selectedStatusFilter = ref('')
-  const selectedLanguageFilter = ref('')
 
   const fixedProblemId = computed(() => {
     const problemIdParam = Array.isArray(route.params.problemId)
@@ -44,63 +40,102 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
 
     return scopeQuery === 'mine'
   })
+  const queryState = useRouteQueryState({
+    route,
+    router,
+    parseQuery(query){
+      const parsedProblemId = Number.parseInt(query.problemId, 10)
+
+      return {
+        scope: query.scope === 'mine' ? 'mine' : '',
+        problemIdFilter: Number.isInteger(parsedProblemId) && parsedProblemId > 0
+          ? String(parsedProblemId)
+          : '',
+        userLoginId: typeof query.userLoginId === 'string'
+          ? query.userLoginId.trim()
+          : '',
+        status: validSubmissionStatusFilterValues.has(query.status)
+          ? query.status
+          : '',
+        language: typeof query.language === 'string'
+          ? query.language.trim()
+          : ''
+      }
+    },
+    buildQuery(state){
+      const nextQuery = {}
+
+      if (
+        route.name !== 'problem-my-submissions' &&
+        route.name !== 'problem-submissions' &&
+        state.scope === 'mine'
+      ) {
+        nextQuery.scope = 'mine'
+      }
+
+      if (!hasFixedProblemId.value && state.problemIdFilter) {
+        nextQuery.problemId = String(state.problemIdFilter)
+      }
+
+      if (!isMineScope.value && state.userLoginId) {
+        nextQuery.userLoginId = state.userLoginId
+      }
+
+      if (state.status) {
+        nextQuery.status = state.status
+      }
+
+      if (state.language) {
+        nextQuery.language = state.language
+      }
+
+      return nextQuery
+    },
+    createLocalState(){
+      return {
+        selectedProblemIdFilter: ref(''),
+        selectedUserIdFilter: ref(''),
+        selectedStatusFilter: ref(''),
+        selectedLanguageFilter: ref('')
+      }
+    },
+    syncLocalState(localState, state){
+      localState.selectedProblemIdFilter.value = hasFixedProblemId.value
+        ? ''
+        : state.problemIdFilter
+      localState.selectedUserIdFilter.value = isMineScope.value
+        ? ''
+        : state.userLoginId
+      localState.selectedStatusFilter.value = state.status
+      localState.selectedLanguageFilter.value = state.language
+    },
+    buildLocation({ query }){
+      return {
+        name: route.name,
+        params: route.params,
+        query
+      }
+    }
+  })
+
   const showUserIdFilter = computed(() => !isMineScope.value)
-  const appliedProblemIdFilter = computed(() => {
-    if (hasFixedProblemId.value) {
-      return ''
-    }
-
-    const problemIdQuery = Array.isArray(route.query.problemId)
-      ? route.query.problemId[0]
-      : route.query.problemId
-    const parsedProblemId = Number.parseInt(problemIdQuery, 10)
-
-    return Number.isInteger(parsedProblemId) && parsedProblemId > 0
-      ? String(parsedProblemId)
-      : ''
-  })
-  const appliedUserIdFilter = computed(() => {
-    if (isMineScope.value) {
-      return ''
-    }
-
-    const userLoginIdQuery = Array.isArray(route.query.userLoginId)
-      ? route.query.userLoginId[0]
-      : route.query.userLoginId
-
-    return typeof userLoginIdQuery === 'string'
-      ? userLoginIdQuery.trim()
-      : ''
-  })
-  const appliedStatusFilter = computed(() => {
-    const routeStatus = Array.isArray(route.query.status)
-      ? route.query.status[0]
-      : route.query.status
-
-    if (typeof routeStatus !== 'string') {
-      return ''
-    }
-
-    return validSubmissionStatusFilterValues.has(routeStatus)
-      ? routeStatus
-      : ''
-  })
-  const appliedLanguageFilter = computed(() => {
-    const routeLanguage = Array.isArray(route.query.language)
-      ? route.query.language[0]
-      : route.query.language
-
-    return typeof routeLanguage === 'string'
-      ? routeLanguage.trim()
-      : ''
-  })
+  const appliedProblemIdFilter = computed(() => (
+    hasFixedProblemId.value ? '' : queryState.routeState.value.problemIdFilter
+  ))
+  const appliedUserIdFilter = computed(() => (
+    isMineScope.value ? '' : queryState.routeState.value.userLoginId
+  ))
+  const appliedStatusFilter = computed(() => queryState.routeState.value.status)
+  const appliedLanguageFilter = computed(() => queryState.routeState.value.language)
   const hasAppliedStatusFilter = computed(() => Boolean(appliedStatusFilter.value))
   const normalizedSelectedProblemIdFilter = computed(() => {
     if (hasFixedProblemId.value) {
       return ''
     }
 
-    const trimmedProblemId = normalizeProblemIdFilterInputValue(selectedProblemIdFilter.value)
+    const trimmedProblemId = normalizeProblemIdFilterInputValue(
+      queryState.localState.selectedProblemIdFilter.value
+    )
     if (!trimmedProblemId) {
       return ''
     }
@@ -115,7 +150,9 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
       return ''
     }
 
-    const trimmedUserLoginId = normalizeUserIdFilterInputValue(selectedUserIdFilter.value)
+    const trimmedUserLoginId = normalizeUserIdFilterInputValue(
+      queryState.localState.selectedUserIdFilter.value
+    )
     if (!trimmedUserLoginId) {
       return ''
     }
@@ -130,8 +167,8 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
     !hasInvalidProblemIdFilter.value &&
     !hasInvalidUserIdFilter.value &&
     (
-      selectedStatusFilter.value !== appliedStatusFilter.value ||
-      selectedLanguageFilter.value !== appliedLanguageFilter.value ||
+      queryState.localState.selectedStatusFilter.value !== appliedStatusFilter.value ||
+      queryState.localState.selectedLanguageFilter.value !== appliedLanguageFilter.value ||
       (!isMineScope.value &&
         normalizedSelectedUserIdFilter.value !== appliedUserIdFilter.value) ||
       (!hasFixedProblemId.value &&
@@ -139,16 +176,16 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
     )
   )
   const canResetFilters = computed(() =>
-    Boolean(selectedStatusFilter.value) ||
-    Boolean(selectedLanguageFilter.value) ||
+    Boolean(queryState.localState.selectedStatusFilter.value) ||
+    Boolean(queryState.localState.selectedLanguageFilter.value) ||
     hasAppliedStatusFilter.value ||
     Boolean(appliedLanguageFilter.value) ||
     (!isMineScope.value && (
-      Boolean(normalizeUserIdFilterInputValue(selectedUserIdFilter.value)) ||
+      Boolean(normalizeUserIdFilterInputValue(queryState.localState.selectedUserIdFilter.value)) ||
       Boolean(appliedUserIdFilter.value)
     )) ||
     (!hasFixedProblemId.value && (
-      Boolean(normalizeProblemIdFilterInputValue(selectedProblemIdFilter.value)) ||
+      Boolean(normalizeProblemIdFilterInputValue(queryState.localState.selectedProblemIdFilter.value)) ||
       Boolean(appliedProblemIdFilter.value)
     ))
   )
@@ -185,51 +222,18 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
           : '제출 목록'
   )
 
-  function syncSelectedFiltersFromRoute(){
-    selectedProblemIdFilter.value = hasFixedProblemId.value ? '' : appliedProblemIdFilter.value
-    selectedUserIdFilter.value = isMineScope.value ? '' : appliedUserIdFilter.value
-    selectedStatusFilter.value = appliedStatusFilter.value
-    selectedLanguageFilter.value = appliedLanguageFilter.value
+  function buildSubmissionQueryState(problemId, userId, status, language){
+    return {
+      scope: queryState.routeState.value.scope,
+      problemIdFilter: hasFixedProblemId.value ? '' : String(problemId ?? ''),
+      userLoginId: isMineScope.value ? '' : String(userId ?? '').trim(),
+      status: String(status ?? ''),
+      language: String(language ?? '')
+    }
   }
 
-  function makeSubmissionFilterQuery(problemId, userId, status, language){
-    const nextQuery = {
-      ...route.query
-    }
-
-    if (!hasFixedProblemId.value) {
-      if (problemId) {
-        nextQuery.problemId = problemId
-      } else {
-        delete nextQuery.problemId
-      }
-    }
-
-    if (!isMineScope.value) {
-      if (userId) {
-        nextQuery.userLoginId = userId
-      } else {
-        delete nextQuery.userLoginId
-      }
-    } else {
-      delete nextQuery.userLoginId
-    }
-
-    delete nextQuery.userId
-
-    if (status) {
-      nextQuery.status = status
-    } else {
-      delete nextQuery.status
-    }
-
-    if (language) {
-      nextQuery.language = language
-    } else {
-      delete nextQuery.language
-    }
-
-    return nextQuery
+  function syncSelectedFiltersFromRoute(){
+    queryState.syncFromRoute()
   }
 
   async function applySubmissionFilters(){
@@ -237,40 +241,32 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
       return
     }
 
-    await router.replace({
-      name: route.name,
-      params: route.params,
-      query: makeSubmissionFilterQuery(
-        normalizedSelectedProblemIdFilter.value || '',
-        normalizedSelectedUserIdFilter.value || '',
-        selectedStatusFilter.value,
-        selectedLanguageFilter.value
-      )
-    })
+    await queryState.navigate(buildSubmissionQueryState(
+      normalizedSelectedProblemIdFilter.value || '',
+      normalizedSelectedUserIdFilter.value || '',
+      queryState.localState.selectedStatusFilter.value,
+      queryState.localState.selectedLanguageFilter.value
+    ))
   }
 
   async function resetSubmissionFilters(){
-    selectedProblemIdFilter.value = ''
-    selectedUserIdFilter.value = ''
-    selectedStatusFilter.value = ''
-    selectedLanguageFilter.value = ''
+    queryState.localState.selectedProblemIdFilter.value = ''
+    queryState.localState.selectedUserIdFilter.value = ''
+    queryState.localState.selectedStatusFilter.value = ''
+    queryState.localState.selectedLanguageFilter.value = ''
 
     if (!canResetFilters.value) {
       return
     }
 
-    await router.replace({
-      name: route.name,
-      params: route.params,
-      query: makeSubmissionFilterQuery('', '', '', '')
-    })
+    await queryState.navigate(buildSubmissionQueryState('', '', '', ''))
   }
 
   return {
-    selectedProblemIdFilter,
-    selectedUserIdFilter,
-    selectedStatusFilter,
-    selectedLanguageFilter,
+    selectedProblemIdFilter: queryState.localState.selectedProblemIdFilter,
+    selectedUserIdFilter: queryState.localState.selectedUserIdFilter,
+    selectedStatusFilter: queryState.localState.selectedStatusFilter,
+    selectedLanguageFilter: queryState.localState.selectedLanguageFilter,
     fixedProblemId,
     hasFixedProblemId,
     isMineScope,

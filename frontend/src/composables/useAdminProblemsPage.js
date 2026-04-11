@@ -83,6 +83,7 @@ export function useAdminProblemsPage(){
     clearActionError(){
       problemActions?.clearActionError()
     },
+    invalidateSelectedProblemResource: problemDetailResource.invalidateSelectedProblemResource,
     selectProblem: problemDetailResource.selectProblem
   })
 
@@ -116,8 +117,7 @@ export function useAdminProblemsPage(){
     applySelectedProblemVersion: problemDetailResource.applySelectedProblemVersion,
     mergeProblemSummary: problemListResource.mergeProblemSummary,
     loadProblems: problemListResource.loadProblems,
-    loadSelectedProblem: problemDetailResource.loadSelectedProblem,
-    buildSearchQuery: problemQuery.buildSearchQuery
+    loadSelectedProblem: problemDetailResource.loadSelectedProblem
   })
 
   const toolbarStatusLabel = computed(() =>

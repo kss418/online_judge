@@ -2,11 +2,18 @@ import { computed, ref } from 'vue'
 
 import { getSupportedLanguages } from '@/api/http'
 import { getSubmissionList } from '@/api/submission'
+import { useAsyncResource } from '@/composables/useAsyncResource'
 import {
   listLimit,
   normalizeSubmissionMetric,
   normalizeSubmittedAt
 } from '@/composables/submissions/submissionHelpers'
+
+function createInitialSubmissionListState(){
+  return {
+    submissions: []
+  }
+}
 
 export function useSubmissionListResource({
   authState,
@@ -22,13 +29,77 @@ export function useSubmissionListResource({
   pagination,
   resetRejudgingSubmissions
 }){
-  const isLoading = ref(true)
   const isLoadingLanguages = ref(true)
-  const errorMessage = ref('')
-  const submissions = ref([])
-  const hasLoadedOnce = ref(false)
   const supportedSubmissionLanguages = ref([])
+  const submissionListResource = useAsyncResource({
+    initialData: createInitialSubmissionListState,
+    async load({
+      targetPageNumber,
+      targetBeforeSubmissionId,
+      targetPreviousBeforeSubmissionIds
+    }){
+      const response = await getSubmissionList({
+        limit: listLimit,
+        beforeSubmissionId: targetBeforeSubmissionId ?? undefined,
+        problemId: numericProblemId.value ?? undefined,
+        userId: activeUserId.value ?? undefined,
+        userLoginId: activeUserLoginId.value || undefined,
+        language: appliedLanguageFilter.value || undefined,
+        status: appliedStatusFilter.value || undefined,
+        bearerToken: authenticatedBearerToken.value
+      })
 
+      const normalizedSubmissions = Array.isArray(response.submissions)
+        ? response.submissions
+          .map((submission) => {
+            const normalizedSubmittedAt = normalizeSubmittedAt(submission.created_at)
+
+            return {
+              ...submission,
+              submission_id: Number(submission.submission_id),
+              user_id: Number(submission.user_id),
+              problem_id: Number(submission.problem_id),
+              user_login_id:
+                (typeof submission.user_login_id === 'string' && submission.user_login_id) ||
+                `사용자 ${submission.user_id}`,
+              created_at: typeof submission.created_at === 'string' ? submission.created_at : '',
+              created_at_timestamp: normalizedSubmittedAt.timestamp,
+              created_at_label: normalizedSubmittedAt.label,
+              elapsed_ms: typeof submission.elapsed_ms === 'number' ? submission.elapsed_ms : null,
+              max_rss_kb: typeof submission.max_rss_kb === 'number' ? submission.max_rss_kb : null
+            }
+          })
+        : []
+      const normalizedHasMore = Boolean(response.has_more)
+      const normalizedNextBeforeSubmissionId =
+        Number.isInteger(response.next_before_submission_id) &&
+        response.next_before_submission_id > 0
+          ? response.next_before_submission_id
+          : null
+
+      return {
+        submissions: normalizedSubmissions,
+        hasMoreSubmissions: normalizedHasMore,
+        nextBeforeSubmissionId:
+          normalizedHasMore && normalizedNextBeforeSubmissionId
+            ? normalizedNextBeforeSubmissionId
+            : null,
+        currentBeforeSubmissionId: targetBeforeSubmissionId,
+        previousBeforeSubmissionIds: targetPreviousBeforeSubmissionIds,
+        currentPage: targetPageNumber
+      }
+    },
+    getErrorMessage(error){
+      return error instanceof Error
+        ? error.message
+        : '제출 목록을 불러오지 못했습니다.'
+    }
+  })
+
+  const isLoading = submissionListResource.isLoading
+  const errorMessage = submissionListResource.errorMessage
+  const hasLoadedOnce = submissionListResource.hasLoadedOnce
+  const submissions = computed(() => submissionListResource.data.value.submissions)
   const submissionLanguageFilterOptions = computed(() => {
     const options = [{ value: '', label: '전체' }]
     const seenLanguages = new Set([''])
@@ -53,17 +124,18 @@ export function useSubmissionListResource({
     return options
   })
 
-  let latestLoadRequestId = 0
-
   function patchSubmission(submissionId, patch){
-    submissions.value = submissions.value.map((submission) =>
-      submission.submission_id === submissionId
-        ? {
-          ...submission,
-          ...patch
-        }
-        : submission
-    )
+    submissionListResource.mutate((submissionListState) => ({
+      ...submissionListState,
+      submissions: submissionListState.submissions.map((submission) =>
+        submission.submission_id === submissionId
+          ? {
+            ...submission,
+            ...patch
+          }
+          : submission
+      )
+    }))
   }
 
   function mergeSubmissionStatusBatch(statusSnapshots){
@@ -89,20 +161,23 @@ export function useSubmissionListResource({
       return
     }
 
-    submissions.value = submissions.value.map((submission) => {
-      const patch = patchBySubmissionId.get(submission.submission_id)
-      if (!patch) {
-        return submission
-      }
+    submissionListResource.mutate((submissionListState) => ({
+      ...submissionListState,
+      submissions: submissionListState.submissions.map((submission) => {
+        const patch = patchBySubmissionId.get(submission.submission_id)
+        if (!patch) {
+          return submission
+        }
 
-      return {
-        ...submission,
-        status: patch.status ?? submission.status,
-        score: patch.score,
-        elapsed_ms: patch.elapsed_ms,
-        max_rss_kb: patch.max_rss_kb
-      }
-    })
+        return {
+          ...submission,
+          status: patch.status ?? submission.status,
+          score: patch.score,
+          elapsed_ms: patch.elapsed_ms,
+          max_rss_kb: patch.max_rss_kb
+        }
+      })
+    }))
   }
 
   async function loadSupportedSubmissionLanguages(){
@@ -133,94 +208,44 @@ export function useSubmissionListResource({
     const targetPreviousBeforeSubmissionIds = Array.isArray(options.previousBeforeSubmissionIds)
       ? [...options.previousBeforeSubmissionIds]
       : [...pagination.previousBeforeSubmissionIds.value]
-    const requestId = ++latestLoadRequestId
+
     isLoading.value = true
     errorMessage.value = ''
     resetRejudgingSubmissions()
 
     if (isMineScope.value && !isAuthenticated.value) {
-      submissions.value = []
+      submissionListResource.mutate(createInitialSubmissionListState())
       pagination.hasMoreSubmissions.value = false
       pagination.nextBeforeSubmissionId.value = null
       errorMessage.value = '내 제출을 보려면 로그인하세요.'
-      if (requestId === latestLoadRequestId) {
-        isLoading.value = false
-      }
       hasLoadedOnce.value = true
+      isLoading.value = false
       return
     }
 
-    try {
-      const response = await getSubmissionList({
-        limit: listLimit,
-        beforeSubmissionId: targetBeforeSubmissionId ?? undefined,
-        problemId: numericProblemId.value ?? undefined,
-        userId: activeUserId.value ?? undefined,
-        userLoginId: activeUserLoginId.value || undefined,
-        language: appliedLanguageFilter.value || undefined,
-        status: appliedStatusFilter.value || undefined,
-        bearerToken: authenticatedBearerToken.value
-      })
+    const result = await submissionListResource.run({
+      targetPageNumber,
+      targetBeforeSubmissionId,
+      targetPreviousBeforeSubmissionIds
+    }, {
+      resetDataOnError: true
+    })
 
-      if (requestId !== latestLoadRequestId) {
-        return
-      }
-
-      const normalizedSubmissions = Array.isArray(response.submissions)
-        ? response.submissions
-          .map((submission) => {
-            const normalizedSubmittedAt = normalizeSubmittedAt(submission.created_at)
-
-            return {
-              ...submission,
-              submission_id: Number(submission.submission_id),
-              user_id: Number(submission.user_id),
-              problem_id: Number(submission.problem_id),
-              user_login_id:
-                (typeof submission.user_login_id === 'string' && submission.user_login_id) ||
-                `사용자 ${submission.user_id}`,
-              created_at: typeof submission.created_at === 'string' ? submission.created_at : '',
-              created_at_timestamp: normalizedSubmittedAt.timestamp,
-              created_at_label: normalizedSubmittedAt.label,
-              elapsed_ms: typeof submission.elapsed_ms === 'number' ? submission.elapsed_ms : null,
-              max_rss_kb: typeof submission.max_rss_kb === 'number' ? submission.max_rss_kb : null
-            }
-          })
-        : []
-      const normalizedHasMore = Boolean(response.has_more)
-      const normalizedNextBeforeSubmissionId =
-        Number.isInteger(response.next_before_submission_id) &&
-        response.next_before_submission_id > 0
-          ? response.next_before_submission_id
-          : null
-
-      submissions.value = normalizedSubmissions
-      pagination.hasMoreSubmissions.value = normalizedHasMore
-      pagination.nextBeforeSubmissionId.value =
-        normalizedHasMore && normalizedNextBeforeSubmissionId
-          ? normalizedNextBeforeSubmissionId
-          : null
-      pagination.currentBeforeSubmissionId.value = targetBeforeSubmissionId
-      pagination.previousBeforeSubmissionIds.value = targetPreviousBeforeSubmissionIds
-      pagination.currentPage.value = targetPageNumber
-      hasLoadedOnce.value = true
-    } catch (error) {
-      if (requestId !== latestLoadRequestId) {
-        return
-      }
-
-      errorMessage.value = error instanceof Error
-        ? error.message
-        : '제출 목록을 불러오지 못했습니다.'
-      submissions.value = []
+    if (result.status === 'error') {
       pagination.hasMoreSubmissions.value = false
       pagination.nextBeforeSubmissionId.value = null
-      hasLoadedOnce.value = true
-    } finally {
-      if (requestId === latestLoadRequestId) {
-        isLoading.value = false
-      }
+      return
     }
+
+    if (result.status !== 'success') {
+      return
+    }
+
+    pagination.hasMoreSubmissions.value = result.data.hasMoreSubmissions
+    pagination.nextBeforeSubmissionId.value = result.data.nextBeforeSubmissionId
+    pagination.currentBeforeSubmissionId.value = result.data.currentBeforeSubmissionId
+    pagination.previousBeforeSubmissionIds.value = result.data.previousBeforeSubmissionIds
+    pagination.currentPage.value = result.data.currentPage
   }
 
   async function refreshSubmissions(){

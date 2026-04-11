@@ -4,6 +4,7 @@ import {
   getSubmissionHistory,
   getSubmissionSource
 } from '@/api/submission'
+import { useAsyncResource } from '@/composables/useAsyncResource'
 import {
   fallbackCopyText,
   formatHistoryTransition,
@@ -16,17 +17,53 @@ export function useSubmissionDialogs({
   patchSubmission
 }){
   const historyDialogOpen = ref(false)
-  const isLoadingHistory = ref(false)
-  const historyErrorMessage = ref('')
-  const submissionHistoryEntries = ref([])
   const activeHistorySubmissionId = ref(null)
   const sourceDialogOpen = ref(false)
-  const isLoadingSource = ref(false)
-  const sourceErrorMessage = ref('')
-  const sourceDetail = ref(null)
   const activeSourceSubmissionId = ref(null)
   const copyState = ref('idle')
+  const historyResource = useAsyncResource({
+    initialData: [],
+    async load(submissionId){
+      const response = await getSubmissionHistory(submissionId, authState.token)
 
+      return Array.isArray(response.histories)
+        ? response.histories.map((historyEntry, index) =>
+          normalizeSubmissionHistoryEntry(historyEntry, index)
+        )
+        : []
+    },
+    getErrorMessage(error){
+      return error instanceof Error
+        ? error.message
+        : '채점 내역을 불러오지 못했습니다.'
+    }
+  })
+  const sourceResource = useAsyncResource({
+    initialData: null,
+    async load(submission){
+      const response = await getSubmissionSource(submission.submission_id, authState.token)
+
+      return {
+        submission_id: Number(response.submission_id),
+        language: response.language || submission.language,
+        source_code: response.source_code || '',
+        compile_output: typeof response.compile_output === 'string' ? response.compile_output : '',
+        judge_output: typeof response.judge_output === 'string' ? response.judge_output : ''
+      }
+    },
+    getErrorMessage(error){
+      return error instanceof Error
+        ? error.message
+        : '소스 코드를 불러오지 못했습니다.'
+    }
+  })
+
+  const isLoadingHistory = historyResource.isLoading
+  const historyErrorMessage = historyResource.errorMessage
+  const submissionHistoryEntries = historyResource.data
+  const isLoadingSource = sourceResource.isLoading
+  const sourceErrorMessage = sourceResource.errorMessage
+  const sourceDetail = sourceResource.data
   const copyButtonLabel = computed(() => {
     if (copyState.value === 'success') {
       return '복사됨'
@@ -47,7 +84,6 @@ export function useSubmissionDialogs({
   })
 
   let copyStateResetTimer = null
-  let latestHistoryLoadRequestId = 0
 
   function canViewSource(submission){
     if (!authState.currentUser) {
@@ -82,12 +118,12 @@ export function useSubmissionDialogs({
   }
 
   function closeHistoryDialog(){
-    latestHistoryLoadRequestId += 1
     historyDialogOpen.value = false
-    isLoadingHistory.value = false
-    historyErrorMessage.value = ''
-    submissionHistoryEntries.value = []
     activeHistorySubmissionId.value = null
+    historyResource.reset({
+      preserveHasLoadedOnce: true,
+      clearLastArgs: true
+    })
   }
 
   async function fetchSubmissionHistory(submissionId, options = {}){
@@ -96,60 +132,29 @@ export function useSubmissionDialogs({
     }
 
     const { background = false } = options
-    const requestId = ++latestHistoryLoadRequestId
+    const numericSubmissionId = Number(submissionId)
 
-    if (!background) {
-      isLoadingHistory.value = true
-      historyErrorMessage.value = ''
-      submissionHistoryEntries.value = []
+    if (!Number.isInteger(numericSubmissionId) || numericSubmissionId <= 0) {
+      return
     }
 
-    try {
-      const response = await getSubmissionHistory(submissionId, authState.token)
+    const result = await historyResource.run(numericSubmissionId, {
+      background,
+      clearErrorOnRun: !background,
+      resetDataOnRun: !background,
+      resetDataOnError: !background,
+      setErrorOnError: !background
+    })
 
-      if (
-        requestId !== latestHistoryLoadRequestId ||
-        activeHistorySubmissionId.value !== submissionId
-      ) {
-        return
-      }
+    if (result.status !== 'success') {
+      return
+    }
 
-      const normalizedHistories = Array.isArray(response.histories)
-        ? response.histories.map((historyEntry, index) =>
-          normalizeSubmissionHistoryEntry(historyEntry, index)
-        )
-        : []
-
-      submissionHistoryEntries.value = normalizedHistories
-
-      const latestHistoryEntry = normalizedHistories[normalizedHistories.length - 1]
-      if (latestHistoryEntry) {
-        patchSubmission(submissionId, {
-          status: latestHistoryEntry.to_status
-        })
-      }
-    } catch (error) {
-      if (
-        requestId !== latestHistoryLoadRequestId ||
-        activeHistorySubmissionId.value !== submissionId
-      ) {
-        return
-      }
-
-      if (!background) {
-        historyErrorMessage.value = error instanceof Error
-          ? error.message
-          : '채점 내역을 불러오지 못했습니다.'
-        submissionHistoryEntries.value = []
-      }
-    } finally {
-      if (
-        !background &&
-        requestId === latestHistoryLoadRequestId &&
-        activeHistorySubmissionId.value === submissionId
-      ) {
-        isLoadingHistory.value = false
-      }
+    const latestHistoryEntry = result.data[result.data.length - 1]
+    if (latestHistoryEntry) {
+      patchSubmission(numericSubmissionId, {
+        status: latestHistoryEntry.to_status
+      })
     }
   }
 
@@ -159,9 +164,6 @@ export function useSubmissionDialogs({
     }
 
     historyDialogOpen.value = true
-    isLoadingHistory.value = true
-    historyErrorMessage.value = ''
-    submissionHistoryEntries.value = []
     activeHistorySubmissionId.value = submission.submission_id
 
     await fetchSubmissionHistory(submission.submission_id)
@@ -169,10 +171,11 @@ export function useSubmissionDialogs({
 
   function closeSourceDialog(){
     sourceDialogOpen.value = false
-    isLoadingSource.value = false
-    sourceErrorMessage.value = ''
-    sourceDetail.value = null
     activeSourceSubmissionId.value = null
+    sourceResource.reset({
+      preserveHasLoadedOnce: true,
+      clearLastArgs: true
+    })
     resetCopyState()
   }
 
@@ -182,27 +185,12 @@ export function useSubmissionDialogs({
     }
 
     sourceDialogOpen.value = true
-    isLoadingSource.value = true
-    sourceErrorMessage.value = ''
-    sourceDetail.value = null
     activeSourceSubmissionId.value = submission.submission_id
 
-    try {
-      const response = await getSubmissionSource(submission.submission_id, authState.token)
-      sourceDetail.value = {
-        submission_id: Number(response.submission_id),
-        language: response.language || submission.language,
-        source_code: response.source_code || '',
-        compile_output: typeof response.compile_output === 'string' ? response.compile_output : '',
-        judge_output: typeof response.judge_output === 'string' ? response.judge_output : ''
-      }
-    } catch (error) {
-      sourceErrorMessage.value = error instanceof Error
-        ? error.message
-        : '소스 코드를 불러오지 못했습니다.'
-    } finally {
-      isLoadingSource.value = false
-    }
+    await sourceResource.run(submission, {
+      resetDataOnRun: true,
+      resetDataOnError: true
+    })
   }
 
   async function copySourceCode(){

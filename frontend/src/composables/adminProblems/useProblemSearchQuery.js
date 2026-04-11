@@ -1,6 +1,11 @@
 import { computed, ref } from 'vue'
 
+import { useRouteQueryState } from '@/composables/useRouteQueryState'
 import { parsePositiveInteger } from '@/composables/adminProblems/problemHelpers'
+
+function normalizeSearchMode(value){
+  return value === 'problem-id' ? 'problem-id' : 'title'
+}
 
 export function useProblemSearchQuery({
   route,
@@ -10,41 +15,64 @@ export function useProblemSearchQuery({
   reloadProblems,
   showErrorNotice
 }){
-  const searchMode = ref('title')
-  const titleSearchInput = ref('')
-  const problemIdSearchInput = ref('')
+  const queryState = useRouteQueryState({
+    route,
+    router,
+    parseQuery(query){
+      return {
+        selectedProblemId: parsePositiveInteger(query.problemId) ?? 0,
+        searchMode: normalizeSearchMode(query.searchMode),
+        titleSearch: String(query.searchTitle ?? '').trim(),
+        problemIdSearch: parsePositiveInteger(query.searchProblemId)
+      }
+    },
+    buildQuery(state){
+      const nextQuery = {}
+      const selectedProblemId = Number(state.selectedProblemId ?? 0)
+      const searchMode = normalizeSearchMode(state.searchMode)
 
-  const preferredProblemIdFromRoute = computed(() => {
-    const routeProblemId = Array.isArray(route.query.problemId)
-      ? route.query.problemId[0]
-      : route.query.problemId
-    const parsedValue = Number.parseInt(String(routeProblemId ?? ''), 10)
+      if (selectedProblemId > 0) {
+        nextQuery.problemId = String(selectedProblemId)
+      }
 
-    return Number.isInteger(parsedValue) && parsedValue > 0
-      ? parsedValue
-      : 0
+      if (searchMode === 'problem-id') {
+        const nextProblemId = parsePositiveInteger(state.problemIdSearch)
+        if (nextProblemId != null) {
+          nextQuery.searchMode = 'problem-id'
+          nextQuery.searchProblemId = String(nextProblemId)
+        }
+
+        return nextQuery
+      }
+
+      const nextTitle = String(state.titleSearch ?? '').trim()
+      if (nextTitle) {
+        nextQuery.searchMode = 'title'
+        nextQuery.searchTitle = nextTitle
+      }
+
+      return nextQuery
+    },
+    createLocalState(){
+      return {
+        searchMode: ref('title'),
+        titleSearchInput: ref(''),
+        problemIdSearchInput: ref('')
+      }
+    },
+    syncLocalState(localState, state){
+      localState.searchMode.value = state.searchMode
+      localState.titleSearchInput.value = state.titleSearch
+      localState.problemIdSearchInput.value = state.problemIdSearch != null
+        ? String(state.problemIdSearch)
+        : ''
+    }
   })
-  const routeSearchMode = computed(() => {
-    const rawValue = Array.isArray(route.query.searchMode)
-      ? route.query.searchMode[0]
-      : route.query.searchMode
 
-    return rawValue === 'problem-id' ? 'problem-id' : 'title'
-  })
-  const routeTitleSearch = computed(() => {
-    const rawValue = Array.isArray(route.query.searchTitle)
-      ? route.query.searchTitle[0]
-      : route.query.searchTitle
-
-    return String(rawValue ?? '').trim()
-  })
-  const routeProblemIdSearch = computed(() => {
-    const rawValue = Array.isArray(route.query.searchProblemId)
-      ? route.query.searchProblemId[0]
-      : route.query.searchProblemId
-
-    return parsePositiveInteger(rawValue)
-  })
+  const routeSearchMode = computed(() => queryState.routeState.value.searchMode)
+  const routeTitleSearch = computed(() => queryState.routeState.value.titleSearch)
+  const routeProblemIdSearch = computed(() => queryState.routeState.value.problemIdSearch)
+  const preferredProblemIdFromRoute = computed(() => queryState.routeState.value.selectedProblemId)
   const hasAppliedSearch = computed(() => {
     if (routeSearchMode.value === 'problem-id') {
       return routeProblemIdSearch.value != null
@@ -75,105 +103,72 @@ export function useProblemSearchQuery({
     return '등록된 문제가 아직 없습니다.'
   })
 
+  function buildSearchState(mode, options = {}){
+    const nextMode = normalizeSearchMode(mode)
+
+    return {
+      selectedProblemId: queryState.routeState.value.selectedProblemId,
+      searchMode: nextMode,
+      titleSearch: nextMode === 'problem-id'
+        ? ''
+        : String(options.title ?? '').trim(),
+      problemIdSearch: nextMode === 'problem-id'
+        ? parsePositiveInteger(options.problemId)
+        : null
+    }
+  }
+
   function syncSearchControlsFromRoute(){
-    searchMode.value = routeSearchMode.value
-    titleSearchInput.value = routeTitleSearch.value
-    problemIdSearchInput.value = routeProblemIdSearch.value != null
-      ? String(routeProblemIdSearch.value)
-      : ''
+    queryState.syncFromRoute()
   }
 
   function setSearchMode(nextMode){
-    searchMode.value = nextMode
+    queryState.localState.searchMode.value = normalizeSearchMode(nextMode)
   }
 
   function handleProblemIdSearchInput(event){
     const normalizedValue = String(event.target?.value ?? '').replace(/\D+/g, '')
-    problemIdSearchInput.value = normalizedValue
+    queryState.localState.problemIdSearchInput.value = normalizedValue
   }
 
-  function buildSearchQuery(mode, options = {}){
-    const nextQuery = {}
-    const selectedProblemIdFromRoute = Array.isArray(route.query.problemId)
-      ? route.query.problemId[0]
-      : route.query.problemId
+  async function applySearchQuery(nextState, preferredProblemId){
+    const didNavigate = await queryState.navigate(nextState)
 
-    if (selectedProblemIdFromRoute) {
-      nextQuery.problemId = String(selectedProblemIdFromRoute)
-    }
-
-    if (mode === 'problem-id') {
-      const nextProblemId = parsePositiveInteger(options.problemId)
-      if (nextProblemId != null) {
-        nextQuery.searchMode = 'problem-id'
-        nextQuery.searchProblemId = String(nextProblemId)
-      }
-
-      return nextQuery
-    }
-
-    const nextTitle = String(options.title ?? '').trim()
-    if (nextTitle) {
-      nextQuery.searchMode = 'title'
-      nextQuery.searchTitle = nextTitle
-    }
-
-    return nextQuery
-  }
-
-  function isSameSearchQuery(nextQuery){
-    const currentQuery = buildSearchQuery(routeSearchMode.value, {
-      title: routeTitleSearch.value,
-      problemId: routeProblemIdSearch.value
-    })
-
-    return JSON.stringify(currentQuery) === JSON.stringify(nextQuery)
-  }
-
-  async function applySearchQuery(nextQuery, preferredProblemId){
-    if (isSameSearchQuery(nextQuery)) {
+    if (!didNavigate) {
       await reloadProblems(preferredProblemId)
-      return
     }
-
-    await router.replace({
-      query: nextQuery
-    })
   }
 
   function submitSearch(){
-    if (searchMode.value === 'problem-id') {
-      const nextProblemId = parsePositiveInteger(problemIdSearchInput.value)
+    if (queryState.localState.searchMode.value === 'problem-id') {
+      const nextProblemId = parsePositiveInteger(queryState.localState.problemIdSearchInput.value)
       if (nextProblemId == null) {
         showErrorNotice('문제 번호를 입력하세요.')
         return
       }
 
-      const nextQuery = buildSearchQuery('problem-id', {
+      void applySearchQuery(buildSearchState('problem-id', {
         problemId: nextProblemId
-      })
-      void applySearchQuery(nextQuery, nextProblemId)
+      }), nextProblemId)
       return
     }
 
-    const nextTitle = titleSearchInput.value.trim()
-    const nextQuery = buildSearchQuery('title', {
-      title: nextTitle
-    })
-    void applySearchQuery(nextQuery, getSelectedProblemId())
+    void applySearchQuery(buildSearchState('title', {
+      title: queryState.localState.titleSearchInput.value
+    }), getSelectedProblemId())
   }
 
   function resetSearch(){
-    searchMode.value = 'title'
-    titleSearchInput.value = ''
-    problemIdSearchInput.value = ''
-    void applySearchQuery(buildSearchQuery('title'), getSelectedProblemId())
+    queryState.localState.searchMode.value = 'title'
+    queryState.localState.titleSearchInput.value = ''
+    queryState.localState.problemIdSearchInput.value = ''
+    void applySearchQuery(buildSearchState('title'), getSelectedProblemId())
   }
 
   return {
-    searchMode,
-    titleSearchInput,
-    problemIdSearchInput,
+    searchMode: queryState.localState.searchMode,
+    titleSearchInput: queryState.localState.titleSearchInput,
+    problemIdSearchInput: queryState.localState.problemIdSearchInput,
     preferredProblemIdFromRoute,
     routeSearchMode,
     routeTitleSearch,
@@ -184,7 +179,6 @@ export function useProblemSearchQuery({
     syncSearchControlsFromRoute,
     setSearchMode,
     handleProblemIdSearchInput,
-    buildSearchQuery,
     submitSearch,
     resetSearch
   }

@@ -1,7 +1,11 @@
 import { ref } from 'vue'
 
 import { getProblemDetail } from '@/api/problem'
-import { normalizeProblemDetail, normalizeProblemSamples } from '@/composables/adminProblems/problemHelpers'
+import { useAsyncResource } from '@/composables/useAsyncResource'
+import {
+  normalizeProblemDetail,
+  normalizeProblemSamples
+} from '@/composables/adminProblems/problemHelpers'
 
 export function useProblemDetailResource({
   authState,
@@ -10,12 +14,32 @@ export function useProblemDetailResource({
   assignEditorDrafts,
   clearActionError
 }){
-  const isLoadingDetail = ref(false)
-  const detailErrorMessage = ref('')
   const selectedProblemId = ref(0)
-  const selectedProblemDetail = ref(null)
+  const detailResource = useAsyncResource({
+    initialData: null,
+    async load(problemId){
+      const response = await getProblemDetail(problemId, {
+        bearerToken: authState.token || ''
+      })
 
-  let latestProblemDetailRequestId = 0
+      return normalizeProblemDetail(response)
+    },
+    getErrorMessage(error){
+      return error instanceof Error
+        ? error.message
+        : '문제 정보를 불러오지 못했습니다.'
+    }
+  })
+
+  const isLoadingDetail = detailResource.isLoading
+  const detailErrorMessage = detailResource.errorMessage
+  const selectedProblemDetail = detailResource.data
+
+  function invalidateSelectedProblemResource(){
+    detailResource.reset({
+      preserveHasLoadedOnce: true
+    })
+  }
 
   function setSelectedProblemSamples(samples){
     if (!selectedProblemDetail.value) {
@@ -52,43 +76,24 @@ export function useProblemDetailResource({
       return
     }
 
-    const requestId = ++latestProblemDetailRequestId
     selectedProblemId.value = problemId
-    isLoadingDetail.value = true
-    detailErrorMessage.value = ''
     clearActionError()
-    selectedProblemDetail.value = null
     resetEditorDrafts()
 
-    try {
-      const response = await getProblemDetail(problemId, {
-        bearerToken: authState.token || ''
-      })
+    const result = await detailResource.run(problemId, {
+      resetDataOnRun: true,
+      resetDataOnError: true
+    })
 
-      if (requestId !== latestProblemDetailRequestId) {
-        return
-      }
-
-      const normalizedDetail = normalizeProblemDetail(response)
-      selectedProblemDetail.value = normalizedDetail
-      mergeProblemSummary(problemId, {
-        title: normalizedDetail.title,
-        version: normalizedDetail.version
-      })
-      assignEditorDrafts(normalizedDetail)
-    } catch (error) {
-      if (requestId !== latestProblemDetailRequestId) {
-        return
-      }
-
-      detailErrorMessage.value = error instanceof Error
-        ? error.message
-        : '문제 정보를 불러오지 못했습니다.'
-    } finally {
-      if (requestId === latestProblemDetailRequestId) {
-        isLoadingDetail.value = false
-      }
+    if (result.status !== 'success') {
+      return
     }
+
+    mergeProblemSummary(problemId, {
+      title: result.data.title,
+      version: result.data.version
+    })
+    assignEditorDrafts(result.data)
   }
 
   async function selectProblem(problemId, options = {}){
@@ -108,6 +113,7 @@ export function useProblemDetailResource({
     detailErrorMessage,
     selectedProblemId,
     selectedProblemDetail,
+    invalidateSelectedProblemResource,
     setSelectedProblemSamples,
     applySelectedProblemVersion,
     loadSelectedProblem,

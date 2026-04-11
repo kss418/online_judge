@@ -1,8 +1,15 @@
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import {
+  computed,
+  onMounted,
+  reactive,
+  watch
+} from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getProblemList } from '@/api/problem'
+import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useAuth } from '@/composables/useAuth'
+import { useRouteQueryState } from '@/composables/useRouteQueryState'
 import { buildPaginationItems } from '@/utils/pagination'
 
 const problemSortOptions = [
@@ -38,20 +45,17 @@ const validProblemSortKeys = new Set(problemSortOptions.map((option) => option.k
 const validProblemStateFilterValues = new Set(problemStateFilterOptions.map((option) => option.value))
 const pageSize = 50
 
+function createInitialProblemBrowseState(){
+  return {
+    problems: [],
+    totalProblemCount: 0
+  }
+}
+
 export function useProblemBrowse(){
   const route = useRoute()
   const router = useRouter()
   const { authState, isAuthenticated, initializeAuth } = useAuth()
-
-  const isLoading = ref(true)
-  const errorMessage = ref('')
-  const problems = ref([])
-  const totalProblemCount = ref(0)
-  const hasLoadedOnce = ref(false)
-  const searchState = reactive({
-    searchInput: '',
-    pageJumpInput: ''
-  })
 
   const authenticatedBearerToken = computed(() =>
     authState.initialized && isAuthenticated.value ? authState.token : ''
@@ -59,128 +63,6 @@ export function useProblemBrowse(){
   const showProblemStateFilters = computed(() =>
     authState.initialized && isAuthenticated.value
   )
-  const appliedTitleFilter = computed(() => {
-    const routeTitle = Array.isArray(route.query.title)
-      ? route.query.title[0]
-      : route.query.title
-
-    return typeof routeTitle === 'string'
-      ? routeTitle.trim()
-      : ''
-  })
-  const hasAppliedTitleFilter = computed(() => Boolean(appliedTitleFilter.value))
-  const appliedSortKey = computed(() => {
-    const routeSort = Array.isArray(route.query.sort)
-      ? route.query.sort[0]
-      : route.query.sort
-
-    return normalizeProblemSortKey(routeSort)
-  })
-  const appliedSortDirection = computed(() => {
-    const routeDirection = Array.isArray(route.query.direction)
-      ? route.query.direction[0]
-      : route.query.direction
-
-    return normalizeProblemSortDirection(routeDirection, appliedSortKey.value)
-  })
-  const appliedStateFilter = computed(() => {
-    if (!showProblemStateFilters.value) {
-      return ''
-    }
-
-    const routeState = Array.isArray(route.query.state)
-      ? route.query.state[0]
-      : route.query.state
-
-    return normalizeProblemStateFilter(routeState)
-  })
-  const currentPage = computed(() => {
-    const routePage = Array.isArray(route.query.page)
-      ? route.query.page[0]
-      : route.query.page
-
-    return normalizeProblemPage(routePage)
-  })
-  const problemCount = computed(() => totalProblemCount.value)
-  const totalPages = computed(() =>
-    Math.max(1, Math.ceil(problemCount.value / pageSize))
-  )
-  const pagedProblems = computed(() => problems.value)
-  const visibleRangeText = computed(() => {
-    if (!problemCount.value || !pagedProblems.value.length) {
-      return ''
-    }
-
-    const start = (currentPage.value - 1) * pageSize + 1
-    const end = start + pagedProblems.value.length - 1
-    return `${start}-${end} / ${problemCount.value}`
-  })
-  const emptyStateMessage = computed(() => {
-    if (hasAppliedTitleFilter.value || appliedStateFilter.value) {
-      return '조건에 맞는 문제가 없습니다.'
-    }
-
-    return '등록된 문제가 아직 없습니다.'
-  })
-  const paginationItems = computed(() =>
-    buildPaginationItems(currentPage.value, totalPages.value)
-  )
-
-  let latestLoadRequestId = 0
-
-  watch(appliedTitleFilter, (title) => {
-    searchState.searchInput = title
-  }, {
-    immediate: true
-  })
-
-  watch(currentPage, () => {
-    searchState.pageJumpInput = ''
-  })
-
-  watch(totalPages, (pageCount) => {
-    if (currentPage.value > pageCount) {
-      void replaceProblemBrowseQuery({
-        page: pageCount
-      })
-    }
-  })
-
-  watch(
-    [
-      appliedTitleFilter,
-      appliedSortKey,
-      appliedSortDirection,
-      appliedStateFilter,
-      currentPage,
-      authenticatedBearerToken
-    ],
-    (nextValues, previousValues) => {
-      if (!hasLoadedOnce.value) {
-        return
-      }
-
-      if (
-        previousValues &&
-        nextValues.every((value, index) => value === previousValues[index])
-      ) {
-        return
-      }
-
-      loadProblems()
-    }
-  )
-
-  watch(showProblemStateFilters, (canShowFilters, couldShowFilters) => {
-    if (canShowFilters || !couldShowFilters || !route.query.state) {
-      return
-    }
-
-    void replaceProblemBrowseQuery({
-      stateFilter: '',
-      page: 1
-    })
-  })
 
   function normalizeProblemSortKey(rawValue){
     return typeof rawValue === 'string' && validProblemSortKeys.has(rawValue)
@@ -213,127 +95,212 @@ export function useProblemBrowse(){
       : 1
   }
 
-  function buildProblemBrowseQuery(options = {}){
-    const title = options.title ?? appliedTitleFilter.value
-    const sortKey = options.sortKey ?? appliedSortKey.value
-    const sortDirection = options.sortDirection ?? appliedSortDirection.value
-    const stateFilter = options.stateFilter ?? appliedStateFilter.value
-    const page = Number(options.page ?? currentPage.value)
-    const nextQuery = {}
+  const queryState = useRouteQueryState({
+    route,
+    router,
+    parseQuery(query){
+      const sortKey = normalizeProblemSortKey(query.sort)
 
-    if (title) {
-      nextQuery.title = title
-    }
+      return {
+        title: String(query.title ?? '').trim(),
+        sortKey,
+        sortDirection: normalizeProblemSortDirection(query.direction, sortKey),
+        stateFilter: showProblemStateFilters.value
+          ? normalizeProblemStateFilter(query.state)
+          : '',
+        page: normalizeProblemPage(query.page)
+      }
+    },
+    buildQuery(state){
+      const nextQuery = {}
+      const title = String(state.title ?? '').trim()
+      const sortKey = normalizeProblemSortKey(state.sortKey)
+      const sortDirection = normalizeProblemSortDirection(state.sortDirection, sortKey)
+      const stateFilter = showProblemStateFilters.value
+        ? normalizeProblemStateFilter(state.stateFilter)
+        : ''
+      const page = Number(state.page)
 
-    if (sortKey !== 'problem_id' || sortDirection !== getDefaultSortDirection('problem_id')) {
-      nextQuery.sort = sortKey
-    }
-
-    if (sortDirection !== getDefaultSortDirection(sortKey)) {
-      nextQuery.direction = sortDirection
-    }
-
-    if (showProblemStateFilters.value && stateFilter) {
-      nextQuery.state = stateFilter
-    }
-
-    if (Number.isInteger(page) && page > 1) {
-      nextQuery.page = String(page)
-    }
-
-    return nextQuery
-  }
-
-  function areQueryValuesEqual(leftValue, rightValue){
-    if (Array.isArray(leftValue) || Array.isArray(rightValue)) {
-      const leftValues = Array.isArray(leftValue) ? leftValue : [leftValue]
-      const rightValues = Array.isArray(rightValue) ? rightValue : [rightValue]
-
-      if (leftValues.length !== rightValues.length) {
-        return false
+      if (title) {
+        nextQuery.title = title
       }
 
-      return leftValues.every((value, index) => value === rightValues[index])
+      if (sortKey !== 'problem_id' || sortDirection !== getDefaultSortDirection('problem_id')) {
+        nextQuery.sort = sortKey
+      }
+
+      if (sortDirection !== getDefaultSortDirection(sortKey)) {
+        nextQuery.direction = sortDirection
+      }
+
+      if (showProblemStateFilters.value && stateFilter) {
+        nextQuery.state = stateFilter
+      }
+
+      if (Number.isInteger(page) && page > 1) {
+        nextQuery.page = String(page)
+      }
+
+      return nextQuery
+    },
+    createLocalState(){
+      return reactive({
+        searchInput: '',
+        pageJumpInput: ''
+      })
+    },
+    syncLocalState(localState, state){
+      localState.searchInput = state.title
+    },
+    buildLocation({ query }){
+      return {
+        name: 'problems',
+        query
+      }
     }
-
-    return leftValue === rightValue
-  }
-
-  function areQueriesEqual(leftQuery, rightQuery){
-    const leftKeys = Object.keys(leftQuery).sort()
-    const rightKeys = Object.keys(rightQuery).sort()
-
-    if (leftKeys.length !== rightKeys.length) {
-      return false
-    }
-
-    return leftKeys.every((key, index) =>
-      key === rightKeys[index] && areQueryValuesEqual(leftQuery[key], rightQuery[key])
-    )
-  }
-
-  async function replaceProblemBrowseQuery(options = {}){
-    const nextQuery = buildProblemBrowseQuery(options)
-
-    if (areQueriesEqual(route.query, nextQuery)) {
-      return
-    }
-
-    await router.replace({
-      name: 'problems',
-      query: nextQuery
-    })
-  }
-
-  async function loadProblems(){
-    const requestId = ++latestLoadRequestId
-    const requestOffset = (currentPage.value - 1) * pageSize
-    isLoading.value = true
-    errorMessage.value = ''
-
-    try {
+  })
+  const problemListResource = useAsyncResource({
+    initialData: createInitialProblemBrowseState,
+    async load({ requestOffset, bearerToken, title, state, sort, direction }){
       const response = await getProblemList({
-        title: appliedTitleFilter.value,
-        state: appliedStateFilter.value,
-        sort: appliedSortKey.value,
-        direction: appliedSortDirection.value,
+        title,
+        state,
+        sort,
+        direction,
         limit: pageSize,
         offset: requestOffset,
-        bearerToken: authenticatedBearerToken.value
+        bearerToken
       })
 
-      if (requestId !== latestLoadRequestId) {
-        return
-      }
-
-      problems.value = Array.isArray(response.problems)
+      const problems = Array.isArray(response.problems)
         ? response.problems.map((problem) => ({
           ...problem,
           accepted_count: Number(problem.accepted_count ?? 0),
           submission_count: Number(problem.submission_count ?? 0)
         }))
         : []
-      totalProblemCount.value = Number(
-        response.total_problem_count ?? response.problem_count ?? problems.value.length
-      )
-      hasLoadedOnce.value = true
-    } catch (error) {
-      if (requestId !== latestLoadRequestId) {
+
+      return {
+        problems,
+        totalProblemCount: Number(
+          response.total_problem_count ?? response.problem_count ?? problems.length
+        )
+      }
+    },
+    getErrorMessage(error){
+      return error instanceof Error
+        ? error.message
+        : '문제 목록을 불러오지 못했습니다.'
+    }
+  })
+
+  const isLoading = problemListResource.isLoading
+  const errorMessage = problemListResource.errorMessage
+  const hasLoadedOnce = problemListResource.hasLoadedOnce
+  const appliedTitleFilter = computed(() => queryState.routeState.value.title)
+  const hasAppliedTitleFilter = computed(() => Boolean(appliedTitleFilter.value))
+  const appliedSortKey = computed(() => queryState.routeState.value.sortKey)
+  const appliedSortDirection = computed(() => queryState.routeState.value.sortDirection)
+  const appliedStateFilter = computed(() => queryState.routeState.value.stateFilter)
+  const currentPage = computed(() => queryState.routeState.value.page)
+  const problemCount = computed(() => problemListResource.data.value.totalProblemCount)
+  const totalPages = computed(() =>
+    Math.max(1, Math.ceil(problemCount.value / pageSize))
+  )
+  const pagedProblems = computed(() => problemListResource.data.value.problems)
+  const visibleRangeText = computed(() => {
+    if (!problemCount.value || !pagedProblems.value.length) {
+      return ''
+    }
+
+    const start = (currentPage.value - 1) * pageSize + 1
+    const end = start + pagedProblems.value.length - 1
+    return `${start}-${end} / ${problemCount.value}`
+  })
+  const emptyStateMessage = computed(() => {
+    if (hasAppliedTitleFilter.value || appliedStateFilter.value) {
+      return '조건에 맞는 문제가 없습니다.'
+    }
+
+    return '등록된 문제가 아직 없습니다.'
+  })
+  const paginationItems = computed(() =>
+    buildPaginationItems(currentPage.value, totalPages.value)
+  )
+
+  function buildProblemBrowseState(options = {}){
+    return {
+      title: options.title ?? appliedTitleFilter.value,
+      sortKey: options.sortKey ?? appliedSortKey.value,
+      sortDirection: options.sortDirection ?? appliedSortDirection.value,
+      stateFilter: options.stateFilter ?? appliedStateFilter.value,
+      page: Number(options.page ?? currentPage.value)
+    }
+  }
+
+  async function replaceProblemBrowseQuery(options = {}){
+    await queryState.navigate(buildProblemBrowseState(options))
+  }
+
+  async function loadProblems(){
+    await problemListResource.run({
+      requestOffset: (currentPage.value - 1) * pageSize,
+      bearerToken: authenticatedBearerToken.value,
+      title: appliedTitleFilter.value,
+      state: appliedStateFilter.value,
+      sort: appliedSortKey.value,
+      direction: appliedSortDirection.value
+    }, {
+      resetDataOnError: true
+    })
+  }
+
+  watch(appliedTitleFilter, () => {
+    queryState.syncFromRoute()
+  }, {
+    immediate: true
+  })
+
+  watch(currentPage, () => {
+    queryState.localState.pageJumpInput = ''
+  })
+
+  watch(totalPages, (pageCount) => {
+    if (currentPage.value > pageCount) {
+      void replaceProblemBrowseQuery({
+        page: pageCount
+      })
+    }
+  })
+
+  watch(
+    [
+      appliedTitleFilter,
+      appliedSortKey,
+      appliedSortDirection,
+      appliedStateFilter,
+      currentPage,
+      authenticatedBearerToken
+    ],
+    () => {
+      if (!hasLoadedOnce.value) {
         return
       }
 
-      errorMessage.value = error instanceof Error
-        ? error.message
-        : '문제 목록을 불러오지 못했습니다.'
-      problems.value = []
-      totalProblemCount.value = 0
-      hasLoadedOnce.value = true
-    } finally {
-      if (requestId === latestLoadRequestId) {
-        isLoading.value = false
-      }
+      void loadProblems()
     }
-  }
+  )
+
+  watch(showProblemStateFilters, (canShowFilters, couldShowFilters) => {
+    if (canShowFilters || !couldShowFilters || !route.query.state) {
+      return
+    }
+
+    void replaceProblemBrowseQuery({
+      stateFilter: '',
+      page: 1
+    })
+  })
 
   async function cycleSort(sortKey){
     const nextDirection = appliedSortKey.value === sortKey
@@ -360,13 +327,13 @@ export function useProblemBrowse(){
 
   async function submitSearch(){
     await replaceProblemBrowseQuery({
-      title: searchState.searchInput.trim(),
+      title: queryState.localState.searchInput.trim(),
       page: 1
     })
   }
 
   async function resetSearch(){
-    searchState.searchInput = ''
+    queryState.localState.searchInput = ''
 
     await replaceProblemBrowseQuery({
       title: '',
@@ -389,14 +356,14 @@ export function useProblemBrowse(){
   }
 
   async function submitPageJump(){
-    const parsedPage = Number.parseInt(searchState.pageJumpInput, 10)
+    const parsedPage = Number.parseInt(queryState.localState.pageJumpInput, 10)
 
     if (Number.isNaN(parsedPage)) {
       return
     }
 
     await goToPage(Math.min(Math.max(parsedPage, 1), totalPages.value))
-    searchState.pageJumpInput = ''
+    queryState.localState.pageJumpInput = ''
   }
 
   onMounted(async () => {
@@ -405,12 +372,12 @@ export function useProblemBrowse(){
     }
 
     if (!hasLoadedOnce.value) {
-      loadProblems()
+      void loadProblems()
     }
   })
 
   return {
-    searchState,
+    searchState: queryState.localState,
     isLoading,
     errorMessage,
     problemSortOptions,

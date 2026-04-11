@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 import {
   getProblemDetail,
@@ -6,6 +6,7 @@ import {
   getProblemTestcase,
   getProblemTestcases
 } from '@/api/problem'
+import { useAsyncResource } from '@/composables/useAsyncResource'
 import {
   normalizeProblemDetail,
   normalizeProblemItem,
@@ -23,35 +24,98 @@ export function useProblemTestcaseListResource({
   syncSelectedTestcase,
   resetSelectedTestcaseState
 }){
-  const isLoadingProblems = ref(true)
-  const isLoadingProblem = ref(false)
-  const isLoadingTestcases = ref(false)
-  const isLoadingSelectedTestcase = ref(false)
-  const listErrorMessage = ref('')
-  const problemErrorMessage = ref('')
-  const testcaseErrorMessage = ref('')
-  const selectedTestcaseErrorMessage = ref('')
-  const problems = ref([])
-  const problemDetail = ref(null)
-  const testcaseItems = ref([])
-  const selectedTestcase = ref(null)
+  const problemListResource = useAsyncResource({
+    initialData: [],
+    async load({ activeTitleSearch, activeProblemIdSearch }){
+      const response = await getProblemList({
+        title: activeTitleSearch,
+        bearerToken: authState.token || ''
+      })
+      const responseProblems = Array.isArray(response.problems) ? response.problems : []
+      const filteredProblems = activeProblemIdSearch == null
+        ? responseProblems
+        : responseProblems.filter((problem) => Number(problem.problem_id ?? 0) === activeProblemIdSearch)
+
+      return filteredProblems.map(normalizeProblemItem)
+    },
+    getErrorMessage(error){
+      return error instanceof Error
+        ? error.message
+        : '문제 목록을 불러오지 못했습니다.'
+    }
+  })
+  const problemDetailResource = useAsyncResource({
+    initialData: null,
+    async load(problemId){
+      const response = await getProblemDetail(problemId, {
+        bearerToken: authState.token || ''
+      })
+
+      return normalizeProblemDetail(response)
+    },
+    getErrorMessage(error){
+      return error instanceof Error
+        ? error.message
+        : '문제 정보를 불러오지 못했습니다.'
+    }
+  })
+  const testcaseListResource = useAsyncResource({
+    initialData: [],
+    async load(problemId){
+      const response = await getProblemTestcases(problemId, {
+        bearerToken: authState.token
+      })
+
+      return normalizeTestcaseList(response)
+    },
+    getErrorMessage(error){
+      return error instanceof Error
+        ? error.message
+        : '테스트케이스를 불러오지 못했습니다.'
+    }
+  })
+  const selectedTestcaseResource = useAsyncResource({
+    initialData: null,
+    async load({ problemId, testcaseOrder }){
+      const response = await getProblemTestcase(problemId, testcaseOrder, {
+        bearerToken: authState.token || ''
+      })
+
+      return normalizeTestcaseDetail(response)
+    },
+    getErrorMessage(error){
+      return error instanceof Error
+        ? error.message
+        : '테스트케이스 본문을 불러오지 못했습니다.'
+    }
+  })
+
+  const isLoadingProblems = problemListResource.isLoading
+  const isLoadingProblem = problemDetailResource.isLoading
+  const isLoadingTestcases = testcaseListResource.isLoading
+  const isLoadingSelectedTestcase = selectedTestcaseResource.isLoading
+  const listErrorMessage = problemListResource.errorMessage
+  const problemErrorMessage = problemDetailResource.errorMessage
+  const testcaseErrorMessage = testcaseListResource.errorMessage
+  const selectedTestcaseErrorMessage = selectedTestcaseResource.errorMessage
+  const problems = problemListResource.data
+  const problemDetail = problemDetailResource.data
+  const testcaseItems = testcaseListResource.data
+  const selectedTestcase = selectedTestcaseResource.data
 
   const problemCount = computed(() => problems.value.length)
   const testcaseCount = computed(() => testcaseItems.value.length)
 
-  let latestProblemListRequestId = 0
-  let latestProblemRequestId = 0
-  let latestTestcaseRequestId = 0
-  let latestSelectedTestcaseRequestId = 0
-
   function mergeProblemSummary(problemId, patch){
-    problems.value = problems.value.map((problem) =>
-      problem.problem_id === problemId
-        ? {
-          ...problem,
-          ...patch
-        }
-        : problem
+    problemListResource.mutate((problemItems) =>
+      problemItems.map((problem) =>
+        problem.problem_id === problemId
+          ? {
+            ...problem,
+            ...patch
+          }
+          : problem
+      )
     )
   }
 
@@ -74,212 +138,131 @@ export function useProblemTestcaseListResource({
   }
 
   function resetSelectedProblemResource(){
-    latestSelectedTestcaseRequestId += 1
-    problemDetail.value = null
-    testcaseItems.value = []
-    selectedTestcase.value = null
-    problemErrorMessage.value = ''
-    testcaseErrorMessage.value = ''
-    selectedTestcaseErrorMessage.value = ''
-    isLoadingSelectedTestcase.value = false
+    problemDetailResource.reset({
+      preserveHasLoadedOnce: true
+    })
+    testcaseListResource.reset({
+      preserveHasLoadedOnce: true
+    })
+    selectedTestcaseResource.reset({
+      preserveHasLoadedOnce: true
+    })
   }
 
   function clearSelectedTestcaseDetail(){
-    latestSelectedTestcaseRequestId += 1
-    selectedTestcase.value = null
-    isLoadingSelectedTestcase.value = false
-    selectedTestcaseErrorMessage.value = ''
+    selectedTestcaseResource.reset({
+      preserveHasLoadedOnce: true
+    })
   }
 
   async function loadProblems(options = {}){
-    const requestId = ++latestProblemListRequestId
     const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
-    isLoadingProblems.value = true
-    listErrorMessage.value = ''
+    const activeTitleSearch = routeSearchMode.value === 'title'
+      ? routeTitleSearch.value
+      : ''
+    const activeProblemIdSearch = routeSearchMode.value === 'problem-id'
+      ? routeProblemIdSearch.value
+      : null
 
-    try {
-      const activeTitleSearch = routeSearchMode.value === 'title'
-        ? routeTitleSearch.value
-        : ''
-      const activeProblemIdSearch = routeSearchMode.value === 'problem-id'
-        ? routeProblemIdSearch.value
-        : null
-      const response = await getProblemList({
-        title: activeTitleSearch,
-        bearerToken: authState.token || ''
-      })
+    const result = await problemListResource.run({
+      activeTitleSearch,
+      activeProblemIdSearch
+    }, {
+      resetDataOnError: true
+    })
 
-      if (requestId !== latestProblemListRequestId) {
-        return
+    if (result.status !== 'success') {
+      return
+    }
+
+    if (!problems.value.length) {
+      if (selectedProblemId.value > 0) {
+        await replaceProblemRoute(0)
+      } else {
+        resetSelectedProblemResource()
       }
+      return
+    }
 
-      const responseProblems = Array.isArray(response.problems) ? response.problems : []
-      const filteredProblems = activeProblemIdSearch == null
-        ? responseProblems
-        : responseProblems.filter((problem) => Number(problem.problem_id ?? 0) === activeProblemIdSearch)
-
-      problems.value = filteredProblems.map(normalizeProblemItem)
-
-      if (!problems.value.length) {
-        if (selectedProblemId.value > 0) {
-          await replaceProblemRoute(0)
-        } else {
-          problemDetail.value = null
-          testcaseItems.value = []
-          problemErrorMessage.value = ''
-          testcaseErrorMessage.value = ''
-          isLoadingProblem.value = false
-          isLoadingTestcases.value = false
-        }
-        return
-      }
-
-      const nextProblemId = problems.value.some((problem) => problem.problem_id === preferredProblemId)
-        ? preferredProblemId
-        : problems.value[0].problem_id
-      if (nextProblemId > 0 && nextProblemId !== selectedProblemId.value) {
-        await replaceProblemRoute(nextProblemId)
-      }
-    } catch (error) {
-      if (requestId !== latestProblemListRequestId) {
-        return
-      }
-
-      problems.value = []
-      listErrorMessage.value = error instanceof Error
-        ? error.message
-        : '문제 목록을 불러오지 못했습니다.'
-    } finally {
-      if (requestId === latestProblemListRequestId) {
-        isLoadingProblems.value = false
-      }
+    const nextProblemId = problems.value.some((problem) => problem.problem_id === preferredProblemId)
+      ? preferredProblemId
+      : problems.value[0].problem_id
+    if (nextProblemId > 0 && nextProblemId !== selectedProblemId.value) {
+      await replaceProblemRoute(nextProblemId)
     }
   }
 
   async function loadProblemDetail(){
-    const requestId = ++latestProblemRequestId
-    isLoadingProblem.value = true
-    problemErrorMessage.value = ''
-
     if (selectedProblemId.value <= 0) {
-      problemDetail.value = null
-      isLoadingProblem.value = false
+      problemDetailResource.reset({
+        preserveHasLoadedOnce: true
+      })
       return
     }
 
-    try {
-      const response = await getProblemDetail(selectedProblemId.value, {
-        bearerToken: authState.token || ''
-      })
+    const result = await problemDetailResource.run(selectedProblemId.value, {
+      resetDataOnRun: true,
+      resetDataOnError: true
+    })
 
-      if (requestId !== latestProblemRequestId) {
-        return
-      }
-
-      problemDetail.value = normalizeProblemDetail(response)
-      mergeProblemSummary(selectedProblemId.value, {
-        title: problemDetail.value.title,
-        version: problemDetail.value.version
-      })
-    } catch (error) {
-      if (requestId !== latestProblemRequestId) {
-        return
-      }
-
-      problemDetail.value = null
-      problemErrorMessage.value = error instanceof Error
-        ? error.message
-        : '문제 정보를 불러오지 못했습니다.'
-    } finally {
-      if (requestId === latestProblemRequestId) {
-        isLoadingProblem.value = false
-      }
+    if (result.status !== 'success') {
+      return
     }
+
+    mergeProblemSummary(selectedProblemId.value, {
+      title: result.data.title,
+      version: result.data.version
+    })
   }
 
   async function loadSelectedTestcaseDetail(testcaseOrder){
-    const requestId = ++latestSelectedTestcaseRequestId
-    isLoadingSelectedTestcase.value = true
-    selectedTestcaseErrorMessage.value = ''
-    selectedTestcase.value = null
+    const result = await selectedTestcaseResource.run({
+      problemId: selectedProblemId.value,
+      testcaseOrder
+    }, {
+      resetDataOnRun: true,
+      resetDataOnError: true
+    })
 
-    try {
-      const response = await getProblemTestcase(
-        selectedProblemId.value,
-        testcaseOrder,
-        {
-          bearerToken: authState.token || ''
-        }
-      )
-
-      if (requestId !== latestSelectedTestcaseRequestId) {
-        return
-      }
-
-      selectedTestcase.value = normalizeTestcaseDetail(response)
-    } catch (error) {
-      if (requestId !== latestSelectedTestcaseRequestId) {
-        return
-      }
-
-      selectedTestcase.value = null
-      selectedTestcaseErrorMessage.value = error instanceof Error
-        ? error.message
-        : '테스트케이스 본문을 불러오지 못했습니다.'
-    } finally {
-      if (requestId === latestSelectedTestcaseRequestId) {
-        isLoadingSelectedTestcase.value = false
-      }
+    if (result.status !== 'success') {
+      return
     }
   }
 
   async function loadTestcases(preferredOrder){
-    const requestId = ++latestTestcaseRequestId
-    isLoadingTestcases.value = true
-    testcaseErrorMessage.value = ''
-
     if (!authState.token || selectedProblemId.value <= 0) {
-      testcaseItems.value = []
-      selectedTestcase.value = null
-      selectedTestcaseErrorMessage.value = ''
-      isLoadingTestcases.value = false
+      testcaseListResource.reset({
+        preserveHasLoadedOnce: true
+      })
+      selectedTestcaseResource.reset({
+        preserveHasLoadedOnce: true
+      })
       return
     }
 
-    try {
-      const response = await getProblemTestcases(selectedProblemId.value, {
-        bearerToken: authState.token
+    const result = await testcaseListResource.run(selectedProblemId.value, {
+      resetDataOnError: true
+    })
+
+    if (result.status !== 'success') {
+      selectedTestcaseResource.reset({
+        preserveHasLoadedOnce: true
       })
-
-      if (requestId !== latestTestcaseRequestId) {
-        return
-      }
-
-      testcaseItems.value = normalizeTestcaseList(response)
-      syncSelectedTestcase(preferredOrder)
-    } catch (error) {
-      if (requestId !== latestTestcaseRequestId) {
-        return
-      }
-
-      testcaseItems.value = []
-      selectedTestcase.value = null
-      selectedTestcaseErrorMessage.value = ''
-      testcaseErrorMessage.value = error instanceof Error
-        ? error.message
-        : '테스트케이스를 불러오지 못했습니다.'
       resetSelectedTestcaseState()
-    } finally {
-      if (requestId === latestTestcaseRequestId) {
-        isLoadingTestcases.value = false
-      }
+      return
     }
+
+    syncSelectedTestcase(preferredOrder)
   }
 
   async function loadSelectedProblemData(){
     if (selectedProblemId.value <= 0) {
-      isLoadingProblem.value = false
-      isLoadingTestcases.value = false
+      problemDetailResource.reset({
+        preserveHasLoadedOnce: true
+      })
+      testcaseListResource.reset({
+        preserveHasLoadedOnce: true
+      })
       return
     }
 

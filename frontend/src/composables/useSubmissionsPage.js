@@ -141,31 +141,6 @@ export function useSubmissionsPage(){
 
   watch(
     [
-      polling.pollingSubmissionIds,
-      polling.isDocumentVisible,
-      listResource.isLoading,
-      listResource.errorMessage
-    ],
-    () => {
-      polling.syncSubmissionPolling()
-    },
-    { immediate: true }
-  )
-
-  watch(
-    [
-      polling.shouldPollSubmissionHistory,
-      dialogs.latestHistoryStatus,
-      dialogs.activeHistorySubmissionId
-    ],
-    () => {
-      polling.syncHistoryPolling()
-    },
-    { immediate: true }
-  )
-
-  watch(
-    [
       () => route.name,
       query.numericProblemId,
       query.appliedUserIdFilter,
