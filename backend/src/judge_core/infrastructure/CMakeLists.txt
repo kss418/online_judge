@@ -6,6 +6,7 @@ target_sources(lib
         launch_planner.cpp
         problem_lock_registry.cpp
         build_dispatcher.cpp
+        execution_failure_classifier.cpp
         program_executor.cpp
         nsjail_util.cpp
         sandbox_runner.cpp

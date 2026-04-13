@@ -2,6 +2,7 @@ target_sources(lib
     PRIVATE
         expectation_reader.cpp
         judge_evaluator.cpp
+        submission_completion_policy.cpp
         submission_decision.cpp
         submission_builder.cpp
         submission_lifecycle.cpp

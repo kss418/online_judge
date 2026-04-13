@@ -1,7 +1,7 @@
 #include "judge_core/infrastructure/testcase_runner.hpp"
 
+#include "judge_core/infrastructure/execution_failure_classifier.hpp"
 #include "judge_core/infrastructure/nsjail_util.hpp"
-#include "judge_core/policy/execution_failure_classifier.hpp"
 
 #include <utility>
 #include <vector>

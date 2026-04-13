@@ -1,6 +1,5 @@
 #include "judge_core/policy/judge_policy.hpp"
 
-#include "judge_core/policy/execution_failure_classifier.hpp"
 #include "judge_core/policy/checker.hpp"
 
 #include <optional>
@@ -9,6 +8,23 @@
 #include <vector>
 
 namespace{
+    judge_result to_judge_result(
+        execution_report::execution_failure_kind failure_kind_value
+    ){
+        switch(failure_kind_value){
+            case execution_report::execution_failure_kind::time_limit_exceeded:
+                return judge_result::time_limit_exceeded;
+            case execution_report::execution_failure_kind::output_exceeded:
+                return judge_result::output_exceeded;
+            case execution_report::execution_failure_kind::memory_limit_exceeded:
+                return judge_result::memory_limit_exceeded;
+            case execution_report::execution_failure_kind::runtime_error:
+                return judge_result::runtime_error;
+        }
+
+        return judge_result::runtime_error;
+    }
+
     std::string make_failed_testcase_message(
         execution_report::execution_failure_kind failure_kind_value,
         std::int32_t testcase_index
@@ -88,7 +104,7 @@ std::expected<submission_verdict_summary, judge_error> judge_policy::check_resul
         const auto execution_failure_opt = testcase_execution_value.failure_opt;
         if(execution_failure_opt.has_value()){
             return make_failed_testcase_summary(
-                execution_failure_classifier::to_judge_result(*execution_failure_opt),
+                to_judge_result(*execution_failure_opt),
                 testcase_index,
                 make_failed_testcase_message(*execution_failure_opt, testcase_index),
                 testcase_execution_value.stderr_text

@@ -4,6 +4,7 @@
 #include "error/judge_error.hpp"
 #include "judge_core/application/judge_evaluator.hpp"
 #include "judge_core/application/submission_builder.hpp"
+#include "judge_core/application/submission_completion_policy.hpp"
 #include "judge_core/application/submission_lifecycle.hpp"
 #include "judge_core/application/workspace_manager.hpp"
 #include "judge_core/gateway/judge_submission_facade.hpp"
@@ -52,6 +53,7 @@ private:
     submission_lifecycle submission_lifecycle_;
     testcase_snapshot_facade testcase_snapshot_facade_;
     submission_builder submission_builder_;
+    submission_completion_policy submission_completion_policy_;
     program_executor program_executor_;
     judge_evaluator judge_evaluator_;
     workspace_manager workspace_manager_;
