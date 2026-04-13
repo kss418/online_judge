@@ -1,9 +1,9 @@
 #include "db_service/problem_core_service.hpp"
 #include "db_service/db_service_util.hpp"
+#include "db_service/problem_version_publish_service.hpp"
 #include "dto/problem_content_dto.hpp"
 #include "db_repository/problem_content_repository.hpp"
 #include "db_repository/problem_core_repository.hpp"
-#include "db_repository/problem_snapshot_repository.hpp"
 #include "db_repository/problem_statistics_repository.hpp"
 
 #include <utility>
@@ -237,7 +237,7 @@ std::expected<problem_dto::created, service_error> problem_core_service::create_
             }
 
             const auto publish_snapshot_exp =
-                problem_snapshot_repository::publish_current_snapshot(
+                problem_version_publish_service::publish_current_snapshot(
                     transaction,
                     problem_reference_value
                 );
@@ -271,21 +271,13 @@ std::expected<problem_dto::mutation_result, service_error> problem_core_service:
                 return std::unexpected(set_title_exp.error());
             }
 
-            const auto version_exp = problem_core_repository::increase_version(
-                transaction,
-                problem_reference_value
-            );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
-            const auto publish_snapshot_exp =
-                problem_snapshot_repository::publish_current_snapshot(
+            const auto version_exp =
+                problem_version_publish_service::increase_version_and_publish_current_snapshot(
                     transaction,
                     problem_reference_value
                 );
-            if(!publish_snapshot_exp){
-                return std::unexpected(publish_snapshot_exp.error());
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
             }
 
             return make_mutation_result(

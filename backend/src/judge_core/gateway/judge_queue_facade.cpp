@@ -1,6 +1,6 @@
 #include "judge_core/gateway/judge_queue_facade.hpp"
 
-#include "db_service/submission_service.hpp"
+#include "db_service/submission_judge_service.hpp"
 
 #include <utility>
 
@@ -52,7 +52,7 @@ judge_queue_facade::try_lease_next(std::chrono::seconds lease_duration){
     submission_internal_dto::lease_request lease_request_value;
     lease_request_value.lease_duration = lease_duration;
 
-    auto leased_submission_opt_exp = submission_service::lease_submission(
+    auto leased_submission_opt_exp = submission_judge_service::lease_submission(
         lease_db_connection_,
         lease_request_value
     );

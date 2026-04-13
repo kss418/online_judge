@@ -1,6 +1,6 @@
 #include "judge_core/gateway/judge_submission_facade.hpp"
 
-#include "db_service/submission_service.hpp"
+#include "db_service/submission_judge_service.hpp"
 
 #include <utility>
 
@@ -33,7 +33,7 @@ judge_submission_facade::~judge_submission_facade() = default;
 std::expected<void, judge_error> judge_submission_facade::mark_judging(
     const submission_domain_dto::leased_submission& leased_submission_value
 ){
-    const auto mark_judging_exp = submission_service::mark_judging(
+    const auto mark_judging_exp = submission_judge_service::mark_judging(
         db_connection_,
         leased_submission_value
     );
@@ -47,7 +47,7 @@ std::expected<void, judge_error> judge_submission_facade::mark_judging(
 std::expected<void, judge_error> judge_submission_facade::finalize_submission(
     const submission_internal_dto::finalize_request& finalize_request_value
 ){
-    const auto finalize_submission_exp = submission_service::finalize_submission(
+    const auto finalize_submission_exp = submission_judge_service::finalize_submission(
         db_connection_,
         finalize_request_value
     );
@@ -63,7 +63,7 @@ std::expected<void, judge_error> judge_submission_facade::requeue_submission_imm
     std::optional<std::string> reason_opt
 ){
     const auto requeue_submission_exp =
-        submission_service::requeue_submission_immediately(
+        submission_judge_service::requeue_submission_immediately(
             db_connection_,
             leased_submission_value,
             std::move(reason_opt)

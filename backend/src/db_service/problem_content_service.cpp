@@ -1,8 +1,8 @@
 #include "db_service/problem_content_service.hpp"
 #include "db_service/db_service_util.hpp"
+#include "db_service/problem_version_publish_service.hpp"
 #include "db_repository/problem_content_repository.hpp"
 #include "db_repository/problem_core_repository.hpp"
-#include "db_repository/problem_snapshot_repository.hpp"
 
 #include <utility>
 
@@ -66,21 +66,13 @@ std::expected<problem_dto::mutation_result, service_error> problem_content_servi
                 return std::unexpected(set_limits_exp.error());
             }
 
-            const auto version_exp = problem_core_repository::increase_version(
-                transaction,
-                problem_reference_value
-            );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
-            const auto publish_snapshot_exp =
-                problem_snapshot_repository::publish_current_snapshot(
+            const auto version_exp =
+                problem_version_publish_service::increase_version_and_publish_current_snapshot(
                     transaction,
                     problem_reference_value
                 );
-            if(!publish_snapshot_exp){
-                return std::unexpected(publish_snapshot_exp.error());
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
             }
 
             return make_mutation_result(
@@ -126,21 +118,13 @@ std::expected<problem_dto::mutation_result, service_error> problem_content_servi
                 return std::unexpected(set_statement_exp.error());
             }
 
-            const auto version_exp = problem_core_repository::increase_version(
-                transaction,
-                problem_reference_value
-            );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
-            const auto publish_snapshot_exp =
-                problem_snapshot_repository::publish_current_snapshot(
+            const auto version_exp =
+                problem_version_publish_service::increase_version_and_publish_current_snapshot(
                     transaction,
                     problem_reference_value
                 );
-            if(!publish_snapshot_exp){
-                return std::unexpected(publish_snapshot_exp.error());
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
             }
 
             return make_mutation_result(
@@ -242,21 +226,13 @@ problem_content_service::set_sample_and_get(
             problem_dto::reference problem_reference_value{
                 sample_reference_value.problem_id
             };
-            const auto version_exp = problem_core_repository::increase_version(
-                transaction,
-                problem_reference_value
-            );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
-            const auto publish_snapshot_exp =
-                problem_snapshot_repository::publish_current_snapshot(
+            const auto version_exp =
+                problem_version_publish_service::increase_version_and_publish_current_snapshot(
                     transaction,
                     problem_reference_value
                 );
-            if(!publish_snapshot_exp){
-                return std::unexpected(publish_snapshot_exp.error());
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
             }
 
             const auto updated_sample_exp = problem_content_repository::get_sample(
@@ -310,21 +286,13 @@ std::expected<problem_dto::mutation_result, service_error> problem_content_servi
                 return std::unexpected(delete_sample_exp.error());
             }
 
-            const auto version_exp = problem_core_repository::increase_version(
-                transaction,
-                problem_reference_value
-            );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
-            const auto publish_snapshot_exp =
-                problem_snapshot_repository::publish_current_snapshot(
+            const auto version_exp =
+                problem_version_publish_service::increase_version_and_publish_current_snapshot(
                     transaction,
                     problem_reference_value
                 );
-            if(!publish_snapshot_exp){
-                return std::unexpected(publish_snapshot_exp.error());
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
             }
 
             return make_mutation_result(

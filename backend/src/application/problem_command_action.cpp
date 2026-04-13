@@ -1,7 +1,7 @@
 #include "application/problem_command_action.hpp"
 
 #include "db_service/problem_core_service.hpp"
-#include "db_service/submission_service.hpp"
+#include "db_service/submission_command_service.hpp"
 
 std::expected<problem_dto::created, service_error> create_problem_action::execute(
     db_connection& connection,
@@ -32,5 +32,8 @@ std::expected<void, service_error> rejudge_problem_action::execute(
     db_connection& connection,
     const command& command_value
 ){
-    return submission_service::rejudge_problem(connection, command_value.problem_id);
+    return submission_command_service::rejudge_problem(
+        connection,
+        command_value.problem_id
+    );
 }

@@ -1,9 +1,10 @@
-#include "db_service/testcase_service.hpp"
+#include "db_service/testcase_mutation_service.hpp"
+
 #include "db_service/db_service_util.hpp"
+#include "db_service/problem_version_publish_service.hpp"
 
 #include "db_repository/problem_content_repository.hpp"
 #include "db_repository/problem_core_repository.hpp"
-#include "db_repository/problem_snapshot_repository.hpp"
 #include "db_repository/testcase_repository.hpp"
 
 namespace{
@@ -46,7 +47,8 @@ namespace{
     }
 }
 
-std::expected<problem_dto::testcase_mutation_result, service_error> testcase_service::create_testcase(
+std::expected<problem_dto::testcase_mutation_result, service_error>
+testcase_mutation_service::create_testcase(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value,
     const problem_dto::testcase& testcase_value
@@ -83,21 +85,13 @@ std::expected<problem_dto::testcase_mutation_result, service_error> testcase_ser
                 return std::unexpected(created_testcase_exp.error());
             }
 
-            const auto version_exp = problem_core_repository::increase_version(
-                transaction,
-                problem_reference_value
-            );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
-            const auto publish_snapshot_exp =
-                problem_snapshot_repository::publish_current_snapshot(
+            const auto version_exp =
+                problem_version_publish_service::increase_version_and_publish_current_snapshot(
                     transaction,
                     problem_reference_value
                 );
-            if(!publish_snapshot_exp){
-                return std::unexpected(publish_snapshot_exp.error());
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
             }
 
             return make_testcase_mutation_result(
@@ -109,73 +103,8 @@ std::expected<problem_dto::testcase_mutation_result, service_error> testcase_ser
     );
 }
 
-std::expected<problem_dto::testcase, service_error> testcase_service::get_testcase(
-    db_connection& connection,
-    const problem_dto::testcase_ref& testcase_reference_value
-){
-    return db_service_util::with_retry_service_read_transaction(
-        connection,
-        [&](pqxx::read_transaction& transaction)
-            -> std::expected<problem_dto::testcase, service_error> {
-            return testcase_repository::get_testcase(
-                transaction,
-                testcase_reference_value
-            );
-        }
-    );
-}
-
-std::expected<problem_dto::testcase_count, service_error> testcase_service::get_testcase_count(
-    db_connection& connection,
-    const problem_dto::reference& problem_reference_value
-){
-    return db_service_util::with_retry_service_read_transaction(
-        connection,
-        [&](pqxx::read_transaction& transaction)
-            -> std::expected<problem_dto::testcase_count, service_error> {
-            return testcase_repository::get_testcase_count(
-                transaction,
-                problem_reference_value
-            );
-        }
-    );
-}
-
-std::expected<std::vector<problem_dto::testcase>, service_error> testcase_service::list_testcases(
-    db_connection& connection,
-    const problem_dto::reference& problem_reference_value
-){
-    return db_service_util::with_retry_service_read_transaction(
-        connection,
-        [&](pqxx::read_transaction& transaction)
-            -> std::expected<std::vector<problem_dto::testcase>, service_error> {
-            return testcase_repository::list_testcases(
-                transaction,
-                problem_reference_value
-            );
-        }
-    );
-}
-
-std::expected<std::vector<problem_dto::testcase_summary>, service_error>
-testcase_service::list_testcase_summaries(
-    db_connection& connection,
-    const problem_dto::reference& problem_reference_value
-){
-    return db_service_util::with_retry_service_read_transaction(
-        connection,
-        [&](pqxx::read_transaction& transaction)
-            -> std::expected<std::vector<problem_dto::testcase_summary>, service_error> {
-            return testcase_repository::list_testcase_summaries(
-                transaction,
-                problem_reference_value
-            );
-        }
-    );
-}
-
 std::expected<problem_dto::testcase_mutation_result, service_error>
-testcase_service::set_testcase_and_get(
+testcase_mutation_service::set_testcase_and_get(
     db_connection& connection,
     const problem_dto::testcase_ref& testcase_reference_value,
     const problem_dto::testcase& testcase_value
@@ -196,21 +125,13 @@ testcase_service::set_testcase_and_get(
             problem_dto::reference problem_reference_value{
                 testcase_reference_value.problem_id
             };
-            const auto version_exp = problem_core_repository::increase_version(
-                transaction,
-                problem_reference_value
-            );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
-            const auto publish_snapshot_exp =
-                problem_snapshot_repository::publish_current_snapshot(
+            const auto version_exp =
+                problem_version_publish_service::increase_version_and_publish_current_snapshot(
                     transaction,
                     problem_reference_value
                 );
-            if(!publish_snapshot_exp){
-                return std::unexpected(publish_snapshot_exp.error());
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
             }
 
             const auto updated_testcase_exp = testcase_repository::get_testcase(
@@ -230,7 +151,7 @@ testcase_service::set_testcase_and_get(
     );
 }
 
-std::expected<problem_dto::mutation_result, service_error> testcase_service::move_testcase(
+std::expected<problem_dto::mutation_result, service_error> testcase_mutation_service::move_testcase(
     db_connection& connection,
     const problem_dto::testcase_ref& testcase_reference_value,
     std::int32_t target_testcase_order
@@ -285,21 +206,13 @@ std::expected<problem_dto::mutation_result, service_error> testcase_service::mov
                 return std::unexpected(move_testcase_exp.error());
             }
 
-            const auto version_exp = problem_core_repository::increase_version(
-                transaction,
-                problem_reference_value
-            );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
-            const auto publish_snapshot_exp =
-                problem_snapshot_repository::publish_current_snapshot(
+            const auto version_exp =
+                problem_version_publish_service::increase_version_and_publish_current_snapshot(
                     transaction,
                     problem_reference_value
                 );
-            if(!publish_snapshot_exp){
-                return std::unexpected(publish_snapshot_exp.error());
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
             }
 
             return make_mutation_result(
@@ -310,7 +223,7 @@ std::expected<problem_dto::mutation_result, service_error> testcase_service::mov
     );
 }
 
-std::expected<problem_dto::mutation_result, service_error> testcase_service::delete_testcase(
+std::expected<problem_dto::mutation_result, service_error> testcase_mutation_service::delete_testcase(
     db_connection& connection,
     const problem_dto::testcase_ref& testcase_reference_value
 ){
@@ -330,21 +243,13 @@ std::expected<problem_dto::mutation_result, service_error> testcase_service::del
             problem_dto::reference problem_reference_value{
                 testcase_reference_value.problem_id
             };
-            const auto version_exp = problem_core_repository::increase_version(
-                transaction,
-                problem_reference_value
-            );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
-            const auto publish_snapshot_exp =
-                problem_snapshot_repository::publish_current_snapshot(
+            const auto version_exp =
+                problem_version_publish_service::increase_version_and_publish_current_snapshot(
                     transaction,
                     problem_reference_value
                 );
-            if(!publish_snapshot_exp){
-                return std::unexpected(publish_snapshot_exp.error());
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
             }
 
             return make_mutation_result(
@@ -355,7 +260,8 @@ std::expected<problem_dto::mutation_result, service_error> testcase_service::del
     );
 }
 
-std::expected<problem_dto::mutation_result, service_error> testcase_service::delete_all_testcases(
+std::expected<problem_dto::mutation_result, service_error>
+testcase_mutation_service::delete_all_testcases(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value
 ){
@@ -404,21 +310,13 @@ std::expected<problem_dto::mutation_result, service_error> testcase_service::del
                 return std::unexpected(clear_testcase_count_exp.error());
             }
 
-            const auto version_exp = problem_core_repository::increase_version(
-                transaction,
-                problem_reference_value
-            );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
-            const auto publish_snapshot_exp =
-                problem_snapshot_repository::publish_current_snapshot(
+            const auto version_exp =
+                problem_version_publish_service::increase_version_and_publish_current_snapshot(
                     transaction,
                     problem_reference_value
                 );
-            if(!publish_snapshot_exp){
-                return std::unexpected(publish_snapshot_exp.error());
+            if(!version_exp){
+                return std::unexpected(version_exp.error());
             }
 
             return make_mutation_result(
@@ -430,7 +328,7 @@ std::expected<problem_dto::mutation_result, service_error> testcase_service::del
 }
 
 std::expected<problem_dto::testcase_count_mutation_result, service_error>
-testcase_service::replace_testcases(
+testcase_mutation_service::replace_testcases(
     db_connection& connection,
     const problem_dto::reference& problem_reference_value,
     const std::vector<problem_dto::testcase>& testcase_values
@@ -510,21 +408,13 @@ testcase_service::replace_testcases(
             }
 
             if(current_testcase_count_exp->testcase_count > 0 || !testcase_values.empty()){
-                const auto version_exp = problem_core_repository::increase_version(
-                    transaction,
-                    problem_reference_value
-                );
-                if(!version_exp){
-                    return std::unexpected(version_exp.error());
-                }
-
-                const auto publish_snapshot_exp =
-                    problem_snapshot_repository::publish_current_snapshot(
+                const auto version_exp =
+                    problem_version_publish_service::increase_version_and_publish_current_snapshot(
                         transaction,
                         problem_reference_value
                     );
-                if(!publish_snapshot_exp){
-                    return std::unexpected(publish_snapshot_exp.error());
+                if(!version_exp){
+                    return std::unexpected(version_exp.error());
                 }
 
                 return make_testcase_count_mutation_result(

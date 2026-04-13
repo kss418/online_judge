@@ -1,7 +1,7 @@
 #include "application/create_submission_action.hpp"
 
 #include "db_service/problem_core_service.hpp"
-#include "db_service/submission_service.hpp"
+#include "db_service/submission_command_service.hpp"
 
 #include <utility>
 
@@ -45,7 +45,7 @@ create_submission_action::execute(
         ));
     }
 
-    const auto create_submission_exp = submission_service::create_submission(
+    const auto create_submission_exp = submission_command_service::create_submission(
         connection,
         command_value
     );
