@@ -9,6 +9,7 @@ archive_paths=(
     "backend/scripts"
     "backend/src"
     "backend/include"
+    "backend/docs"
     "frontend/src"
     "scripts"
 )
@@ -21,6 +22,7 @@ Creates a zip archive containing:
   - backend/scripts
   - backend/src
   - backend/include
+  - backend/docs
   - frontend/src
   - scripts
 
