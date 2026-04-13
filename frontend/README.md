@@ -75,6 +75,8 @@ The script:
 - creates a Cloudflare quick tunnel for `http://127.0.0.1:5173`
 - passes the tunnel host into Vite `allowedHosts` automatically at runtime
 
+Internally, `dev_tunnel.sh` now keeps orchestration in one place and sources helpers from `scripts/lib/` for env loading, frontend runtime validation, judge runtime validation, and process supervision.
+
 You can stop everything with `Ctrl+C`.
 
 If you want `dev_tunnel.sh` to rebuild the backend before starting, run:
