@@ -160,6 +160,12 @@ boost::json::object problem_json_serializer::make_detail_object(
     );
 }
 
+boost::json::object problem_json_serializer::make_limits_object(
+    const problem_content_dto::limits& limits_value
+){
+    return ::make_limits_object(limits_value);
+}
+
 boost::json::object problem_json_serializer::make_detail_object(
     const problem_dto::reference& problem_reference_value,
     const problem_dto::title& title_value,

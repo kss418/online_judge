@@ -15,6 +15,7 @@ add_subdirectory(query_builder)
 add_subdirectory(http_handler)
 add_subdirectory(http_router)
 add_subdirectory(http_core)
+add_subdirectory(http_endpoint)
 add_subdirectory(http_guard)
 add_subdirectory(judge_core)
 

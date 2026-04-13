@@ -1,11 +1,16 @@
 target_sources(lib
     PRIVATE
+        auth_command_action.cpp
         create_submission_action.cpp
         get_problem_detail_query.cpp
         get_public_user_list_query.cpp
+        get_submission_status_batch_query.cpp
         get_submission_detail_query.cpp
         get_submission_history_query.cpp
         get_submission_source_query.cpp
+        get_system_status_query.cpp
+        get_user_list_query.cpp
+        get_user_submission_ban_status_query.cpp
         get_user_submission_statistics_query.cpp
         get_user_summary_by_login_id_query.cpp
         get_user_summary_query.cpp
@@ -13,7 +18,14 @@ target_sources(lib
         list_submissions_query.cpp
         list_user_solved_problems_query.cpp
         list_user_wrong_problems_query.cpp
+        problem_command_action.cpp
+        problem_content_query.cpp
+        problem_sample_action.cpp
         replace_testcases_action.cpp
         set_problem_limits_action.cpp
         set_problem_statement_action.cpp
+        submission_command_action.cpp
+        testcase_action.cpp
+        testcase_query.cpp
+        user_command_action.cpp
 )

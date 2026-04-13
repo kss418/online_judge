@@ -8,47 +8,32 @@
 #include <utility>
 
 std::expected<std::shared_ptr<http_server>, http_server_error> http_server::create(
-    const http_runtime_config& runtime_config
+    const http_runtime_config& runtime_config,
+    http_server_dependencies dependencies
 ){
-    auto db_config_exp = db_connection::load_db_connection_config();
-    if(!db_config_exp){
-        return std::unexpected(http_server_error(db_config_exp.error()));
-    }
-
-    auto db_connection_pool_exp = db_connection_pool::create(
-        *db_config_exp,
-        runtime_config.db_pool_size
-    );
-    if(!db_connection_pool_exp){
-        return std::unexpected(http_server_error(db_connection_pool_exp.error()));
-    }
-
-    auto handler_worker_pool_exp = worker_pool::create(
-        runtime_config.handler_worker_count,
-        runtime_config.handler_queue_limit_opt
-    );
-    if(!handler_worker_pool_exp){
-        return std::unexpected(http_server_error(handler_worker_pool_exp.error()));
+    if(!dependencies.handler_worker_pool){
+        return std::unexpected(http_server_error{
+            http_server_error_code::invalid_configuration,
+            "handler worker pool is required"
+        });
     }
 
     return std::shared_ptr<http_server>(
         new http_server(
             runtime_config,
-            std::move(*db_connection_pool_exp),
-            std::move(*handler_worker_pool_exp)
+            std::move(dependencies)
         )
     );
 }
 
 http_server::http_server(
     http_runtime_config runtime_config,
-    db_connection_pool&& db_connection_pool,
-    std::unique_ptr<worker_pool> handler_worker_pool
+    http_server_dependencies dependencies
 ) :
     runtime_config_(std::move(runtime_config)),
-    db_connection_pool_(std::move(db_connection_pool)),
-    handler_worker_pool_(std::move(handler_worker_pool)),
-    request_observer_(),
+    db_connection_pool_(std::move(dependencies.db_connection_pool_value)),
+    handler_worker_pool_(std::move(dependencies.handler_worker_pool)),
+    request_observer_(std::move(dependencies.request_observer_ptr)),
     http_runtime_status_provider_(
         db_connection_pool_,
         *handler_worker_pool_,
@@ -57,7 +42,7 @@ http_server::http_server(
     http_dispatcher_(
         db_connection_pool_,
         runtime_config_.db_acquire_timeout_opt,
-        &request_observer_,
+        request_observer_.get(),
         &http_runtime_status_provider_
     ){}
 
@@ -114,10 +99,12 @@ void http_server::observe_request_completion(
     request_context context(
         request,
         std::string{request_id},
-        &request_observer_,
+        request_observer_.get(),
         &http_runtime_status_provider_
     );
-    request_observer_.on_request_complete(context, response, duration);
+    if(request_observer_){
+        request_observer_->on_request_complete(context, response, duration);
+    }
 }
 
 const http_runtime_config& http_server::runtime_config() const{

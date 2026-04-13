@@ -5,6 +5,7 @@
 #include "error/http_server_error.hpp"
 #include "http_core/http_dispatcher.hpp"
 #include "http_core/http_runtime_config.hpp"
+#include "http_core/http_server_dependencies.hpp"
 #include "http_core/http_runtime_status_provider.hpp"
 #include "http_core/request_observer.hpp"
 
@@ -30,7 +31,8 @@ public:
     http_server& operator=(http_server&&) noexcept = delete;
 
     static std::expected<std::shared_ptr<http_server>, http_server_error> create(
-        const http_runtime_config& runtime_config
+        const http_runtime_config& runtime_config,
+        http_server_dependencies dependencies
     );
     void async_handle(
         std::shared_ptr<request_type> request_ptr,
@@ -53,13 +55,12 @@ public:
 private:
     explicit http_server(
         http_runtime_config runtime_config,
-        db_connection_pool&& db_connection_pool,
-        std::unique_ptr<worker_pool> handler_worker_pool
+        http_server_dependencies dependencies
     );
     http_runtime_config runtime_config_;
     db_connection_pool db_connection_pool_;
     std::unique_ptr<worker_pool> handler_worker_pool_;
-    logging_request_observer request_observer_;
+    std::unique_ptr<request_observer> request_observer_;
     http_runtime_status_provider http_runtime_status_provider_;
     http_dispatcher http_dispatcher_;
 };

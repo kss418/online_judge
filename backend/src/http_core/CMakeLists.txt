@@ -7,6 +7,7 @@ target_sources(lib
         request_parser.cpp
         request_observer.cpp
         http_server.cpp
+        http_server_bootstrap.cpp
         acceptor.cpp
         http_session.cpp
 )

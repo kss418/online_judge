@@ -24,6 +24,10 @@ namespace problem_json_serializer{
         const problem_dto::detail& detail_value
     );
 
+    boost::json::object make_limits_object(
+        const problem_content_dto::limits& limits_value
+    );
+
     boost::json::object make_detail_object(
         const problem_dto::reference& problem_reference_value,
         const problem_dto::title& title_value,
