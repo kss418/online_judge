@@ -1,6 +1,7 @@
 # submission_schema
 
 Base migration: `scripts/migrate_submission_schema.sh`
+Migration SQL: `scripts/sql/migrate_submission_schema.sql`
 
 Prerequisites:
 

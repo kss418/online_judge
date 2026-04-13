@@ -3,148 +3,17 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-project_root="$(cd "${script_dir}/.." && pwd)"
-env_file="${project_root}/.env"
+backend_root="$(cd "${script_dir}/.." && pwd)"
+repo_root="$(cd "${backend_root}/.." && pwd)"
+sql_file="${script_dir}/sql/migrate_user_problem_schema.sql"
 
-if [[ -f "${env_file}" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "${env_file}"
-    set +a
-fi
+# shellcheck disable=SC1091
+source "${repo_root}/scripts/lib/postgres.sh"
 
-if ! command -v psql >/dev/null 2>&1; then
-    echo "error: psql command not found" >&2
-    exit 1
-fi
-
-database_url="${DATABASE_URL:-}"
-if [[ -z "${database_url}" ]]; then
-    db_user="${DB_USER:-}"
-    db_password="${DB_PASSWORD:-}"
-    db_host="${DB_HOST:-}"
-    db_port="${DB_PORT:-5432}"
-    db_name="${DB_NAME:-}"
-
-    if [[ -z "${db_user}" || -z "${db_password}" || -z "${db_host}" || -z "${db_name}" ]]; then
-        echo "error: DATABASE_URL is empty" >&2
-        echo "hint: set DATABASE_URL or DB_USER/DB_PASSWORD/DB_HOST/DB_PORT/DB_NAME in .env" >&2
-        exit 1
-    fi
-
-    database_url="postgresql://${db_user}:${db_password}@${db_host}:${db_port}/${db_name}"
-fi
+source_project_env "${backend_root}"
+require_psql
 
 echo "apply user_problem_schema"
-psql "${database_url}" \
-    -v ON_ERROR_STOP=1 <<'SQL'
-BEGIN;
-
-CREATE TABLE IF NOT EXISTS schema_migrations(
-    version TEXT PRIMARY KEY,
-    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-DO $do$
-BEGIN
-    IF NOT EXISTS(
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'users'
-    ) THEN
-        RAISE EXCEPTION 'auth_schema must be applied before user_problem_schema';
-    END IF;
-
-    IF NOT EXISTS(
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'problems'
-    ) THEN
-        RAISE EXCEPTION 'problem_schema must be applied before user_problem_schema';
-    END IF;
-
-    IF NOT EXISTS(
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'submissions'
-    ) THEN
-        RAISE EXCEPTION 'submission_schema must be applied before user_problem_schema';
-    END IF;
-END
-$do$;
-
-CREATE TABLE IF NOT EXISTS user_problem_attempt_summary(
-    user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    problem_id BIGINT NOT NULL REFERENCES problems(problem_id) ON DELETE CASCADE,
-    submission_count BIGINT NOT NULL DEFAULT 1,
-    accepted_submission_count BIGINT NOT NULL DEFAULT 0,
-    failed_submission_count BIGINT NOT NULL DEFAULT 0,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT user_problem_attempt_summary_pkey PRIMARY KEY(user_id, problem_id),
-    CONSTRAINT user_problem_attempt_summary_submission_count_check
-        CHECK(submission_count > 0),
-    CONSTRAINT user_problem_attempt_summary_accepted_count_check
-        CHECK(accepted_submission_count >= 0),
-    CONSTRAINT user_problem_attempt_summary_failed_count_check
-        CHECK(failed_submission_count >= 0),
-    CONSTRAINT user_problem_attempt_summary_count_order_check
-        CHECK(accepted_submission_count + failed_submission_count <= submission_count)
-);
-
-DROP VIEW IF EXISTS user_wrong_problem_list;
-
-DELETE FROM user_problem_attempt_summary;
-
-INSERT INTO user_problem_attempt_summary(
-    user_id,
-    problem_id,
-    submission_count,
-    accepted_submission_count,
-    failed_submission_count,
-    updated_at
-)
-SELECT
-    submission_table.user_id,
-    submission_table.problem_id,
-    COUNT(*)::BIGINT AS submission_count,
-    COUNT(*) FILTER(
-        WHERE submission_table.status = 'accepted'::submission_status
-    )::BIGINT AS accepted_submission_count,
-    COUNT(*) FILTER(
-        WHERE submission_table.status IN (
-            'wrong_answer'::submission_status,
-            'time_limit_exceeded'::submission_status,
-            'memory_limit_exceeded'::submission_status,
-            'runtime_error'::submission_status,
-            'compile_error'::submission_status,
-            'build_resource_exceeded'::submission_status,
-            'output_exceeded'::submission_status
-        )
-    )::BIGINT AS failed_submission_count,
-    NOW()
-FROM submissions submission_table
-GROUP BY submission_table.user_id, submission_table.problem_id;
-
-CREATE VIEW user_wrong_problem_list AS
-SELECT
-    user_problem_attempt_summary.user_id,
-    user_problem_attempt_summary.problem_id,
-    user_problem_attempt_summary.submission_count,
-    user_problem_attempt_summary.accepted_submission_count,
-    user_problem_attempt_summary.failed_submission_count,
-    'wrong'::TEXT AS problem_state
-FROM user_problem_attempt_summary
-WHERE user_problem_attempt_summary.accepted_submission_count = 0
-  AND user_problem_attempt_summary.failed_submission_count > 0;
-
-CREATE INDEX IF NOT EXISTS submissions_user_problem_idx
-    ON submissions(user_id, problem_id);
-
-INSERT INTO schema_migrations(version)
-VALUES('user_problem_schema_v7')
-ON CONFLICT(version) DO NOTHING;
-
-COMMIT;
-SQL
+psql_run -f "${sql_file}"
 
 echo "migration completed"

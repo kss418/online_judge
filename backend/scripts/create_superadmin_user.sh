@@ -3,20 +3,14 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-project_root="$(cd "${script_dir}/.." && pwd)"
-env_file="${project_root}/.env"
+backend_root="$(cd "${script_dir}/.." && pwd)"
+repo_root="$(cd "${backend_root}/.." && pwd)"
 
-if [[ -f "${env_file}" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "${env_file}"
-    set +a
-fi
+# shellcheck disable=SC1091
+source "${repo_root}/scripts/lib/postgres.sh"
 
-if ! command -v psql >/dev/null 2>&1; then
-    echo "error: psql command not found" >&2
-    exit 1
-fi
+source_project_env "${backend_root}"
+require_psql
 
 compute_sha512_hex(){
     local raw_value="${1:-}"
@@ -58,27 +52,11 @@ superadmin_password_hash="$(compute_sha512_hex "${superadmin_password}")"
 validate_credential_length "id" "${superadmin_login_id}"
 validate_credential_length "password" "${superadmin_password}"
 
-database_url="${DATABASE_URL:-}"
-if [[ -z "${database_url}" ]]; then
-    db_user="${DB_USER:-}"
-    db_password="${DB_PASSWORD:-}"
-    db_host="${DB_HOST:-}"
-    db_port="${DB_PORT:-5432}"
-    db_name="${DB_NAME:-}"
-
-    if [[ -z "${db_user}" || -z "${db_password}" || -z "${db_host}" || -z "${db_name}" ]]; then
-        echo "error: DATABASE_URL is empty" >&2
-        echo "hint: set DATABASE_URL or DB_USER/DB_PASSWORD/DB_HOST/DB_PORT/DB_NAME in .env" >&2
-        exit 1
-    fi
-
-    database_url="postgresql://${db_user}:${db_password}@${db_host}:${db_port}/${db_name}"
-fi
+resolve_database_url >/dev/null
 
 echo "ensure superadmin user"
 existing_user_id="$(
-    psql "${database_url}" \
-        -v ON_ERROR_STOP=1 \
+    psql_run \
         -v superadmin_login_id="${superadmin_login_id}" \
         -qAt <<'SQL'
 SELECT user_id
@@ -94,8 +72,7 @@ if [[ -n "${existing_user_id}" && ! "${existing_user_id}" =~ ^-?[0-9]+$ ]]; then
 fi
 
 if [[ -z "${existing_user_id}" ]]; then
-    psql "${database_url}" \
-        -v ON_ERROR_STOP=1 \
+    psql_run \
         -v superadmin_login_id="${superadmin_login_id}" \
         -v superadmin_password_hash="${superadmin_password_hash}" <<'SQL'
 BEGIN;
@@ -120,8 +97,7 @@ FROM new_user_info;
 COMMIT;
 SQL
 elif (( existing_user_id <= 0 )); then
-    psql "${database_url}" \
-        -v ON_ERROR_STOP=1 \
+    psql_run \
         -v existing_user_id="${existing_user_id}" \
         -v superadmin_login_id="${superadmin_login_id}" \
         -v superadmin_password_hash="${superadmin_password_hash}" <<'SQL'
@@ -159,8 +135,7 @@ FROM new_user_info;
 COMMIT;
 SQL
 else
-    psql "${database_url}" \
-        -v ON_ERROR_STOP=1 \
+    psql_run \
         -v existing_user_id="${existing_user_id}" \
         -v superadmin_password_hash="${superadmin_password_hash}" <<'SQL'
 BEGIN;
@@ -182,8 +157,7 @@ SQL
 fi
 
 ensured_user_id="$(
-    psql "${database_url}" \
-        -v ON_ERROR_STOP=1 \
+    psql_run \
         -v superadmin_login_id="${superadmin_login_id}" \
         -qAt <<'SQL'
 SELECT user_id

@@ -3,23 +3,19 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-project_root="$(cd "${script_dir}/.." && pwd)"
-env_file="${project_root}/.env"
+backend_root="$(cd "${script_dir}/.." && pwd)"
+repo_root="$(cd "${backend_root}/.." && pwd)"
+shared_preload_sql_file="${script_dir}/sql/enable_db_performance_debugging_shared_preload.sql"
+alter_system_sql_file="${script_dir}/sql/enable_db_performance_debugging_alter_system.sql"
+pg_stat_statements_sql_file="${script_dir}/sql/enable_db_performance_debugging_pg_stat_statements.sql"
+create_extension_sql_file="${script_dir}/sql/enable_db_performance_debugging_create_extension.sql"
 
-if [[ -f "${env_file}" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "${env_file}"
-    set +a
-fi
+# shellcheck disable=SC1091
+source "${repo_root}/scripts/lib/postgres.sh"
 
-if ! command -v psql >/dev/null 2>&1; then
-    echo "error: psql command not found" >&2
-    exit 1
-fi
+source_project_env "${backend_root}"
+require_psql
 
-db_host="${DB_HOST:-localhost}"
-db_port="${DB_PORT:-5432}"
 db_name="${DB_NAME:-}"
 admin_user="${DB_ADMIN_USER:-}"
 admin_password="${DB_ADMIN_PASSWORD:-}"
@@ -37,30 +33,14 @@ fi
 connect_error_file="$(mktemp)"
 trap 'rm -f "${connect_error_file}"' EXIT
 
-if ! PGPASSWORD="${admin_password}" psql \
-    -X \
-    -h "${db_host}" \
-    -p "${db_port}" \
-    -U "${admin_user}" \
-    -d postgres \
-    -v ON_ERROR_STOP=1 \
-    -c 'SELECT 1;' >/dev/null 2>"${connect_error_file}"; then
+if ! psql_admin_run -c 'SELECT 1;' >/dev/null 2>"${connect_error_file}"; then
     cat "${connect_error_file}" >&2
     echo "hint: enable_db_performance_debugging.sh needs a superuser-capable DB_ADMIN_USER/DB_ADMIN_PASSWORD" >&2
     exit 1
 fi
 
 shared_preload_before="$(
-    PGPASSWORD="${admin_password}" psql \
-        -X \
-        -A \
-        -t \
-        -h "${db_host}" \
-        -p "${db_port}" \
-        -U "${admin_user}" \
-        -d postgres \
-        -v ON_ERROR_STOP=1 \
-        -c "SELECT current_setting('shared_preload_libraries', true);"
+    psql_admin_run -qAt -f "${shared_preload_sql_file}"
 )"
 
 if [[ -z "${shared_preload_before}" ]]; then
@@ -71,39 +51,18 @@ else
     desired_shared_preload="${shared_preload_before},pg_stat_statements"
 fi
 
-psql_admin(){
-    PGPASSWORD="${admin_password}" psql \
-        -X \
-        -h "${db_host}" \
-        -p "${db_port}" \
-        -U "${admin_user}" \
-        -d postgres \
-        -v ON_ERROR_STOP=1 \
-        -c "$1"
-}
-
-psql_admin "ALTER SYSTEM SET shared_preload_libraries = '${desired_shared_preload}';"
-psql_admin "ALTER SYSTEM SET compute_query_id = 'on';"
-psql_admin "ALTER SYSTEM SET log_lock_waits = 'on';"
-psql_admin "ALTER SYSTEM SET deadlock_timeout = '50ms';"
+psql_admin_run \
+    -v desired_shared_preload="${desired_shared_preload}" \
+    -f "${alter_system_sql_file}"
 
 if [[ "${shared_preload_before}" == *"pg_stat_statements"* ]]; then
-    psql_admin "ALTER SYSTEM SET pg_stat_statements.max = '10000';"
-    psql_admin "ALTER SYSTEM SET pg_stat_statements.track = 'top';"
-    psql_admin "ALTER SYSTEM SET pg_stat_statements.save = 'on';"
+    psql_admin_run -f "${pg_stat_statements_sql_file}"
 fi
 
-psql_admin "SELECT pg_reload_conf();"
+psql_admin_run -c "SELECT pg_reload_conf();"
 
 if [[ "${shared_preload_before}" == *"pg_stat_statements"* ]]; then
-    PGPASSWORD="${admin_password}" psql \
-        -X \
-        -h "${db_host}" \
-        -p "${db_port}" \
-        -U "${admin_user}" \
-        -d "${db_name}" \
-        -v ON_ERROR_STOP=1 \
-        -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements;"
+    psql_admin_run "${db_name}" -f "${create_extension_sql_file}"
 
     echo "configured db performance debugging settings"
     echo "pg_stat_statements extension is ready in database: ${db_name}"

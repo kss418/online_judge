@@ -1,6 +1,7 @@
 # user_problem_schema
 
 Base migration: `scripts/migrate_user_problem_schema.sh`
+Migration SQL: `scripts/sql/migrate_user_problem_schema.sql`
 
 Prerequisites:
 
@@ -61,6 +62,7 @@ submission. Pending-only problems are excluded.
 ## validation
 
 - `scripts/validate_user_problem_summary.sh` compares `user_problem_attempt_summary` against a fresh `GROUP BY` over `submissions`
+- Validation SQL lives in `scripts/sql/validate_user_problem_summary_count.sql` and `scripts/sql/validate_user_problem_summary_details.sql`
 - The script accepts `DATABASE_URL`; if unset, it falls back to `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, and `DB_NAME`
 - Typical usage:
   - `bash ./scripts/validate_user_problem_summary.sh`

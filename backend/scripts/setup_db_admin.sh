@@ -3,20 +3,14 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-project_root="$(cd "${script_dir}/.." && pwd)"
-env_file="${project_root}/.env"
+backend_root="$(cd "${script_dir}/.." && pwd)"
+repo_root="$(cd "${backend_root}/.." && pwd)"
 
-if [[ -f "${env_file}" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "${env_file}"
-    set +a
-fi
+# shellcheck disable=SC1091
+source "${repo_root}/scripts/lib/postgres.sh"
 
-if ! command -v psql >/dev/null 2>&1; then
-    echo "error: psql command not found" >&2
-    exit 1
-fi
+source_project_env "${backend_root}"
+require_psql
 
 admin_user="${DB_ADMIN_USER:-postgres}"
 admin_password="${DB_ADMIN_PASSWORD:-}"

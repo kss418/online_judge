@@ -26,6 +26,10 @@ judge-side timings suggest.
 
 Both scripts load `backend/.env`.
 
+- SQL for these helpers lives under `scripts/sql/`
+  - `enable_db_performance_debugging_*.sql`
+  - `check_db_performance_debugging_*.sql`
+
 - `enable_db_performance_debugging.sh` requires `DB_ADMIN_USER` /
   `DB_ADMIN_PASSWORD`.
 - `check_db_performance_debugging.sh` reads active settings with

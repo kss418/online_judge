@@ -8,6 +8,7 @@ skip_build="${BASIC_FLOW_TESTS_SKIP_BUILD:-0}"
 clean_build="${BASIC_FLOW_TESTS_CLEAN_BUILD:-1}"
 
 default_tests=(
+    postgres_lib_flow.sh
     system_flow.sh
     auth_flow.sh
     user_flow.sh

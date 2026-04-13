@@ -3,26 +3,19 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-project_root="$(cd "${script_dir}/.." && pwd)"
-env_file="${project_root}/.env"
+backend_root="$(cd "${script_dir}/.." && pwd)"
+repo_root="$(cd "${backend_root}/.." && pwd)"
+active_settings_sql_file="${script_dir}/sql/check_db_performance_debugging_active_settings.sql"
+extension_sql_file="${script_dir}/sql/check_db_performance_debugging_extension.sql"
+file_settings_sql_file="${script_dir}/sql/check_db_performance_debugging_file_settings.sql"
 
-if [[ -f "${env_file}" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "${env_file}"
-    set +a
-fi
+# shellcheck disable=SC1091
+source "${repo_root}/scripts/lib/postgres.sh"
 
-if ! command -v psql >/dev/null 2>&1; then
-    echo "error: psql command not found" >&2
-    exit 1
-fi
+source_project_env "${backend_root}"
+require_psql
 
-db_host="${DB_HOST:-localhost}"
-db_port="${DB_PORT:-5432}"
 db_name="${DB_NAME:-}"
-read_user="${DB_USER:-${DB_ADMIN_USER:-}}"
-read_password="${DB_PASSWORD:-${DB_ADMIN_PASSWORD:-}}"
 admin_user="${DB_ADMIN_USER:-}"
 admin_password="${DB_ADMIN_PASSWORD:-}"
 
@@ -31,104 +24,25 @@ if [[ -z "${db_name}" ]]; then
     exit 1
 fi
 
-if [[ -z "${read_user}" || -z "${read_password}" ]]; then
-    echo "error: DB_USER/DB_PASSWORD or DB_ADMIN_USER/DB_ADMIN_PASSWORD must be set in .env" >&2
+if ! resolve_read_database_url "${db_name}" >/dev/null; then
     exit 1
 fi
 
-active_settings_sql="$(cat <<'SQL'
-SELECT
-    name,
-    setting,
-    unit,
-    pending_restart
-FROM pg_settings
-WHERE name IN (
-    'shared_preload_libraries',
-    'compute_query_id',
-    'log_lock_waits',
-    'deadlock_timeout',
-    'pg_stat_statements.max',
-    'pg_stat_statements.track',
-    'pg_stat_statements.save'
-)
-ORDER BY name;
-SQL
-)"
-
-extension_sql="$(cat <<'SQL'
-SELECT extname, extversion
-FROM pg_extension
-WHERE extname = 'pg_stat_statements';
-SQL
-)"
-
-file_settings_sql="$(cat <<'SQL'
-SELECT
-    name,
-    setting,
-    applied,
-    error
-FROM pg_file_settings
-WHERE name IN (
-    'shared_preload_libraries',
-    'compute_query_id',
-    'log_lock_waits',
-    'deadlock_timeout',
-    'pg_stat_statements.max',
-    'pg_stat_statements.track',
-    'pg_stat_statements.save'
-)
-ORDER BY name;
-SQL
-)"
-
 echo "== active settings =="
-PGPASSWORD="${read_password}" psql \
-    -X \
-    -h "${db_host}" \
-    -p "${db_port}" \
-    -U "${read_user}" \
-    -d "${db_name}" \
-    -P pager=off \
-    -v ON_ERROR_STOP=1 \
-    -c "${active_settings_sql}"
+psql_read_run -P pager=off -f "${active_settings_sql_file}"
 
 echo
 echo "== extension =="
-PGPASSWORD="${read_password}" psql \
-    -X \
-    -h "${db_host}" \
-    -p "${db_port}" \
-    -U "${read_user}" \
-    -d "${db_name}" \
-    -P pager=off \
-    -v ON_ERROR_STOP=1 \
-    -c "${extension_sql}"
+psql_read_run -P pager=off -f "${extension_sql_file}"
 
 if [[ -n "${admin_user}" && -n "${admin_password}" ]]; then
     admin_error_file="$(mktemp)"
     trap 'rm -f "${admin_error_file}"' EXIT
 
-    if PGPASSWORD="${admin_password}" psql \
-        -X \
-        -h "${db_host}" \
-        -p "${db_port}" \
-        -U "${admin_user}" \
-        -d postgres \
-        -v ON_ERROR_STOP=1 \
-        -c 'SELECT 1;' >/dev/null 2>"${admin_error_file}"; then
+    if psql_admin_run -c 'SELECT 1;' >/dev/null 2>"${admin_error_file}"; then
         echo
         echo "== configured file settings =="
-        PGPASSWORD="${admin_password}" psql \
-            -X \
-            -h "${db_host}" \
-            -p "${db_port}" \
-            -U "${admin_user}" \
-            -d postgres \
-            -P pager=off \
-            -v ON_ERROR_STOP=1 \
-            -c "${file_settings_sql}"
+        psql_admin_run -P pager=off -f "${file_settings_sql_file}"
     else
         echo
         echo "== configured file settings =="
