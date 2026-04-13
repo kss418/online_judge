@@ -172,292 +172,41 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-
 import PaginationBar from '@/components/PaginationBar.vue'
-import { demoteUserToUser, getUserList, promoteUserToAdmin } from '@/api/user'
-import { getRoleName } from '@/api/normalizers/permission'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { useAuth } from '@/composables/useAuth'
-import { useNotice } from '@/composables/useNotice'
-import { formatApiError } from '@/utils/apiError'
-import { formatRelativeTimestamp } from '@/utils/dateTime'
-import { buildPaginationItems } from '@/utils/pagination'
+import { useAdminUsersPage } from '@/composables/useAdminUsersPage'
 
-const { authState, isAuthenticated, initializeAuth, refreshCurrentUser } = useAuth()
-const { showErrorNotice, showSuccessNotice } = useNotice()
-const pageSize = 20
-const isLoading = ref(true)
-const errorMessage = ref('')
-const actionMessage = ref('')
-const actionErrorMessage = ref('')
-const savingUserId = ref(0)
-const users = ref([])
-const searchInput = ref('')
-const appliedQuery = ref('')
-const currentPage = ref(1)
-const pageJumpInput = ref('')
-const nowTimestamp = ref(Date.now())
-let latestLoadRequestId = 0
-let relativeTimeRefreshTimer = null
-
-const canManageUsers = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 2)
-const canEditPermissions = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 2)
-const currentUserId = computed(() => Number(authState.currentUser?.id ?? 0))
-const filteredUsers = computed(() => {
-  const keyword = appliedQuery.value.trim().toLowerCase()
-  if (!keyword) {
-    return users.value
-  }
-
-  return users.value.filter((user) => (
-    String(user.user_login_id || '').toLowerCase().includes(keyword)
-  ))
-})
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(filteredUsers.value.length / pageSize))
-)
-const pagedUsers = computed(() => {
-  const startIndex = (currentPage.value - 1) * pageSize
-  return filteredUsers.value.slice(startIndex, startIndex + pageSize)
-})
-const paginationItems = computed(() =>
-  buildPaginationItems(currentPage.value, totalPages.value)
-)
-const superAdminCount = computed(() =>
-  users.value.filter((user) => user.permission_level === 2).length
-)
-const adminCount = computed(() =>
-  users.value.filter((user) => user.permission_level === 1).length
-)
-const regularUserCount = computed(() =>
-  users.value.filter((user) => user.permission_level === 0).length
-)
-
-watch(
-  actionMessage,
-  (message) => {
-    if (message) {
-      showSuccessNotice(message)
-    }
-  }
-)
-
-watch(
-  actionErrorMessage,
-  (message) => {
-    if (message) {
-      showErrorNotice(message, { duration: 5000 })
-    }
-  }
-)
-
-watch(currentPage, () => {
-  pageJumpInput.value = ''
-})
-
-watch(totalPages, (pageCount) => {
-  if (currentPage.value > pageCount) {
-    currentPage.value = pageCount
-  }
-})
-
-watch(
-  () => [authState.initialized, authState.token, authState.currentUser?.permission_level],
-  () => {
-    if (!authState.initialized) {
-      isLoading.value = true
-      return
-    }
-
-    if (!isAuthenticated.value || !canManageUsers.value) {
-      users.value = []
-      errorMessage.value = ''
-      actionMessage.value = ''
-      actionErrorMessage.value = ''
-      isLoading.value = false
-      return
-    }
-
-    loadUsers()
-  },
-  { immediate: true }
-)
-
-async function loadUsers(){
-  if (!authState.token || !canManageUsers.value) {
-    return
-  }
-
-  const requestId = ++latestLoadRequestId
-  isLoading.value = true
-  errorMessage.value = ''
-
-  try {
-    const response = await getUserList(authState.token)
-
-    if (requestId !== latestLoadRequestId) {
-      return
-    }
-
-    users.value = Array.isArray(response.users) ? response.users : []
-  } catch (error) {
-    if (requestId !== latestLoadRequestId) {
-      return
-    }
-
-    users.value = []
-    errorMessage.value = formatApiError(error, {
-      fallback: '유저 목록을 불러오지 못했습니다.'
-    })
-  } finally {
-    if (requestId === latestLoadRequestId) {
-      isLoading.value = false
-    }
-  }
-}
-
-async function handlePromoteToAdmin(user){
-  return handleRoleAction(user, permissionLevelToRole.admin)
-}
-
-function submitSearch(){
-  appliedQuery.value = searchInput.value.trim()
-  currentPage.value = 1
-}
-
-function resetSearch(){
-  searchInput.value = ''
-  appliedQuery.value = ''
-  currentPage.value = 1
-}
-
-function goToPage(pageNumber){
-  const clampedPageNumber = Math.min(Math.max(pageNumber, 1), totalPages.value)
-  if (clampedPageNumber === currentPage.value) {
-    return
-  }
-
-  currentPage.value = clampedPageNumber
-}
-
-function submitPageJump(){
-  const parsedPage = Number.parseInt(pageJumpInput.value, 10)
-  if (!Number.isInteger(parsedPage)) {
-    pageJumpInput.value = ''
-    return
-  }
-
-  goToPage(parsedPage)
-}
-
-async function handleDemoteToUser(user){
-  return handleRoleAction(user, permissionLevelToRole.user)
-}
-
-async function handleRoleAction(user, nextPermissionLevel){
-  if (!authState.token || !canEditPermissions.value) {
-    if (!canEditPermissions.value) {
-      actionErrorMessage.value = '권한 변경은 슈퍼어드민만 할 수 있습니다.'
-    }
-    return
-  }
-
-  savingUserId.value = user.user_id
-  errorMessage.value = ''
-  actionMessage.value = ''
-  actionErrorMessage.value = ''
-
-  try {
-    if (nextPermissionLevel === permissionLevelToRole.admin) {
-      await promoteUserToAdmin(user.user_id, authState.token)
-    } else {
-      await demoteUserToUser(user.user_id, authState.token)
-    }
-
-    users.value = users.value.map((currentUser) =>
-      currentUser.user_id === user.user_id
-        ? {
-          ...currentUser,
-          permission_level: nextPermissionLevel,
-          role_name: getRoleName(nextPermissionLevel)
-        }
-        : currentUser
-    )
-
-    if (user.user_id === currentUserId.value) {
-      await refreshCurrentUser()
-    }
-
-    actionMessage.value = nextPermissionLevel === permissionLevelToRole.admin
-      ? `${user.user_login_id} 님을 어드민으로 승격했습니다.`
-      : `${user.user_login_id} 님을 유저로 강등했습니다.`
-  } catch (error) {
-    actionErrorMessage.value = formatApiError(error, {
-      fallback: '권한 변경을 적용하지 못했습니다.'
-    })
-  } finally {
-    savingUserId.value = 0
-  }
-}
-
-const permissionLevelToRole = Object.freeze({
-  user: 0,
-  admin: 1,
-  superadmin: 2
-})
-
-function formatPermissionLabel(permissionLevel){
-  if (permissionLevel >= 2) {
-    return 'SuperAdmin'
-  }
-
-  if (permissionLevel >= 1) {
-    return 'Admin'
-  }
-
-  return 'User'
-}
-
-function getPermissionTone(permissionLevel){
-  if (permissionLevel >= permissionLevelToRole.superadmin) {
-    return 'danger'
-  }
-
-  if (permissionLevel >= permissionLevelToRole.admin) {
-    return 'warning'
-  }
-
-  return 'neutral'
-}
-
-function formatRelativeCreatedAt(timestamp){
-  return formatRelativeTimestamp(nowTimestamp.value, timestamp)
-}
-
-function stopRelativeTimeRefresh(){
-  if (relativeTimeRefreshTimer) {
-    clearInterval(relativeTimeRefreshTimer)
-    relativeTimeRefreshTimer = null
-  }
-}
-
-function startRelativeTimeRefresh(){
-  stopRelativeTimeRefresh()
-  nowTimestamp.value = Date.now()
-  relativeTimeRefreshTimer = window.setInterval(() => {
-    nowTimestamp.value = Date.now()
-  }, 1000)
-}
-
-onMounted(() => {
-  startRelativeTimeRefresh()
-  initializeAuth()
-})
-
-onUnmounted(() => {
-  stopRelativeTimeRefresh()
-})
+const {
+  authState,
+  isAuthenticated,
+  canManageUsers,
+  canEditPermissions,
+  pageSize,
+  isLoading,
+  errorMessage,
+  users,
+  filteredUsers,
+  pagedUsers,
+  searchInput,
+  appliedQuery,
+  currentPage,
+  totalPages,
+  pageJumpInput,
+  paginationItems,
+  savingUserId,
+  superAdminCount,
+  adminCount,
+  regularUserCount,
+  loadUsers,
+  submitSearch,
+  resetSearch,
+  goToPage,
+  submitPageJump,
+  handlePromoteToAdmin,
+  handleDemoteToUser,
+  formatPermissionLabel,
+  getPermissionTone
+} = useAdminUsersPage()
 </script>
 
 <style scoped>
