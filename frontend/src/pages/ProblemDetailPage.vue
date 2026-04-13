@@ -169,7 +169,7 @@ import { useRoute } from 'vue-router'
 
 import { getProblemDetail } from '@/api/problem'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { useAuth } from '@/composables/useAuth'
+import { authStore } from '@/stores/auth/authStore'
 import { formatApiError } from '@/utils/apiError'
 import {
   getProblemStateLabel,
@@ -177,7 +177,7 @@ import {
 } from '@/utils/problemState'
 
 const route = useRoute()
-const { authState, isAuthenticated, initializeAuth } = useAuth()
+const { state: authState, isAuthenticated, initializeAuth } = authStore
 const isLoading = ref(true)
 const errorMessage = ref('')
 const problemDetail = ref(null)
