@@ -135,7 +135,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import PaginationBar from '@/components/PaginationBar.vue'
-import { getPublicUserList } from '@/api/user'
+import { getPublicUserList } from '@/api/userQueryApi'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { formatApiError } from '@/utils/apiError'
 import { formatRelativeTimestamp } from '@/utils/dateTime'

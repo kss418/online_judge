@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-import { getProblemDetail } from '@/api/problem'
+import { getProblemDetail } from '@/api/problemQueryApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { formatApiError } from '@/utils/apiError'
 

@@ -1,4 +1,4 @@
-import { getUserWrongProblems } from '@/api/user'
+import { getUserWrongProblems } from '@/api/userStatisticsApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { formatApiError } from '@/utils/apiError'
 

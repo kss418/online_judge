@@ -167,7 +167,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
-import { getProblemDetail } from '@/api/problem'
+import { getProblemDetail } from '@/api/problemQueryApi'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { authStore } from '@/stores/auth/authStore'
 import { formatApiError } from '@/utils/apiError'

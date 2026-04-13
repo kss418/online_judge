@@ -2,16 +2,18 @@ import { computed, ref } from 'vue'
 
 import {
   createProblem,
-  createProblemSample,
   deleteProblem,
-  deleteProblemSample,
   rejudgeProblem,
-  uploadProblemTestcaseZip,
   updateProblemLimits,
-  updateProblemSample,
   updateProblemStatement,
   updateProblemTitle
-} from '@/api/problem'
+} from '@/api/problemAdminApi'
+import {
+  createProblemSample,
+  deleteProblemSample,
+  updateProblemSample,
+} from '@/api/problemSampleApi'
+import { uploadProblemTestcaseZip } from '@/api/testcaseApi'
 import { parsePositiveInteger } from '@/composables/adminProblems/problemHelpers'
 import { formatApiError } from '@/utils/apiError'
 

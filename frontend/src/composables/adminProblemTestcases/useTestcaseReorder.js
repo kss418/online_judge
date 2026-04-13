@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 
-import { moveProblemTestcase } from '@/api/problem'
+import { moveProblemTestcase } from '@/api/testcaseApi'
 import { formatApiError } from '@/utils/apiError'
 
 export function useTestcaseReorder({

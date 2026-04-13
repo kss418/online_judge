@@ -1,4 +1,4 @@
-import { getUserSolvedProblems } from '@/api/user'
+import { getUserSolvedProblems } from '@/api/userStatisticsApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { formatApiError } from '@/utils/apiError'
 

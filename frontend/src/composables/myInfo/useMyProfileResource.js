@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 
-import { getUserSummary } from '@/api/user'
+import { getUserSummary } from '@/api/userQueryApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { formatApiError } from '@/utils/apiError'
 

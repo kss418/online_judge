@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 
-import { getMySubmissionBan } from '@/api/user'
+import { getMySubmissionBan } from '@/api/userQueryApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { formatApiError } from '@/utils/apiError'
 import { formatRemainingDuration, formatTimestamp } from '@/utils/dateTime'

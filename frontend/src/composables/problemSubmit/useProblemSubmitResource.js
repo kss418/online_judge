@@ -1,8 +1,8 @@
 import { computed, ref } from 'vue'
 
-import { getProblemDetail } from '@/api/problem'
+import { getProblemDetail } from '@/api/problemQueryApi'
 import { getSupportedLanguages } from '@/api/system'
-import { getMySubmissionBan } from '@/api/user'
+import { getMySubmissionBan } from '@/api/userQueryApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { usePollingController } from '@/composables/usePollingController'
 import { formatApiError } from '@/utils/apiError'

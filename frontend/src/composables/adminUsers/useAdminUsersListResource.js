@@ -1,4 +1,4 @@
-import { getUserList } from '@/api/user'
+import { getUserList } from '@/api/userAdminApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { formatApiError } from '@/utils/apiError'
 

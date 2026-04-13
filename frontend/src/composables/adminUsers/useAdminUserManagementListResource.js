@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 
-import { getUserList, getUserSubmissionBan } from '@/api/user'
+import { getUserList, getUserSubmissionBan } from '@/api/userAdminApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatApiError } from '@/utils/apiError'

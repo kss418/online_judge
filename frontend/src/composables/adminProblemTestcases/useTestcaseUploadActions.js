@@ -5,7 +5,7 @@ import {
   deleteProblemTestcase,
   updateProblemTestcase,
   uploadProblemTestcaseZip
-} from '@/api/problem'
+} from '@/api/testcaseApi'
 import { formatApiError } from '@/utils/apiError'
 
 export function useTestcaseUploadActions({

@@ -2,10 +2,12 @@ import { computed } from 'vue'
 
 import {
   getProblemDetail,
-  getProblemList,
+  getProblemList
+} from '@/api/problemQueryApi'
+import {
   getProblemTestcase,
   getProblemTestcases
-} from '@/api/problem'
+} from '@/api/testcaseApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { buildApiQuery as buildProblemAdminSearchApiQuery } from '@/queryState/problemAdminSearch'
 import { formatApiError } from '@/utils/apiError'

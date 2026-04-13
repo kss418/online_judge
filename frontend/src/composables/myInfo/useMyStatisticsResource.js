@@ -1,4 +1,4 @@
-import { getUserSubmissionStatistics } from '@/api/user'
+import { getUserSubmissionStatistics } from '@/api/userStatisticsApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { formatApiError } from '@/utils/apiError'
 

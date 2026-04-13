@@ -1,4 +1,4 @@
-import { demoteUserToUser, promoteUserToAdmin } from '@/api/user'
+import { demoteUserToUser, promoteUserToAdmin } from '@/api/userAdminApi'
 import { getRoleName } from '@/api/normalizers/permission'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatApiError } from '@/utils/apiError'

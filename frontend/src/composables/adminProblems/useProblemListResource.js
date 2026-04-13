@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 
-import { getProblemList } from '@/api/problem'
+import { getProblemList } from '@/api/problemQueryApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { buildApiQuery as buildProblemAdminSearchApiQuery } from '@/queryState/problemAdminSearch'
 import { formatApiError } from '@/utils/apiError'

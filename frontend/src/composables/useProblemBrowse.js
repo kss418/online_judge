@@ -6,7 +6,7 @@ import {
 } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { getProblemList } from '@/api/problem'
+import { getProblemList } from '@/api/problemQueryApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { useRouteQueryState } from '@/composables/useRouteQueryState'
 import {

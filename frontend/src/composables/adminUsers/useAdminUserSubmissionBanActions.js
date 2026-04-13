@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-import { clearUserSubmissionBan, createUserSubmissionBan } from '@/api/user'
+import { clearUserSubmissionBan, createUserSubmissionBan } from '@/api/userAdminApi'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatApiError } from '@/utils/apiError'
 
