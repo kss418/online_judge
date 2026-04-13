@@ -1,8 +1,13 @@
 target_sources(lib
     PRIVATE
         auth_router.cpp
+        problem_command_routes.cpp
+        problem_query_routes.cpp
         problem_router.cpp
         submission_router.cpp
         system_router.cpp
+        testcase_routes.cpp
+        user_command_routes.cpp
+        user_query_routes.cpp
         user_router.cpp
 )

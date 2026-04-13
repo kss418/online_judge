@@ -8,8 +8,14 @@ target_sources(lib
         submission_command_handler.cpp
         submission_query_handler.cpp
         system_query_handler.cpp
-        testcase_command_handler.cpp
+        testcase_bulk_command_handler.cpp
+        testcase_item_command_handler.cpp
+        testcase_move_command_handler.cpp
         testcase_query_handler.cpp
         user_command_handler.cpp
-        user_query_handler.cpp
+        user_list_query_handler.cpp
+        user_problem_list_query_handler.cpp
+        user_profile_query_handler.cpp
+        user_statistics_query_handler.cpp
+        user_submission_ban_query_handler.cpp
 )
