@@ -8,94 +8,61 @@
 #include "request_parser/user_request_parser.hpp"
 #include "serializer/user_json_serializer.hpp"
 
+#include <string_view>
+
 namespace{
-    auto make_put_user_admin_guard(std::int64_t user_id){
-        return http_guard::make_composite_guard(
-            [user_id](const http_guard::guard_context&,
+    using response_type = user_command_handler::response_type;
+
+    template <typename command_type>
+    using command_expected = std::expected<command_type, response_type>;
+
+    auto make_update_user_permission_spec(
+        std::int64_t user_id,
+        std::int32_t permission_level
+    ){
+        return http_endpoint::make_guarded_json_spec(
+            [user_id, permission_level](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> std::expected<
-                    update_user_permission_action::command,
-                    user_command_handler::response_type
-                > {
+                -> command_expected<update_user_permission_action::command> {
                 return update_user_permission_action::command{
                     .user_id = user_id,
-                    .permission_level = permission_util::ADMIN
+                    .permission_level = permission_level
                 };
+            },
+            http_endpoint::make_db_execute(update_user_permission_action::execute),
+            [user_id, permission_level]() {
+                return user_json_serializer::make_permission_object(
+                    user_id,
+                    permission_level
+                );
             },
             auth_guard::make_superadmin_guard()
         );
     }
 
     auto make_put_user_admin_spec(std::int64_t user_id){
-        return http_endpoint::endpoint_spec{
-            .parse = make_put_user_admin_guard(user_id),
-            .execute = [](user_command_handler::context_type& context,
-                const update_user_permission_action::command& command_value) {
-                return update_user_permission_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = [user_id]() {
-                return user_json_serializer::make_permission_object(
-                    user_id,
-                    permission_util::ADMIN
-                );
-            },
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
-    }
-
-    auto make_put_user_regular_guard(std::int64_t user_id){
-        return http_guard::make_composite_guard(
-            [user_id](const http_guard::guard_context&,
-                const auth_dto::identity&)
-                -> std::expected<
-                    update_user_permission_action::command,
-                    user_command_handler::response_type
-                > {
-                return update_user_permission_action::command{
-                    .user_id = user_id,
-                    .permission_level = permission_util::USER
-                };
-            },
-            auth_guard::make_superadmin_guard()
-        );
+        return make_update_user_permission_spec(user_id, permission_util::ADMIN);
     }
 
     auto make_put_user_regular_spec(std::int64_t user_id){
-        return http_endpoint::endpoint_spec{
-            .parse = make_put_user_regular_guard(user_id),
-            .execute = [](user_command_handler::context_type& context,
-                const update_user_permission_action::command& command_value) {
-                return update_user_permission_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = [user_id]() {
-                return user_json_serializer::make_permission_object(
-                    user_id,
-                    permission_util::USER
-                );
-            },
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
+        return make_update_user_permission_spec(user_id, permission_util::USER);
     }
 
-    auto make_post_user_submission_ban_guard(std::int64_t user_id){
-        return http_guard::make_composite_guard(
+    auto make_post_user_submission_ban_spec(std::int64_t user_id){
+        return http_endpoint::make_guarded_json_spec(
             [user_id](const http_guard::guard_context&,
                 const auth_dto::identity&,
                 const user_dto::submission_ban_request& submission_ban_request)
-                -> std::expected<
-                    create_user_submission_ban_action::command,
-                    user_command_handler::response_type
-                > {
+                -> command_expected<create_user_submission_ban_action::command> {
                 return create_user_submission_ban_action::command{
                     .user_id = user_id,
                     .duration_minutes = submission_ban_request.duration_minutes
                 };
+            },
+            http_endpoint::make_db_execute(create_user_submission_ban_action::execute),
+            user_json_serializer::make_submission_ban_object,
+            http_endpoint::spec_options{
+                .success_status = boost::beast::http::status::created
             },
             auth_guard::make_admin_guard(),
             request_parse_guard::make_json_guard<user_dto::submission_ban_request>(
@@ -104,53 +71,21 @@ namespace{
         );
     }
 
-    auto make_post_user_submission_ban_spec(std::int64_t user_id){
-        return http_endpoint::endpoint_spec{
-            .parse = make_post_user_submission_ban_guard(user_id),
-            .execute = [](user_command_handler::context_type& context,
-                const create_user_submission_ban_action::command& command_value) {
-                return create_user_submission_ban_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = user_json_serializer::make_submission_ban_object,
-            .error_response = http_endpoint::default_error_response_factory{},
-            .success_status = boost::beast::http::status::created
-        };
-    }
-
-    auto make_delete_user_submission_ban_guard(std::int64_t user_id){
-        return http_guard::make_composite_guard(
+    auto make_delete_user_submission_ban_spec(std::int64_t user_id){
+        return http_endpoint::make_guarded_message_spec(
             [user_id](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> std::expected<
-                    clear_user_submission_ban_action::command,
-                    user_command_handler::response_type
-                > {
+                -> command_expected<clear_user_submission_ban_action::command> {
                 return clear_user_submission_ban_action::command{
                     .user_id = user_id
                 };
             },
-            auth_guard::make_admin_guard()
-        );
-    }
-
-    auto make_delete_user_submission_ban_spec(std::int64_t user_id){
-        return http_endpoint::endpoint_spec{
-            .parse = make_delete_user_submission_ban_guard(user_id),
-            .execute = [](user_command_handler::context_type& context,
-                const clear_user_submission_ban_action::command& command_value) {
-                return clear_user_submission_ban_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = []() -> std::string_view {
+            http_endpoint::make_db_execute(clear_user_submission_ban_action::execute),
+            []() -> std::string_view {
                 return "user submission ban cleared";
             },
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
+            auth_guard::make_admin_guard()
+        );
     }
 }
 

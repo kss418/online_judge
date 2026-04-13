@@ -11,40 +11,40 @@
 #include "serializer/system_json_serializer.hpp"
 
 namespace{
+    using response_type = system_query_handler::response_type;
+
+    template <typename command_type>
+    using command_expected = std::expected<command_type, response_type>;
+
     auto make_get_health_spec(){
-        return http_endpoint::endpoint_spec{
-            .parse = http_endpoint::make_no_input_guard(),
-            .execute = [](system_query_handler::context_type&,
+        return http_endpoint::make_json_spec(
+            http_endpoint::make_no_input_guard(),
+            [](system_query_handler::context_type&,
                 const http_endpoint::no_input&) {
                 return common_json_serializer::make_message_object("ok");
             },
-            .serialize = http_endpoint::identity_serializer{},
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
+            http_endpoint::identity_serializer{}
+        );
     }
 
     auto make_get_supported_languages_spec(){
-        return http_endpoint::endpoint_spec{
-            .parse = http_endpoint::make_no_input_guard(),
-            .execute = [](system_query_handler::context_type&,
+        return http_endpoint::make_json_spec(
+            http_endpoint::make_no_input_guard(),
+            [](system_query_handler::context_type&,
                 const http_endpoint::no_input&) {
                 return system_json_serializer::make_supported_language_list_object(
                     language_util::list_supported_languages()
                 );
             },
-            .serialize = http_endpoint::identity_serializer{},
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
+            http_endpoint::identity_serializer{}
+        );
     }
 
-    auto make_get_status_guard(){
-        return http_guard::make_composite_guard(
+    auto make_get_status_spec(){
+        return http_endpoint::make_guarded_json_spec(
             [](const http_guard::guard_context& context,
                 const auth_dto::identity&)
-                -> std::expected<
-                    get_system_status_query::command,
-                    system_query_handler::response_type
-                > {
+                -> command_expected<get_system_status_query::command> {
                 if(!context.request_context_ref().has_http_runtime_status_provider()){
                     return std::unexpected(
                         http_response_util::create_internal_server_error(
@@ -62,23 +62,10 @@ namespace{
                     .judge_heartbeat_stale_after = provider.judge_heartbeat_stale_after()
                 };
             },
+            http_endpoint::make_db_execute(get_system_status_query::execute),
+            system_json_serializer::make_status_object,
             auth_guard::make_admin_guard()
         );
-    }
-
-    auto make_get_status_spec(){
-        return http_endpoint::endpoint_spec{
-            .parse = make_get_status_guard(),
-            .execute = [](system_query_handler::context_type& context,
-                const get_system_status_query::command& command_value) {
-                return get_system_status_query::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = system_json_serializer::make_status_object,
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
     }
 }
 

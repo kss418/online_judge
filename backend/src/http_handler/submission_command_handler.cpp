@@ -10,51 +10,36 @@
 #include "serializer/submission_json_serializer.hpp"
 
 namespace{
-    auto make_post_submission_spec(std::int64_t problem_id){
-        return http_endpoint::endpoint_spec{
-            .parse = submission_guard::make_create_request_guard(problem_id),
-            .execute = [](submission_command_handler::context_type& context,
-                const submission_internal_dto::create_submission_command& command_value) {
-                return create_submission_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = submission_json_serializer::make_queued_response_object,
-            .error_response = http_error_mapper::create_submission_error(),
-            .success_status = boost::beast::http::status::created
-        };
-    }
+    using response_type = submission_command_handler::response_type;
 
-    auto make_post_submission_rejudge_guard(std::int64_t submission_id){
-        return http_guard::make_composite_guard(
-            [submission_id](const http_guard::guard_context&,
-                const auth_dto::identity&)
-                -> std::expected<
-                    rejudge_submission_action::command,
-                    submission_command_handler::response_type
-                > {
-                return rejudge_submission_action::command{
-                    .submission_id = submission_id
-                };
-            },
-            auth_guard::make_admin_guard()
+    template <typename command_type>
+    using command_expected = std::expected<command_type, response_type>;
+
+    auto make_post_submission_spec(std::int64_t problem_id){
+        return http_endpoint::make_json_spec(
+            submission_guard::make_create_request_guard(problem_id),
+            http_endpoint::make_db_execute(create_submission_action::execute),
+            submission_json_serializer::make_queued_response_object,
+            http_endpoint::spec_options{
+                .error_response = http_error_mapper::create_submission_error(),
+                .success_status = boost::beast::http::status::created
+            }
         );
     }
 
     auto make_post_submission_rejudge_spec(std::int64_t submission_id){
-        return http_endpoint::endpoint_spec{
-            .parse = make_post_submission_rejudge_guard(submission_id),
-            .execute = [](submission_command_handler::context_type& context,
-                const rejudge_submission_action::command& command_value) {
-                return rejudge_submission_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
+        return http_endpoint::make_guarded_json_spec(
+            [submission_id](const http_guard::guard_context&,
+                const auth_dto::identity&)
+                -> command_expected<rejudge_submission_action::command> {
+                return rejudge_submission_action::command{
+                    .submission_id = submission_id
+                };
             },
-            .serialize = submission_json_serializer::make_queued_response_object,
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
+            http_endpoint::make_db_execute(rejudge_submission_action::execute),
+            submission_json_serializer::make_queued_response_object,
+            auth_guard::make_admin_guard()
+        );
     }
 }
 

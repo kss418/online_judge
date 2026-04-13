@@ -33,6 +33,13 @@ namespace http_endpoint{
         }
     };
 
+    template <typename error_response_factory_type = default_error_response_factory>
+    struct spec_options{
+        error_response_factory_type error_response{};
+        boost::beast::http::status success_status =
+            boost::beast::http::status::ok;
+    };
+
     template <
         typename parse_type,
         typename execute_type,
@@ -52,6 +59,23 @@ namespace http_endpoint{
         return [](const http_guard::guard_context&)
             -> std::expected<no_input, http_guard::response_type> {
             return no_input{};
+        };
+    }
+
+    template <typename execute_type>
+    auto make_db_execute(execute_type&& execute){
+        using execute_storage_type = std::decay_t<execute_type>;
+
+        return [
+            execute_value = execute_storage_type(
+                std::forward<execute_type>(execute)
+            )
+        ](auto& context, auto&& command_value) {
+            return std::invoke(
+                execute_value,
+                context.db_connection_ref(),
+                std::forward<decltype(command_value)>(command_value)
+            );
         };
     }
 
@@ -184,6 +208,180 @@ namespace http_endpoint{
                 );
             },
             std::move(spec_value.parse)
+        );
+    }
+
+    template <
+        typename parse_type,
+        typename execute_type,
+        typename serialize_type
+    >
+    auto make_json_spec(
+        parse_type&& parse,
+        execute_type&& execute,
+        serialize_type&& serialize
+    ){
+        return endpoint_spec{
+            .parse = std::decay_t<parse_type>(std::forward<parse_type>(parse)),
+            .execute = std::decay_t<execute_type>(std::forward<execute_type>(execute)),
+            .serialize = std::decay_t<serialize_type>(std::forward<serialize_type>(serialize)),
+            .error_response = default_error_response_factory{},
+            .success_status = boost::beast::http::status::ok
+        };
+    }
+
+    template <
+        typename parse_type,
+        typename execute_type,
+        typename serialize_type,
+        typename error_response_factory_type
+    >
+    auto make_json_spec(
+        parse_type&& parse,
+        execute_type&& execute,
+        serialize_type&& serialize,
+        spec_options<error_response_factory_type> options
+    ){
+        return endpoint_spec{
+            .parse = std::decay_t<parse_type>(std::forward<parse_type>(parse)),
+            .execute = std::decay_t<execute_type>(std::forward<execute_type>(execute)),
+            .serialize = std::decay_t<serialize_type>(std::forward<serialize_type>(serialize)),
+            .error_response = std::move(options.error_response),
+            .success_status = options.success_status
+        };
+    }
+
+    template <
+        typename builder_type,
+        typename execute_type,
+        typename serialize_type,
+        typename... guard_types
+    >
+    auto make_guarded_json_spec(
+        builder_type&& build_command,
+        execute_type&& execute,
+        serialize_type&& serialize,
+        guard_types&&... guards
+    ){
+        return make_json_spec(
+            http_guard::make_composite_guard(
+                std::forward<builder_type>(build_command),
+                std::forward<guard_types>(guards)...
+            ),
+            std::forward<execute_type>(execute),
+            std::forward<serialize_type>(serialize)
+        );
+    }
+
+    template <
+        typename builder_type,
+        typename execute_type,
+        typename serialize_type,
+        typename error_response_factory_type,
+        typename... guard_types
+    >
+    auto make_guarded_json_spec(
+        builder_type&& build_command,
+        execute_type&& execute,
+        serialize_type&& serialize,
+        spec_options<error_response_factory_type> options,
+        guard_types&&... guards
+    ){
+        return make_json_spec(
+            http_guard::make_composite_guard(
+                std::forward<builder_type>(build_command),
+                std::forward<guard_types>(guards)...
+            ),
+            std::forward<execute_type>(execute),
+            std::forward<serialize_type>(serialize),
+            std::move(options)
+        );
+    }
+
+    template <
+        typename parse_type,
+        typename execute_type,
+        typename serialize_type
+    >
+    auto make_message_spec(
+        parse_type&& parse,
+        execute_type&& execute,
+        serialize_type&& serialize
+    ){
+        return endpoint_spec{
+            .parse = std::decay_t<parse_type>(std::forward<parse_type>(parse)),
+            .execute = std::decay_t<execute_type>(std::forward<execute_type>(execute)),
+            .serialize = std::decay_t<serialize_type>(std::forward<serialize_type>(serialize)),
+            .error_response = default_error_response_factory{},
+            .success_status = boost::beast::http::status::ok
+        };
+    }
+
+    template <
+        typename parse_type,
+        typename execute_type,
+        typename serialize_type,
+        typename error_response_factory_type
+    >
+    auto make_message_spec(
+        parse_type&& parse,
+        execute_type&& execute,
+        serialize_type&& serialize,
+        spec_options<error_response_factory_type> options
+    ){
+        return endpoint_spec{
+            .parse = std::decay_t<parse_type>(std::forward<parse_type>(parse)),
+            .execute = std::decay_t<execute_type>(std::forward<execute_type>(execute)),
+            .serialize = std::decay_t<serialize_type>(std::forward<serialize_type>(serialize)),
+            .error_response = std::move(options.error_response),
+            .success_status = options.success_status
+        };
+    }
+
+    template <
+        typename builder_type,
+        typename execute_type,
+        typename serialize_type,
+        typename... guard_types
+    >
+    auto make_guarded_message_spec(
+        builder_type&& build_command,
+        execute_type&& execute,
+        serialize_type&& serialize,
+        guard_types&&... guards
+    ){
+        return make_message_spec(
+            http_guard::make_composite_guard(
+                std::forward<builder_type>(build_command),
+                std::forward<guard_types>(guards)...
+            ),
+            std::forward<execute_type>(execute),
+            std::forward<serialize_type>(serialize)
+        );
+    }
+
+    template <
+        typename builder_type,
+        typename execute_type,
+        typename serialize_type,
+        typename error_response_factory_type,
+        typename... guard_types
+    >
+    auto make_guarded_message_spec(
+        builder_type&& build_command,
+        execute_type&& execute,
+        serialize_type&& serialize,
+        spec_options<error_response_factory_type> options,
+        guard_types&&... guards
+    ){
+        return make_message_spec(
+            http_guard::make_composite_guard(
+                std::forward<builder_type>(build_command),
+                std::forward<guard_types>(guards)...
+            ),
+            std::forward<execute_type>(execute),
+            std::forward<serialize_type>(serialize),
+            std::move(options)
         );
     }
 }

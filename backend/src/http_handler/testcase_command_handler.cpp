@@ -12,20 +12,38 @@
 #include "serializer/problem_json_serializer.hpp"
 
 namespace{
-    auto make_post_testcase_guard(std::int64_t problem_id){
+    using context_type = testcase_command_handler::context_type;
+    using response_type = testcase_command_handler::response_type;
+
+    template <typename command_type>
+    using command_expected = std::expected<command_type, response_type>;
+
+    auto make_problem_message_serializer(std::string_view message){
+        return [message](const problem_dto::mutation_result& mutation_value) {
+            return problem_json_serializer::make_message_object(
+                message,
+                mutation_value
+            );
+        };
+    }
+
+    auto make_post_testcase_spec(std::int64_t problem_id){
         problem_dto::reference problem_reference_value{problem_id};
-        return http_guard::make_composite_guard(
+
+        return http_endpoint::make_guarded_json_spec(
             [problem_reference_value](const http_guard::guard_context&,
                 const auth_dto::identity&,
                 const problem_dto::testcase& testcase_value)
-                -> std::expected<
-                    create_testcase_action::command,
-                    testcase_command_handler::response_type
-                > {
+                -> command_expected<create_testcase_action::command> {
                 return create_testcase_action::command{
                     .problem_reference_value = problem_reference_value,
                     .testcase_value = testcase_value
                 };
+            },
+            http_endpoint::make_db_execute(create_testcase_action::execute),
+            problem_json_serializer::make_versioned_testcase_created_object,
+            http_endpoint::spec_options{
+                .success_status = boost::beast::http::status::created
             },
             auth_guard::make_admin_guard(),
             request_parse_guard::make_json_guard<problem_dto::testcase>(
@@ -35,23 +53,7 @@ namespace{
         );
     }
 
-    auto make_post_testcase_spec(std::int64_t problem_id){
-        return http_endpoint::endpoint_spec{
-            .parse = make_post_testcase_guard(problem_id),
-            .execute = [](testcase_command_handler::context_type& context,
-                const create_testcase_action::command& command_value) {
-                return create_testcase_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = problem_json_serializer::make_versioned_testcase_created_object,
-            .error_response = http_endpoint::default_error_response_factory{},
-            .success_status = boost::beast::http::status::created
-        };
-    }
-
-    auto make_put_testcase_guard(
+    auto make_put_testcase_spec(
         std::int64_t problem_id,
         std::int32_t testcase_order
     ){
@@ -59,19 +61,19 @@ namespace{
             .problem_id = problem_id,
             .testcase_order = testcase_order
         };
-        return http_guard::make_composite_guard(
+
+        return http_endpoint::make_guarded_json_spec(
             [testcase_reference_value](const http_guard::guard_context&,
                 const auth_dto::identity&,
                 const problem_dto::testcase& testcase_value)
-                -> std::expected<
-                    update_testcase_action::command,
-                    testcase_command_handler::response_type
-                > {
+                -> command_expected<update_testcase_action::command> {
                 return update_testcase_action::command{
                     .testcase_reference_value = testcase_reference_value,
                     .testcase_value = testcase_value
                 };
             },
+            http_endpoint::make_db_execute(update_testcase_action::execute),
+            problem_json_serializer::make_versioned_testcase_object,
             auth_guard::make_admin_guard(),
             request_parse_guard::make_json_guard<problem_dto::testcase>(
                 problem_request_parser::parse_testcase
@@ -79,74 +81,37 @@ namespace{
         );
     }
 
-    auto make_put_testcase_spec(
-        std::int64_t problem_id,
-        std::int32_t testcase_order
-    ){
-        return http_endpoint::endpoint_spec{
-            .parse = make_put_testcase_guard(problem_id, testcase_order),
-            .execute = [](testcase_command_handler::context_type& context,
-                const update_testcase_action::command& command_value) {
-                return update_testcase_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = problem_json_serializer::make_versioned_testcase_object,
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
-    }
-
-    auto make_post_testcase_zip_guard(std::int64_t problem_id){
-        return http_guard::make_composite_guard(
+    auto make_post_testcase_zip_spec(std::int64_t problem_id){
+        return http_endpoint::make_guarded_json_spec(
             [problem_id](const http_guard::guard_context&,
                 const auth_dto::identity&,
                 const std::vector<problem_dto::testcase>& testcase_values)
-                -> std::expected<
-                    replace_testcases_action::command,
-                    testcase_command_handler::response_type
-                > {
+                -> command_expected<replace_testcases_action::command> {
                 return replace_testcases_action::command{
                     .problem_reference_value = problem_dto::reference{problem_id},
                     .testcase_values = testcase_values
                 };
+            },
+            http_endpoint::make_db_execute(replace_testcases_action::execute),
+            [](const problem_dto::testcase_count_mutation_result& testcase_count_value) {
+                return problem_json_serializer::make_testcase_count_message_object(
+                    "problem testcases uploaded",
+                    testcase_count_value
+                );
             },
             auth_guard::make_admin_guard(),
             testcase_upload_guard::make_testcase_zip_guard()
         );
     }
 
-    auto make_post_testcase_zip_spec(std::int64_t problem_id){
-        return http_endpoint::endpoint_spec{
-            .parse = make_post_testcase_zip_guard(problem_id),
-            .execute = [](testcase_command_handler::context_type& context,
-                const replace_testcases_action::command& command_value) {
-                return replace_testcases_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize =
-                [](const problem_dto::testcase_count_mutation_result& testcase_count_value) {
-                    return problem_json_serializer::make_testcase_count_message_object(
-                        "problem testcases uploaded",
-                        testcase_count_value
-                    );
-                },
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
-    }
-
-    auto make_move_testcase_guard(std::int64_t problem_id){
+    auto make_move_testcase_spec(std::int64_t problem_id){
         problem_dto::reference problem_reference_value{problem_id};
-        return http_guard::make_composite_guard(
+
+        return http_endpoint::make_guarded_json_spec(
             [problem_id](const http_guard::guard_context&,
                 const auth_dto::identity&,
                 const problem_dto::testcase_move_request& testcase_move_request)
-                -> std::expected<
-                    move_testcase_action::command,
-                    testcase_command_handler::response_type
-                > {
+                -> command_expected<move_testcase_action::command> {
                 return move_testcase_action::command{
                     .testcase_reference_value = problem_dto::testcase_ref{
                         .problem_id = problem_id,
@@ -155,6 +120,8 @@ namespace{
                     .target_testcase_order = testcase_move_request.target_testcase_order
                 };
             },
+            http_endpoint::make_db_execute(move_testcase_action::execute),
+            make_problem_message_serializer("problem testcase moved"),
             auth_guard::make_admin_guard(),
             problem_guard::make_exists_guard(problem_reference_value),
             request_parse_guard::make_json_guard<problem_dto::testcase_move_request>(
@@ -163,103 +130,39 @@ namespace{
         );
     }
 
-    auto make_move_testcase_spec(std::int64_t problem_id){
-        return http_endpoint::endpoint_spec{
-            .parse = make_move_testcase_guard(problem_id),
-            .execute = [](testcase_command_handler::context_type& context,
-                const move_testcase_action::command& command_value) {
-                return move_testcase_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = [](const problem_dto::mutation_result& mutation_value) {
-                return problem_json_serializer::make_message_object(
-                    "problem testcase moved",
-                    mutation_value
-                );
-            },
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
-    }
-
-    auto make_delete_testcase_guard(
+    auto make_delete_testcase_spec(
         std::int64_t problem_id,
         std::int32_t testcase_order
     ){
-        return http_guard::make_composite_guard(
+        return http_endpoint::make_guarded_json_spec(
             [problem_id, testcase_order](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> std::expected<
-                    delete_testcase_action::command,
-                    testcase_command_handler::response_type
-                > {
+                -> command_expected<delete_testcase_action::command> {
                 return delete_testcase_action::command{
                     .problem_id = problem_id,
                     .testcase_order = testcase_order
                 };
             },
+            http_endpoint::make_db_execute(delete_testcase_action::execute),
+            make_problem_message_serializer("problem testcase deleted"),
             auth_guard::make_admin_guard()
         );
     }
 
-    auto make_delete_testcase_spec(
-        std::int64_t problem_id,
-        std::int32_t testcase_order
-    ){
-        return http_endpoint::endpoint_spec{
-            .parse = make_delete_testcase_guard(problem_id, testcase_order),
-            .execute = [](testcase_command_handler::context_type& context,
-                const delete_testcase_action::command& command_value) {
-                return delete_testcase_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = [](const problem_dto::mutation_result& mutation_value) {
-                return problem_json_serializer::make_message_object(
-                    "problem testcase deleted",
-                    mutation_value
-                );
-            },
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
-    }
-
-    auto make_delete_all_testcases_guard(std::int64_t problem_id){
+    auto make_delete_all_testcases_spec(std::int64_t problem_id){
         problem_dto::reference problem_reference_value{problem_id};
-        return http_guard::make_composite_guard(
+
+        return http_endpoint::make_guarded_json_spec(
             [problem_reference_value](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> std::expected<
-                    delete_all_testcases_action::command,
-                    testcase_command_handler::response_type
-                > {
+                -> command_expected<delete_all_testcases_action::command> {
                 return problem_reference_value;
             },
+            http_endpoint::make_db_execute(delete_all_testcases_action::execute),
+            make_problem_message_serializer("problem testcases deleted"),
             auth_guard::make_admin_guard(),
             problem_guard::make_exists_guard(problem_reference_value)
         );
-    }
-
-    auto make_delete_all_testcases_spec(std::int64_t problem_id){
-        return http_endpoint::endpoint_spec{
-            .parse = make_delete_all_testcases_guard(problem_id),
-            .execute = [](testcase_command_handler::context_type& context,
-                const delete_all_testcases_action::command& command_value) {
-                return delete_all_testcases_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = [](const problem_dto::mutation_result& mutation_value) {
-                return problem_json_serializer::make_message_object(
-                    "problem testcases deleted",
-                    mutation_value
-                );
-            },
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
     }
 }
 
@@ -267,10 +170,7 @@ testcase_command_handler::response_type testcase_command_handler::post_testcase(
     context_type& context,
     std::int64_t problem_id
 ){
-    return http_endpoint::run_json(
-        context,
-        make_post_testcase_spec(problem_id)
-    );
+    return http_endpoint::run_json(context, make_post_testcase_spec(problem_id));
 }
 
 testcase_command_handler::response_type testcase_command_handler::put_testcase(
@@ -298,10 +198,7 @@ testcase_command_handler::response_type testcase_command_handler::move_testcase(
     context_type& context,
     std::int64_t problem_id
 ){
-    return http_endpoint::run_json(
-        context,
-        make_move_testcase_spec(problem_id)
-    );
+    return http_endpoint::run_json(context, make_move_testcase_spec(problem_id));
 }
 
 testcase_command_handler::response_type testcase_command_handler::delete_testcase(

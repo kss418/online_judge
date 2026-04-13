@@ -9,74 +9,59 @@
 #include "request_parser/auth_request_parser.hpp"
 #include "serializer/auth_json_serializer.hpp"
 
+#include <string_view>
+
 namespace{
     auto make_post_sign_up_spec(){
-        return http_endpoint::endpoint_spec{
-            .parse = request_parse_guard::make_json_guard<auth_dto::sign_up_request>(
+        return http_endpoint::make_json_spec(
+            request_parse_guard::make_json_guard<auth_dto::sign_up_request>(
                 auth_request_parser::parse_sign_up_request
             ),
-            .execute = [](auth_command_handler::context_type& context,
-                const auth_dto::sign_up_request& command_value) {
-                return sign_up_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = auth_json_serializer::make_session_object,
-            .error_response = http_endpoint::default_error_response_factory{},
-            .success_status = boost::beast::http::status::created
-        };
+            http_endpoint::make_db_execute(sign_up_action::execute),
+            auth_json_serializer::make_session_object,
+            http_endpoint::spec_options{
+                .success_status = boost::beast::http::status::created
+            }
+        );
     }
 
     auto make_post_login_spec(){
-        return http_endpoint::endpoint_spec{
-            .parse = request_parse_guard::make_json_guard<auth_dto::credentials>(
+        return http_endpoint::make_json_spec(
+            request_parse_guard::make_json_guard<auth_dto::credentials>(
                 auth_request_parser::parse_credentials
             ),
-            .execute = [](auth_command_handler::context_type& context,
-                const auth_dto::credentials& command_value) {
-                return login_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = auth_json_serializer::make_session_object,
-            .error_response = http_error_mapper::auth_login_error()
-        };
+            http_endpoint::make_db_execute(login_action::execute),
+            auth_json_serializer::make_session_object,
+            http_endpoint::spec_options{
+                .error_response = http_error_mapper::auth_login_error()
+            }
+        );
     }
 
     auto make_post_token_renew_spec(){
-        return http_endpoint::endpoint_spec{
-            .parse = auth_guard::make_bearer_token_guard(),
-            .execute = [](auth_command_handler::context_type& context,
-                const auth_dto::token& command_value) {
-                return renew_auth_token_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = []() -> std::string_view {
+        return http_endpoint::make_message_spec(
+            auth_guard::make_bearer_token_guard(),
+            http_endpoint::make_db_execute(renew_auth_token_action::execute),
+            []() -> std::string_view {
                 return "token renewed";
             },
-            .error_response = http_error_mapper::auth_token_error()
-        };
+            http_endpoint::spec_options{
+                .error_response = http_error_mapper::auth_token_error()
+            }
+        );
     }
 
     auto make_post_logout_spec(){
-        return http_endpoint::endpoint_spec{
-            .parse = auth_guard::make_bearer_token_guard(),
-            .execute = [](auth_command_handler::context_type& context,
-                const auth_dto::token& command_value) {
-                return logout_action::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = []() -> std::string_view {
+        return http_endpoint::make_message_spec(
+            auth_guard::make_bearer_token_guard(),
+            http_endpoint::make_db_execute(logout_action::execute),
+            []() -> std::string_view {
                 return "logged out";
             },
-            .error_response = http_error_mapper::auth_token_error()
-        };
+            http_endpoint::spec_options{
+                .error_response = http_error_mapper::auth_token_error()
+            }
+        );
     }
 }
 

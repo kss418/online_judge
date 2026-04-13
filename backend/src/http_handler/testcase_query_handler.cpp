@@ -8,75 +8,45 @@
 #include "serializer/problem_json_serializer.hpp"
 
 namespace{
-    auto make_get_testcase_guard(
-        std::int64_t problem_id,
-        std::int32_t testcase_order
-    ){
-        problem_dto::reference problem_reference_value{problem_id};
-        return http_guard::make_composite_guard(
-            [problem_id, testcase_order](const http_guard::guard_context&,
-                const auth_dto::identity&)
-                -> std::expected<
-                    get_testcase_query::command,
-                    testcase_query_handler::response_type
-                > {
-                return get_testcase_query::command{
-                    .problem_id = problem_id,
-                    .testcase_order = testcase_order
-                };
-            },
-            auth_guard::make_admin_guard(),
-            problem_guard::make_exists_guard(problem_reference_value)
-        );
-    }
+    using response_type = testcase_query_handler::response_type;
+
+    template <typename command_type>
+    using command_expected = std::expected<command_type, response_type>;
 
     auto make_get_testcase_spec(
         std::int64_t problem_id,
         std::int32_t testcase_order
     ){
-        return http_endpoint::endpoint_spec{
-            .parse = make_get_testcase_guard(problem_id, testcase_order),
-            .execute = [](testcase_query_handler::context_type& context,
-                const get_testcase_query::command& command_value) {
-                return get_testcase_query::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = problem_json_serializer::make_testcase_object,
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
-    }
-
-    auto make_get_testcases_guard(std::int64_t problem_id){
         problem_dto::reference problem_reference_value{problem_id};
-        return http_guard::make_composite_guard(
-            [problem_reference_value](const http_guard::guard_context&,
+        return http_endpoint::make_guarded_json_spec(
+            [problem_id, testcase_order](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> std::expected<
-                    list_testcase_summaries_query::command,
-                    testcase_query_handler::response_type
-                > {
-                return problem_reference_value;
+                -> command_expected<get_testcase_query::command> {
+                return get_testcase_query::command{
+                    .problem_id = problem_id,
+                    .testcase_order = testcase_order
+                };
             },
+            http_endpoint::make_db_execute(get_testcase_query::execute),
+            problem_json_serializer::make_testcase_object,
             auth_guard::make_admin_guard(),
             problem_guard::make_exists_guard(problem_reference_value)
         );
     }
 
     auto make_get_testcases_spec(std::int64_t problem_id){
-        return http_endpoint::endpoint_spec{
-            .parse = make_get_testcases_guard(problem_id),
-            .execute = [](testcase_query_handler::context_type& context,
-                const list_testcase_summaries_query::command& command_value) {
-                return list_testcase_summaries_query::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
+        problem_dto::reference problem_reference_value{problem_id};
+        return http_endpoint::make_guarded_json_spec(
+            [problem_reference_value](const http_guard::guard_context&,
+                const auth_dto::identity&)
+                -> command_expected<list_testcase_summaries_query::command> {
+                return problem_reference_value;
             },
-            .serialize = problem_json_serializer::make_testcase_summary_list_object,
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
+            http_endpoint::make_db_execute(list_testcase_summaries_query::execute),
+            problem_json_serializer::make_testcase_summary_list_object,
+            auth_guard::make_admin_guard(),
+            problem_guard::make_exists_guard(problem_reference_value)
+        );
     }
 }
 

@@ -7,14 +7,16 @@
 #include "serializer/problem_json_serializer.hpp"
 
 namespace{
+    using response_type = problem_content_query_handler::response_type;
+
+    template <typename command_type>
+    using command_expected = std::expected<command_type, response_type>;
+
     auto make_problem_reference_guard(std::int64_t problem_id){
         problem_dto::reference problem_reference_value{problem_id};
         return http_guard::make_composite_guard(
             [problem_reference_value](const http_guard::guard_context&)
-                -> std::expected<
-                    problem_dto::reference,
-                    problem_content_query_handler::response_type
-                > {
+                -> command_expected<problem_dto::reference> {
                 return problem_reference_value;
             },
             problem_guard::make_exists_guard(problem_reference_value)
@@ -22,33 +24,19 @@ namespace{
     }
 
     auto make_get_limits_spec(std::int64_t problem_id){
-        return http_endpoint::endpoint_spec{
-            .parse = make_problem_reference_guard(problem_id),
-            .execute = [](problem_content_query_handler::context_type& context,
-                const get_problem_limits_query::command& command_value) {
-                return get_problem_limits_query::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = problem_json_serializer::make_limits_object,
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
+        return http_endpoint::make_json_spec(
+            make_problem_reference_guard(problem_id),
+            http_endpoint::make_db_execute(get_problem_limits_query::execute),
+            problem_json_serializer::make_limits_object
+        );
     }
 
     auto make_get_samples_spec(std::int64_t problem_id){
-        return http_endpoint::endpoint_spec{
-            .parse = make_problem_reference_guard(problem_id),
-            .execute = [](problem_content_query_handler::context_type& context,
-                const list_problem_samples_query::command& command_value) {
-                return list_problem_samples_query::execute(
-                    context.db_connection_ref(),
-                    command_value
-                );
-            },
-            .serialize = problem_json_serializer::make_sample_list_object,
-            .error_response = http_endpoint::default_error_response_factory{}
-        };
+        return http_endpoint::make_json_spec(
+            make_problem_reference_guard(problem_id),
+            http_endpoint::make_db_execute(list_problem_samples_query::execute),
+            problem_json_serializer::make_sample_list_object
+        );
     }
 }
 
