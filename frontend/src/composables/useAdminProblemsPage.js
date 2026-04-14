@@ -92,17 +92,28 @@ export function useAdminProblemsPage(){
     selectProblem: problemDetailResource.selectProblem
   })
 
+  async function handleCreatedProblem(problemId){
+    problemQuery.searchMode.value = 'title'
+    problemQuery.titleSearchInput.value = ''
+    problemQuery.problemIdSearchInput.value = ''
+
+    await router.replace({
+      query: {
+        problemId: String(problemId ?? '')
+      }
+    })
+    await problemListResource.loadProblems({
+      preferredProblemId: Number(problemId ?? 0)
+    })
+  }
+
   let problemActions = useProblemAdminActions({
     authState,
-    router,
     formatCount,
     busySection,
     newProblemTitle,
     selectedProblemDetail: problemDetailResource.selectedProblemDetail,
     testcaseZipFile: editorDraft.testcaseZipFile,
-    searchMode: problemQuery.searchMode,
-    titleSearchInput: problemQuery.titleSearchInput,
-    problemIdSearchInput: problemQuery.problemIdSearchInput,
     titleDraft: editorDraft.titleDraft,
     timeLimitDraft: editorDraft.timeLimitDraft,
     memoryLimitDraft: editorDraft.memoryLimitDraft,
@@ -116,13 +127,13 @@ export function useAdminProblemsPage(){
     canSaveSample: editorDraft.canSaveSample,
     getSampleDraft: editorDraft.getSampleDraft,
     makeSampleBusyKey: editorDraft.makeSampleBusyKey,
-    resetEditorDrafts: editorDraft.resetEditorDrafts,
     syncSampleDrafts: editorDraft.syncSampleDrafts,
     setSelectedProblemSamples: problemDetailResource.setSelectedProblemSamples,
     applySelectedProblemVersion: problemDetailResource.applySelectedProblemVersion,
     mergeProblemSummary: problemListResource.mergeProblemSummary,
     loadProblems: problemListResource.loadProblems,
-    loadSelectedProblem: problemDetailResource.loadSelectedProblem
+    loadSelectedProblem: problemDetailResource.loadSelectedProblem,
+    onCreatedProblem: handleCreatedProblem
   })
 
   const toolbarStatusLabel = computed(() =>
@@ -206,11 +217,8 @@ export function useAdminProblemsPage(){
     problemDetailResource.selectedProblemDetail.value = null
     problemListResource.listErrorMessage.value = ''
     problemDetailResource.detailErrorMessage.value = ''
-    problemActions.actionErrorMessage.value = ''
-    problemActions.actionMessage.value = ''
     busySection.value = ''
-    problemActions.closeRejudgeDialog(true)
-    problemActions.closeDeleteDialog(true)
+    problemActions.resetActionState()
     editorDraft.resetEditorDrafts()
   }
 
