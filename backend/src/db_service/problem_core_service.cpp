@@ -3,7 +3,8 @@
 #include "db_service/problem_version_publish_service.hpp"
 #include "dto/problem_content_dto.hpp"
 #include "db_repository/problem_content_repository.hpp"
-#include "db_repository/problem_core_repository.hpp"
+#include "db_repository/problem_mutation_repository.hpp"
+#include "db_repository/problem_query_repository.hpp"
 #include "db_repository/problem_statistics_repository.hpp"
 
 #include <utility>
@@ -28,7 +29,7 @@ std::expected<void, service_error> problem_core_service::ensure_problem_exists(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<void, service_error> {
-            const auto existence_exp = problem_core_repository::exists_problem(
+            const auto existence_exp = problem_query_repository::exists_problem(
                 transaction,
                 problem_reference_value
             );
@@ -52,7 +53,7 @@ std::expected<problem_dto::title, service_error> problem_core_service::get_title
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::title, service_error> {
-            return problem_core_repository::get_title(
+            return problem_query_repository::get_title(
                 transaction,
                 problem_reference_value
             );
@@ -68,7 +69,7 @@ std::expected<problem_dto::version, service_error> problem_core_service::get_ver
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::version, service_error> {
-            return problem_core_repository::get_version(
+            return problem_query_repository::get_version(
                 transaction,
                 problem_reference_value
             );
@@ -89,7 +90,7 @@ std::expected<std::optional<std::string>, service_error> problem_core_service::g
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::optional<std::string>, service_error> {
-            return problem_core_repository::get_user_problem_state(
+            return problem_query_repository::get_user_problem_state(
                 transaction,
                 problem_reference_value,
                 user_id
@@ -116,7 +117,7 @@ std::expected<problem_dto::detail, service_error> problem_core_service::get_prob
             problem_dto::detail detail_value;
             detail_value.problem_reference_value = problem_reference_value;
 
-            const auto title_exp = problem_core_repository::get_title(
+            const auto title_exp = problem_query_repository::get_title(
                 transaction,
                 problem_reference_value
             );
@@ -125,7 +126,7 @@ std::expected<problem_dto::detail, service_error> problem_core_service::get_prob
             }
             detail_value.title_value = *title_exp;
 
-            const auto version_exp = problem_core_repository::get_version(
+            const auto version_exp = problem_query_repository::get_version(
                 transaction,
                 problem_reference_value
             );
@@ -134,7 +135,7 @@ std::expected<problem_dto::detail, service_error> problem_core_service::get_prob
             }
             detail_value.version_value = *version_exp;
 
-            const auto limits_exp = problem_core_repository::get_limits(
+            const auto limits_exp = problem_query_repository::get_limits(
                 transaction,
                 problem_reference_value
             );
@@ -172,7 +173,7 @@ std::expected<problem_dto::detail, service_error> problem_core_service::get_prob
 
             if(viewer_user_id_opt){
                 const auto user_problem_state_exp =
-                    problem_core_repository::get_user_problem_state(
+                    problem_query_repository::get_user_problem_state(
                         transaction,
                         problem_reference_value,
                         *viewer_user_id_opt
@@ -196,7 +197,7 @@ std::expected<problem_dto::created, service_error> problem_core_service::create_
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<problem_dto::created, service_error> {
-            const auto created_exp = problem_core_repository::create_problem(
+            const auto created_exp = problem_mutation_repository::create_problem(
                 transaction,
                 create_request_value
             );
@@ -209,7 +210,7 @@ std::expected<problem_dto::created, service_error> problem_core_service::create_
             initial_limits_value.memory_mb = problem_core_service::INITIAL_MEMORY_LIMIT_MB;
             initial_limits_value.time_ms = problem_core_service::INITIAL_TIME_LIMIT_MS;
 
-            const auto set_limits_exp = problem_core_repository::set_limits(
+            const auto set_limits_exp = problem_mutation_repository::set_limits(
                 transaction,
                 problem_reference_value,
                 initial_limits_value
@@ -262,7 +263,7 @@ std::expected<problem_dto::mutation_result, service_error> problem_core_service:
             problem_dto::title title_value;
             title_value.value = update_request_value.title;
 
-            const auto set_title_exp = problem_core_repository::set_title(
+            const auto set_title_exp = problem_mutation_repository::set_title(
                 transaction,
                 problem_reference_value,
                 title_value
@@ -295,7 +296,7 @@ std::expected<void, service_error> problem_core_service::delete_problem(
     return db_service_util::with_retry_service_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, service_error> {
-            return problem_core_repository::delete_problem(
+            return problem_mutation_repository::delete_problem(
                 transaction,
                 problem_reference_value
             );
@@ -312,7 +313,7 @@ std::expected<std::vector<problem_dto::summary>, service_error> problem_core_ser
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_dto::summary>, service_error> {
-            return problem_core_repository::list_problems(
+            return problem_query_repository::list_problems(
                 transaction,
                 filter_value,
                 viewer_user_id_opt
@@ -330,7 +331,7 @@ std::expected<std::int64_t, service_error> problem_core_service::count_problems(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::int64_t, service_error> {
-            return problem_core_repository::count_problems(
+            return problem_query_repository::count_problems(
                 transaction,
                 filter_value,
                 viewer_user_id_opt
@@ -353,7 +354,7 @@ problem_core_service::list_user_solved_problems(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_dto::summary>, service_error> {
-            return problem_core_repository::list_user_solved_problems(
+            return problem_query_repository::list_user_solved_problems(
                 transaction,
                 user_id,
                 viewer_user_id_opt
@@ -376,7 +377,7 @@ problem_core_service::list_user_wrong_problems(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_dto::summary>, service_error> {
-            return problem_core_repository::list_user_wrong_problems(
+            return problem_query_repository::list_user_wrong_problems(
                 transaction,
                 user_id,
                 viewer_user_id_opt

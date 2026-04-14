@@ -2,7 +2,9 @@
 
 #include "db_service/db_service_util.hpp"
 #include "db_repository/problem_statistics_repository.hpp"
-#include "db_repository/submission_repository.hpp"
+#include "db_repository/submission_finalize_repository.hpp"
+#include "db_repository/submission_queue_repository.hpp"
+#include "db_repository/submission_read_repository.hpp"
 #include "db_repository/user_problem_summary_repository.hpp"
 #include "db_repository/user_repository.hpp"
 
@@ -29,7 +31,7 @@ submission_command_service::create_submission(
                 return std::unexpected(service_error::forbidden);
             }
 
-            const auto create_submission_exp = submission_repository::create_submission(
+            const auto create_submission_exp = submission_queue_repository::create_submission(
                 transaction,
                 create_request_value
             );
@@ -49,10 +51,10 @@ submission_command_service::create_submission(
                 );
             }
 
-            const auto enqueue_submission_exp = submission_repository::enqueue_submission(
+            const auto enqueue_submission_exp = submission_queue_repository::enqueue_submission(
                 transaction,
                 create_submission_exp->submission_id,
-                submission_repository::NORMAL_SUBMISSION_QUEUE_PRIORITY
+                submission_queue_repository::NORMAL_SUBMISSION_QUEUE_PRIORITY
             );
             if(!enqueue_submission_exp){
                 return std::unexpected(enqueue_submission_exp.error());
@@ -81,7 +83,7 @@ submission_command_service::rejudge_submission(
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<submission_response_dto::queued_response, service_error> {
-            return submission_repository::rejudge_submission(
+            return submission_finalize_repository::rejudge_submission(
                 transaction,
                 submission_id
             );
@@ -97,7 +99,7 @@ std::expected<void, service_error> submission_command_service::rejudge_problem(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, service_error> {
             const auto submission_values_exp =
-                submission_repository::get_wa_or_ac_submissions(
+                submission_read_repository::get_wa_or_ac_submissions(
                     transaction,
                     problem_id
                 );
@@ -107,7 +109,7 @@ std::expected<void, service_error> submission_command_service::rejudge_problem(
 
             for(const auto& submission_value : *submission_values_exp){
                 const auto rejudge_submission_exp =
-                    submission_repository::rejudge_submission(
+                    submission_finalize_repository::rejudge_submission(
                         transaction,
                         submission_value.submission_id
                     );

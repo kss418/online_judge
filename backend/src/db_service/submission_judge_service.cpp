@@ -2,7 +2,8 @@
 
 #include "db_service/db_service_util.hpp"
 #include "db_repository/problem_statistics_repository.hpp"
-#include "db_repository/submission_repository.hpp"
+#include "db_repository/submission_finalize_repository.hpp"
+#include "db_repository/submission_queue_repository.hpp"
 
 #include <utility>
 
@@ -18,7 +19,7 @@ std::expected<void, service_error> submission_judge_service::mark_judging(
     return db_service_util::with_retry_service_write_transaction(
         connection,
         [&](pqxx::work& transaction) -> std::expected<void, service_error> {
-            return submission_repository::update_submission_status(
+            return submission_finalize_repository::update_submission_status(
                 transaction,
                 status_update_value
             );
@@ -35,7 +36,7 @@ submission_judge_service::lease_submission(
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<std::optional<submission_domain_dto::leased_submission>, service_error> {
-            auto lease_submission_exp = submission_repository::lease_submission(
+            auto lease_submission_exp = submission_queue_repository::lease_submission(
                 transaction,
                 lease_request_value
             );
@@ -64,7 +65,7 @@ std::expected<void, service_error> submission_judge_service::requeue_submission_
                     queued_reason_opt
                 );
             const auto update_submission_status_exp =
-                submission_repository::update_submission_status(
+                submission_finalize_repository::update_submission_status(
                     transaction,
                     status_update_value
                 );
@@ -72,7 +73,7 @@ std::expected<void, service_error> submission_judge_service::requeue_submission_
                 return std::unexpected(update_submission_status_exp.error());
             }
 
-            return submission_repository::release_submission_lease(
+            return submission_queue_repository::release_submission_lease(
                 transaction,
                 leased_submission_value
             );
@@ -88,7 +89,7 @@ std::expected<void, service_error> submission_judge_service::finalize_submission
         connection,
         db_service_util::DB_TRANSACTION_ATTEMPT_COUNT,
         [&](pqxx::work& transaction) -> std::expected<void, service_error> {
-            const auto finalize_submission_exp = submission_repository::finalize_submission(
+            const auto finalize_submission_exp = submission_finalize_repository::finalize_submission(
                 transaction,
                 finalize_request_value
             );

@@ -3,11 +3,17 @@ target_sources(lib
         auth_repository.cpp
         login_repository.cpp
         problem_content_repository.cpp
-        problem_core_repository.cpp
+        problem_mutation_repository.cpp
+        problem_query_repository.cpp
         problem_snapshot_repository.cpp
         problem_statistics_repository.cpp
-        submission_repository.cpp
-        testcase_repository.cpp
+        problem_version_repository.cpp
+        submission_finalize_repository.cpp
+        submission_queue_repository.cpp
+        submission_read_repository.cpp
+        testcase_mutation_repository.cpp
+        testcase_order_repository.cpp
+        testcase_query_repository.cpp
         user_repository.cpp
         user_problem_summary_repository.cpp
         user_statistics_repository.cpp

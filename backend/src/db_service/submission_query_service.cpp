@@ -1,7 +1,7 @@
 #include "db_service/submission_query_service.hpp"
 
 #include "db_service/db_service_util.hpp"
-#include "db_repository/submission_repository.hpp"
+#include "db_repository/submission_read_repository.hpp"
 
 #include <string_view>
 #include <utility>
@@ -58,7 +58,7 @@ submission_query_service::get_submission_history(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_response_dto::history_list, service_error> {
-            return submission_repository::get_submission_history(transaction, submission_id);
+            return submission_read_repository::get_submission_history(transaction, submission_id);
         }
     );
 }
@@ -76,7 +76,7 @@ submission_query_service::get_submission_source(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_response_dto::source_detail, service_error> {
-            return submission_repository::get_submission_source(transaction, submission_id);
+            return submission_read_repository::get_submission_source(transaction, submission_id);
         }
     );
 }
@@ -94,7 +94,7 @@ submission_query_service::get_submission_detail(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_response_dto::detail, service_error> {
-            auto submission_detail_exp = submission_repository::get_submission_detail(
+            auto submission_detail_exp = submission_read_repository::get_submission_detail(
                 transaction,
                 submission_id
             );
@@ -117,7 +117,7 @@ submission_query_service::get_submission_status_snapshots(
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<submission_response_dto::status_snapshot>, service_error> {
             const auto snapshot_values_exp =
-                submission_repository::get_submission_status_snapshots(
+                submission_read_repository::get_submission_status_snapshots(
                     transaction,
                     submission_ids
                 );
@@ -140,7 +140,7 @@ submission_query_service::list_submissions(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<submission_response_dto::summary_page, service_error> {
-            const auto summary_page_exp = submission_repository::list_submissions(
+            const auto summary_page_exp = submission_read_repository::list_submissions(
                 transaction,
                 filter_value,
                 viewer_user_id_opt

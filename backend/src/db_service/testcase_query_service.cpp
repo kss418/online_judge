@@ -1,7 +1,7 @@
 #include "db_service/testcase_query_service.hpp"
 
 #include "db_service/db_service_util.hpp"
-#include "db_repository/testcase_repository.hpp"
+#include "db_repository/testcase_query_repository.hpp"
 
 std::expected<problem_dto::testcase, service_error> testcase_query_service::get_testcase(
     db_connection& connection,
@@ -11,7 +11,7 @@ std::expected<problem_dto::testcase, service_error> testcase_query_service::get_
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::testcase, service_error> {
-            return testcase_repository::get_testcase(
+            return testcase_query_repository::get_testcase(
                 transaction,
                 testcase_reference_value
             );
@@ -27,7 +27,7 @@ std::expected<problem_dto::testcase_count, service_error> testcase_query_service
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_dto::testcase_count, service_error> {
-            return testcase_repository::get_testcase_count(
+            return testcase_query_repository::get_testcase_count(
                 transaction,
                 problem_reference_value
             );
@@ -44,7 +44,7 @@ testcase_query_service::list_testcases(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_dto::testcase>, service_error> {
-            return testcase_repository::list_testcases(
+            return testcase_query_repository::list_testcases(
                 transaction,
                 problem_reference_value
             );
@@ -61,7 +61,7 @@ testcase_query_service::list_testcase_summaries(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<std::vector<problem_dto::testcase_summary>, service_error> {
-            return testcase_repository::list_testcase_summaries(
+            return testcase_query_repository::list_testcase_summaries(
                 transaction,
                 problem_reference_value
             );

@@ -2,7 +2,8 @@
 #include "db_service/db_service_util.hpp"
 #include "db_service/problem_version_publish_service.hpp"
 #include "db_repository/problem_content_repository.hpp"
-#include "db_repository/problem_core_repository.hpp"
+#include "db_repository/problem_mutation_repository.hpp"
+#include "db_repository/problem_query_repository.hpp"
 
 #include <utility>
 
@@ -40,7 +41,7 @@ std::expected<problem_content_dto::limits, service_error> problem_content_servic
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<problem_content_dto::limits, service_error> {
-            return problem_core_repository::get_limits(
+            return problem_query_repository::get_limits(
                 transaction,
                 problem_reference_value
             );
@@ -57,7 +58,7 @@ std::expected<problem_dto::mutation_result, service_error> problem_content_servi
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<problem_dto::mutation_result, service_error> {
-            const auto set_limits_exp = problem_core_repository::set_limits(
+            const auto set_limits_exp = problem_mutation_repository::set_limits(
                 transaction,
                 problem_reference_value,
                 limits_value
@@ -154,7 +155,7 @@ problem_content_service::create_sample(
                 return std::unexpected(created_sample_exp.error());
             }
 
-            const auto version_exp = problem_core_repository::get_version(
+            const auto version_exp = problem_query_repository::get_version(
                 transaction,
                 problem_reference_value
             );

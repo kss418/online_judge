@@ -4,8 +4,10 @@
 #include "db_service/problem_version_publish_service.hpp"
 
 #include "db_repository/problem_content_repository.hpp"
-#include "db_repository/problem_core_repository.hpp"
-#include "db_repository/testcase_repository.hpp"
+#include "db_repository/problem_query_repository.hpp"
+#include "db_repository/testcase_mutation_repository.hpp"
+#include "db_repository/testcase_order_repository.hpp"
+#include "db_repository/testcase_query_repository.hpp"
 
 namespace{
     problem_dto::mutation_result make_mutation_result(
@@ -65,7 +67,7 @@ testcase_mutation_service::create_testcase(
                 return std::unexpected(ensure_statement_exp.error());
             }
 
-            const auto testcase_count_exp = testcase_repository::increase_testcase_count(
+            const auto testcase_count_exp = testcase_mutation_repository::increase_testcase_count(
                 transaction,
                 problem_reference_value
             );
@@ -76,7 +78,7 @@ testcase_mutation_service::create_testcase(
             testcase_reference_value.problem_id = problem_reference_value.problem_id;
             testcase_reference_value.testcase_order = testcase_count_exp->testcase_count;
 
-            const auto created_testcase_exp = testcase_repository::create_testcase(
+            const auto created_testcase_exp = testcase_mutation_repository::create_testcase(
                 transaction,
                 testcase_reference_value,
                 testcase_value
@@ -113,7 +115,7 @@ testcase_mutation_service::set_testcase_and_get(
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<problem_dto::testcase_mutation_result, service_error> {
-            const auto set_testcase_exp = testcase_repository::set_testcase(
+            const auto set_testcase_exp = testcase_mutation_repository::set_testcase(
                 transaction,
                 testcase_reference_value,
                 testcase_value
@@ -134,7 +136,7 @@ testcase_mutation_service::set_testcase_and_get(
                 return std::unexpected(version_exp.error());
             }
 
-            const auto updated_testcase_exp = testcase_repository::get_testcase(
+            const auto updated_testcase_exp = testcase_query_repository::get_testcase(
                 transaction,
                 testcase_reference_value
             );
@@ -169,7 +171,7 @@ std::expected<problem_dto::mutation_result, service_error> testcase_mutation_ser
             connection,
             [&](pqxx::read_transaction& transaction)
                 -> std::expected<problem_dto::mutation_result, service_error> {
-                const auto testcase_exp = testcase_repository::get_testcase(
+                const auto testcase_exp = testcase_query_repository::get_testcase(
                     transaction,
                     testcase_reference_value
                 );
@@ -177,7 +179,7 @@ std::expected<problem_dto::mutation_result, service_error> testcase_mutation_ser
                     return std::unexpected(testcase_exp.error());
                 }
 
-                const auto version_exp = problem_core_repository::get_version(
+                const auto version_exp = problem_query_repository::get_version(
                     transaction,
                     problem_reference_value
                 );
@@ -197,7 +199,7 @@ std::expected<problem_dto::mutation_result, service_error> testcase_mutation_ser
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<problem_dto::mutation_result, service_error> {
-            const auto move_testcase_exp = testcase_repository::move_testcase(
+            const auto move_testcase_exp = testcase_order_repository::move_testcase(
                 transaction,
                 testcase_reference_value,
                 target_testcase_order
@@ -232,7 +234,7 @@ std::expected<problem_dto::mutation_result, service_error> testcase_mutation_ser
         [&](pqxx::work& transaction)
             -> std::expected<problem_dto::mutation_result, service_error> {
             const auto delete_testcase_exp =
-                testcase_repository::delete_testcase_and_shift_after(
+                testcase_mutation_repository::delete_testcase_and_shift_after(
                     transaction,
                     testcase_reference_value
                 );
@@ -269,7 +271,7 @@ testcase_mutation_service::delete_all_testcases(
         connection,
         [&](pqxx::work& transaction)
             -> std::expected<problem_dto::mutation_result, service_error> {
-            const auto testcase_count_exp = testcase_repository::get_testcase_count(
+            const auto testcase_count_exp = testcase_query_repository::get_testcase_count(
                 transaction,
                 problem_reference_value
             );
@@ -278,7 +280,7 @@ testcase_mutation_service::delete_all_testcases(
             }
 
             if(testcase_count_exp->testcase_count <= 0){
-                const auto version_exp = problem_core_repository::get_version(
+                const auto version_exp = problem_query_repository::get_version(
                     transaction,
                     problem_reference_value
                 );
@@ -293,7 +295,7 @@ testcase_mutation_service::delete_all_testcases(
             }
 
             const auto delete_all_testcases_exp =
-                testcase_repository::delete_all_testcases(
+                testcase_mutation_repository::delete_all_testcases(
                     transaction,
                     problem_reference_value
                 );
@@ -302,7 +304,7 @@ testcase_mutation_service::delete_all_testcases(
             }
 
             const auto clear_testcase_count_exp =
-                testcase_repository::clear_testcase_count(
+                testcase_mutation_repository::clear_testcase_count(
                     transaction,
                     problem_reference_value
                 );
@@ -350,7 +352,7 @@ testcase_mutation_service::replace_testcases(
             }
 
             const auto current_testcase_count_exp =
-                testcase_repository::get_testcase_count(
+                testcase_query_repository::get_testcase_count(
                     transaction,
                     problem_reference_value
                 );
@@ -360,7 +362,7 @@ testcase_mutation_service::replace_testcases(
 
             if(current_testcase_count_exp->testcase_count > 0){
                 const auto delete_all_testcases_exp =
-                    testcase_repository::delete_all_testcases(
+                    testcase_mutation_repository::delete_all_testcases(
                         transaction,
                         problem_reference_value
                     );
@@ -369,7 +371,7 @@ testcase_mutation_service::replace_testcases(
                 }
 
                 const auto clear_testcase_count_exp =
-                    testcase_repository::clear_testcase_count(
+                    testcase_mutation_repository::clear_testcase_count(
                         transaction,
                         problem_reference_value
                     );
@@ -383,7 +385,7 @@ testcase_mutation_service::replace_testcases(
             };
             for(const auto& testcase_value : testcase_values){
                 const auto next_testcase_count_exp =
-                    testcase_repository::increase_testcase_count(
+                    testcase_mutation_repository::increase_testcase_count(
                         transaction,
                         problem_reference_value
                     );
@@ -395,7 +397,7 @@ testcase_mutation_service::replace_testcases(
                     .problem_id = problem_reference_value.problem_id,
                     .testcase_order = next_testcase_count_exp->testcase_count
                 };
-                const auto create_testcase_exp = testcase_repository::create_testcase(
+                const auto create_testcase_exp = testcase_mutation_repository::create_testcase(
                     transaction,
                     testcase_reference_value,
                     testcase_value
@@ -424,7 +426,7 @@ testcase_mutation_service::replace_testcases(
                 );
             }
 
-            const auto version_exp = problem_core_repository::get_version(
+            const auto version_exp = problem_query_repository::get_version(
                 transaction,
                 problem_reference_value
             );
