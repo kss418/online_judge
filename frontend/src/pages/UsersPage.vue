@@ -132,140 +132,31 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-
 import PaginationBar from '@/components/PaginationBar.vue'
-import { getPublicUserList } from '@/api/userQueryApi'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { formatApiError } from '@/utils/apiError'
-import { formatRelativeTimestamp } from '@/utils/dateTime'
-import { buildPaginationItems } from '@/utils/pagination'
+import { useUsersPage } from '@/composables/useUsersPage'
 
-const countFormatter = new Intl.NumberFormat('ko-KR')
-const rateFormatter = new Intl.NumberFormat('ko-KR', {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1
-})
-const pageSize = 20
-const users = ref([])
-const isLoading = ref(true)
-const errorMessage = ref('')
-const searchInput = ref('')
-const appliedQuery = ref('')
-const currentPage = ref(1)
-const pageJumpInput = ref('')
-const nowTimestamp = ref(Date.now())
-let relativeTimeRefreshTimer = null
-
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(users.value.length / pageSize))
-)
-const pagedUsers = computed(() => {
-  const startIndex = (currentPage.value - 1) * pageSize
-  return users.value.slice(startIndex, startIndex + pageSize)
-})
-const paginationItems = computed(() =>
-  buildPaginationItems(currentPage.value, totalPages.value)
-)
-
-function formatAcceptanceRate(acceptedSubmissionCount, submissionCount){
-  if (submissionCount <= 0) {
-    return '-'
-  }
-
-  const rate = (acceptedSubmissionCount / submissionCount) * 100
-  return `${rateFormatter.format(rate)}%`
-}
-
-function formatRelativeCreatedAt(timestamp){
-  return formatRelativeTimestamp(nowTimestamp.value, timestamp)
-}
-
-function startRelativeTimeRefresh(){
-  nowTimestamp.value = Date.now()
-  if (relativeTimeRefreshTimer) {
-    clearInterval(relativeTimeRefreshTimer)
-  }
-
-  relativeTimeRefreshTimer = window.setInterval(() => {
-    nowTimestamp.value = Date.now()
-  }, 30_000)
-}
-
-function stopRelativeTimeRefresh(){
-  if (relativeTimeRefreshTimer) {
-    clearInterval(relativeTimeRefreshTimer)
-    relativeTimeRefreshTimer = null
-  }
-}
-
-watch(currentPage, () => {
-  pageJumpInput.value = ''
-})
-
-watch(totalPages, (pageCount) => {
-  if (currentPage.value > pageCount) {
-    currentPage.value = pageCount
-  }
-})
-
-async function loadUsers(){
-  isLoading.value = true
-  errorMessage.value = ''
-
-  try {
-    const response = await getPublicUserList(appliedQuery.value)
-    users.value = Array.isArray(response.users) ? response.users : []
-  } catch (error) {
-    users.value = []
-    errorMessage.value = formatApiError(error, {
-      fallback: '유저 목록을 불러오지 못했습니다.'
-    })
-  } finally {
-    isLoading.value = false
-  }
-}
-
-function submitSearch(){
-  appliedQuery.value = searchInput.value.trim()
-  currentPage.value = 1
-  void loadUsers()
-}
-
-function resetSearch(){
-  searchInput.value = ''
-  appliedQuery.value = ''
-  currentPage.value = 1
-  void loadUsers()
-}
-
-function goToPage(pageNumber){
-  const clampedPageNumber = Math.min(Math.max(pageNumber, 1), totalPages.value)
-  if (clampedPageNumber === currentPage.value) {
-    return
-  }
-
-  currentPage.value = clampedPageNumber
-}
-
-function submitPageJump(){
-  const parsedPage = Number.parseInt(pageJumpInput.value, 10)
-  if (!Number.isInteger(parsedPage)) {
-    pageJumpInput.value = ''
-    return
-  }
-
-  goToPage(parsedPage)
-}
-
-onMounted(() => {
-  startRelativeTimeRefresh()
-  void loadUsers()
-})
-
-onUnmounted(() => {
-  stopRelativeTimeRefresh()
-})
+const {
+  countFormatter,
+  pageSize,
+  users,
+  isLoading,
+  errorMessage,
+  searchInput,
+  appliedQuery,
+  currentPage,
+  totalPages,
+  pageJumpInput,
+  paginationItems,
+  pagedUsers,
+  loadUsers,
+  submitSearch,
+  resetSearch,
+  goToPage,
+  submitPageJump,
+  formatAcceptanceRate,
+  formatRelativeCreatedAt
+} = useUsersPage()
 </script>
 
 <style scoped>

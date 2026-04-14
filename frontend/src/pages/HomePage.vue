@@ -101,57 +101,16 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-
-import { apiBaseUrl, getSupportedLanguages, getSystemHealth } from '@/api/system'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { formatApiError } from '@/utils/apiError'
+import { useHomePage } from '@/composables/useHomePage'
 
-const isLoading = ref(true)
-const errorMessage = ref('')
-const healthMessage = ref('unknown')
-const languages = ref([])
-
-const statusLabel = computed(() => {
-  if (isLoading.value) {
-    return 'Loading'
-  }
-
-  return errorMessage.value ? 'Offline' : 'Connected'
-})
-
-const statusTone = computed(() => {
-  if (isLoading.value) {
-    return 'neutral'
-  }
-
-  return errorMessage.value ? 'danger' : 'success'
-})
-
-async function loadOverview(){
-  isLoading.value = true
-  errorMessage.value = ''
-
-  try {
-    const [healthResponse, languageResponse] = await Promise.all([
-      getSystemHealth(),
-      getSupportedLanguages()
-    ])
-
-    healthMessage.value = healthResponse.message || 'ok'
-    languages.value = Array.isArray(languageResponse.languages)
-      ? languageResponse.languages
-      : []
-  } catch (error) {
-    errorMessage.value = formatApiError(error, {
-      fallback: '서비스와 연결할 수 없습니다.'
-    })
-  } finally {
-    isLoading.value = false
-  }
-}
-
-onMounted(() => {
-  loadOverview()
-})
+const {
+  apiBaseUrl,
+  isLoading,
+  errorMessage,
+  healthMessage,
+  languages,
+  statusLabel,
+  statusTone
+} = useHomePage()
 </script>

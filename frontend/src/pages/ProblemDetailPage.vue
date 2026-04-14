@@ -164,112 +164,19 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-
-import { getProblemDetail } from '@/api/problemQueryApi'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { authStore } from '@/stores/auth/authStore'
-import { formatApiError } from '@/utils/apiError'
-import {
+import { useProblemDetailPage } from '@/composables/useProblemDetailPage'
+
+const {
+  isAuthenticated,
+  isLoading,
+  errorMessage,
+  problemDetail,
+  acceptanceRate,
+  formatCount,
   getProblemStateLabel,
   getProblemStateTone
-} from '@/utils/problemState'
-
-const route = useRoute()
-const { state: authState, isAuthenticated, initializeAuth } = authStore
-const isLoading = ref(true)
-const errorMessage = ref('')
-const problemDetail = ref(null)
-const hasLoadedOnce = ref(false)
-const countFormatter = new Intl.NumberFormat()
-const rateFormatter = new Intl.NumberFormat('ko-KR', {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1
-})
-
-const numericProblemId = computed(() => Number.parseInt(route.params.problemId, 10))
-const authenticatedBearerToken = computed(() =>
-  authState.initialized && isAuthenticated.value ? authState.token : ''
-)
-let latestLoadRequestId = 0
-
-const acceptanceRate = computed(() => {
-  const statistics = problemDetail.value?.statistics
-
-  if (!statistics || statistics.submission_count <= 0) {
-    return '-'
-  }
-
-  const rate = (statistics.accepted_count / statistics.submission_count) * 100
-  return `${rateFormatter.format(rate)}%`
-})
-
-watch(numericProblemId, () => {
-  loadProblemDetail()
-})
-
-async function loadProblemDetail(){
-  const requestId = ++latestLoadRequestId
-  isLoading.value = true
-  errorMessage.value = ''
-
-  if (!Number.isInteger(numericProblemId.value) || numericProblemId.value <= 0) {
-    errorMessage.value = '올바르지 않은 문제 번호입니다.'
-    problemDetail.value = null
-    isLoading.value = false
-    return
-  }
-
-  try {
-    const response = await getProblemDetail(numericProblemId.value, {
-      bearerToken: authenticatedBearerToken.value
-    })
-
-    if (requestId !== latestLoadRequestId) {
-      return
-    }
-
-    problemDetail.value = response
-    hasLoadedOnce.value = true
-  } catch (error) {
-    if (requestId !== latestLoadRequestId) {
-      return
-    }
-
-    errorMessage.value = formatApiError(error, {
-      fallback: '문제 정보를 불러오지 못했습니다.'
-    })
-    problemDetail.value = null
-    hasLoadedOnce.value = true
-  } finally {
-    if (requestId === latestLoadRequestId) {
-      isLoading.value = false
-    }
-  }
-}
-
-function formatCount(value){
-  return countFormatter.format(value)
-}
-
-onMounted(async () => {
-  if (!authState.initialized) {
-    await initializeAuth()
-  }
-
-  if (!hasLoadedOnce.value) {
-    loadProblemDetail()
-  }
-})
-
-watch(authenticatedBearerToken, (nextToken, previousToken) => {
-  if (nextToken === previousToken) {
-    return
-  }
-
-  loadProblemDetail()
-})
+} = useProblemDetailPage()
 </script>
 
 <style scoped>
