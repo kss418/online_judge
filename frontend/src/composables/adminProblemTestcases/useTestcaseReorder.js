@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 
+import { runBusyAction } from '@/composables/adminShared/runBusyAction'
 import { testcaseBusySection } from '@/composables/adminProblemTestcases/testcaseBusySection'
 import { moveProblemTestcase } from '@/api/testcaseApi'
 import { formatApiError } from '@/utils/apiError'
@@ -80,33 +81,35 @@ export function useTestcaseReorder({
     }
 
     const selectedTestcaseId = Number(selectedTestcaseSummary.value?.testcase_id ?? 0)
-    busySection.value = testcaseBusySection.MOVE
 
-    try {
-      const response = await moveProblemTestcase(
-        selectedProblemId.value,
-        {
-          source_testcase_order: normalizedSourceOrder,
-          target_testcase_order: normalizedTargetOrder
-        },
-        authState.token
-      )
+    return runBusyAction({
+      busySection,
+      section: testcaseBusySection.MOVE,
+      run: async () => {
+        const response = await moveProblemTestcase(
+          selectedProblemId.value,
+          {
+            source_testcase_order: normalizedSourceOrder,
+            target_testcase_order: normalizedTargetOrder
+          },
+          authState.token
+        )
 
-      applyProblemVersion(selectedProblemId.value, response.version)
-      reorderTestcaseItems(normalizedSourceOrder, normalizedTargetOrder)
-      syncSelectedTestcaseById(selectedTestcaseId, normalizedTargetOrder)
-      showSuccessNotice(
-        `테스트케이스 ${normalizedSourceOrder}번을 ${normalizedTargetOrder}번으로 이동했습니다.`
-      )
-    } catch (error) {
-      showErrorNotice(
-        formatApiError(error, {
-          fallback: '테스트케이스 순서를 변경하지 못했습니다.'
-        })
-      )
-    } finally {
-      busySection.value = ''
-    }
+        applyProblemVersion(selectedProblemId.value, response.version)
+        reorderTestcaseItems(normalizedSourceOrder, normalizedTargetOrder)
+        syncSelectedTestcaseById(selectedTestcaseId, normalizedTargetOrder)
+        showSuccessNotice(
+          `테스트케이스 ${normalizedSourceOrder}번을 ${normalizedTargetOrder}번으로 이동했습니다.`
+        )
+      },
+      onError: (error) => {
+        showErrorNotice(
+          formatApiError(error, {
+            fallback: '테스트케이스 순서를 변경하지 못했습니다.'
+          })
+        )
+      }
+    })
   }
 
   return {

@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 
+import { runBusyAction } from '@/composables/adminShared/runBusyAction'
 import { problemBusySection } from '@/composables/adminProblems/problemBusySection'
 import { uploadProblemTestcaseZip } from '@/api/testcaseApi'
 import { formatApiError } from '@/utils/apiError'
@@ -21,6 +22,10 @@ export function useProblemTestcaseZipActions({
     Boolean(testcaseZipFile.value) &&
     !busySection.value
   )
+  const clearActionFeedback = () => setActionFeedback({
+    message: '',
+    error: ''
+  })
 
   async function handleUploadTestcaseZip(){
     if (!authState.token || !selectedProblemDetail.value || !canUploadTestcaseZip.value || !testcaseZipFile.value) {
@@ -29,30 +34,29 @@ export function useProblemTestcaseZipActions({
 
     const problemId = selectedProblemDetail.value.problem_id
     const uploadFile = testcaseZipFile.value
-    busySection.value = problemBusySection.UPLOAD_TESTCASE_ZIP
-    setActionFeedback({
-      message: '',
-      error: ''
-    })
 
-    try {
-      const response = await uploadProblemTestcaseZip(problemId, uploadFile, authState.token)
-      applySelectedProblemVersion(problemId, response.version)
-      await loadSelectedProblem(problemId)
+    return runBusyAction({
+      busySection,
+      section: problemBusySection.UPLOAD_TESTCASE_ZIP,
+      clearFeedback: clearActionFeedback,
+      run: async () => {
+        const response = await uploadProblemTestcaseZip(problemId, uploadFile, authState.token)
+        applySelectedProblemVersion(problemId, response.version)
+        await loadSelectedProblem(problemId)
 
-      const testcaseCount = Number(response.testcase_count ?? 0)
-      setActionFeedback({
-        message: `비공개 테스트케이스 ${formatCount(testcaseCount)}개를 업로드했습니다.`
-      })
-    } catch (error) {
-      setActionFeedback({
-        error: formatApiError(error, {
-          fallback: '비공개 테스트케이스 ZIP을 업로드하지 못했습니다.'
+        const testcaseCount = Number(response.testcase_count ?? 0)
+        setActionFeedback({
+          message: `비공개 테스트케이스 ${formatCount(testcaseCount)}개를 업로드했습니다.`
         })
-      })
-    } finally {
-      busySection.value = ''
-    }
+      },
+      onError: (error) => {
+        setActionFeedback({
+          error: formatApiError(error, {
+            fallback: '비공개 테스트케이스 ZIP을 업로드하지 못했습니다.'
+          })
+        })
+      }
+    })
   }
 
   return {

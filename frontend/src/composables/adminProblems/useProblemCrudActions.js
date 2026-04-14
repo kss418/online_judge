@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 
+import { runBusyAction } from '@/composables/adminShared/runBusyAction'
 import { problemBusySection } from '@/composables/adminProblems/problemBusySection'
 import {
   createProblem,
@@ -30,41 +31,43 @@ export function useProblemCrudActions({
   const isCreatingProblem = computed(() => busySection.value === problemBusySection.CREATE)
   const isRejudgingProblem = computed(() => busySection.value === problemBusySection.REJUDGE)
   const isDeletingProblem = computed(() => busySection.value === problemBusySection.DELETE)
+  const clearActionFeedback = () => setActionFeedback({
+    message: '',
+    error: ''
+  })
 
   async function handleCreateProblem(){
     if (!authState.token || !canCreateProblem.value) {
       return
     }
 
-    busySection.value = problemBusySection.CREATE
-    setActionFeedback({
-      message: '',
-      error: ''
-    })
+    return runBusyAction({
+      busySection,
+      section: problemBusySection.CREATE,
+      clearFeedback: clearActionFeedback,
+      run: async () => {
+        const response = await createProblem({
+          title: newProblemTitle.value.trim()
+        }, authState.token)
+        const createdProblemId = Number(response.problem_id ?? 0)
 
-    try {
-      const response = await createProblem({
-        title: newProblemTitle.value.trim()
-      }, authState.token)
-      const createdProblemId = Number(response.problem_id ?? 0)
-
-      newProblemTitle.value = ''
-      setActionFeedback({
-        message: `문제 #${formatCount(createdProblemId)}를 생성했습니다.`
-      })
-
-      if (typeof onCreatedProblem === 'function') {
-        await onCreatedProblem(createdProblemId)
-      }
-    } catch (error) {
-      setActionFeedback({
-        error: formatApiError(error, {
-          fallback: '문제를 생성하지 못했습니다.'
+        newProblemTitle.value = ''
+        setActionFeedback({
+          message: `문제 #${formatCount(createdProblemId)}를 생성했습니다.`
         })
-      })
-    } finally {
-      busySection.value = ''
-    }
+
+        if (typeof onCreatedProblem === 'function') {
+          await onCreatedProblem(createdProblemId)
+        }
+      },
+      onError: (error) => {
+        setActionFeedback({
+          error: formatApiError(error, {
+            fallback: '문제를 생성하지 못했습니다.'
+          })
+        })
+      }
+    })
   }
 
   async function handleRejudgeProblem(){
@@ -73,27 +76,26 @@ export function useProblemCrudActions({
     }
 
     const rejudgingProblemId = selectedProblemDetail.value.problem_id
-    busySection.value = problemBusySection.REJUDGE
-    setActionFeedback({
-      message: '',
-      error: ''
-    })
 
-    try {
-      await rejudgeProblem(rejudgingProblemId, authState.token)
-      closeRejudgeDialog(true)
-      setActionFeedback({
-        message: `문제 #${formatCount(rejudgingProblemId)} 재채점을 요청했습니다.`
-      })
-    } catch (error) {
-      setActionFeedback({
-        error: formatApiError(error, {
-          fallback: '문제 재채점을 요청하지 못했습니다.'
+    return runBusyAction({
+      busySection,
+      section: problemBusySection.REJUDGE,
+      clearFeedback: clearActionFeedback,
+      run: async () => {
+        await rejudgeProblem(rejudgingProblemId, authState.token)
+        closeRejudgeDialog(true)
+        setActionFeedback({
+          message: `문제 #${formatCount(rejudgingProblemId)} 재채점을 요청했습니다.`
         })
-      })
-    } finally {
-      busySection.value = ''
-    }
+      },
+      onError: (error) => {
+        setActionFeedback({
+          error: formatApiError(error, {
+            fallback: '문제 재채점을 요청하지 못했습니다.'
+          })
+        })
+      }
+    })
   }
 
   async function handleDeleteProblem(){
@@ -102,28 +104,27 @@ export function useProblemCrudActions({
     }
 
     const deletingProblemId = selectedProblemDetail.value.problem_id
-    busySection.value = problemBusySection.DELETE
-    setActionFeedback({
-      message: '',
-      error: ''
-    })
 
-    try {
-      await deleteProblem(deletingProblemId, authState.token)
-      closeDeleteDialog(true)
-      setActionFeedback({
-        message: `문제 #${formatCount(deletingProblemId)}를 삭제했습니다.`
-      })
-      await loadProblems()
-    } catch (error) {
-      setActionFeedback({
-        error: formatApiError(error, {
-          fallback: '문제를 삭제하지 못했습니다.'
+    return runBusyAction({
+      busySection,
+      section: problemBusySection.DELETE,
+      clearFeedback: clearActionFeedback,
+      run: async () => {
+        await deleteProblem(deletingProblemId, authState.token)
+        closeDeleteDialog(true)
+        setActionFeedback({
+          message: `문제 #${formatCount(deletingProblemId)}를 삭제했습니다.`
         })
-      })
-    } finally {
-      busySection.value = ''
-    }
+        await loadProblems()
+      },
+      onError: (error) => {
+        setActionFeedback({
+          error: formatApiError(error, {
+            fallback: '문제를 삭제하지 못했습니다.'
+          })
+        })
+      }
+    })
   }
 
   return {

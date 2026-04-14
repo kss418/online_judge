@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 
+import { runBusyAction } from '@/composables/adminShared/runBusyAction'
 import { problemBusySection } from '@/composables/adminProblems/problemBusySection'
 import {
   updateProblemLimits,
@@ -24,6 +25,10 @@ export function useProblemBasicsActions({
 }){
   const isSavingTitle = computed(() => busySection.value === problemBusySection.SAVE_TITLE)
   const isSavingLimits = computed(() => busySection.value === problemBusySection.SAVE_LIMITS)
+  const clearActionFeedback = () => setActionFeedback({
+    message: '',
+    error: ''
+  })
 
   async function handleSaveTitle(){
     if (!authState.token || !selectedProblemDetail.value || !canSaveTitle.value) {
@@ -31,39 +36,38 @@ export function useProblemBasicsActions({
     }
 
     const problemId = selectedProblemDetail.value.problem_id
-    busySection.value = problemBusySection.SAVE_TITLE
-    setActionFeedback({
-      message: '',
-      error: ''
-    })
+    const nextTitle = titleDraft.value.trim()
 
-    try {
-      const nextTitle = titleDraft.value.trim()
-      const response = await updateProblemTitle(problemId, {
-        title: nextTitle
-      }, authState.token)
+    return runBusyAction({
+      busySection,
+      section: problemBusySection.SAVE_TITLE,
+      clearFeedback: clearActionFeedback,
+      run: async () => {
+        const response = await updateProblemTitle(problemId, {
+          title: nextTitle
+        }, authState.token)
 
-      selectedProblemDetail.value = {
-        ...selectedProblemDetail.value,
-        title: nextTitle
-      }
-      titleDraft.value = nextTitle
-      applySelectedProblemVersion(problemId, response.version)
-      mergeProblemSummary(problemId, {
-        title: nextTitle
-      })
-      setActionFeedback({
-        message: `문제 #${formatCount(problemId)} 제목을 저장했습니다.`
-      })
-    } catch (error) {
-      setActionFeedback({
-        error: formatApiError(error, {
-          fallback: '문제 제목을 저장하지 못했습니다.'
+        selectedProblemDetail.value = {
+          ...selectedProblemDetail.value,
+          title: nextTitle
+        }
+        titleDraft.value = nextTitle
+        applySelectedProblemVersion(problemId, response.version)
+        mergeProblemSummary(problemId, {
+          title: nextTitle
         })
-      })
-    } finally {
-      busySection.value = ''
-    }
+        setActionFeedback({
+          message: `문제 #${formatCount(problemId)} 제목을 저장했습니다.`
+        })
+      },
+      onError: (error) => {
+        setActionFeedback({
+          error: formatApiError(error, {
+            fallback: '문제 제목을 저장하지 못했습니다.'
+          })
+        })
+      }
+    })
   }
 
   async function handleSaveLimits(){
@@ -78,44 +82,43 @@ export function useProblemBasicsActions({
     }
 
     const problemId = selectedProblemDetail.value.problem_id
-    busySection.value = problemBusySection.SAVE_LIMITS
-    setActionFeedback({
-      message: '',
-      error: ''
-    })
 
-    try {
-      const response = await updateProblemLimits(problemId, {
-        time_limit_ms: nextTimeLimit,
-        memory_limit_mb: nextMemoryLimit
-      }, authState.token)
-
-      selectedProblemDetail.value = {
-        ...selectedProblemDetail.value,
-        limits: {
+    return runBusyAction({
+      busySection,
+      section: problemBusySection.SAVE_LIMITS,
+      clearFeedback: clearActionFeedback,
+      run: async () => {
+        const response = await updateProblemLimits(problemId, {
           time_limit_ms: nextTimeLimit,
           memory_limit_mb: nextMemoryLimit
+        }, authState.token)
+
+        selectedProblemDetail.value = {
+          ...selectedProblemDetail.value,
+          limits: {
+            time_limit_ms: nextTimeLimit,
+            memory_limit_mb: nextMemoryLimit
+          }
         }
-      }
-      timeLimitDraft.value = String(nextTimeLimit)
-      memoryLimitDraft.value = String(nextMemoryLimit)
-      applySelectedProblemVersion(problemId, response.version)
-      mergeProblemSummary(problemId, {
-        time_limit_ms: nextTimeLimit,
-        memory_limit_mb: nextMemoryLimit
-      })
-      setActionFeedback({
-        message: `문제 #${formatCount(problemId)} 제한을 저장했습니다.`
-      })
-    } catch (error) {
-      setActionFeedback({
-        error: formatApiError(error, {
-          fallback: '문제 제한을 저장하지 못했습니다.'
+        timeLimitDraft.value = String(nextTimeLimit)
+        memoryLimitDraft.value = String(nextMemoryLimit)
+        applySelectedProblemVersion(problemId, response.version)
+        mergeProblemSummary(problemId, {
+          time_limit_ms: nextTimeLimit,
+          memory_limit_mb: nextMemoryLimit
         })
-      })
-    } finally {
-      busySection.value = ''
-    }
+        setActionFeedback({
+          message: `문제 #${formatCount(problemId)} 제한을 저장했습니다.`
+        })
+      },
+      onError: (error) => {
+        setActionFeedback({
+          error: formatApiError(error, {
+            fallback: '문제 제한을 저장하지 못했습니다.'
+          })
+        })
+      }
+    })
   }
 
   return {
