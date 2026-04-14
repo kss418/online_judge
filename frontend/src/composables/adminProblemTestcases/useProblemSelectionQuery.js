@@ -16,10 +16,7 @@ export function useProblemSelectionQuery({
   reloadProblems,
   showErrorNotice
 }){
-  const selectedProblemId = computed(() => {
-    const parsedValue = Number.parseInt(route.params.problemId, 10)
-    return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : 0
-  })
+  const selectedProblemId = computed(() => parsePositiveInteger(route.params.problemId) ?? 0)
   const queryState = useRouteQueryState({
     route,
     router,

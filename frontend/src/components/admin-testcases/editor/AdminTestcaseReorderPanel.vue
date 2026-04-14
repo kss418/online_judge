@@ -102,6 +102,8 @@
 <script setup>
 import { computed, ref } from 'vue'
 
+import { parsePositiveInteger } from '@/utils/parse'
+
 const props = defineProps({
   section: {
     type: Object,
@@ -177,12 +179,9 @@ function handleSummaryDrop(event, testcaseOrder){
   }
 
   event.preventDefault()
-  const draggedOrderFromTransfer = Number.parseInt(
-    event.dataTransfer?.getData('text/plain') ?? '',
-    10
-  )
+  const draggedOrderFromTransfer = parsePositiveInteger(event.dataTransfer?.getData('text/plain'))
   const sourceTestcaseOrder =
-    Number.isInteger(draggedOrderFromTransfer) && draggedOrderFromTransfer > 0
+    draggedOrderFromTransfer != null
       ? draggedOrderFromTransfer
       : draggingTestcaseOrder.value
 

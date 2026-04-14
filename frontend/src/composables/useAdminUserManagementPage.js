@@ -1,5 +1,6 @@
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
+import { useProtectedAdminBootstrap } from '@/composables/adminShared/useProtectedAdminBootstrap'
 import { authStore } from '@/stores/auth/authStore'
 import { useAdminUserManagementListResource } from '@/composables/adminUsers/useAdminUserManagementListResource'
 import { useAdminUserSearchPagination } from '@/composables/adminUsers/useAdminUserSearchPagination'
@@ -82,29 +83,14 @@ export function useAdminUserManagementPage(){
     runImmediately: true
   })
 
-  watch(
-    [
-      () => authState.initialized,
-      () => authState.token,
-      isAuthenticated,
-      canManageUsers
-    ],
-    ([initialized, token, authenticated, canManage]) => {
-      if (!initialized) {
-        return
-      }
-
-      if (!authenticated || !canManage || !token) {
-        userManagementListResource.resetUsers()
-        return
-      }
-
-      void userManagementListResource.loadUsers()
-    },
-    {
-      immediate: true
-    }
-  )
+  useProtectedAdminBootstrap({
+    authState,
+    initializeAuth,
+    isAuthenticated,
+    hasAccess: canManageUsers,
+    onDenied: userManagementListResource.resetUsers,
+    onAllowed: userManagementListResource.loadUsers
+  })
 
   function loadUsers(){
     return userManagementListResource.loadUsers()
@@ -219,10 +205,6 @@ export function useAdminUserManagementPage(){
 
     return '밴 해제'
   }
-
-  onMounted(() => {
-    void initializeAuth()
-  })
 
   return {
     authState,

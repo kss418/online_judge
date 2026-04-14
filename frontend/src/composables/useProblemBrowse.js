@@ -19,6 +19,7 @@ import {
 } from '@/queryState/problemBrowse'
 import { authStore } from '@/stores/auth/authStore'
 import { formatApiError } from '@/utils/apiError'
+import { parsePositiveInteger } from '@/utils/parse'
 import { buildPaginationItems } from '@/utils/pagination'
 const pageSize = 50
 
@@ -255,9 +256,9 @@ export function useProblemBrowse(){
   }
 
   async function submitPageJump(){
-    const parsedPage = Number.parseInt(queryState.localState.pageJumpInput, 10)
-
-    if (Number.isNaN(parsedPage)) {
+    const parsedPage = parsePositiveInteger(queryState.localState.pageJumpInput)
+    if (parsedPage == null) {
+      queryState.localState.pageJumpInput = ''
       return
     }
 

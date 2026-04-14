@@ -1,5 +1,6 @@
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
+import { useProtectedAdminBootstrap } from '@/composables/adminShared/useProtectedAdminBootstrap'
 import { authStore } from '@/stores/auth/authStore'
 import { permissionLevelToRole, useAdminUserPermissionActions } from '@/composables/adminUsers/useAdminUserPermissionActions'
 import { useAdminUserSearchPagination } from '@/composables/adminUsers/useAdminUserSearchPagination'
@@ -55,29 +56,14 @@ export function useAdminUsersPage(){
     runImmediately: true
   })
 
-  watch(
-    [
-      () => authState.initialized,
-      () => authState.token,
-      isAuthenticated,
-      canManageUsers
-    ],
-    ([initialized, token, authenticated, canManage]) => {
-      if (!initialized) {
-        return
-      }
-
-      if (!authenticated || !canManage || !token) {
-        userListResource.resetUsers()
-        return
-      }
-
-      void userListResource.loadUsers()
-    },
-    {
-      immediate: true
-    }
-  )
+  useProtectedAdminBootstrap({
+    authState,
+    initializeAuth,
+    isAuthenticated,
+    hasAccess: canManageUsers,
+    onDenied: userListResource.resetUsers,
+    onAllowed: userListResource.loadUsers
+  })
 
   function loadUsers(){
     return userListResource.loadUsers()
@@ -110,10 +96,6 @@ export function useAdminUsersPage(){
   function formatRelativeCreatedAt(timestamp){
     return formatRelativeTimestamp(nowTimestamp.value, timestamp)
   }
-
-  onMounted(() => {
-    void initializeAuth()
-  })
 
   return {
     authState,

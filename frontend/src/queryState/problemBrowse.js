@@ -1,3 +1,5 @@
+import { parsePositiveInteger } from '@/utils/parse'
+
 const problemSortOptions = [
   {
     key: 'problem_id',
@@ -57,10 +59,7 @@ export function normalizeProblemStateFilter(rawValue){
 }
 
 export function normalizeProblemPage(rawValue){
-  const parsedPage = Number.parseInt(rawValue, 10)
-  return Number.isInteger(parsedPage) && parsedPage > 0
-    ? parsedPage
-    : 1
+  return parsePositiveInteger(rawValue) ?? 1
 }
 
 export function parseRouteQuery(query, options = {}){

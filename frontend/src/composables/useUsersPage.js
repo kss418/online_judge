@@ -9,6 +9,7 @@ import {
   formatAcceptanceRate,
   formatCount
 } from '@/utils/numberFormat'
+import { parsePositiveInteger } from '@/utils/parse'
 import { buildPaginationItems } from '@/utils/pagination'
 
 const pageSize = 20
@@ -105,9 +106,8 @@ export function useUsersPage(){
   }
 
   function submitPageJump(){
-    const parsedPage = Number.parseInt(pageJumpInput.value, 10)
-
-    if (!Number.isInteger(parsedPage)) {
+    const parsedPage = parsePositiveInteger(pageJumpInput.value)
+    if (parsedPage == null) {
       pageJumpInput.value = ''
       return
     }

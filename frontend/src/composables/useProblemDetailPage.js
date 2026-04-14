@@ -5,6 +5,7 @@ import { getProblemDetail } from '@/api/problemQueryApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { authStore } from '@/stores/auth/authStore'
 import { formatApiError } from '@/utils/apiError'
+import { parsePositiveInteger } from '@/utils/parse'
 import {
   formatAcceptanceRate,
   formatCount
@@ -23,7 +24,7 @@ export function useProblemDetailPage(){
     isAuthenticated,
     initializeAuth
   } = authStore
-  const numericProblemId = computed(() => Number.parseInt(route.params.problemId, 10))
+  const numericProblemId = computed(() => parsePositiveInteger(route.params.problemId) ?? 0)
   const authenticatedBearerToken = computed(() =>
     authState.initialized && isAuthenticated.value ? authState.token : ''
   )

@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue'
 
+import { parsePositiveInteger } from '@/utils/parse'
 import { buildPaginationItems } from '@/utils/pagination'
 
 const defaultPageSize = 20
@@ -66,9 +67,8 @@ export function useAdminUserSearchPagination({
   }
 
   function submitPageJump(){
-    const parsedPage = Number.parseInt(pageJumpInput.value, 10)
-
-    if (!Number.isInteger(parsedPage)) {
+    const parsedPage = parsePositiveInteger(pageJumpInput.value)
+    if (parsedPage == null) {
       pageJumpInput.value = ''
       return
     }

@@ -5,6 +5,7 @@ import { authStore } from '@/stores/auth/authStore'
 import { useProblemSubmitAction } from '@/composables/problemSubmit/useProblemSubmitAction'
 import { useProblemSubmitEditor } from '@/composables/problemSubmit/useProblemSubmitEditor'
 import { useProblemSubmitResource } from '@/composables/problemSubmit/useProblemSubmitResource'
+import { parsePositiveInteger } from '@/utils/parse'
 
 export function useProblemSubmitPage(){
   const route = useRoute()
@@ -13,7 +14,7 @@ export function useProblemSubmitPage(){
     isAuthenticated,
     initializeAuth
   } = authStore
-  const numericProblemId = computed(() => Number.parseInt(route.params.problemId, 10))
+  const numericProblemId = computed(() => parsePositiveInteger(route.params.problemId) ?? 0)
 
   let problemSubmitAction
 
