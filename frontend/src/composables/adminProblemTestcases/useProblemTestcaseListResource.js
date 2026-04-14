@@ -175,6 +175,12 @@ export function useProblemTestcaseListResource({
     }
   }
 
+  function resetProblemListResource(){
+    problemListResource.reset({
+      preserveHasLoadedOnce: true
+    })
+  }
+
   async function loadProblemDetail(){
     if (selectedProblemId.value <= 0) {
       problemDetailResource.reset({
@@ -272,6 +278,7 @@ export function useProblemTestcaseListResource({
     testcaseCount,
     mergeProblemSummary,
     applyProblemVersion,
+    resetProblemListResource,
     resetSelectedProblemResource,
     clearSelectedTestcaseDetail,
     loadProblems,

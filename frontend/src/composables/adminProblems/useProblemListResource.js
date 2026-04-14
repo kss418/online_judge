@@ -98,12 +98,19 @@ export function useProblemListResource({
     })
   }
 
+  function resetProblems(){
+    problemListResource.reset({
+      preserveHasLoadedOnce: true
+    })
+  }
+
   return {
     isLoadingProblems,
     listErrorMessage,
     problems,
     problemCount,
     mergeProblemSummary,
-    loadProblems
+    loadProblems,
+    resetProblems
   }
 }

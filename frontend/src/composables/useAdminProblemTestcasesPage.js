@@ -1,8 +1,9 @@
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useProblemSelectionQuery } from '@/composables/adminProblemTestcases/useProblemSelectionQuery'
 import { useProblemTestcaseListResource } from '@/composables/adminProblemTestcases/useProblemTestcaseListResource'
+import { useProtectedAdminBootstrap } from '@/composables/adminShared/useProtectedAdminBootstrap'
 import { formatProblemLimit } from '@/composables/adminProblemTestcases/testcaseHelpers'
 import { useTestcaseEditorDraft } from '@/composables/adminProblemTestcases/useTestcaseEditorDraft'
 import { useTestcaseReorder } from '@/composables/adminProblemTestcases/useTestcaseReorder'
@@ -201,6 +202,17 @@ export function useAdminProblemTestcasesPage(){
     draft.resetDraftState()
   }
 
+  function resetPageState(){
+    query.searchMode.value = 'title'
+    query.titleSearchInput.value = ''
+    query.problemIdSearchInput.value = ''
+    busySection.value = ''
+    testcaseSummaryElementMap.clear()
+    listResource.resetProblemListResource()
+    listResource.resetSelectedProblemResource()
+    draft.resetDraftState()
+  }
+
   function selectTestcase(testcaseOrder){
     draft.selectTestcase(testcaseOrder)
     void scrollSelectedTestcaseIntoView()
@@ -246,21 +258,19 @@ export function useAdminProblemTestcasesPage(){
     await listResource.loadSelectedProblemData()
   }
 
-  onMounted(async () => {
-    await initializeAuth()
-
-    if (!canManageProblems.value) {
-      listResource.isLoadingProblems.value = false
-      listResource.isLoadingProblem.value = false
-      listResource.isLoadingTestcases.value = false
-      return
+  useProtectedAdminBootstrap({
+    authState,
+    initializeAuth,
+    isAuthenticated,
+    hasAccess: canManageProblems,
+    onDenied: resetPageState,
+    async onAllowed(){
+      query.syncSearchControlsFromRoute()
+      await listResource.loadProblems({
+        preferredProblemId: query.preferredProblemIdForReload.value
+      })
+      await listResource.loadSelectedProblemData()
     }
-
-    query.syncSearchControlsFromRoute()
-    await listResource.loadProblems({
-      preferredProblemId: query.preferredProblemIdForReload.value
-    })
-    await listResource.loadSelectedProblemData()
   })
 
   return {

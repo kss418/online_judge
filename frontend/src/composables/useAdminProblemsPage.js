@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useProblemAdminActions } from '@/composables/adminProblems/useProblemAdminActions'
@@ -6,6 +6,7 @@ import { useProblemDetailResource } from '@/composables/adminProblems/useProblem
 import { useProblemEditorDraft } from '@/composables/adminProblems/useProblemEditorDraft'
 import { formatProblemLimit } from '@/composables/adminProblems/problemHelpers'
 import { useProblemListResource } from '@/composables/adminProblems/useProblemListResource'
+import { useProtectedAdminBootstrap } from '@/composables/adminShared/useProtectedAdminBootstrap'
 import { useProblemSearchQuery } from '@/composables/adminProblems/useProblemSearchQuery'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
@@ -149,26 +150,15 @@ export function useAdminProblemsPage(){
   })
 
   watch(
-    () => [authState.initialized, authState.token, canManageProblems.value],
-    () => {
-      if (!authState.initialized) {
+    () => authState.initialized,
+    (initialized) => {
+      if (!initialized) {
         problemListResource.isLoadingProblems.value = true
-        return
       }
-
-      if (!isAuthenticated.value || !canManageProblems.value) {
-        resetPageState()
-        problemListResource.isLoadingProblems.value = false
-        return
-      }
-
-      problemQuery.syncSearchControlsFromRoute()
-      void problemListResource.loadProblems({
-        preferredProblemId:
-          problemQuery.preferredProblemIdFromRoute.value || problemDetailResource.selectedProblemId.value
-      })
     },
-    { immediate: true }
+    {
+      immediate: true
+    }
   )
 
   watch(problemQuery.preferredProblemIdFromRoute, (problemId) => {
@@ -202,11 +192,9 @@ export function useAdminProblemsPage(){
     problemQuery.titleSearchInput.value = ''
     problemQuery.problemIdSearchInput.value = ''
     newProblemTitle.value = ''
-    problemListResource.problems.value = []
+    problemListResource.resetProblems()
     problemDetailResource.selectedProblemId.value = 0
-    problemDetailResource.selectedProblemDetail.value = null
-    problemListResource.listErrorMessage.value = ''
-    problemDetailResource.detailErrorMessage.value = ''
+    problemDetailResource.invalidateSelectedProblemResource()
     busySection.value = ''
     problemActions.resetActionState()
     editorDraft.resetEditorDrafts()
@@ -218,8 +206,20 @@ export function useAdminProblemsPage(){
     })
   }
 
-  onMounted(() => {
-    void initializeAuth()
+  useProtectedAdminBootstrap({
+    authState,
+    initializeAuth,
+    isAuthenticated,
+    hasAccess: canManageProblems,
+    onDenied: resetPageState,
+    onAllowed(){
+      problemQuery.syncSearchControlsFromRoute()
+
+      return problemListResource.loadProblems({
+        preferredProblemId:
+          problemQuery.preferredProblemIdFromRoute.value || problemDetailResource.selectedProblemId.value
+      })
+    }
   })
 
   return {
