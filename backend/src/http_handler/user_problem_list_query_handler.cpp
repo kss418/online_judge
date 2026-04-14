@@ -1,4 +1,4 @@
-#include "http_handler/user_query_handler.hpp"
+#include "http_handler/user_problem_list_query_handler.hpp"
 
 #include "application/list_user_solved_problems_query.hpp"
 #include "application/list_user_wrong_problems_query.hpp"
@@ -10,8 +10,8 @@
 #include <utility>
 
 namespace{
-    using context_type = user_query_handler::context_type;
-    using response_type = user_query_handler::response_type;
+    using context_type = request_context;
+    using response_type = request_context::response_type;
 
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
@@ -102,19 +102,19 @@ namespace{
     }
 }
 
-user_query_handler::response_type user_query_handler::get_me_solved_problems(
+response_type user_query_handler::get_me_solved_problems(
     context_type& context
 ){
     return http_endpoint::run_json(context, make_get_me_solved_problems_spec());
 }
 
-user_query_handler::response_type user_query_handler::get_me_wrong_problems(
+response_type user_query_handler::get_me_wrong_problems(
     context_type& context
 ){
     return http_endpoint::run_json(context, make_get_me_wrong_problems_spec());
 }
 
-user_query_handler::response_type user_query_handler::get_user_solved_problems(
+response_type user_query_handler::get_user_solved_problems(
     context_type& context,
     std::int64_t user_id
 ){
@@ -124,7 +124,7 @@ user_query_handler::response_type user_query_handler::get_user_solved_problems(
     );
 }
 
-user_query_handler::response_type user_query_handler::get_user_wrong_problems(
+response_type user_query_handler::get_user_wrong_problems(
     context_type& context,
     std::int64_t user_id
 ){

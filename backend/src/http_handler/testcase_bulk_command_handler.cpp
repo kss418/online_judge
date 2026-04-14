@@ -1,4 +1,4 @@
-#include "http_handler/testcase_command_handler.hpp"
+#include "http_handler/testcase_bulk_command_handler.hpp"
 
 #include "application/replace_testcases_action.hpp"
 #include "application/testcase_action.hpp"
@@ -12,8 +12,8 @@
 #include <string_view>
 
 namespace{
-    using context_type = testcase_command_handler::context_type;
-    using response_type = testcase_command_handler::response_type;
+    using context_type = request_context;
+    using response_type = request_context::response_type;
 
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
@@ -67,7 +67,7 @@ namespace{
     }
 }
 
-testcase_command_handler::response_type testcase_command_handler::post_testcase_zip(
+response_type testcase_command_handler::post_testcase_zip(
     context_type& context,
     std::int64_t problem_id
 ){
@@ -77,7 +77,7 @@ testcase_command_handler::response_type testcase_command_handler::post_testcase_
     );
 }
 
-testcase_command_handler::response_type testcase_command_handler::delete_all_testcases(
+response_type testcase_command_handler::delete_all_testcases(
     context_type& context,
     std::int64_t problem_id
 ){

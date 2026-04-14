@@ -1,4 +1,4 @@
-#include "http_handler/user_query_handler.hpp"
+#include "http_handler/user_list_query_handler.hpp"
 
 #include "application/get_public_user_list_query.hpp"
 #include "application/get_user_list_query.hpp"
@@ -9,8 +9,8 @@
 #include "serializer/user_json_serializer.hpp"
 
 namespace{
-    using context_type = user_query_handler::context_type;
-    using response_type = user_query_handler::response_type;
+    using context_type = request_context;
+    using response_type = request_context::response_type;
 
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
@@ -46,13 +46,13 @@ namespace{
     }
 }
 
-user_query_handler::response_type user_query_handler::get_public_user_list(
+response_type user_query_handler::get_public_user_list(
     context_type& context
 ){
     return http_endpoint::run_json(context, make_get_public_user_list_spec());
 }
 
-user_query_handler::response_type user_query_handler::get_user_list(
+response_type user_query_handler::get_user_list(
     context_type& context
 ){
     return http_endpoint::run_json(context, make_get_user_list_spec());

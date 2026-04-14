@@ -1,4 +1,4 @@
-#include "http_handler/testcase_command_handler.hpp"
+#include "http_handler/testcase_move_command_handler.hpp"
 
 #include "application/testcase_action.hpp"
 #include "dto/problem_dto.hpp"
@@ -12,8 +12,8 @@
 #include <string_view>
 
 namespace{
-    using context_type = testcase_command_handler::context_type;
-    using response_type = testcase_command_handler::response_type;
+    using context_type = request_context;
+    using response_type = request_context::response_type;
 
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
@@ -54,7 +54,7 @@ namespace{
     }
 }
 
-testcase_command_handler::response_type testcase_command_handler::move_testcase(
+response_type testcase_command_handler::move_testcase(
     context_type& context,
     std::int64_t problem_id
 ){

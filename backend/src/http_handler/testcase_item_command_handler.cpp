@@ -1,4 +1,4 @@
-#include "http_handler/testcase_command_handler.hpp"
+#include "http_handler/testcase_item_command_handler.hpp"
 
 #include "application/testcase_action.hpp"
 #include "dto/problem_dto.hpp"
@@ -12,8 +12,8 @@
 #include <string_view>
 
 namespace{
-    using context_type = testcase_command_handler::context_type;
-    using response_type = testcase_command_handler::response_type;
+    using context_type = request_context;
+    using response_type = request_context::response_type;
 
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
@@ -101,14 +101,14 @@ namespace{
     }
 }
 
-testcase_command_handler::response_type testcase_command_handler::post_testcase(
+response_type testcase_command_handler::post_testcase(
     context_type& context,
     std::int64_t problem_id
 ){
     return http_endpoint::run_json(context, make_post_testcase_spec(problem_id));
 }
 
-testcase_command_handler::response_type testcase_command_handler::put_testcase(
+response_type testcase_command_handler::put_testcase(
     context_type& context,
     std::int64_t problem_id,
     std::int32_t testcase_order
@@ -119,7 +119,7 @@ testcase_command_handler::response_type testcase_command_handler::put_testcase(
     );
 }
 
-testcase_command_handler::response_type testcase_command_handler::delete_testcase(
+response_type testcase_command_handler::delete_testcase(
     context_type& context,
     std::int64_t problem_id,
     std::int32_t testcase_order

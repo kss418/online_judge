@@ -1,6 +1,8 @@
 #include "http_router/problem_route_groups.hpp"
 
-#include "http_handler/testcase_command_handler.hpp"
+#include "http_handler/testcase_bulk_command_handler.hpp"
+#include "http_handler/testcase_item_command_handler.hpp"
+#include "http_handler/testcase_move_command_handler.hpp"
 #include "http_handler/testcase_query_handler.hpp"
 
 #include <array>
