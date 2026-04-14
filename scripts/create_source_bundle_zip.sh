@@ -6,6 +6,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd "${script_dir}/.." && pwd)"
 
 archive_paths=(
+    "backend/main"
     "backend/scripts"
     "backend/src"
     "backend/include"
@@ -19,6 +20,7 @@ usage(){
 usage: create_source_bundle_zip.sh [output.zip]
 
 Creates a zip archive containing:
+  - backend/main
   - backend/scripts
   - backend/src
   - backend/include
