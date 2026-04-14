@@ -47,7 +47,6 @@ export function useAdminProblemTestcasesPage(){
     route,
     router,
     formatCount,
-    getSelectedProblemId: () => query.selectedProblemId.value,
     reloadProblems: async (preferredProblemId) => {
       if (!listResource) {
         return
@@ -179,10 +178,7 @@ export function useAdminProblemTestcasesPage(){
 
       query.syncSearchControlsFromRoute()
       void listResource.loadProblems({
-        preferredProblemId:
-          query.routeSearchMode.value === 'problem-id'
-            ? query.routeProblemIdSearch.value || query.selectedProblemId.value
-            : query.selectedProblemId.value
+        preferredProblemId: query.preferredProblemIdForReload.value
       })
     }
   )
@@ -251,10 +247,7 @@ export function useAdminProblemTestcasesPage(){
     }
 
     await listResource.loadProblems({
-      preferredProblemId:
-        query.routeSearchMode.value === 'problem-id'
-          ? query.routeProblemIdSearch.value || query.selectedProblemId.value
-          : query.selectedProblemId.value
+      preferredProblemId: query.preferredProblemIdForReload.value
     })
     await listResource.loadSelectedProblemData()
   }
@@ -271,10 +264,7 @@ export function useAdminProblemTestcasesPage(){
 
     query.syncSearchControlsFromRoute()
     await listResource.loadProblems({
-      preferredProblemId:
-        query.routeSearchMode.value === 'problem-id'
-          ? query.routeProblemIdSearch.value || query.selectedProblemId.value
-          : query.selectedProblemId.value
+      preferredProblemId: query.preferredProblemIdForReload.value
     })
     await listResource.loadSelectedProblemData()
   })

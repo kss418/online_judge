@@ -54,7 +54,7 @@ export function useAdminProblemsPage(){
     route,
     router,
     formatCount,
-    getSelectedProblemId: () => problemDetailResource?.selectedProblemId.value ?? 0,
+    selectedProblemId: computed(() => problemDetailResource?.selectedProblemId.value ?? 0),
     reloadProblems: async (preferredProblemId) => {
       if (!problemListResource) {
         return
@@ -199,10 +199,7 @@ export function useAdminProblemsPage(){
 
       problemQuery.syncSearchControlsFromRoute()
       void problemListResource.loadProblems({
-        preferredProblemId:
-          problemQuery.routeSearchMode.value === 'problem-id'
-            ? problemQuery.routeProblemIdSearch.value || problemDetailResource.selectedProblemId.value
-            : problemDetailResource.selectedProblemId.value
+        preferredProblemId: problemQuery.preferredProblemIdForReload.value
       })
     }
   )
