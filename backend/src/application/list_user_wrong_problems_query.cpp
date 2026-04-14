@@ -1,7 +1,7 @@
 #include "application/list_user_wrong_problems_query.hpp"
 
 #include "application/get_user_summary_query.hpp"
-#include "db_service/problem_core_service.hpp"
+#include "db_service/problem_query_service.hpp"
 
 std::expected<std::vector<problem_dto::summary>, service_error>
 list_user_wrong_problems_query::execute(
@@ -16,7 +16,7 @@ list_user_wrong_problems_query::execute(
         return std::unexpected(user_summary_exp.error());
     }
 
-    return problem_core_service::list_user_wrong_problems(
+    return problem_query_service::list_user_wrong_problems(
         connection,
         command_value.user_id,
         command_value.viewer_user_id_opt

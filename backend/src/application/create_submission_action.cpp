@@ -1,6 +1,6 @@
 #include "application/create_submission_action.hpp"
 
-#include "db_service/problem_core_service.hpp"
+#include "db_service/problem_query_service.hpp"
 #include "db_service/submission_command_service.hpp"
 
 #include <utility>
@@ -35,7 +35,7 @@ create_submission_action::execute(
     }
 
     const problem_dto::reference problem_reference_value{command_value.problem_id};
-    const auto ensure_problem_exists_exp = problem_core_service::ensure_problem_exists(
+    const auto ensure_problem_exists_exp = problem_query_service::ensure_problem_exists(
         connection,
         problem_reference_value
     );

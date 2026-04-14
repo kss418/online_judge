@@ -1,6 +1,6 @@
 #include "application/replace_testcases_action.hpp"
 
-#include "db_service/problem_core_service.hpp"
+#include "db_service/problem_query_service.hpp"
 #include "db_service/testcase_mutation_service.hpp"
 
 std::expected<problem_dto::testcase_count_mutation_result, service_error>
@@ -12,7 +12,7 @@ replace_testcases_action::execute(
         return std::unexpected(service_error::validation_error);
     }
 
-    const auto ensure_problem_exists_exp = problem_core_service::ensure_problem_exists(
+    const auto ensure_problem_exists_exp = problem_query_service::ensure_problem_exists(
         connection,
         command_value.problem_reference_value
     );

@@ -1,12 +1,12 @@
 #include "http_guard/problem_guard.hpp"
 
-#include "db_service/problem_core_service.hpp"
+#include "db_service/problem_query_service.hpp"
 
 std::expected<void, problem_guard::response_type> problem_guard::require_exists(
     context_type& context,
     const problem_dto::reference& problem_reference_value
 ){
-    const auto ensure_problem_exists_exp = problem_core_service::ensure_problem_exists(
+    const auto ensure_problem_exists_exp = problem_query_service::ensure_problem_exists(
         context.db_connection_ref(),
         problem_reference_value
     );

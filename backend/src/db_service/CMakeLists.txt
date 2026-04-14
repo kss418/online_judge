@@ -2,9 +2,10 @@ target_sources(lib
     PRIVATE
         auth_service.cpp
         login_service.cpp
+        problem_command_service.cpp
         problem_version_publish_service.cpp
         problem_content_service.cpp
-        problem_core_service.cpp
+        problem_query_service.cpp
         problem_statistics_service.cpp
         submission_command_service.cpp
         submission_judge_service.cpp

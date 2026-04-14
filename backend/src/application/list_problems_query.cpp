@@ -1,6 +1,6 @@
 #include "application/list_problems_query.hpp"
 
-#include "db_service/problem_core_service.hpp"
+#include "db_service/problem_query_service.hpp"
 
 #include <utility>
 
@@ -8,7 +8,7 @@ std::expected<list_problems_query::result, service_error> list_problems_query::e
     db_connection& connection,
     const command& command_value
 ){
-    const auto summary_values_exp = problem_core_service::list_problems(
+    const auto summary_values_exp = problem_query_service::list_problems(
         connection,
         command_value.filter_value,
         command_value.viewer_user_id_opt
@@ -17,7 +17,7 @@ std::expected<list_problems_query::result, service_error> list_problems_query::e
         return std::unexpected(summary_values_exp.error());
     }
 
-    const auto total_problem_count_exp = problem_core_service::count_problems(
+    const auto total_problem_count_exp = problem_query_service::count_problems(
         connection,
         command_value.filter_value,
         command_value.viewer_user_id_opt
