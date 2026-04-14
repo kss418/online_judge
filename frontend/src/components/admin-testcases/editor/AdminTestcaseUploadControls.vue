@@ -15,17 +15,17 @@
       <label class="field-block">
         <span class="field-label">ZIP 파일</span>
         <input
-          :key="testcaseZipInputKey"
+          :key="section.model.testcaseZipInputKey"
           class="admin-testcase-file-input"
           type="file"
           accept=".zip,application/zip"
-          :disabled="Boolean(busySection)"
-          @change="$emit('testcase-zip-change', $event)"
+          :disabled="Boolean(section.model.busySection)"
+          @change="handleTestcaseZipChange"
         />
       </label>
 
-      <p v-if="selectedTestcaseZipName" class="admin-testcase-selected-file">
-        선택한 파일: {{ selectedTestcaseZipName }}
+      <p v-if="section.model.selectedTestcaseZipName" class="admin-testcase-selected-file">
+        선택한 파일: {{ section.model.selectedTestcaseZipName }}
       </p>
     </div>
 
@@ -33,40 +33,34 @@
       <button
         type="button"
         class="primary-button"
-        :disabled="!canUploadTestcaseZip"
-        @click="$emit('upload-testcase-zip')"
+        :disabled="!section.model.canUploadTestcaseZip"
+        @click="handleUploadTestcaseZip"
       >
-        {{ isUploadingTestcaseZip ? '업로드 중...' : 'ZIP 업로드' }}
+        {{ section.model.isUploadingTestcaseZip ? '업로드 중...' : 'ZIP 업로드' }}
       </button>
     </div>
   </article>
 </template>
 
 <script setup>
-defineProps({
-  testcaseZipInputKey: {
-    type: Number,
-    required: true
-  },
-  busySection: {
-    type: String,
-    default: ''
-  },
-  selectedTestcaseZipName: {
-    type: String,
-    default: ''
-  },
-  canUploadTestcaseZip: {
-    type: Boolean,
-    required: true
-  },
-  isUploadingTestcaseZip: {
-    type: Boolean,
+import { computed } from 'vue'
+
+const props = defineProps({
+  section: {
+    type: Object,
     required: true
   }
 })
 
-defineEmits(['testcase-zip-change', 'upload-testcase-zip'])
+const section = computed(() => props.section)
+
+function handleTestcaseZipChange(event){
+  section.value.actions.changeTestcaseZip(event)
+}
+
+function handleUploadTestcaseZip(){
+  section.value.actions.uploadTestcaseZip()
+}
 </script>
 
 <style scoped>

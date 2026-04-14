@@ -2,29 +2,31 @@
   <label class="field-block">
     <span class="field-label">입력</span>
     <textarea
-      :value="selectedTestcaseInputDraft"
+      :value="section.model.selectedTestcaseInputDraft"
       class="admin-testcases-textarea"
       spellcheck="false"
-      :disabled="Boolean(busySection)"
+      :disabled="Boolean(section.model.busySection)"
       placeholder="빈 입력도 허용됩니다."
-      @input="$emit('update:selectedTestcaseInputDraft', $event.target.value)"
+      @input="handleSelectedTestcaseInputDraft"
     />
   </label>
 </template>
 
 <script setup>
-defineProps({
-  selectedTestcaseInputDraft: {
-    type: String,
-    default: ''
-  },
-  busySection: {
-    type: String,
-    default: ''
+import { computed } from 'vue'
+
+const props = defineProps({
+  section: {
+    type: Object,
+    required: true
   }
 })
 
-defineEmits(['update:selectedTestcaseInputDraft'])
+const section = computed(() => props.section)
+
+function handleSelectedTestcaseInputDraft(event){
+  section.value.actions.updateSelectedTestcaseInputDraft(event.target.value)
+}
 </script>
 
 <style scoped>

@@ -1,6 +1,6 @@
 <template>
   <article
-    v-if="isLoadingTestcases"
+    v-if="section.model.isLoadingTestcases"
     class="admin-testcase-card"
   >
     <div class="empty-state compact-state">
@@ -9,16 +9,16 @@
   </article>
 
   <article
-    v-else-if="testcaseErrorMessage && !testcaseItems.length"
+    v-else-if="section.model.testcaseErrorMessage && !section.model.testcaseItems.length"
     class="admin-testcase-card"
   >
     <div class="empty-state error-state compact-state">
-      <p>{{ testcaseErrorMessage }}</p>
+      <p>{{ section.model.testcaseErrorMessage }}</p>
     </div>
   </article>
 
   <article
-    v-else-if="!testcaseItems.length"
+    v-else-if="!section.model.testcaseItems.length"
     class="admin-testcase-card"
   >
     <div class="empty-state compact-state">
@@ -27,7 +27,7 @@
   </article>
 
   <article
-    v-else-if="isLoadingSelectedTestcase"
+    v-else-if="section.model.isLoadingSelectedTestcase"
     class="admin-testcase-card"
   >
     <div class="empty-state compact-state">
@@ -36,48 +36,34 @@
   </article>
 
   <article
-    v-else-if="selectedTestcaseErrorMessage"
+    v-else-if="section.model.selectedTestcaseErrorMessage"
     class="admin-testcase-card"
   >
     <div class="empty-state error-state compact-state">
-      <p>{{ selectedTestcaseErrorMessage }}</p>
+      <p>{{ section.model.selectedTestcaseErrorMessage }}</p>
     </div>
   </article>
 
   <article
-    v-else-if="selectedTestcase"
+    v-else-if="section.model.selectedTestcase"
     class="admin-testcase-card"
   >
-    <AdminTestcaseMetadataHeader
-      :selected-testcase="selectedTestcase"
-      :can-delete-selected-testcase="canDeleteSelectedTestcase"
-      :is-deleting-selected-testcase="isDeletingSelectedTestcase"
-      :format-count="formatCount"
-      @delete-selected-testcase="$emit('delete-selected-testcase')"
-    />
+    <AdminTestcaseMetadataHeader :section="metadataSection" />
 
     <div class="admin-testcases-grid">
-      <AdminTestcaseInputPanel
-        :selected-testcase-input-draft="selectedTestcaseInputDraft"
-        :busy-section="busySection"
-        @update:selected-testcase-input-draft="$emit('update:selectedTestcaseInputDraft', $event)"
-      />
+      <AdminTestcaseInputPanel :section="inputPanelSection" />
 
-      <AdminTestcaseOutputPanel
-        :selected-testcase-output-draft="selectedTestcaseOutputDraft"
-        :busy-section="busySection"
-        @update:selected-testcase-output-draft="$emit('update:selectedTestcaseOutputDraft', $event)"
-      />
+      <AdminTestcaseOutputPanel :section="outputPanelSection" />
     </div>
 
     <div class="admin-testcases-actions">
       <button
         type="button"
         class="primary-button"
-        :disabled="!canSaveSelectedTestcase"
-        @click="$emit('save-selected-testcase')"
+        :disabled="!section.model.canSaveSelectedTestcase"
+        @click="handleSaveSelectedTestcase"
       >
-        {{ isSavingSelectedTestcase ? '저장 중...' : '저장' }}
+        {{ section.model.isSavingSelectedTestcase ? '저장 중...' : '저장' }}
       </button>
     </div>
   </article>
@@ -93,75 +79,56 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 import AdminTestcaseInputPanel from '@/components/admin-testcases/editor/AdminTestcaseInputPanel.vue'
 import AdminTestcaseMetadataHeader from '@/components/admin-testcases/editor/AdminTestcaseMetadataHeader.vue'
 import AdminTestcaseOutputPanel from '@/components/admin-testcases/editor/AdminTestcaseOutputPanel.vue'
 
-defineProps({
-  isLoadingTestcases: {
-    type: Boolean,
-    required: true
-  },
-  testcaseErrorMessage: {
-    type: String,
-    required: true
-  },
-  testcaseItems: {
-    type: Array,
-    required: true
-  },
-  isLoadingSelectedTestcase: {
-    type: Boolean,
-    required: true
-  },
-  selectedTestcaseErrorMessage: {
-    type: String,
-    required: true
-  },
-  selectedTestcase: {
+const props = defineProps({
+  section: {
     type: Object,
-    default: null
-  },
-  canDeleteSelectedTestcase: {
-    type: Boolean,
-    required: true
-  },
-  isDeletingSelectedTestcase: {
-    type: Boolean,
-    required: true
-  },
-  busySection: {
-    type: String,
-    default: ''
-  },
-  selectedTestcaseInputDraft: {
-    type: String,
-    default: ''
-  },
-  selectedTestcaseOutputDraft: {
-    type: String,
-    default: ''
-  },
-  canSaveSelectedTestcase: {
-    type: Boolean,
-    required: true
-  },
-  isSavingSelectedTestcase: {
-    type: Boolean,
-    required: true
-  },
-  formatCount: {
-    type: Function,
     required: true
   }
 })
 
-defineEmits([
-  'delete-selected-testcase',
-  'update:selectedTestcaseInputDraft',
-  'update:selectedTestcaseOutputDraft',
-  'save-selected-testcase'
-])
+const section = computed(() => props.section)
+
+const metadataSection = computed(() => ({
+  model: {
+    selectedTestcase: section.value.model.selectedTestcase,
+    canDeleteSelectedTestcase: section.value.model.canDeleteSelectedTestcase,
+    isDeletingSelectedTestcase: section.value.model.isDeletingSelectedTestcase,
+    formatCount: section.value.model.formatCount
+  },
+  actions: {
+    deleteSelectedTestcase: section.value.actions.deleteSelectedTestcase
+  }
+}))
+
+const inputPanelSection = computed(() => ({
+  model: {
+    selectedTestcaseInputDraft: section.value.model.selectedTestcaseInputDraft,
+    busySection: section.value.model.busySection
+  },
+  actions: {
+    updateSelectedTestcaseInputDraft: section.value.actions.updateSelectedTestcaseInputDraft
+  }
+}))
+
+const outputPanelSection = computed(() => ({
+  model: {
+    selectedTestcaseOutputDraft: section.value.model.selectedTestcaseOutputDraft,
+    busySection: section.value.model.busySection
+  },
+  actions: {
+    updateSelectedTestcaseOutputDraft: section.value.actions.updateSelectedTestcaseOutputDraft
+  }
+}))
+
+function handleSaveSelectedTestcase(){
+  section.value.actions.saveSelectedTestcase()
+}
 </script>
 
 <style scoped>

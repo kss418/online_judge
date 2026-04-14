@@ -1,42 +1,36 @@
 <template>
   <div class="admin-testcase-card-header">
     <div>
-      <p class="panel-kicker">testcase {{ formatCount(selectedTestcase.testcase_order) }}</p>
-      <h3>테스트케이스 {{ formatCount(selectedTestcase.testcase_order) }}</h3>
+      <p class="panel-kicker">testcase {{ section.model.formatCount(section.model.selectedTestcase.testcase_order) }}</p>
+      <h3>테스트케이스 {{ section.model.formatCount(section.model.selectedTestcase.testcase_order) }}</h3>
     </div>
 
     <button
       type="button"
       class="ghost-button admin-testcase-delete-button"
-      :disabled="!canDeleteSelectedTestcase"
-      @click="$emit('delete-selected-testcase')"
+      :disabled="!section.model.canDeleteSelectedTestcase"
+      @click="handleDeleteSelectedTestcase"
     >
-      {{ isDeletingSelectedTestcase ? '삭제 중...' : '테스트케이스 삭제' }}
+      {{ section.model.isDeletingSelectedTestcase ? '삭제 중...' : '테스트케이스 삭제' }}
     </button>
   </div>
 </template>
 
 <script setup>
-defineProps({
-  selectedTestcase: {
+import { computed } from 'vue'
+
+const props = defineProps({
+  section: {
     type: Object,
-    required: true
-  },
-  canDeleteSelectedTestcase: {
-    type: Boolean,
-    required: true
-  },
-  isDeletingSelectedTestcase: {
-    type: Boolean,
-    required: true
-  },
-  formatCount: {
-    type: Function,
     required: true
   }
 })
 
-defineEmits(['delete-selected-testcase'])
+const section = computed(() => props.section)
+
+function handleDeleteSelectedTestcase(){
+  section.value.actions.deleteSelectedTestcase()
+}
 </script>
 
 <style scoped>

@@ -5,11 +5,11 @@
       <h3 class="admin-problem-heading">
         <span class="admin-problem-heading-id-group">
           <span class="admin-problem-heading-id">
-            #{{ formatCount(selectedProblemDetail.problem_id) }}
+            #{{ section.model.formatCount(section.model.selectedProblemDetail.problem_id) }}
           </span>
           <span class="admin-problem-heading-divider" aria-hidden="true">·</span>
         </span>
-        <span class="admin-problem-heading-text">{{ selectedProblemDetail.title }}</span>
+        <span class="admin-problem-heading-text">{{ section.model.selectedProblemDetail.title }}</span>
       </h3>
       <p class="admin-problem-editor-copy">
         선택한 문제의 제목, 제한, 설명, 공개 예제를 바로 저장할 수 있습니다.
@@ -20,20 +20,20 @@
       <button
         type="button"
         class="ghost-button admin-problem-rejudge-button"
-        :disabled="Boolean(busySection)"
-        @click="$emit('open-rejudge-dialog')"
+        :disabled="Boolean(section.model.busySection)"
+        @click="handleOpenRejudgeDialog"
       >
         재채점
       </button>
       <RouterLink
         class="ghost-button"
-        :to="{ name: 'admin-problem-testcases', params: { problemId: selectedProblemDetail.problem_id } }"
+        :to="{ name: 'admin-problem-testcases', params: { problemId: section.model.selectedProblemDetail.problem_id } }"
       >
         테스트케이스 관리
       </RouterLink>
       <RouterLink
         class="ghost-button"
-        :to="{ name: 'problem-detail', params: { problemId: selectedProblemDetail.problem_id } }"
+        :to="{ name: 'problem-detail', params: { problemId: section.model.selectedProblemDetail.problem_id } }"
       >
         문제 보기
       </RouterLink>
@@ -42,22 +42,20 @@
 </template>
 
 <script setup>
-defineProps({
-  selectedProblemDetail: {
+import { computed } from 'vue'
+
+const props = defineProps({
+  section: {
     type: Object,
-    required: true
-  },
-  busySection: {
-    type: String,
-    default: ''
-  },
-  formatCount: {
-    type: Function,
     required: true
   }
 })
 
-defineEmits(['open-rejudge-dialog'])
+const section = computed(() => props.section)
+
+function handleOpenRejudgeDialog(){
+  section.value.actions.openRejudgeDialog()
+}
 </script>
 
 <style scoped>

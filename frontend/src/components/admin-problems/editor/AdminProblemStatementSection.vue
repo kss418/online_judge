@@ -11,41 +11,41 @@
       <label class="field-block">
         <span class="field-label">문제 설명</span>
         <textarea
-          :value="descriptionDraft"
+          :value="section.model.descriptionDraft"
           class="admin-problem-textarea"
           spellcheck="false"
-          @input="$emit('update:descriptionDraft', $event.target.value)"
+          @input="handleDescriptionInput"
         />
       </label>
 
       <label class="field-block">
         <span class="field-label">입력 설명</span>
         <textarea
-          :value="inputFormatDraft"
+          :value="section.model.inputFormatDraft"
           class="admin-problem-textarea"
           spellcheck="false"
-          @input="$emit('update:inputFormatDraft', $event.target.value)"
+          @input="handleInputFormatInput"
         />
       </label>
 
       <label class="field-block">
         <span class="field-label">출력 설명</span>
         <textarea
-          :value="outputFormatDraft"
+          :value="section.model.outputFormatDraft"
           class="admin-problem-textarea"
           spellcheck="false"
-          @input="$emit('update:outputFormatDraft', $event.target.value)"
+          @input="handleOutputFormatInput"
         />
       </label>
 
       <label class="field-block">
         <span class="field-label">비고</span>
         <textarea
-          :value="noteDraft"
+          :value="section.model.noteDraft"
           class="admin-problem-textarea is-note"
           spellcheck="false"
           placeholder="없으면 비워 두세요."
-          @input="$emit('update:noteDraft', $event.target.value)"
+          @input="handleNoteInput"
         />
       </label>
     </div>
@@ -54,50 +54,46 @@
       <button
         type="button"
         class="primary-button"
-        :disabled="!canSaveStatement"
-        @click="$emit('save-statement')"
+        :disabled="!section.model.canSaveStatement"
+        @click="handleSaveStatement"
       >
-        {{ isSavingStatement ? '저장 중...' : '저장' }}
+        {{ section.model.isSavingStatement ? '저장 중...' : '저장' }}
       </button>
     </div>
   </article>
 </template>
 
 <script setup>
-defineProps({
-  descriptionDraft: {
-    type: String,
-    default: ''
-  },
-  inputFormatDraft: {
-    type: String,
-    default: ''
-  },
-  outputFormatDraft: {
-    type: String,
-    default: ''
-  },
-  noteDraft: {
-    type: String,
-    default: ''
-  },
-  canSaveStatement: {
-    type: Boolean,
-    required: true
-  },
-  isSavingStatement: {
-    type: Boolean,
+import { computed } from 'vue'
+
+const props = defineProps({
+  section: {
+    type: Object,
     required: true
   }
 })
 
-defineEmits([
-  'update:descriptionDraft',
-  'update:inputFormatDraft',
-  'update:outputFormatDraft',
-  'update:noteDraft',
-  'save-statement'
-])
+const section = computed(() => props.section)
+
+function handleDescriptionInput(event){
+  section.value.actions.updateDescriptionDraft(event.target.value)
+}
+
+function handleInputFormatInput(event){
+  section.value.actions.updateInputFormatDraft(event.target.value)
+}
+
+function handleOutputFormatInput(event){
+  section.value.actions.updateOutputFormatDraft(event.target.value)
+}
+
+function handleNoteInput(event){
+  section.value.actions.updateNoteDraft(event.target.value)
+}
+
+function handleSaveStatement(){
+  section.value.actions.saveStatement()
+}
 </script>
 
 <style scoped>

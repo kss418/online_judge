@@ -11,24 +11,24 @@
       <label class="field-block">
         <span class="field-label">입력</span>
         <textarea
-          :value="newTestcaseInput"
+          :value="section.model.newTestcaseInput"
           class="admin-testcases-textarea"
           spellcheck="false"
-          :disabled="Boolean(busySection)"
+          :disabled="Boolean(section.model.busySection)"
           placeholder="빈 입력도 허용됩니다."
-          @input="$emit('update:newTestcaseInput', $event.target.value)"
+          @input="handleNewTestcaseInput"
         />
       </label>
 
       <label class="field-block">
         <span class="field-label">출력</span>
         <textarea
-          :value="newTestcaseOutput"
+          :value="section.model.newTestcaseOutput"
           class="admin-testcases-textarea"
           spellcheck="false"
-          :disabled="Boolean(busySection)"
+          :disabled="Boolean(section.model.busySection)"
           placeholder="빈 출력도 허용됩니다."
-          @input="$emit('update:newTestcaseOutput', $event.target.value)"
+          @input="handleNewTestcaseOutput"
         />
       </label>
     </div>
@@ -37,44 +37,38 @@
       <button
         type="button"
         class="primary-button"
-        :disabled="!canCreateTestcase"
-        @click="$emit('create-testcase')"
+        :disabled="!section.model.canCreateTestcase"
+        @click="handleCreateTestcase"
       >
-        {{ isCreatingTestcase ? '추가 중...' : '테스트케이스 추가' }}
+        {{ section.model.isCreatingTestcase ? '추가 중...' : '테스트케이스 추가' }}
       </button>
     </div>
   </article>
 </template>
 
 <script setup>
-defineProps({
-  newTestcaseInput: {
-    type: String,
-    default: ''
-  },
-  newTestcaseOutput: {
-    type: String,
-    default: ''
-  },
-  busySection: {
-    type: String,
-    default: ''
-  },
-  canCreateTestcase: {
-    type: Boolean,
-    required: true
-  },
-  isCreatingTestcase: {
-    type: Boolean,
+import { computed } from 'vue'
+
+const props = defineProps({
+  section: {
+    type: Object,
     required: true
   }
 })
 
-defineEmits([
-  'update:newTestcaseInput',
-  'update:newTestcaseOutput',
-  'create-testcase'
-])
+const section = computed(() => props.section)
+
+function handleNewTestcaseInput(event){
+  section.value.actions.updateNewTestcaseInput(event.target.value)
+}
+
+function handleNewTestcaseOutput(event){
+  section.value.actions.updateNewTestcaseOutput(event.target.value)
+}
+
+function handleCreateTestcase(){
+  section.value.actions.createTestcase()
+}
 </script>
 
 <style scoped>

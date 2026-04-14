@@ -12,78 +12,60 @@
       <button
         type="button"
         class="ghost-button"
-        :disabled="!canCreateSample"
-        @click="$emit('create-sample')"
+        :disabled="!section.model.canCreateSample"
+        @click="handleCreateSample"
       >
-        {{ isCreatingSample ? '추가 중...' : '샘플 추가' }}
+        {{ section.model.isCreatingSample ? '추가 중...' : '샘플 추가' }}
       </button>
     </div>
 
-    <div v-if="!sampleDrafts.length" class="empty-state compact-state">
+    <div v-if="!section.model.sampleDrafts.length" class="empty-state compact-state">
       <p>등록된 공개 예제가 아직 없습니다.</p>
     </div>
 
     <div v-else class="admin-sample-list">
       <AdminProblemSampleCard
-        v-for="sampleDraft in sampleDrafts"
+        v-for="sampleDraft in section.model.sampleDrafts"
         :key="sampleDraft.sample_order"
         :sample-draft="sampleDraft"
-        :can-delete-last-sample="canDeleteLastSample"
-        :is-deleting-last-sample="isDeletingLastSample"
-        :format-count="formatCount"
-        :is-saving-sample="isSavingSample"
-        :can-save-sample="canSaveSample"
-        :is-last-sample="isLastSample"
-        @delete-last-sample="$emit('delete-last-sample')"
-        @save-sample="$emit('save-sample', $event)"
+        :can-delete-last-sample="section.model.canDeleteLastSample"
+        :is-deleting-last-sample="section.model.isDeletingLastSample"
+        :format-count="section.model.formatCount"
+        :is-saving-sample="section.model.isSavingSample"
+        :can-save-sample="section.model.canSaveSample"
+        :is-last-sample="section.model.isLastSample"
+        @delete-last-sample="handleDeleteLastSample"
+        @save-sample="handleSaveSample"
       />
     </div>
   </article>
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 import AdminProblemSampleCard from '@/components/admin-problems/editor/AdminProblemSampleCard.vue'
 
-defineProps({
-  sampleDrafts: {
-    type: Array,
-    required: true
-  },
-  canCreateSample: {
-    type: Boolean,
-    required: true
-  },
-  canDeleteLastSample: {
-    type: Boolean,
-    required: true
-  },
-  isCreatingSample: {
-    type: Boolean,
-    required: true
-  },
-  isDeletingLastSample: {
-    type: Boolean,
-    required: true
-  },
-  formatCount: {
-    type: Function,
-    required: true
-  },
-  isSavingSample: {
-    type: Function,
-    required: true
-  },
-  canSaveSample: {
-    type: Function,
-    required: true
-  },
-  isLastSample: {
-    type: Function,
+const props = defineProps({
+  section: {
+    type: Object,
     required: true
   }
 })
 
-defineEmits(['create-sample', 'save-sample', 'delete-last-sample'])
+const section = computed(() => props.section)
+
+function handleCreateSample(){
+  section.value.actions.createSample()
+}
+
+function handleSaveSample(sampleOrder){
+  section.value.actions.saveSample(sampleOrder)
+}
+
+function handleDeleteLastSample(){
+  section.value.actions.deleteLastSample()
+}
 </script>
 
 <style scoped>

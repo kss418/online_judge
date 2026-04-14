@@ -1,88 +1,36 @@
 <template>
   <section class="admin-problem-editor-panel">
-    <div v-if="isLoadingDetail" class="empty-state">
+    <div v-if="editorState.isLoadingDetail" class="empty-state">
       <p>문제 정보를 불러오는 중입니다.</p>
     </div>
 
-    <div v-else-if="detailErrorMessage" class="empty-state error-state">
-      <p>{{ detailErrorMessage }}</p>
+    <div v-else-if="editorState.detailErrorMessage" class="empty-state error-state">
+      <p>{{ editorState.detailErrorMessage }}</p>
     </div>
 
-    <div v-else-if="!selectedProblemDetail" class="empty-state">
+    <div v-else-if="!editorState.selectedProblemDetail" class="empty-state">
       <p>왼쪽 목록에서 문제를 선택하거나 새 문제를 생성하세요.</p>
     </div>
 
     <template v-else>
-      <AdminProblemEditorHeader
-        :selected-problem-detail="selectedProblemDetail"
-        :busy-section="busySection"
-        :format-count="formatCount"
-        @open-rejudge-dialog="$emit('open-rejudge-dialog')"
-      />
+      <AdminProblemEditorHeader :section="headerSection" />
 
-      <AdminProblemBasicsSection
-        :title-draft="titleDraft"
-        :time-limit-draft="timeLimitDraft"
-        :memory-limit-draft="memoryLimitDraft"
-        :can-save-title="canSaveTitle"
-        :can-save-limits="canSaveLimits"
-        :is-saving-title="isSavingTitle"
-        :is-saving-limits="isSavingLimits"
-        @update:title-draft="$emit('update:titleDraft', $event)"
-        @update:time-limit-draft="$emit('update:timeLimitDraft', $event)"
-        @update:memory-limit-draft="$emit('update:memoryLimitDraft', $event)"
-        @save-title="$emit('save-title')"
-        @save-limits="$emit('save-limits')"
-      />
+      <AdminProblemBasicsSection :section="basicsSection" />
 
-      <AdminProblemStatementSection
-        :description-draft="descriptionDraft"
-        :input-format-draft="inputFormatDraft"
-        :output-format-draft="outputFormatDraft"
-        :note-draft="noteDraft"
-        :can-save-statement="canSaveStatement"
-        :is-saving-statement="isSavingStatement"
-        @update:description-draft="$emit('update:descriptionDraft', $event)"
-        @update:input-format-draft="$emit('update:inputFormatDraft', $event)"
-        @update:output-format-draft="$emit('update:outputFormatDraft', $event)"
-        @update:note-draft="$emit('update:noteDraft', $event)"
-        @save-statement="$emit('save-statement')"
-      />
+      <AdminProblemStatementSection :section="statementSection" />
 
-      <AdminProblemSamplesSection
-        :sample-drafts="sampleDrafts"
-        :can-create-sample="canCreateSample"
-        :can-delete-last-sample="canDeleteLastSample"
-        :is-creating-sample="isCreatingSample"
-        :is-deleting-last-sample="isDeletingLastSample"
-        :format-count="formatCount"
-        :is-saving-sample="isSavingSample"
-        :can-save-sample="canSaveSample"
-        :is-last-sample="isLastSample"
-        @create-sample="$emit('create-sample')"
-        @save-sample="$emit('save-sample', $event)"
-        @delete-last-sample="$emit('delete-last-sample')"
-      />
+      <AdminProblemSamplesSection :section="samplesSection" />
 
-      <AdminProblemTestcaseUploadSection
-        :testcase-zip-input-key="testcaseZipInputKey"
-        :selected-testcase-zip-name="selectedTestcaseZipName"
-        :busy-section="busySection"
-        :can-upload-testcase-zip="canUploadTestcaseZip"
-        :is-uploading-testcase-zip="isUploadingTestcaseZip"
-        @testcase-zip-change="$emit('testcase-zip-change', $event)"
-        @upload-testcase-zip="$emit('upload-testcase-zip')"
-      />
+      <AdminProblemTestcaseUploadSection :section="testcaseUploadSection" />
 
-      <AdminProblemDangerSection
-        :busy-section="busySection"
-        @open-delete-dialog="$emit('open-delete-dialog')"
-      />
+      <AdminProblemDangerSection :section="dangerSection" />
     </template>
   </section>
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 import AdminProblemBasicsSection from '@/components/admin-problems/editor/AdminProblemBasicsSection.vue'
 import AdminProblemDangerSection from '@/components/admin-problems/editor/AdminProblemDangerSection.vue'
 import AdminProblemEditorHeader from '@/components/admin-problems/editor/AdminProblemEditorHeader.vue'
@@ -90,148 +38,110 @@ import AdminProblemSamplesSection from '@/components/admin-problems/editor/Admin
 import AdminProblemStatementSection from '@/components/admin-problems/editor/AdminProblemStatementSection.vue'
 import AdminProblemTestcaseUploadSection from '@/components/admin-problems/editor/AdminProblemTestcaseUploadSection.vue'
 
-defineProps({
-  isLoadingDetail: {
-    type: Boolean,
-    required: true
-  },
-  detailErrorMessage: {
-    type: String,
-    required: true
-  },
-  selectedProblemDetail: {
+const props = defineProps({
+  editorState: {
     type: Object,
-    default: null
-  },
-  titleDraft: {
-    type: String,
-    default: ''
-  },
-  timeLimitDraft: {
-    type: String,
-    default: ''
-  },
-  memoryLimitDraft: {
-    type: String,
-    default: ''
-  },
-  descriptionDraft: {
-    type: String,
-    default: ''
-  },
-  inputFormatDraft: {
-    type: String,
-    default: ''
-  },
-  outputFormatDraft: {
-    type: String,
-    default: ''
-  },
-  noteDraft: {
-    type: String,
-    default: ''
-  },
-  sampleDrafts: {
-    type: Array,
     required: true
   },
-  testcaseZipInputKey: {
-    type: Number,
+  editorDraft: {
+    type: Object,
     required: true
   },
-  selectedTestcaseZipName: {
-    type: String,
-    default: ''
-  },
-  busySection: {
-    type: String,
-    default: ''
-  },
-  canSaveTitle: {
-    type: Boolean,
-    required: true
-  },
-  canSaveLimits: {
-    type: Boolean,
-    required: true
-  },
-  canSaveStatement: {
-    type: Boolean,
-    required: true
-  },
-  canCreateSample: {
-    type: Boolean,
-    required: true
-  },
-  canUploadTestcaseZip: {
-    type: Boolean,
-    required: true
-  },
-  canDeleteLastSample: {
-    type: Boolean,
-    required: true
-  },
-  isSavingTitle: {
-    type: Boolean,
-    required: true
-  },
-  isSavingLimits: {
-    type: Boolean,
-    required: true
-  },
-  isSavingStatement: {
-    type: Boolean,
-    required: true
-  },
-  isCreatingSample: {
-    type: Boolean,
-    required: true
-  },
-  isDeletingLastSample: {
-    type: Boolean,
-    required: true
-  },
-  isUploadingTestcaseZip: {
-    type: Boolean,
-    required: true
-  },
-  formatCount: {
-    type: Function,
-    required: true
-  },
-  isSavingSample: {
-    type: Function,
-    required: true
-  },
-  canSaveSample: {
-    type: Function,
-    required: true
-  },
-  isLastSample: {
-    type: Function,
+  editorActions: {
+    type: Object,
     required: true
   }
 })
 
-defineEmits([
-  'update:titleDraft',
-  'update:timeLimitDraft',
-  'update:memoryLimitDraft',
-  'update:descriptionDraft',
-  'update:inputFormatDraft',
-  'update:outputFormatDraft',
-  'update:noteDraft',
-  'save-title',
-  'save-limits',
-  'save-statement',
-  'create-sample',
-  'save-sample',
-  'delete-last-sample',
-  'testcase-zip-change',
-  'upload-testcase-zip',
-  'open-rejudge-dialog',
-  'open-delete-dialog'
-])
+const headerSection = computed(() => ({
+  model: {
+    selectedProblemDetail: props.editorState.selectedProblemDetail,
+    busySection: props.editorState.busySection,
+    formatCount: props.editorState.formatCount
+  },
+  actions: {
+    openRejudgeDialog: props.editorActions.openRejudgeDialog
+  }
+}))
+
+const basicsSection = computed(() => ({
+  model: {
+    titleDraft: props.editorDraft.titleDraft,
+    timeLimitDraft: props.editorDraft.timeLimitDraft,
+    memoryLimitDraft: props.editorDraft.memoryLimitDraft,
+    canSaveTitle: props.editorState.canSaveTitle,
+    canSaveLimits: props.editorState.canSaveLimits,
+    isSavingTitle: props.editorState.isSavingTitle,
+    isSavingLimits: props.editorState.isSavingLimits
+  },
+  actions: {
+    updateTitleDraft: props.editorActions.updateTitleDraft,
+    updateTimeLimitDraft: props.editorActions.updateTimeLimitDraft,
+    updateMemoryLimitDraft: props.editorActions.updateMemoryLimitDraft,
+    saveTitle: props.editorActions.saveTitle,
+    saveLimits: props.editorActions.saveLimits
+  }
+}))
+
+const statementSection = computed(() => ({
+  model: {
+    descriptionDraft: props.editorDraft.descriptionDraft,
+    inputFormatDraft: props.editorDraft.inputFormatDraft,
+    outputFormatDraft: props.editorDraft.outputFormatDraft,
+    noteDraft: props.editorDraft.noteDraft,
+    canSaveStatement: props.editorState.canSaveStatement,
+    isSavingStatement: props.editorState.isSavingStatement
+  },
+  actions: {
+    updateDescriptionDraft: props.editorActions.updateDescriptionDraft,
+    updateInputFormatDraft: props.editorActions.updateInputFormatDraft,
+    updateOutputFormatDraft: props.editorActions.updateOutputFormatDraft,
+    updateNoteDraft: props.editorActions.updateNoteDraft,
+    saveStatement: props.editorActions.saveStatement
+  }
+}))
+
+const samplesSection = computed(() => ({
+  model: {
+    sampleDrafts: props.editorDraft.sampleDrafts,
+    canCreateSample: props.editorState.canCreateSample,
+    canDeleteLastSample: props.editorState.canDeleteLastSample,
+    isCreatingSample: props.editorState.isCreatingSample,
+    isDeletingLastSample: props.editorState.isDeletingLastSample,
+    formatCount: props.editorState.formatCount,
+    isSavingSample: props.editorState.isSavingSample,
+    canSaveSample: props.editorState.canSaveSample,
+    isLastSample: props.editorState.isLastSample
+  },
+  actions: {
+    createSample: props.editorActions.createSample,
+    saveSample: props.editorActions.saveSample,
+    deleteLastSample: props.editorActions.deleteLastSample
+  }
+}))
+
+const testcaseUploadSection = computed(() => ({
+  model: {
+    testcaseZipInputKey: props.editorDraft.testcaseZipInputKey,
+    selectedTestcaseZipName: props.editorDraft.selectedTestcaseZipName,
+    busySection: props.editorState.busySection,
+    canUploadTestcaseZip: props.editorState.canUploadTestcaseZip,
+    isUploadingTestcaseZip: props.editorState.isUploadingTestcaseZip
+  },
+  actions: {
+    changeTestcaseZip: props.editorActions.changeTestcaseZip,
+    uploadTestcaseZip: props.editorActions.uploadTestcaseZip
+  }
+}))
+
+const dangerSection = computed(() => ({
+  model: {
+    busySection: props.editorState.busySection
+  },
+  actions: {
+    openDeleteDialog: props.editorActions.openDeleteDialog
+  }
+}))
 </script>
 
 <style scoped>

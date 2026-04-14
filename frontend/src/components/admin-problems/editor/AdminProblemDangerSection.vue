@@ -15,8 +15,8 @@
       <button
         type="button"
         class="ghost-button admin-problem-danger-button"
-        :disabled="Boolean(busySection)"
-        @click="$emit('open-delete-dialog')"
+        :disabled="Boolean(section.model.busySection)"
+        @click="handleOpenDeleteDialog"
       >
         문제 삭제
       </button>
@@ -25,14 +25,20 @@
 </template>
 
 <script setup>
-defineProps({
-  busySection: {
-    type: String,
-    default: ''
+import { computed } from 'vue'
+
+const props = defineProps({
+  section: {
+    type: Object,
+    required: true
   }
 })
 
-defineEmits(['open-delete-dialog'])
+const section = computed(() => props.section)
+
+function handleOpenDeleteDialog(){
+  section.value.actions.openDeleteDialog()
+}
 </script>
 
 <style scoped>

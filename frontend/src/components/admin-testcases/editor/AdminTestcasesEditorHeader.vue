@@ -5,17 +5,17 @@
       <h3 class="admin-testcases-problem-heading">
         <span class="admin-testcases-problem-heading-id-group">
           <span class="admin-testcases-problem-heading-id">
-            #{{ formatCount(problemDetail.problem_id) }}
+            #{{ section.model.formatCount(section.model.problemDetail.problem_id) }}
           </span>
           <span class="admin-testcases-problem-heading-divider" aria-hidden="true">·</span>
         </span>
-        <span class="admin-testcases-problem-heading-text">{{ problemDetail.title }}</span>
+        <span class="admin-testcases-problem-heading-text">{{ section.model.problemDetail.title }}</span>
       </h3>
       <p class="admin-testcases-editor-copy">
         요약 리스트에서 특정 테스트케이스를 고르고, 선택한 항목만 편집해서 저장할 수 있습니다.
       </p>
       <p
-        v-if="testcaseItems.length > 1"
+        v-if="section.model.testcaseItems.length > 1"
         class="admin-testcases-editor-copy"
       >
         요약 카드들을 드래그해서 순서를 바로 바꿀 수 있습니다.
@@ -28,14 +28,14 @@
           class="ghost-button"
           :to="{
             name: 'admin-problems',
-            query: { problemId: String(problemDetail.problem_id) }
+            query: { problemId: String(section.model.problemDetail.problem_id) }
           }"
         >
           문제 관리
         </RouterLink>
         <RouterLink
           class="ghost-button"
-          :to="{ name: 'problem-detail', params: { problemId: problemDetail.problem_id } }"
+          :to="{ name: 'problem-detail', params: { problemId: section.model.problemDetail.problem_id } }"
         >
           문제 보기
         </RouterLink>
@@ -45,20 +45,16 @@
 </template>
 
 <script setup>
-defineProps({
-  problemDetail: {
+import { computed } from 'vue'
+
+const props = defineProps({
+  section: {
     type: Object,
-    required: true
-  },
-  testcaseItems: {
-    type: Array,
-    required: true
-  },
-  formatCount: {
-    type: Function,
     required: true
   }
 })
+
+const section = computed(() => props.section)
 </script>
 
 <style scoped>

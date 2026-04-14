@@ -50,48 +50,9 @@
           />
 
           <AdminTestcasesEditor
-            v-model:new-testcase-input="newTestcaseInput"
-            v-model:new-testcase-output="newTestcaseOutput"
-            v-model:view-testcase-order-input="viewTestcaseOrderInput"
-            v-model:selected-testcase-input-draft="selectedTestcaseInputDraft"
-            v-model:selected-testcase-output-draft="selectedTestcaseOutputDraft"
-            :selected-problem-id="selectedProblemId"
-            :is-loading-problem="isLoadingProblem"
-            :problem-error-message="problemErrorMessage"
-            :problem-detail="problemDetail"
-            :testcase-zip-input-key="testcaseZipInputKey"
-            :busy-section="busySection"
-            :selected-testcase-zip-name="selectedTestcaseZipName"
-            :can-upload-testcase-zip="canUploadTestcaseZip"
-            :is-uploading-testcase-zip="isUploadingTestcaseZip"
-            :can-create-testcase="canCreateTestcase"
-            :is-creating-testcase="isCreatingTestcase"
-            :can-view-specific-testcase="canViewSpecificTestcase"
-            :is-loading-testcases="isLoadingTestcases"
-            :is-loading-selected-testcase="isLoadingSelectedTestcase"
-            :testcase-items="testcaseItems"
-            :testcase-error-message="testcaseErrorMessage"
-            :selected-testcase-error-message="selectedTestcaseErrorMessage"
-            :selected-testcase-order="selectedTestcaseOrder"
-            :selected-testcase="selectedTestcase"
-            :can-delete-selected-testcase="canDeleteSelectedTestcase"
-            :is-deleting-selected-testcase="isDeletingSelectedTestcase"
-            :can-move-testcases="canMoveTestcases"
-            :is-moving-testcase="isMovingTestcase"
-            :can-save-selected-testcase="canSaveSelectedTestcase"
-            :is-saving-selected-testcase="isSavingSelectedTestcase"
-            :format-count="formatCount"
-            :describe-testcase-content="describeTestcaseContent"
-            :is-last-testcase="isLastTestcase"
-            :set-testcase-summary-element="setTestcaseSummaryElement"
-            @testcase-zip-change="handleTestcaseZipFileChange"
-            @upload-testcase-zip="handleUploadTestcaseZip"
-            @create-testcase="handleCreateTestcase"
-            @view-selected-testcase="handleViewSelectedTestcase"
-            @select-testcase="selectTestcase"
-            @delete-selected-testcase="handleDeleteSelectedTestcase"
-            @move-testcase="handleMoveTestcase"
-            @save-selected-testcase="handleSaveSelectedTestcase"
+            :editor-state="testcaseEditorState"
+            :editor-draft="testcaseEditorDraft"
+            :editor-actions="testcaseEditorActions"
           />
         </div>
       </template>
@@ -100,6 +61,8 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 import AdminTestcasesEditor from '@/components/admin-testcases/AdminTestcasesEditor.vue'
 import AdminTestcasesSidebar from '@/components/admin-testcases/AdminTestcasesSidebar.vue'
 import AdminTestcasesToolbar from '@/components/admin-testcases/AdminTestcasesToolbar.vue'
@@ -171,6 +134,82 @@ const {
   handleViewSelectedTestcase,
   setTestcaseSummaryElement
 } = useAdminProblemTestcasesPage()
+
+const testcaseEditorState = computed(() => ({
+  selectedProblemId: selectedProblemId.value,
+  isLoadingProblem: isLoadingProblem.value,
+  problemErrorMessage: problemErrorMessage.value,
+  problemDetail: problemDetail.value,
+  busySection: busySection.value,
+  canUploadTestcaseZip: canUploadTestcaseZip.value,
+  isUploadingTestcaseZip: isUploadingTestcaseZip.value,
+  canCreateTestcase: canCreateTestcase.value,
+  isCreatingTestcase: isCreatingTestcase.value,
+  canViewSpecificTestcase: canViewSpecificTestcase.value,
+  isLoadingTestcases: isLoadingTestcases.value,
+  isLoadingSelectedTestcase: isLoadingSelectedTestcase.value,
+  testcaseItems: testcaseItems.value,
+  testcaseErrorMessage: testcaseErrorMessage.value,
+  selectedTestcaseErrorMessage: selectedTestcaseErrorMessage.value,
+  selectedTestcaseOrder: selectedTestcaseOrder.value,
+  selectedTestcase: selectedTestcase.value,
+  canDeleteSelectedTestcase: canDeleteSelectedTestcase.value,
+  isDeletingSelectedTestcase: isDeletingSelectedTestcase.value,
+  canMoveTestcases: canMoveTestcases.value,
+  isMovingTestcase: isMovingTestcase.value,
+  canSaveSelectedTestcase: canSaveSelectedTestcase.value,
+  isSavingSelectedTestcase: isSavingSelectedTestcase.value,
+  formatCount,
+  describeTestcaseContent,
+  isLastTestcase,
+  setTestcaseSummaryElement
+}))
+
+const testcaseEditorDraft = computed(() => ({
+  testcaseZipInputKey: testcaseZipInputKey.value,
+  selectedTestcaseZipName: selectedTestcaseZipName.value,
+  newTestcaseInput: newTestcaseInput.value,
+  newTestcaseOutput: newTestcaseOutput.value,
+  viewTestcaseOrderInput: viewTestcaseOrderInput.value,
+  selectedTestcaseInputDraft: selectedTestcaseInputDraft.value,
+  selectedTestcaseOutputDraft: selectedTestcaseOutputDraft.value
+}))
+
+function updateNewTestcaseInput(value){
+  newTestcaseInput.value = value
+}
+
+function updateNewTestcaseOutput(value){
+  newTestcaseOutput.value = value
+}
+
+function updateViewTestcaseOrderInput(value){
+  viewTestcaseOrderInput.value = value
+}
+
+function updateSelectedTestcaseInputDraft(value){
+  selectedTestcaseInputDraft.value = value
+}
+
+function updateSelectedTestcaseOutputDraft(value){
+  selectedTestcaseOutputDraft.value = value
+}
+
+const testcaseEditorActions = {
+  updateNewTestcaseInput,
+  updateNewTestcaseOutput,
+  updateViewTestcaseOrderInput,
+  updateSelectedTestcaseInputDraft,
+  updateSelectedTestcaseOutputDraft,
+  changeTestcaseZip: handleTestcaseZipFileChange,
+  uploadTestcaseZip: handleUploadTestcaseZip,
+  createTestcase: handleCreateTestcase,
+  viewSelectedTestcase: handleViewSelectedTestcase,
+  selectTestcase,
+  deleteSelectedTestcase: handleDeleteSelectedTestcase,
+  moveTestcase: handleMoveTestcase,
+  saveSelectedTestcase: handleSaveSelectedTestcase
+}
 </script>
 
 <style scoped>

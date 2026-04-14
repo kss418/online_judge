@@ -10,12 +10,12 @@
 
       <div class="admin-problem-form-grid single-column-grid">
         <input
-          :value="titleDraft"
+          :value="section.model.titleDraft"
           class="field-input"
           type="text"
           maxlength="120"
           placeholder="문제 제목"
-          @input="$emit('update:titleDraft', $event.target.value)"
+          @input="handleTitleInput"
         />
       </div>
 
@@ -23,10 +23,10 @@
         <button
           type="button"
           class="primary-button"
-          :disabled="!canSaveTitle"
-          @click="$emit('save-title')"
+          :disabled="!section.model.canSaveTitle"
+          @click="handleSaveTitle"
         >
-          {{ isSavingTitle ? '저장 중...' : '저장' }}
+          {{ section.model.isSavingTitle ? '저장 중...' : '저장' }}
         </button>
       </div>
     </article>
@@ -43,26 +43,26 @@
         <label class="field-block">
           <span class="field-label">시간 제한(ms)</span>
           <input
-            :value="timeLimitDraft"
+            :value="section.model.timeLimitDraft"
             class="field-input"
             type="number"
             min="1"
             inputmode="numeric"
             placeholder="1000"
-            @input="$emit('update:timeLimitDraft', $event.target.value)"
+            @input="handleTimeLimitInput"
           />
         </label>
 
         <label class="field-block">
           <span class="field-label">메모리 제한(MB)</span>
           <input
-            :value="memoryLimitDraft"
+            :value="section.model.memoryLimitDraft"
             class="field-input"
             type="number"
             min="1"
             inputmode="numeric"
             placeholder="256"
-            @input="$emit('update:memoryLimitDraft', $event.target.value)"
+            @input="handleMemoryLimitInput"
           />
         </label>
       </div>
@@ -71,10 +71,10 @@
         <button
           type="button"
           class="primary-button"
-          :disabled="!canSaveLimits"
-          @click="$emit('save-limits')"
+          :disabled="!section.model.canSaveLimits"
+          @click="handleSaveLimits"
         >
-          {{ isSavingLimits ? '저장 중...' : '저장' }}
+          {{ section.model.isSavingLimits ? '저장 중...' : '저장' }}
         </button>
       </div>
     </article>
@@ -82,44 +82,36 @@
 </template>
 
 <script setup>
-defineProps({
-  titleDraft: {
-    type: String,
-    default: ''
-  },
-  timeLimitDraft: {
-    type: String,
-    default: ''
-  },
-  memoryLimitDraft: {
-    type: String,
-    default: ''
-  },
-  canSaveTitle: {
-    type: Boolean,
-    required: true
-  },
-  canSaveLimits: {
-    type: Boolean,
-    required: true
-  },
-  isSavingTitle: {
-    type: Boolean,
-    required: true
-  },
-  isSavingLimits: {
-    type: Boolean,
+import { computed } from 'vue'
+
+const props = defineProps({
+  section: {
+    type: Object,
     required: true
   }
 })
 
-defineEmits([
-  'update:titleDraft',
-  'update:timeLimitDraft',
-  'update:memoryLimitDraft',
-  'save-title',
-  'save-limits'
-])
+const section = computed(() => props.section)
+
+function handleTitleInput(event){
+  section.value.actions.updateTitleDraft(event.target.value)
+}
+
+function handleTimeLimitInput(event){
+  section.value.actions.updateTimeLimitDraft(event.target.value)
+}
+
+function handleMemoryLimitInput(event){
+  section.value.actions.updateMemoryLimitDraft(event.target.value)
+}
+
+function handleSaveTitle(){
+  section.value.actions.saveTitle()
+}
+
+function handleSaveLimits(){
+  section.value.actions.saveLimits()
+}
 </script>
 
 <style scoped>

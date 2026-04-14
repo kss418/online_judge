@@ -7,17 +7,17 @@
       </div>
     </div>
 
-    <form class="admin-testcases-order-form" @submit.prevent="$emit('view-selected-testcase')">
+    <form class="admin-testcases-order-form" @submit.prevent="handleViewSelectedTestcase">
       <label class="field-block admin-testcases-order-field">
         <span class="field-label">특정 순번 보기</span>
         <input
-          :value="viewTestcaseOrderInput"
+          :value="section.model.viewTestcaseOrderInput"
           class="field-input"
           type="text"
           inputmode="numeric"
-          :disabled="isLoadingTestcases || !testcaseItems.length"
+          :disabled="section.model.isLoadingTestcases || !section.model.testcaseItems.length"
           placeholder="예: 37"
-          @input="$emit('update:viewTestcaseOrderInput', $event.target.value)"
+          @input="handleViewTestcaseOrderInput"
         />
       </label>
 
@@ -25,16 +25,16 @@
         <button
           type="submit"
           class="ghost-button"
-          :disabled="!canViewSpecificTestcase"
+          :disabled="!section.model.canViewSpecificTestcase"
         >
           보기
         </button>
         <button
-          v-if="selectedTestcase"
+          v-if="section.model.selectedTestcase"
           type="button"
           class="ghost-button"
-          :disabled="isLoadingTestcases || !testcaseItems.length"
-          @click="$emit('select-testcase', testcaseItems[0].testcase_order)"
+          :disabled="section.model.isLoadingTestcases || !section.model.testcaseItems.length"
+          @click="handleSelectFirstTestcase"
         >
           처음으로
         </button>
@@ -43,52 +43,52 @@
 
     <div class="admin-testcases-summary-layout">
       <div class="admin-testcases-summary-panel">
-        <div v-if="isLoadingTestcases" class="empty-state compact-state">
+        <div v-if="section.model.isLoadingTestcases" class="empty-state compact-state">
           <p>테스트케이스를 불러오는 중입니다.</p>
         </div>
 
-        <div v-else-if="testcaseErrorMessage" class="empty-state error-state compact-state">
-          <p>{{ testcaseErrorMessage }}</p>
+        <div v-else-if="section.model.testcaseErrorMessage" class="empty-state error-state compact-state">
+          <p>{{ section.model.testcaseErrorMessage }}</p>
         </div>
 
-        <div v-else-if="!testcaseItems.length" class="empty-state compact-state">
+        <div v-else-if="!section.model.testcaseItems.length" class="empty-state compact-state">
           <p>등록된 테스트케이스가 아직 없습니다.</p>
         </div>
 
         <div v-else class="admin-testcases-summary-list">
           <button
-            v-for="testcase in testcaseItems"
+            v-for="testcase in section.model.testcaseItems"
             :key="testcase.testcase_order"
             type="button"
             class="admin-testcase-summary-item"
             :class="{
-              'is-active': testcase.testcase_order === selectedTestcaseOrder,
-              'is-draggable': canMoveTestcases,
+              'is-active': testcase.testcase_order === section.model.selectedTestcaseOrder,
+              'is-draggable': section.model.canMoveTestcases,
               'is-dragging': testcase.testcase_order === draggingTestcaseOrder,
               'is-drop-target': testcase.testcase_order === dropTargetTestcaseOrder
             }"
-            :ref="(element) => setTestcaseSummaryElement(testcase.testcase_order, element)"
-            :draggable="canMoveTestcases"
-            @click="$emit('select-testcase', testcase.testcase_order)"
+            :ref="(element) => section.model.setTestcaseSummaryElement(testcase.testcase_order, element)"
+            :draggable="section.model.canMoveTestcases"
+            @click="handleSelectTestcase(testcase.testcase_order)"
             @dragstart="handleSummaryDragStart($event, testcase.testcase_order)"
             @dragover="handleSummaryDragOver($event, testcase.testcase_order)"
             @drop="handleSummaryDrop($event, testcase.testcase_order)"
             @dragend="handleSummaryDragEnd"
           >
             <div class="admin-testcase-summary-head">
-              <strong>#{{ formatCount(testcase.testcase_order) }}</strong>
+              <strong>#{{ section.model.formatCount(testcase.testcase_order) }}</strong>
               <span
-                v-if="isLastTestcase(testcase.testcase_order)"
+                v-if="section.model.isLastTestcase(testcase.testcase_order)"
                 class="admin-testcase-summary-badge"
               >
                 last
               </span>
             </div>
             <span class="admin-testcase-summary-copy">
-              입력 {{ describeTestcaseContent(testcase.input_char_count, testcase.input_line_count) }}
+              입력 {{ section.model.describeTestcaseContent(testcase.input_char_count, testcase.input_line_count) }}
             </span>
             <span class="admin-testcase-summary-copy">
-              출력 {{ describeTestcaseContent(testcase.output_char_count, testcase.output_line_count) }}
+              출력 {{ section.model.describeTestcaseContent(testcase.output_char_count, testcase.output_line_count) }}
             </span>
           </button>
         </div>
@@ -100,72 +100,38 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
-  viewTestcaseOrderInput: {
-    type: String,
-    default: ''
-  },
-  canViewSpecificTestcase: {
-    type: Boolean,
-    required: true
-  },
-  isLoadingTestcases: {
-    type: Boolean,
-    required: true
-  },
-  testcaseItems: {
-    type: Array,
-    required: true
-  },
-  testcaseErrorMessage: {
-    type: String,
-    required: true
-  },
-  selectedTestcaseOrder: {
-    type: Number,
-    required: true
-  },
-  selectedTestcase: {
+  section: {
     type: Object,
-    default: null
-  },
-  canMoveTestcases: {
-    type: Boolean,
-    required: true
-  },
-  isMovingTestcase: {
-    type: Boolean,
-    required: true
-  },
-  formatCount: {
-    type: Function,
-    required: true
-  },
-  describeTestcaseContent: {
-    type: Function,
-    required: true
-  },
-  isLastTestcase: {
-    type: Function,
-    required: true
-  },
-  setTestcaseSummaryElement: {
-    type: Function,
     required: true
   }
 })
 
-const emit = defineEmits([
-  'update:viewTestcaseOrderInput',
-  'view-selected-testcase',
-  'select-testcase',
-  'move-testcase'
-])
+const section = computed(() => props.section)
 
 const draggingTestcaseOrder = ref(0)
 const dropTargetTestcaseOrder = ref(0)
+
+function handleViewTestcaseOrderInput(event){
+  section.value.actions.updateViewTestcaseOrderInput(event.target.value)
+}
+
+function handleViewSelectedTestcase(){
+  section.value.actions.viewSelectedTestcase()
+}
+
+function handleSelectTestcase(testcaseOrder){
+  section.value.actions.selectTestcase(testcaseOrder)
+}
+
+function handleSelectFirstTestcase(){
+  const firstTestcase = section.value.model.testcaseItems[0]
+  if (firstTestcase) {
+    handleSelectTestcase(firstTestcase.testcase_order)
+  }
+}
 
 function resetDragState(){
   draggingTestcaseOrder.value = 0
@@ -173,7 +139,7 @@ function resetDragState(){
 }
 
 function handleSummaryDragStart(event, testcaseOrder){
-  if (!props.canMoveTestcases || props.isMovingTestcase) {
+  if (!section.value.model.canMoveTestcases || section.value.model.isMovingTestcase) {
     event.preventDefault()
     return
   }
@@ -189,8 +155,8 @@ function handleSummaryDragStart(event, testcaseOrder){
 
 function handleSummaryDragOver(event, testcaseOrder){
   if (
-    !props.canMoveTestcases ||
-    props.isMovingTestcase ||
+    !section.value.model.canMoveTestcases ||
+    section.value.model.isMovingTestcase ||
     !draggingTestcaseOrder.value ||
     draggingTestcaseOrder.value === testcaseOrder
   ) {
@@ -206,7 +172,7 @@ function handleSummaryDragOver(event, testcaseOrder){
 }
 
 function handleSummaryDrop(event, testcaseOrder){
-  if (!props.canMoveTestcases || props.isMovingTestcase) {
+  if (!section.value.model.canMoveTestcases || section.value.model.isMovingTestcase) {
     return
   }
 
@@ -225,7 +191,7 @@ function handleSummaryDrop(event, testcaseOrder){
     testcaseOrder > 0 &&
     sourceTestcaseOrder !== testcaseOrder
   ) {
-    emit('move-testcase', {
+    section.value.actions.moveTestcase({
       sourceTestcaseOrder,
       targetTestcaseOrder: testcaseOrder
     })

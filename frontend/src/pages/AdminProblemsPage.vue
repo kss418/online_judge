@@ -51,46 +51,9 @@
           />
 
           <AdminProblemsEditor
-            v-model:title-draft="titleDraft"
-            v-model:time-limit-draft="timeLimitDraft"
-            v-model:memory-limit-draft="memoryLimitDraft"
-            v-model:description-draft="descriptionDraft"
-            v-model:input-format-draft="inputFormatDraft"
-            v-model:output-format-draft="outputFormatDraft"
-            v-model:note-draft="noteDraft"
-            :is-loading-detail="isLoadingDetail"
-            :detail-error-message="detailErrorMessage"
-            :selected-problem-detail="selectedProblemDetail"
-            :sample-drafts="sampleDrafts"
-            :testcase-zip-input-key="testcaseZipInputKey"
-            :selected-testcase-zip-name="selectedTestcaseZipName"
-            :busy-section="busySection"
-            :can-save-title="canSaveTitle"
-            :can-save-limits="canSaveLimits"
-            :can-save-statement="canSaveStatement"
-            :can-create-sample="canCreateSample"
-            :can-upload-testcase-zip="canUploadTestcaseZip"
-            :can-delete-last-sample="canDeleteLastSample"
-            :is-saving-title="isSavingTitle"
-            :is-saving-limits="isSavingLimits"
-            :is-saving-statement="isSavingStatement"
-            :is-creating-sample="isCreatingSample"
-            :is-deleting-last-sample="isDeletingLastSample"
-            :is-uploading-testcase-zip="isUploadingTestcaseZip"
-            :format-count="formatCount"
-            :is-saving-sample="isSavingSample"
-            :can-save-sample="canSaveSample"
-            :is-last-sample="isLastSample"
-            @save-title="handleSaveTitle"
-            @save-limits="handleSaveLimits"
-            @save-statement="handleSaveStatement"
-            @create-sample="handleCreateSample"
-            @save-sample="handleSaveSample"
-            @delete-last-sample="handleDeleteLastSample"
-            @testcase-zip-change="handleTestcaseZipFileChange"
-            @upload-testcase-zip="handleUploadTestcaseZip"
-            @open-rejudge-dialog="openRejudgeDialog"
-            @open-delete-dialog="openDeleteDialog"
+            :editor-state="problemEditorState"
+            :editor-draft="problemEditorDraft"
+            :editor-actions="problemEditorActions"
           />
         </div>
       </template>
@@ -138,6 +101,8 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 import AdminProblemConfirmDialog from '@/components/admin-problems/AdminProblemConfirmDialog.vue'
 import AdminProblemsEditor from '@/components/admin-problems/AdminProblemsEditor.vue'
 import AdminProblemsSidebar from '@/components/admin-problems/AdminProblemsSidebar.vue'
@@ -227,6 +192,90 @@ const {
   handleRejudgeProblem,
   handleDeleteProblem
 } = useAdminProblemsPage()
+
+const problemEditorState = computed(() => ({
+  isLoadingDetail: isLoadingDetail.value,
+  detailErrorMessage: detailErrorMessage.value,
+  selectedProblemDetail: selectedProblemDetail.value,
+  busySection: busySection.value,
+  canSaveTitle: canSaveTitle.value,
+  canSaveLimits: canSaveLimits.value,
+  canSaveStatement: canSaveStatement.value,
+  canCreateSample: canCreateSample.value,
+  canUploadTestcaseZip: canUploadTestcaseZip.value,
+  canDeleteLastSample: canDeleteLastSample.value,
+  isSavingTitle: isSavingTitle.value,
+  isSavingLimits: isSavingLimits.value,
+  isSavingStatement: isSavingStatement.value,
+  isCreatingSample: isCreatingSample.value,
+  isDeletingLastSample: isDeletingLastSample.value,
+  isUploadingTestcaseZip: isUploadingTestcaseZip.value,
+  formatCount,
+  isSavingSample,
+  canSaveSample,
+  isLastSample
+}))
+
+const problemEditorDraft = computed(() => ({
+  titleDraft: titleDraft.value,
+  timeLimitDraft: timeLimitDraft.value,
+  memoryLimitDraft: memoryLimitDraft.value,
+  descriptionDraft: descriptionDraft.value,
+  inputFormatDraft: inputFormatDraft.value,
+  outputFormatDraft: outputFormatDraft.value,
+  noteDraft: noteDraft.value,
+  sampleDrafts: sampleDrafts.value,
+  testcaseZipInputKey: testcaseZipInputKey.value,
+  selectedTestcaseZipName: selectedTestcaseZipName.value
+}))
+
+function updateTitleDraft(value){
+  titleDraft.value = value
+}
+
+function updateTimeLimitDraft(value){
+  timeLimitDraft.value = value
+}
+
+function updateMemoryLimitDraft(value){
+  memoryLimitDraft.value = value
+}
+
+function updateDescriptionDraft(value){
+  descriptionDraft.value = value
+}
+
+function updateInputFormatDraft(value){
+  inputFormatDraft.value = value
+}
+
+function updateOutputFormatDraft(value){
+  outputFormatDraft.value = value
+}
+
+function updateNoteDraft(value){
+  noteDraft.value = value
+}
+
+const problemEditorActions = {
+  updateTitleDraft,
+  updateTimeLimitDraft,
+  updateMemoryLimitDraft,
+  updateDescriptionDraft,
+  updateInputFormatDraft,
+  updateOutputFormatDraft,
+  updateNoteDraft,
+  saveTitle: handleSaveTitle,
+  saveLimits: handleSaveLimits,
+  saveStatement: handleSaveStatement,
+  createSample: handleCreateSample,
+  saveSample: handleSaveSample,
+  deleteLastSample: handleDeleteLastSample,
+  changeTestcaseZip: handleTestcaseZipFileChange,
+  uploadTestcaseZip: handleUploadTestcaseZip,
+  openRejudgeDialog,
+  openDeleteDialog
+}
 </script>
 
 <style scoped>
