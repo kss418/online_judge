@@ -1,6 +1,6 @@
 # problem_schema
 
-Base migration: `scripts/migrate_problem_schema.sh`
+Base migration: `scripts/run_sql_script.sh migrate_problem_schema`
 Migration SQL: `scripts/sql/migrate_problem_schema.sql`
 
 ## table

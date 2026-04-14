@@ -1,6 +1,6 @@
 # user_schema
 
-Base migration: `scripts/migrate_user_schema.sh`
+Base migration: `scripts/run_sql_script.sh migrate_user_schema`
 Migration SQL: `scripts/sql/migrate_user_schema.sql`
 
 ## table

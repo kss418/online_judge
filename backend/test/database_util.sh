@@ -86,12 +86,12 @@ SQL
 }
 
 run_schema_migration(){
-    local migration_script_path="$1"
-    local migration_name="$2"
+    local migration_name="$1"
 
     require_database_test_env
 
-    if ! DATABASE_URL="${test_database_url}" bash "${migration_script_path}" >>"${test_log_temp_file}" 2>&1; then
+    if ! DATABASE_URL="${test_database_url}" \
+        bash "${project_root}/scripts/run_sql_script.sh" "${migration_name}" >>"${test_log_temp_file}" 2>&1; then
         append_log_line "${test_log_temp_file}" "migration failed: ${migration_name}"
         publish_database_failure_logs
         echo "failed to apply ${migration_name}" >&2
@@ -104,12 +104,12 @@ run_schema_migration(){
 apply_test_database_migrations(){
     require_database_test_env
 
-    run_schema_migration "${project_root}/scripts/migrate_user_schema.sh" "user_schema"
-    run_schema_migration "${project_root}/scripts/migrate_auth_schema.sh" "auth_schema"
-    run_schema_migration "${project_root}/scripts/migrate_problem_schema.sh" "problem_schema"
-    run_schema_migration "${project_root}/scripts/migrate_submission_schema.sh" "submission_schema"
-    run_schema_migration "${project_root}/scripts/migrate_user_statistics_schema.sh" "user_statistics_schema"
-    run_schema_migration "${project_root}/scripts/migrate_submission_infra_failure_schema.sh" "submission_infra_failure_schema"
-    run_schema_migration "${project_root}/scripts/migrate_submission_build_resource_exceeded_schema.sh" "submission_build_resource_exceeded_schema"
-    run_schema_migration "${project_root}/scripts/migrate_user_problem_schema.sh" "user_problem_schema"
+    run_schema_migration "migrate_user_schema"
+    run_schema_migration "migrate_auth_schema"
+    run_schema_migration "migrate_problem_schema"
+    run_schema_migration "migrate_submission_schema"
+    run_schema_migration "migrate_user_statistics_schema"
+    run_schema_migration "migrate_submission_infra_failure_schema"
+    run_schema_migration "migrate_submission_build_resource_exceeded_schema"
+    run_schema_migration "migrate_user_problem_schema"
 }

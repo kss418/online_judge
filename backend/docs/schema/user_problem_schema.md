@@ -1,6 +1,6 @@
 # user_problem_schema
 
-Base migration: `scripts/migrate_user_problem_schema.sh`
+Base migration: `scripts/run_sql_script.sh migrate_user_problem_schema`
 Migration SQL: `scripts/sql/migrate_user_problem_schema.sql`
 
 Prerequisites:
@@ -70,7 +70,7 @@ submission. Pending-only problems are excluded.
 
 ## rollout
 
-1. Apply `migrate_user_problem_schema.sh` so the summary table exists and is backfilled from `submissions`.
+1. Apply `bash ./scripts/run_sql_script.sh migrate_user_problem_schema` so the summary table exists and is backfilled from `submissions`.
 2. Deploy the server code that updates the summary table on submission create, finalize, and rejudge.
 3. Run `bash ./scripts/validate_user_problem_summary.sh` to confirm the stored summary matches the live submission history.
 

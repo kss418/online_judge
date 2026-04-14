@@ -1,6 +1,6 @@
 # auth_schema
 
-Base migration: `scripts/migrate_auth_schema.sh`
+Base migration: `scripts/run_sql_script.sh migrate_auth_schema`
 Migration SQL: `scripts/sql/migrate_auth_schema.sql`
 
 Prerequisites:

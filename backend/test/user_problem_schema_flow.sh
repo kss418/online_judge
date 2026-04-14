@@ -99,7 +99,7 @@ then
 fi
 
 if ! DATABASE_URL="${test_database_url}" \
-    bash "${project_root}/scripts/migrate_user_problem_schema.sh" >>"${test_log_temp_file}" 2>&1; then
+    bash "${project_root}/scripts/run_sql_script.sh" migrate_user_problem_schema >>"${test_log_temp_file}" 2>&1; then
     append_log_line "${test_log_temp_file}" "user_problem_schema remigration failed"
     publish_failure_logs
     exit 1
