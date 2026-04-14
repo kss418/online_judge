@@ -3,6 +3,7 @@ import {
   getSubmissionStatusLabel,
   submissionPollingStatuses
 } from '@/generated/submissionStatusCatalog'
+import { formatCount } from '@/utils/numberFormat'
 
 export const listLimit = 50
 export const submissionPollingIntervalMs = 2000
@@ -44,20 +45,20 @@ export function formatRelativeSubmittedAt(nowTimestamp, timestamp){
   return `${elapsedYears}년 전`
 }
 
-export function formatElapsedMs(countFormatter, value){
-  if (typeof value !== 'number') {
+export function formatElapsedMs(value){
+  if (!Number.isFinite(value)) {
     return '-'
   }
 
-  return `${countFormatter.format(value)} ms`
+  return `${formatCount(value)} ms`
 }
 
-export function formatMemory(countFormatter, value){
-  if (typeof value !== 'number') {
+export function formatMemory(value){
+  if (!Number.isFinite(value)) {
     return '-'
   }
 
-  return `${countFormatter.format(value)} KB`
+  return `${formatCount(value)} KB`
 }
 
 export function formatHistoryTransition(historyEntry){

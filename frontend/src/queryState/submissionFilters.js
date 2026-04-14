@@ -1,4 +1,5 @@
 import { submissionStatusOptions as generatedSubmissionStatusOptions } from '@/generated/submissionStatusCatalog'
+import { parsePositiveInteger } from '@/utils/parse'
 
 export const submissionStatusOptions = generatedSubmissionStatusOptions
 
@@ -24,21 +25,20 @@ export function normalizeUserLoginIdFilterInputValue(value){
   return String(value).trim()
 }
 
-function parsePositiveIntegerString(value){
-  const parsedValue = Number.parseInt(value, 10)
-  return Number.isInteger(parsedValue) && parsedValue > 0
-    ? String(parsedValue)
-    : ''
+function normalizePositiveIntegerString(value){
+  const parsedValue = parsePositiveInteger(value)
+
+  return parsedValue != null ? String(parsedValue) : ''
 }
 
 export function parseRouteQuery(query){
-  const parsedProblemId = Number.parseInt(query.problemId, 10)
+  const problemIdQueryValue = Array.isArray(query.problemId)
+    ? query.problemId[0]
+    : query.problemId
 
   return {
     scope: query.scope === 'mine' ? 'mine' : '',
-    problemIdFilter: Number.isInteger(parsedProblemId) && parsedProblemId > 0
-      ? String(parsedProblemId)
-      : '',
+    problemIdFilter: normalizePositiveIntegerString(problemIdQueryValue),
     userLoginId: typeof query.userLoginId === 'string'
       ? query.userLoginId.trim()
       : '',
@@ -67,8 +67,10 @@ export function buildRouteQuery(state, options = {}){
     nextQuery.scope = 'mine'
   }
 
-  if (!hasFixedProblemId && state.problemIdFilter) {
-    nextQuery.problemId = parsePositiveIntegerString(state.problemIdFilter)
+  const normalizedProblemId = normalizePositiveIntegerString(state.problemIdFilter)
+
+  if (!hasFixedProblemId && normalizedProblemId) {
+    nextQuery.problemId = normalizedProblemId
   }
 
   if (!isMineScope && state.userLoginId) {
@@ -96,16 +98,14 @@ export function buildApiQuery(state, options = {}){
   } = options
   const normalizedProblemId = fixedProblemId != null
     ? fixedProblemId
-    : Number.parseInt(state.problemIdFilter, 10)
+    : parsePositiveInteger(state.problemIdFilter)
 
   return {
     before_submission_id: Number.isInteger(beforeSubmissionId) && beforeSubmissionId > 0
       ? beforeSubmissionId
       : null,
     limit: Number.isInteger(limit) && limit > 0 ? limit : null,
-    problem_id: Number.isInteger(normalizedProblemId) && normalizedProblemId > 0
-      ? normalizedProblemId
-      : null,
+    problem_id: normalizedProblemId ?? null,
     user_id: isMineScope && Number.isInteger(currentUserId) && currentUserId > 0
       ? currentUserId
       : null,

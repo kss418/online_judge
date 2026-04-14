@@ -7,17 +7,15 @@ import {
   normalizeUserLoginIdFilterInputValue,
   parseRouteQuery as parseSubmissionRouteQuery
 } from '@/queryState/submissionFilters'
+import { parsePositiveInteger } from '@/utils/parse'
 
 export function useSubmissionFilterQuery({ route, router, formatCount }){
   const fixedProblemId = computed(() => {
     const problemIdParam = Array.isArray(route.params.problemId)
       ? route.params.problemId[0]
       : route.params.problemId
-    const parsedProblemId = Number.parseInt(problemIdParam, 10)
 
-    return Number.isInteger(parsedProblemId) && parsedProblemId > 0
-      ? parsedProblemId
-      : null
+    return parsePositiveInteger(problemIdParam)
   })
   const hasFixedProblemId = computed(() => fixedProblemId.value !== null)
   const isMineScope = computed(() => {
@@ -95,10 +93,9 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
       return ''
     }
 
-    const parsedProblemId = Number.parseInt(trimmedProblemId, 10)
-    return Number.isInteger(parsedProblemId) && parsedProblemId > 0
-      ? String(parsedProblemId)
-      : null
+    const parsedProblemId = parsePositiveInteger(trimmedProblemId)
+
+    return parsedProblemId != null ? String(parsedProblemId) : null
   })
   const normalizedSelectedUserLoginIdFilter = computed(() => {
     if (isMineScope.value) {
@@ -152,9 +149,7 @@ export function useSubmissionFilterQuery({ route, router, formatCount }){
       return fixedProblemId.value
     }
 
-    return appliedProblemIdFilter.value
-      ? Number.parseInt(appliedProblemIdFilter.value, 10)
-      : null
+    return parsePositiveInteger(appliedProblemIdFilter.value)
   })
   const pageTitle = computed(() =>
     isMineScope.value && numericProblemId.value

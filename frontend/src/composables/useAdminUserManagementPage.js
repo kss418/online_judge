@@ -5,8 +5,11 @@ import { useAdminUserManagementListResource } from '@/composables/adminUsers/use
 import { useAdminUserSearchPagination } from '@/composables/adminUsers/useAdminUserSearchPagination'
 import { useAdminUserSubmissionBanActions } from '@/composables/adminUsers/useAdminUserSubmissionBanActions'
 import { usePollingController } from '@/composables/usePollingController'
+import { formatCount as formatNumberCount } from '@/utils/numberFormat'
 
-const countFormatter = new Intl.NumberFormat('ko-KR')
+const koreanNumberFormatOptions = {
+  locale: 'ko-KR'
+}
 
 function formatTimeDistance(distanceMs){
   const totalSeconds = Math.max(1, Math.floor(distanceMs / 1000))
@@ -67,6 +70,7 @@ export function useAdminUserManagementPage(){
   const normalUserCount = computed(() =>
     userManagementListResource.users.value.filter((user) => getSubmissionBanState(user) === 'none').length
   )
+  const formatCount = (value) => formatNumberCount(value, koreanNumberFormatOptions)
 
   usePollingController({
     task(){
@@ -224,7 +228,7 @@ export function useAdminUserManagementPage(){
     authState,
     isAuthenticated,
     canManageUsers,
-    countFormatter,
+    formatCount,
     pageSize: searchPagination.pageSize,
     durationPresets: submissionBanActions.durationPresets,
     isLoading,

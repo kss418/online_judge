@@ -110,7 +110,7 @@
             :key="user.user_id"
             class="admin-user-management-row"
           >
-            <strong>#{{ countFormatter.format(user.user_id) }}</strong>
+            <strong>#{{ formatCount(user.user_id) }}</strong>
 
             <div class="admin-user-identity">
               <RouterLink
@@ -217,7 +217,7 @@ const {
   authState,
   isAuthenticated,
   canManageUsers,
-  countFormatter,
+  formatCount,
   pageSize,
   durationPresets,
   isLoading,

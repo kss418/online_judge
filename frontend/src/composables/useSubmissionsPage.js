@@ -15,6 +15,7 @@ import { useSubmissionPolling } from '@/composables/submissions/useSubmissionPol
 import { submissionStatusOptions } from '@/queryState/submissionFilters'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
+import { formatCount } from '@/utils/numberFormat'
 
 export function useSubmissionsPage(){
   const route = useRoute()
@@ -28,9 +29,6 @@ export function useSubmissionsPage(){
     showErrorNotice,
     showSuccessNotice
   } = noticeStore
-  const countFormatter = new Intl.NumberFormat()
-
-  const formatCount = (value) => countFormatter.format(value)
   const authenticatedBearerToken = computed(() =>
     authState.initialized && isAuthenticated.value ? authState.token : ''
   )
@@ -234,8 +232,8 @@ export function useSubmissionsPage(){
     pageTitle: query.pageTitle,
     formatCount,
     formatRelativeSubmittedAt: polling.formatRelativeSubmitted,
-    formatElapsedMs: (value) => formatElapsedMs(countFormatter, value),
-    formatMemory: (value) => formatMemory(countFormatter, value),
+    formatElapsedMs,
+    formatMemory,
     formatHistoryTransition: dialogs.formatHistoryTransition,
     canViewSource: dialogs.canViewSource,
     canRejudgeSubmission: actions.canRejudgeSubmission,
