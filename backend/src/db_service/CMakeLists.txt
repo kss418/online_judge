@@ -10,7 +10,10 @@ target_sources(lib
         submission_judge_service.cpp
         submission_query_service.cpp
         system_service.cpp
+        testcase_bulk_mutation_service.cpp
+        testcase_item_mutation_service.cpp
         testcase_mutation_service.cpp
+        testcase_mutation_publish_helper.cpp
         testcase_query_service.cpp
         user_service.cpp
         user_statistics_service.cpp
