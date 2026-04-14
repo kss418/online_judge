@@ -1,11 +1,19 @@
 target_sources(lib
     PRIVATE
+        auth_all_routes.cpp
+        auth_command_routes.cpp
         auth_router.cpp
         problem_all_routes.cpp
         problem_command_routes.cpp
         problem_query_routes.cpp
         problem_router.cpp
+        submission_all_routes.cpp
+        submission_command_routes.cpp
+        submission_query_routes.cpp
         submission_router.cpp
+        system_all_routes.cpp
+        system_db_routes.cpp
+        system_public_routes.cpp
         system_router.cpp
         testcase_routes.cpp
         user_all_routes.cpp
