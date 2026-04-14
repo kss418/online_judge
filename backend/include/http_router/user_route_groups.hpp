@@ -13,4 +13,5 @@ namespace user_route_groups{
 
     std::span<const endpoint_descriptor> query_routes();
     std::span<const endpoint_descriptor> command_routes();
+    std::span<const endpoint_descriptor> all_routes();
 }

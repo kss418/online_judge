@@ -182,6 +182,29 @@ namespace http_route{
         invoke_type invoke;
     };
 
+    template <typename endpoint_descriptor_type>
+    void append_routes(
+        std::vector<endpoint_descriptor_type>& route_table,
+        std::span<const endpoint_descriptor_type> routes
+    ){
+        route_table.insert(route_table.end(), routes.begin(), routes.end());
+    }
+
+    template <typename endpoint_descriptor_type, typename... route_span_types>
+    std::vector<endpoint_descriptor_type> concat_routes(
+        std::span<const endpoint_descriptor_type> first_routes,
+        route_span_types... remaining_routes
+    ){
+        std::vector<endpoint_descriptor_type> route_table;
+        route_table.reserve(
+            first_routes.size() + (std::size_t{0} + ... + remaining_routes.size())
+        );
+
+        append_routes(route_table, first_routes);
+        (append_routes(route_table, remaining_routes), ...);
+        return route_table;
+    }
+
     template <typename context_type, typename response_type>
     response_type dispatch_route_table(
         context_type& context,
