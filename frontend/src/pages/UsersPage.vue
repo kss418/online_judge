@@ -86,15 +86,15 @@
           :key="user.user_id"
           class="users-row"
         >
-          <strong>#{{ countFormatter.format(user.user_id) }}</strong>
+          <strong>#{{ formatCount(user.user_id) }}</strong>
           <RouterLink
             class="users-link"
             :to="{ name: 'user-info', params: { userLoginId: user.user_login_id } }"
           >
             {{ user.user_login_id }}
           </RouterLink>
-          <strong>{{ countFormatter.format(user.solved_problem_count) }}</strong>
-          <strong>{{ countFormatter.format(user.submission_count) }}</strong>
+          <strong>{{ formatCount(user.solved_problem_count) }}</strong>
+          <strong>{{ formatCount(user.submission_count) }}</strong>
           <strong class="users-acceptance-rate">
             {{ formatAcceptanceRate(user.accepted_submission_count, user.submission_count) }}
           </strong>
@@ -137,7 +137,7 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import { useUsersPage } from '@/composables/useUsersPage'
 
 const {
-  countFormatter,
+  formatCount,
   pageSize,
   users,
   isLoading,

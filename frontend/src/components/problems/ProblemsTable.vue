@@ -99,6 +99,10 @@ import { computed } from 'vue'
 
 import StatusBadge from '@/components/StatusBadge.vue'
 import {
+  formatAcceptanceRate,
+  formatCount
+} from '@/utils/numberFormat'
+import {
   getProblemStateLabel,
   getProblemStateTone
 } from '@/utils/problemState'
@@ -127,25 +131,6 @@ defineEmits(['cycleSort'])
 const problemSortOptionMap = computed(() =>
   Object.fromEntries(props.problemSortOptions.map((option) => [option.key, option]))
 )
-const countFormatter = new Intl.NumberFormat()
-const rateFormatter = new Intl.NumberFormat('ko-KR', {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1
-})
-
-function formatCount(value){
-  return countFormatter.format(Number(value) || 0)
-}
-
-function formatAcceptanceRate(acceptedCount, submissionCount){
-  if (submissionCount <= 0) {
-    return '-'
-  }
-
-  const rate = (acceptedCount / submissionCount) * 100
-  return `${rateFormatter.format(rate)}%`
-}
-
 function getDefaultSortDirection(sortKey){
   return props.problemSortOptions.find((option) => option.key === sortKey)?.defaultDirection || 'asc'
 }

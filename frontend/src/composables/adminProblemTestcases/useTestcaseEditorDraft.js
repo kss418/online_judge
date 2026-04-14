@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-import { parsePositiveInteger } from '@/composables/adminProblemTestcases/testcaseHelpers'
+import { parsePositiveInteger } from '@/utils/parse'
 
 export function useTestcaseEditorDraft({
   authState,

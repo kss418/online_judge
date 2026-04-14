@@ -5,8 +5,8 @@ import {
   updateProblemLimits,
   updateProblemTitle
 } from '@/api/problemAdminApi'
-import { parsePositiveInteger } from '@/composables/adminProblems/problemHelpers'
 import { formatApiError } from '@/utils/apiError'
+import { parsePositiveInteger } from '@/utils/parse'
 
 export function useProblemBasicsActions({
   authState,

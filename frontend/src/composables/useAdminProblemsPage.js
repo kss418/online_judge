@@ -4,14 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { useProblemAdminActions } from '@/composables/adminProblems/useProblemAdminActions'
 import { useProblemDetailResource } from '@/composables/adminProblems/useProblemDetailResource'
 import { useProblemEditorDraft } from '@/composables/adminProblems/useProblemEditorDraft'
-import {
-  formatCount as formatProblemCount,
-  formatProblemLimit as formatProblemLimitValue
-} from '@/composables/adminProblems/problemHelpers'
+import { formatProblemLimit } from '@/composables/adminProblems/problemHelpers'
 import { useProblemListResource } from '@/composables/adminProblems/useProblemListResource'
 import { useProblemSearchQuery } from '@/composables/adminProblems/useProblemSearchQuery'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
+import { formatCount } from '@/utils/numberFormat'
 
 export function useAdminProblemsPage(){
   const {
@@ -24,7 +22,6 @@ export function useAdminProblemsPage(){
     showErrorNotice,
     showSuccessNotice
   } = noticeStore
-  const countFormatter = new Intl.NumberFormat()
   const route = useRoute()
   const router = useRouter()
 
@@ -33,9 +30,6 @@ export function useAdminProblemsPage(){
 
   let problemListResource
   let problemDetailResource
-
-  const formatCount = (value) => formatProblemCount(countFormatter, value)
-  const formatProblemLimit = (value, unit) => formatProblemLimitValue(countFormatter, value, unit)
 
   const editorDraft = useProblemEditorDraft({
     authState,

@@ -5,9 +5,9 @@ import { useRouteQueryState } from '@/composables/useRouteQueryState'
 import {
   buildRouteQuery as buildProblemAdminSearchRouteQuery,
   normalizeSearchMode,
-  parsePositiveInteger,
   parseRouteQuery as parseProblemAdminSearchRouteQuery
 } from '@/queryState/problemAdminSearch'
+import { parsePositiveInteger } from '@/utils/parse'
 
 export function useProblemSearchQuery({
   route,

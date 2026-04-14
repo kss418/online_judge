@@ -1,13 +1,10 @@
+import { parsePositiveInteger } from '@/utils/parse'
+
 function normalizeSearchMode(value){
   return value === 'problem-id' ? 'problem-id' : 'title'
 }
 
-function parsePositiveInteger(value){
-  const numericValue = Number.parseInt(String(value), 10)
-  return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : null
-}
-
-export { normalizeSearchMode, parsePositiveInteger }
+export { normalizeSearchMode }
 
 export function parseRouteQuery(query, options = {}){
   const { includeSelectedProblemId = false } = options

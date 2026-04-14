@@ -5,16 +5,18 @@ import { useAsyncResource } from '@/composables/useAsyncResource'
 import { usePollingController } from '@/composables/usePollingController'
 import { formatApiError } from '@/utils/apiError'
 import { formatRelativeTimestamp } from '@/utils/dateTime'
+import {
+  formatAcceptanceRate,
+  formatCount
+} from '@/utils/numberFormat'
 import { buildPaginationItems } from '@/utils/pagination'
 
 const pageSize = 20
+const koreanNumberFormatOptions = {
+  locale: 'ko-KR'
+}
 
 export function useUsersPage(){
-  const countFormatter = new Intl.NumberFormat('ko-KR')
-  const rateFormatter = new Intl.NumberFormat('ko-KR', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1
-  })
   const searchInput = ref('')
   const appliedQuery = ref('')
   const currentPage = ref(1)
@@ -67,15 +69,6 @@ export function useUsersPage(){
     }
   })
 
-  function formatAcceptanceRate(acceptedSubmissionCount, submissionCount){
-    if (submissionCount <= 0) {
-      return '-'
-    }
-
-    const rate = (acceptedSubmissionCount / submissionCount) * 100
-    return `${rateFormatter.format(rate)}%`
-  }
-
   function formatRelativeCreatedAt(timestamp){
     return formatRelativeTimestamp(nowTimestamp.value, timestamp)
   }
@@ -126,8 +119,12 @@ export function useUsersPage(){
     void loadUsers()
   })
 
+  const formatUserCount = (value) => formatCount(value, koreanNumberFormatOptions)
+  const formatUserAcceptanceRate = (acceptedSubmissionCount, submissionCount) =>
+    formatAcceptanceRate(acceptedSubmissionCount, submissionCount)
+
   return {
-    countFormatter,
+    formatCount: formatUserCount,
     pageSize,
     users,
     isLoading,
@@ -144,7 +141,7 @@ export function useUsersPage(){
     resetSearch,
     goToPage,
     submitPageJump,
-    formatAcceptanceRate,
+    formatAcceptanceRate: formatUserAcceptanceRate,
     formatRelativeCreatedAt
   }
 }

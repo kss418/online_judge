@@ -1,20 +1,13 @@
-export function formatCount(countFormatter, value){
-  return countFormatter.format(Number(value ?? 0))
-}
+import { formatCount } from '@/utils/numberFormat'
 
-export function formatProblemLimit(countFormatter, value, unit){
+export function formatProblemLimit(value, unit){
   const numericValue = Number(value)
 
   if (!Number.isFinite(numericValue) || numericValue <= 0) {
     return unit === 'ms' ? '시간 확인 중' : '메모리 확인 중'
   }
 
-  return `${formatCount(countFormatter, numericValue)} ${unit}`
-}
-
-export function parsePositiveInteger(value){
-  const numericValue = Number.parseInt(String(value), 10)
-  return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : null
+  return `${formatCount(numericValue)} ${unit}`
 }
 
 export function makeSampleDraft(sample){

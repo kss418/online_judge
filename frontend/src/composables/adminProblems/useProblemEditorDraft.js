@@ -5,9 +5,9 @@ import {
   makeProblemSampleBusySection
 } from '@/composables/adminProblems/problemBusySection'
 import {
-  makeSampleDraft,
-  parsePositiveInteger
+  makeSampleDraft
 } from '@/composables/adminProblems/problemHelpers'
+import { parsePositiveInteger } from '@/utils/parse'
 
 export function useProblemEditorDraft({
   authState,

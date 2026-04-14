@@ -3,15 +3,13 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useProblemSelectionQuery } from '@/composables/adminProblemTestcases/useProblemSelectionQuery'
 import { useProblemTestcaseListResource } from '@/composables/adminProblemTestcases/useProblemTestcaseListResource'
-import {
-  formatCount as formatCountValue,
-  formatProblemLimit as formatProblemLimitValue
-} from '@/composables/adminProblemTestcases/testcaseHelpers'
+import { formatProblemLimit } from '@/composables/adminProblemTestcases/testcaseHelpers'
 import { useTestcaseEditorDraft } from '@/composables/adminProblemTestcases/useTestcaseEditorDraft'
 import { useTestcaseReorder } from '@/composables/adminProblemTestcases/useTestcaseReorder'
 import { useTestcaseUploadActions } from '@/composables/adminProblemTestcases/useTestcaseUploadActions'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
+import { formatCount } from '@/utils/numberFormat'
 
 export function useAdminProblemTestcasesPage(){
   const route = useRoute()
@@ -26,14 +24,10 @@ export function useAdminProblemTestcasesPage(){
     showErrorNotice,
     showSuccessNotice
   } = noticeStore
-  const countFormatter = new Intl.NumberFormat()
   const busySection = ref('')
   const testcaseSummaryElementMap = new Map()
 
   let listResource
-
-  const formatCount = (value) => formatCountValue(countFormatter, value)
-  const formatProblemLimit = (value, unit) => formatProblemLimitValue(countFormatter, value, unit)
 
   const draft = useTestcaseEditorDraft({
     authState,

@@ -1,9 +1,9 @@
 import { computed } from 'vue'
 
 import {
-  normalizeSearchMode,
-  parsePositiveInteger
+  normalizeSearchMode
 } from '@/queryState/problemAdminSearch'
+import { parsePositiveInteger } from '@/utils/parse'
 
 export function useAdminProblemSearchControls({
   queryState,

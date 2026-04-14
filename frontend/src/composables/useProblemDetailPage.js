@@ -6,6 +6,10 @@ import { useAsyncResource } from '@/composables/useAsyncResource'
 import { authStore } from '@/stores/auth/authStore'
 import { formatApiError } from '@/utils/apiError'
 import {
+  formatAcceptanceRate,
+  formatCount
+} from '@/utils/numberFormat'
+import {
   getProblemStateLabel,
   getProblemStateTone
 } from '@/utils/problemState'
@@ -19,11 +23,6 @@ export function useProblemDetailPage(){
     isAuthenticated,
     initializeAuth
   } = authStore
-  const countFormatter = new Intl.NumberFormat()
-  const rateFormatter = new Intl.NumberFormat('ko-KR', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1
-  })
   const numericProblemId = computed(() => Number.parseInt(route.params.problemId, 10))
   const authenticatedBearerToken = computed(() =>
     authState.initialized && isAuthenticated.value ? authState.token : ''
@@ -62,8 +61,10 @@ export function useProblemDetailPage(){
       return '-'
     }
 
-    const rate = (statistics.accepted_count / statistics.submission_count) * 100
-    return `${rateFormatter.format(rate)}%`
+    return formatAcceptanceRate(
+      statistics.accepted_count,
+      statistics.submission_count
+    )
   })
 
   function loadProblemDetail(){
@@ -73,10 +74,6 @@ export function useProblemDetailPage(){
     }, {
       resetDataOnError: true
     })
-  }
-
-  function formatCount(value){
-    return countFormatter.format(value)
   }
 
   watch(numericProblemId, () => {
