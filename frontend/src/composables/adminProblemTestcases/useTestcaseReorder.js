@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 
+import { testcaseBusySection } from '@/composables/adminProblemTestcases/testcaseBusySection'
 import { moveProblemTestcase } from '@/api/testcaseApi'
 import { formatApiError } from '@/utils/apiError'
 
@@ -14,7 +15,7 @@ export function useTestcaseReorder({
   showSuccessNotice,
   syncSelectedTestcaseById
 }){
-  const isMovingTestcase = computed(() => busySection.value === 'move')
+  const isMovingTestcase = computed(() => busySection.value === testcaseBusySection.MOVE)
   const canMoveTestcases = computed(() =>
     selectedProblemId.value > 0 &&
     Boolean(authState.token) &&
@@ -79,7 +80,7 @@ export function useTestcaseReorder({
     }
 
     const selectedTestcaseId = Number(selectedTestcaseSummary.value?.testcase_id ?? 0)
-    busySection.value = 'move'
+    busySection.value = testcaseBusySection.MOVE
 
     try {
       const response = await moveProblemTestcase(

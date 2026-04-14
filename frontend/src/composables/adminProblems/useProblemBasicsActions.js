@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 
+import { problemBusySection } from '@/composables/adminProblems/problemBusySection'
 import {
   updateProblemLimits,
   updateProblemTitle
@@ -21,8 +22,8 @@ export function useProblemBasicsActions({
   mergeProblemSummary,
   setActionFeedback
 }){
-  const isSavingTitle = computed(() => busySection.value === 'title')
-  const isSavingLimits = computed(() => busySection.value === 'limits')
+  const isSavingTitle = computed(() => busySection.value === problemBusySection.SAVE_TITLE)
+  const isSavingLimits = computed(() => busySection.value === problemBusySection.SAVE_LIMITS)
 
   async function handleSaveTitle(){
     if (!authState.token || !selectedProblemDetail.value || !canSaveTitle.value) {
@@ -30,7 +31,7 @@ export function useProblemBasicsActions({
     }
 
     const problemId = selectedProblemDetail.value.problem_id
-    busySection.value = 'title'
+    busySection.value = problemBusySection.SAVE_TITLE
     setActionFeedback({
       message: '',
       error: ''
@@ -77,7 +78,7 @@ export function useProblemBasicsActions({
     }
 
     const problemId = selectedProblemDetail.value.problem_id
-    busySection.value = 'limits'
+    busySection.value = problemBusySection.SAVE_LIMITS
     setActionFeedback({
       message: '',
       error: ''

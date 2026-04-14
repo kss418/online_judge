@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 
+import { problemBusySection } from '@/composables/adminProblems/problemBusySection'
 import { uploadProblemTestcaseZip } from '@/api/testcaseApi'
 import { formatApiError } from '@/utils/apiError'
 
@@ -13,7 +14,7 @@ export function useProblemTestcaseZipActions({
   loadSelectedProblem,
   setActionFeedback
 }){
-  const isUploadingTestcaseZip = computed(() => busySection.value === 'testcase:upload')
+  const isUploadingTestcaseZip = computed(() => busySection.value === problemBusySection.UPLOAD_TESTCASE_ZIP)
   const canUploadTestcaseZip = computed(() =>
     Boolean(selectedProblemDetail.value) &&
     Boolean(authState.token) &&
@@ -28,7 +29,7 @@ export function useProblemTestcaseZipActions({
 
     const problemId = selectedProblemDetail.value.problem_id
     const uploadFile = testcaseZipFile.value
-    busySection.value = 'testcase:upload'
+    busySection.value = problemBusySection.UPLOAD_TESTCASE_ZIP
     setActionFeedback({
       message: '',
       error: ''

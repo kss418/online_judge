@@ -126,7 +126,6 @@ export function useAdminProblemsPage(){
     canSaveStatement: editorDraft.canSaveStatement,
     canSaveSample: editorDraft.canSaveSample,
     getSampleDraft: editorDraft.getSampleDraft,
-    makeSampleBusyKey: editorDraft.makeSampleBusyKey,
     syncSampleDrafts: editorDraft.syncSampleDrafts,
     setSelectedProblemSamples: problemDetailResource.setSelectedProblemSamples,
     applySelectedProblemVersion: problemDetailResource.applySelectedProblemVersion,

@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 
+import { problemBusySection } from '@/composables/adminProblems/problemBusySection'
 import { updateProblemStatement } from '@/api/problemAdminApi'
 import { formatApiError } from '@/utils/apiError'
 
@@ -16,7 +17,7 @@ export function useProblemStatementActions({
   applySelectedProblemVersion,
   setActionFeedback
 }){
-  const isSavingStatement = computed(() => busySection.value === 'statement')
+  const isSavingStatement = computed(() => busySection.value === problemBusySection.SAVE_STATEMENT)
 
   async function handleSaveStatement(){
     if (!authState.token || !selectedProblemDetail.value || !canSaveStatement.value) {
@@ -24,7 +25,7 @@ export function useProblemStatementActions({
     }
 
     const problemId = selectedProblemDetail.value.problem_id
-    busySection.value = 'statement'
+    busySection.value = problemBusySection.SAVE_STATEMENT
     setActionFeedback({
       message: '',
       error: ''

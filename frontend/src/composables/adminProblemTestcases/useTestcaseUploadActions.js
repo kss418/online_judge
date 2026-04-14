@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 
+import { testcaseBusySection } from '@/composables/adminProblemTestcases/testcaseBusySection'
 import {
   createProblemTestcase,
   deleteProblemTestcase,
@@ -32,10 +33,10 @@ export function useTestcaseUploadActions({
   syncSelectedTestcase,
   resetSelectedTestcaseState
 }){
-  const isCreatingTestcase = computed(() => busySection.value === 'create')
-  const isUploadingTestcaseZip = computed(() => busySection.value === 'upload')
-  const isDeletingSelectedTestcase = computed(() => busySection.value === 'delete-selected')
-  const isSavingSelectedTestcase = computed(() => busySection.value === 'save')
+  const isCreatingTestcase = computed(() => busySection.value === testcaseBusySection.CREATE)
+  const isUploadingTestcaseZip = computed(() => busySection.value === testcaseBusySection.UPLOAD_ZIP)
+  const isDeletingSelectedTestcase = computed(() => busySection.value === testcaseBusySection.DELETE_SELECTED)
+  const isSavingSelectedTestcase = computed(() => busySection.value === testcaseBusySection.SAVE_SELECTED)
   const canCreateTestcase = computed(() =>
     selectedProblemId.value > 0 &&
     Boolean(authState.token) &&
@@ -59,7 +60,7 @@ export function useTestcaseUploadActions({
       return
     }
 
-    busySection.value = 'create'
+    busySection.value = testcaseBusySection.CREATE
 
     const nextTestcaseInput = newTestcaseInput.value
     const nextTestcaseOutput = newTestcaseOutput.value
@@ -95,7 +96,7 @@ export function useTestcaseUploadActions({
       return
     }
 
-    busySection.value = 'upload'
+    busySection.value = testcaseBusySection.UPLOAD_ZIP
     const uploadFile = testcaseZipFile.value
 
     try {
@@ -128,7 +129,7 @@ export function useTestcaseUploadActions({
 
     const deletedTestcaseOrder = selectedTestcaseSummary.value.testcase_order
 
-    busySection.value = 'delete-selected'
+    busySection.value = testcaseBusySection.DELETE_SELECTED
 
     try {
       const response = await deleteProblemTestcase(
@@ -163,7 +164,7 @@ export function useTestcaseUploadActions({
       return
     }
 
-    busySection.value = 'save'
+    busySection.value = testcaseBusySection.SAVE_SELECTED
 
     const testcaseOrder = selectedTestcase.value.testcase_order
     const nextTestcaseInput = selectedTestcaseInputDraft.value

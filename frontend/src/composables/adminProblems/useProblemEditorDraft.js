@@ -1,6 +1,10 @@
 import { computed, ref } from 'vue'
 
 import {
+  isProblemSampleBusySection,
+  makeProblemSampleBusySection
+} from '@/composables/adminProblems/problemBusySection'
+import {
   makeSampleDraft,
   parsePositiveInteger
 } from '@/composables/adminProblems/problemHelpers'
@@ -108,12 +112,8 @@ export function useProblemEditorDraft({
     return sampleDrafts.value.find((sample) => sample.sample_order === sampleOrder) || null
   }
 
-  function makeSampleBusyKey(sampleOrder){
-    return `sample:${sampleOrder}`
-  }
-
   function isSavingSample(sampleOrder){
-    return busySection.value === makeSampleBusyKey(sampleOrder)
+    return isProblemSampleBusySection(busySection.value, sampleOrder)
   }
 
   function canSaveSample(sampleOrder){
@@ -185,7 +185,6 @@ export function useProblemEditorDraft({
     assignEditorDrafts,
     syncSampleDrafts,
     getSampleDraft,
-    makeSampleBusyKey,
     isSavingSample,
     canSaveSample,
     isLastSample,

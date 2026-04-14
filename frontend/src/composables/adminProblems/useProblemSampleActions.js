@@ -1,6 +1,10 @@
 import { computed } from 'vue'
 
 import {
+  makeProblemSampleBusySection,
+  problemBusySection
+} from '@/composables/adminProblems/problemBusySection'
+import {
   createProblemSample,
   deleteProblemSample,
   updateProblemSample
@@ -14,14 +18,13 @@ export function useProblemSampleActions({
   selectedProblemDetail,
   canSaveSample,
   getSampleDraft,
-  makeSampleBusyKey,
   syncSampleDrafts,
   setSelectedProblemSamples,
   applySelectedProblemVersion,
   setActionFeedback
 }){
-  const isCreatingSample = computed(() => busySection.value === 'sample:create')
-  const isDeletingLastSample = computed(() => busySection.value === 'sample:delete-last')
+  const isCreatingSample = computed(() => busySection.value === problemBusySection.CREATE_SAMPLE)
+  const isDeletingLastSample = computed(() => busySection.value === problemBusySection.DELETE_LAST_SAMPLE)
   const canCreateSample = computed(() =>
     Boolean(selectedProblemDetail.value) &&
     Boolean(authState.token) &&
@@ -39,7 +42,7 @@ export function useProblemSampleActions({
     }
 
     const problemId = selectedProblemDetail.value.problem_id
-    busySection.value = 'sample:create'
+    busySection.value = problemBusySection.CREATE_SAMPLE
     setActionFeedback({
       message: '',
       error: ''
@@ -85,7 +88,7 @@ export function useProblemSampleActions({
       return
     }
 
-    busySection.value = makeSampleBusyKey(sampleOrder)
+    busySection.value = makeProblemSampleBusySection(sampleOrder)
     setActionFeedback({
       message: '',
       error: ''
@@ -134,7 +137,7 @@ export function useProblemSampleActions({
       return
     }
 
-    busySection.value = 'sample:delete-last'
+    busySection.value = problemBusySection.DELETE_LAST_SAMPLE
     setActionFeedback({
       message: '',
       error: ''

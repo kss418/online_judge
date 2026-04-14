@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 
+import { problemBusySection } from '@/composables/adminProblems/problemBusySection'
 import {
   createProblem,
   deleteProblem,
@@ -26,16 +27,16 @@ export function useProblemCrudActions({
     !busySection.value &&
     Boolean(newProblemTitle.value.trim())
   )
-  const isCreatingProblem = computed(() => busySection.value === 'create')
-  const isRejudgingProblem = computed(() => busySection.value === 'rejudge')
-  const isDeletingProblem = computed(() => busySection.value === 'delete')
+  const isCreatingProblem = computed(() => busySection.value === problemBusySection.CREATE)
+  const isRejudgingProblem = computed(() => busySection.value === problemBusySection.REJUDGE)
+  const isDeletingProblem = computed(() => busySection.value === problemBusySection.DELETE)
 
   async function handleCreateProblem(){
     if (!authState.token || !canCreateProblem.value) {
       return
     }
 
-    busySection.value = 'create'
+    busySection.value = problemBusySection.CREATE
     setActionFeedback({
       message: '',
       error: ''
@@ -72,7 +73,7 @@ export function useProblemCrudActions({
     }
 
     const rejudgingProblemId = selectedProblemDetail.value.problem_id
-    busySection.value = 'rejudge'
+    busySection.value = problemBusySection.REJUDGE
     setActionFeedback({
       message: '',
       error: ''
@@ -101,7 +102,7 @@ export function useProblemCrudActions({
     }
 
     const deletingProblemId = selectedProblemDetail.value.problem_id
-    busySection.value = 'delete'
+    busySection.value = problemBusySection.DELETE
     setActionFeedback({
       message: '',
       error: ''

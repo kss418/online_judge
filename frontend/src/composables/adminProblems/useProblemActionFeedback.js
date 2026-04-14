@@ -1,5 +1,7 @@
 import { computed, ref } from 'vue'
 
+import { problemBusySection } from '@/composables/adminProblems/problemBusySection'
+
 export function useProblemActionFeedback({
   selectedProblemDetail,
   busySection
@@ -72,7 +74,7 @@ export function useProblemActionFeedback({
   }
 
   function closeDeleteDialog(force = false){
-    if (!force && busySection.value === 'delete') {
+    if (!force && busySection.value === problemBusySection.DELETE) {
       return
     }
 
@@ -82,7 +84,7 @@ export function useProblemActionFeedback({
   }
 
   function closeRejudgeDialog(force = false){
-    if (!force && busySection.value === 'rejudge') {
+    if (!force && busySection.value === problemBusySection.REJUDGE) {
       return
     }
 
