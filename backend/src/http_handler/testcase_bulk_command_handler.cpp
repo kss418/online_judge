@@ -20,7 +20,7 @@ namespace{
     using command_expected = std::expected<command_type, response_type>;
 
     auto make_post_testcase_zip_spec(std::int64_t problem_id){
-        return http_handler_spec::make_single_path_value_json_spec(
+        return http_handler_spec::make_admin_problem_json_spec(
             problem_id,
             [](const http_guard::guard_context&,
                 std::int64_t problem_id,
@@ -37,7 +37,6 @@ namespace{
                 "problem testcases uploaded",
                 problem_json_serializer::make_testcase_count_message_object
             ),
-            auth_guard::make_admin_guard(),
             testcase_upload_guard::make_testcase_zip_guard()
         );
     }

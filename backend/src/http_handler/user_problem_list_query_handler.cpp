@@ -4,6 +4,7 @@
 #include "application/list_user_wrong_problems_query.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_guard/auth_guard.hpp"
+#include "http_guard/user_guard.hpp"
 #include "serializer/user_json_serializer.hpp"
 
 #include <optional>
@@ -17,6 +18,7 @@ namespace{
     using command_expected = std::expected<command_type, response_type>;
 
     auto make_user_problem_list_spec(
+        std::int64_t user_id,
         auto&& build_command,
         auto&& execute,
         auto&& serialize
@@ -27,7 +29,8 @@ namespace{
                 std::forward<decltype(execute)>(execute)
             ),
             std::forward<decltype(serialize)>(serialize),
-            auth_guard::make_optional_auth_guard()
+            auth_guard::make_optional_auth_guard(),
+            user_guard::make_exists_guard(user_id)
         );
     }
 
@@ -69,6 +72,7 @@ namespace{
 
     auto make_get_user_solved_problems_spec(std::int64_t user_id){
         return make_user_problem_list_spec(
+            user_id,
             [user_id](const http_guard::guard_context&,
                 const std::optional<auth_dto::identity>& auth_identity_opt)
                 -> command_expected<list_user_solved_problems_query::command> {
@@ -86,6 +90,7 @@ namespace{
 
     auto make_get_user_wrong_problems_spec(std::int64_t user_id){
         return make_user_problem_list_spec(
+            user_id,
             [user_id](const http_guard::guard_context&,
                 const std::optional<auth_dto::identity>& auth_identity_opt)
                 -> command_expected<list_user_wrong_problems_query::command> {

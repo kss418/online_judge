@@ -19,6 +19,34 @@ std::expected<user_dto::list, service_error> user_service::get_public_list(
     );
 }
 
+std::expected<void, service_error> user_service::ensure_user_exists(
+    db_connection& connection,
+    std::int64_t user_id
+){
+    if(user_id <= 0){
+        return std::unexpected(service_error::validation_error);
+    }
+
+    return db_service_util::with_retry_service_read_transaction(
+        connection,
+        [&](pqxx::read_transaction& transaction)
+            -> std::expected<void, service_error> {
+            const auto exists_exp = user_repository::exists_user(
+                transaction,
+                user_id
+            );
+            if(!exists_exp){
+                return std::unexpected(exists_exp.error());
+            }
+            if(!*exists_exp){
+                return std::unexpected(service_error::not_found);
+            }
+
+            return {};
+        }
+    );
+}
+
 std::expected<user_dto::summary, service_error> user_service::get_summary(
     db_connection& connection,
     std::int64_t user_id
@@ -31,15 +59,7 @@ std::expected<user_dto::summary, service_error> user_service::get_summary(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<user_dto::summary, service_error> {
-            const auto summary_exp = user_repository::get_summary(
-                transaction,
-                user_id
-            );
-            if(!summary_exp){
-                return std::unexpected(summary_exp.error());
-            }
-
-            return std::move(*summary_exp);
+            return user_repository::get_summary(transaction, user_id);
         }
     );
 }
@@ -57,15 +77,10 @@ user_service::get_summary_by_login_id(
         connection,
         [&](pqxx::read_transaction& transaction)
             -> std::expected<user_dto::summary, service_error> {
-            const auto summary_exp = user_repository::get_summary_by_login_id(
+            return user_repository::get_summary_by_login_id(
                 transaction,
                 user_login_id
             );
-            if(!summary_exp){
-                return std::unexpected(summary_exp.error());
-            }
-
-            return std::move(*summary_exp);
         }
     );
 }

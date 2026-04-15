@@ -11,6 +11,10 @@
 #include <string_view>
 
 namespace user_repository{
+    std::expected<bool, repository_error> exists_user(
+        pqxx::transaction_base& transaction,
+        std::int64_t user_id
+    );
     std::expected<user_dto::list, repository_error> get_public_list(
         pqxx::transaction_base& transaction,
         const user_dto::list_filter& filter_value

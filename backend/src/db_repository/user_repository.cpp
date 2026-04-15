@@ -5,6 +5,30 @@
 
 #include <pqxx/pqxx>
 
+std::expected<bool, repository_error> user_repository::exists_user(
+    pqxx::transaction_base& transaction,
+    std::int64_t user_id
+){
+    if(user_id <= 0){
+        return std::unexpected(repository_error::invalid_reference);
+    }
+
+    const auto exists_result = transaction.exec(
+        "SELECT EXISTS("
+        "SELECT 1 "
+        "FROM users "
+        "WHERE user_id = $1"
+        ")",
+        pqxx::params{user_id}
+    );
+
+    if(exists_result.empty()){
+        return std::unexpected(repository_error::internal);
+    }
+
+    return exists_result[0][0].as<bool>();
+}
+
 std::expected<user_dto::list, repository_error> user_repository::get_public_list(
     pqxx::transaction_base& transaction,
     const user_dto::list_filter& filter_value

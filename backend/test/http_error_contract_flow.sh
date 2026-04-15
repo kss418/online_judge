@@ -43,6 +43,7 @@ register_temp_file sign_up_response_file
 register_temp_file create_problem_response_file
 register_temp_file contract_response_file
 register_temp_file create_submission_response_file
+register_temp_file invalid_zip_request_file
 
 trap 'finish_flow_test cleanup_http_server drop_test_database' EXIT
 
@@ -193,6 +194,45 @@ print(submission_id)
 PY
 }
 
+run_zip_error_contract_case(){
+    local failure_context="$1"
+    local request_url="$2"
+    local auth_token="$3"
+    local expected_status_code="$4"
+    local expected_error_code="$5"
+    local expected_error_message="$6"
+    local actual_status_code=""
+
+    actual_status_code="$(
+        curl \
+            --silent \
+            --show-error \
+            --output "${contract_response_file}" \
+            --write-out "%{http_code}" \
+            --request POST \
+            -H "Authorization: Bearer ${auth_token}" \
+            -H "Content-Type: application/zip" \
+            --data-binary "@${invalid_zip_request_file}" \
+            "${request_url}"
+    )"
+
+    assert_status_code \
+        "${actual_status_code}" \
+        "${expected_status_code}" \
+        "${contract_response_file}" \
+        "${failure_context}"
+    assert_json_error_code \
+        "${contract_response_file}" \
+        "${expected_error_code}" \
+        "${failure_context}"
+    assert_json_error_message \
+        "${contract_response_file}" \
+        "${expected_error_message}" \
+        "${failure_context}"
+
+    print_success_log "${failure_context} contract success"
+}
+
 read -r user_id user_token < <(
     sign_up_user "${user_login_id}" "${raw_password}" "${sign_up_response_file}" "http error contract flow"
 )
@@ -205,6 +245,8 @@ print_success_log "contract admin sign-up success"
 
 promote_admin_user "${admin_user_id}" "http error contract flow" >/dev/null
 print_success_log "contract admin promote success"
+promote_superadmin_user "${admin_user_id}" "http error contract flow" >/dev/null
+print_success_log "contract superadmin promote success"
 
 missing_user_id=$((admin_user_id + 999999))
 missing_user_login_id="${HTTP_ERROR_CONTRACT_FLOW_TEST_MISSING_LOGIN_ID:-$(make_test_login_id ecm)}"
@@ -391,6 +433,8 @@ print(json.dumps({"duration_minutes": 60}, separators=(",", ":")))
 PY
 )"
 
+printf '%s\n' 'not-a-zip' > "${invalid_zip_request_file}"
+
 request_contract_cases="$(cat <<EOF
 invalid json sign-up|POST|${base_url}/api/auth/sign-up||{"user_login_id":"broken"|400|invalid_json|invalid json|
 missing field sign-up|POST|${base_url}/api/auth/sign-up||${missing_field_sign_up_request_body}|400|missing_field|required field: user_login_id|user_login_id
@@ -414,6 +458,10 @@ run_error_contract_table "auth contract" "${auth_contract_cases}"
 user_contract_cases="$(cat <<EOF
 missing public user summary by login id|GET|${base_url}/api/user/id/${missing_user_login_id}|||404|not_found|not found|
 missing user statistics by id|GET|${base_url}/api/user/${missing_user_id}/statistics|||404|not_found|not found|
+missing user solved problems by id|GET|${base_url}/api/user/${missing_user_id}/solved-problems|||404|not_found|not found|
+missing user wrong problems by id|GET|${base_url}/api/user/${missing_user_id}/wrong-problems|||404|not_found|not found|
+missing user admin promote|PUT|${base_url}/api/user/${missing_user_id}/admin|${admin_user_token}||404|not_found|not found|
+missing user regular demote|PUT|${base_url}/api/user/${missing_user_id}/regular|${admin_user_token}||404|not_found|not found|
 missing user submission ban get|GET|${base_url}/api/user/${missing_user_id}/submission-ban|${admin_user_token}||404|not_found|not found|
 missing user submission ban create|POST|${base_url}/api/user/${missing_user_id}/submission-ban|${admin_user_token}|${submission_ban_request_body}|404|not_found|not found|
 missing user submission ban delete|DELETE|${base_url}/api/user/${missing_user_id}/submission-ban|${admin_user_token}||404|not_found|not found|
@@ -454,6 +502,13 @@ invalid testcase move target|POST|${base_url}/api/problem/${problem_id}/testcase
 EOF
 )"
 run_error_contract_table "testcase contract" "${testcase_contract_cases}"
+run_zip_error_contract_case \
+    "testcase contract: missing problem testcase zip upload" \
+    "${base_url}/api/problem/${missing_problem_id}/testcase/zip" \
+    "${admin_user_token}" \
+    "404" \
+    "not_found" \
+    "not found"
 
 submission_id="$(
     create_submission_fixture \

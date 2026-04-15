@@ -32,7 +32,7 @@ namespace{
     using command_expected = std::expected<command_type, response_type>;
 
     auto make_put_limits_spec(std::int64_t problem_id){
-        return http_handler_spec::make_single_path_value_json_spec(
+        return http_handler_spec::make_admin_problem_json_spec(
             problem_id,
             [](const http_guard::guard_context&,
                 std::int64_t problem_id,
@@ -49,7 +49,6 @@ namespace{
                 "problem limits updated",
                 problem_json_serializer::make_message_object
             ),
-            auth_guard::make_admin_guard(),
             request_parse_guard::make_json_guard<problem_content_dto::limits>(
                 problem_content_request_parser::parse_limits
             )
@@ -57,7 +56,7 @@ namespace{
     }
 
     auto make_put_statement_spec(std::int64_t problem_id){
-        return http_handler_spec::make_single_path_value_json_spec(
+        return http_handler_spec::make_admin_problem_json_spec(
             problem_id,
             [](const http_guard::guard_context&,
                 std::int64_t problem_id,
@@ -74,7 +73,6 @@ namespace{
                 "problem statement updated",
                 problem_json_serializer::make_message_object
             ),
-            auth_guard::make_admin_guard(),
             request_parse_guard::make_json_guard<problem_content_dto::statement>(
                 problem_content_request_parser::parse_statement
             )

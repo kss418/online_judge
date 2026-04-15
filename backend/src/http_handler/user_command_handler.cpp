@@ -7,6 +7,7 @@
 #include "http_handler/handler_spec_helper.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/request_parse_guard.hpp"
+#include "http_guard/user_guard.hpp"
 #include "request_parser/user_request_parser.hpp"
 #include "serializer/user_json_serializer.hpp"
 
@@ -56,7 +57,8 @@ namespace{
                     permission_level
                 );
             },
-            auth_guard::make_superadmin_guard()
+            auth_guard::make_superadmin_guard(),
+            user_guard::make_exists_guard(user_id)
         );
     }
 
@@ -93,6 +95,7 @@ namespace{
                 .success_status = boost::beast::http::status::created
             },
             auth_guard::make_admin_guard(),
+            user_guard::make_exists_guard(user_id),
             request_parse_guard::make_json_guard<user_dto::submission_ban_request>(
                 user_request_parser::parse_submission_ban_request
             )
@@ -112,7 +115,8 @@ namespace{
             []() -> std::string_view {
                 return "user submission ban cleared";
             },
-            auth_guard::make_admin_guard()
+            auth_guard::make_admin_guard(),
+            user_guard::make_exists_guard(user_id)
         );
     }
 }

@@ -1,9 +1,11 @@
 #pragma once
 
+#include "dto/problem_dto.hpp"
 #include "dto/submission_internal_dto.hpp"
 #include "dto/submission_request_dto.hpp"
 #include "http_core/request_dto.hpp"
 #include "http_guard/auth_guard.hpp"
+#include "http_guard/problem_guard.hpp"
 #include "request_parser/submission_request_parser.hpp"
 
 #include <cstdint>
@@ -54,7 +56,8 @@ namespace submission_guard{
                 command_value.source_value = std::move(*submit_request_exp);
                 return command_value;
             },
-            auth_guard::make_auth_guard()
+            auth_guard::make_auth_guard(),
+            problem_guard::make_exists_guard(problem_dto::reference{problem_id})
         );
     }
 }

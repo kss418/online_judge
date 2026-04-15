@@ -4,6 +4,7 @@
 #include "http_endpoint/endpoint.hpp"
 #include "http_handler/handler_spec_helper.hpp"
 #include "http_guard/auth_guard.hpp"
+#include "http_guard/user_guard.hpp"
 #include "serializer/user_json_serializer.hpp"
 
 namespace{
@@ -33,7 +34,8 @@ namespace{
             },
             user_service::get_submission_ban_status,
             user_json_serializer::make_submission_ban_status_object,
-            auth_guard::make_admin_guard()
+            auth_guard::make_admin_guard(),
+            user_guard::make_exists_guard(user_id)
         );
     }
 }

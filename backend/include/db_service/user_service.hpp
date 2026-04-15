@@ -14,6 +14,10 @@ namespace user_service{
         db_connection& connection,
         const user_dto::list_filter& filter_value
     );
+    std::expected<void, service_error> ensure_user_exists(
+        db_connection& connection,
+        std::int64_t user_id
+    );
     std::expected<user_dto::summary, service_error> get_summary(
         db_connection& connection,
         std::int64_t user_id

@@ -3,6 +3,7 @@
 #include "application/get_user_submission_statistics_query.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_handler/handler_spec_helper.hpp"
+#include "http_guard/user_guard.hpp"
 #include "serializer/user_json_serializer.hpp"
 
 namespace{
@@ -36,7 +37,8 @@ namespace{
                 };
             },
             get_user_submission_statistics_query::execute,
-            user_json_serializer::make_submission_statistics_object
+            user_json_serializer::make_submission_statistics_object,
+            user_guard::make_exists_guard(user_id)
         );
     }
 }
