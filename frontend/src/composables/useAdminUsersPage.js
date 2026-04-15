@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 
-import { useProtectedAdminBootstrap } from '@/composables/adminShared/useProtectedAdminBootstrap'
+import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
 import { permissionLevelToRole, useAdminUserPermissionActions } from '@/composables/adminUsers/useAdminUserPermissionActions'
 import { useUserListResource } from '@/composables/users/useUserListResource'
 import { useUserSearchPagination } from '@/composables/users/useUserSearchPagination'
@@ -47,16 +47,27 @@ export function useAdminUsersPage(){
   const regularUserCount = computed(() =>
     userListResource.users.value.filter((user) => user.permission_level === 0).length
   )
+  const emptyMessage = computed(() =>
+    searchPagination.appliedQuery.value
+      ? '검색 결과가 없습니다.'
+      : '표시할 사용자가 아직 없습니다.'
+  )
+  const pageAccess = useProtectedAdminPageAccess({
+    authState,
+    initializeAuth,
+    isAuthenticated,
+    hasAccess: canManageUsers,
+    onDenied: userListResource.resetUsers,
+    onAllowed: userListResource.loadUsers,
+    loggedOutMessage: '권한 관리 페이지는 로그인한 슈퍼어드민만 사용할 수 있습니다.',
+    deniedMessage: '이 페이지는 슈퍼어드민만 접근할 수 있습니다.'
+  })
   const viewState = computed(() => {
-    if (authState.isInitializing) {
+    if (pageAccess.accessState.value === 'initializing' || pageAccess.accessState.value === 'logged-out') {
       return 'notice'
     }
 
-    if (!isAuthenticated.value) {
-      return 'notice'
-    }
-
-    if (!canManageUsers.value) {
+    if (pageAccess.accessState.value === 'denied') {
       return 'denied'
     }
 
@@ -75,16 +86,8 @@ export function useAdminUsersPage(){
     return 'ready'
   })
   const viewMessage = computed(() => {
-    if (authState.isInitializing) {
-      return '관리자 권한을 확인하는 중입니다.'
-    }
-
-    if (!isAuthenticated.value) {
-      return '권한 관리 페이지는 로그인한 슈퍼어드민만 사용할 수 있습니다.'
-    }
-
-    if (!canManageUsers.value) {
-      return '이 페이지는 슈퍼어드민만 접근할 수 있습니다.'
+    if (!pageAccess.canAccessPage.value) {
+      return pageAccess.accessMessage.value
     }
 
     if (isLoading.value) {
@@ -96,20 +99,6 @@ export function useAdminUsersPage(){
     }
 
     return ''
-  })
-  const emptyMessage = computed(() =>
-    searchPagination.appliedQuery.value
-      ? '검색 결과가 없습니다.'
-      : '표시할 사용자가 아직 없습니다.'
-  )
-
-  useProtectedAdminBootstrap({
-    authState,
-    initializeAuth,
-    isAuthenticated,
-    hasAccess: canManageUsers,
-    onDenied: userListResource.resetUsers,
-    onAllowed: userListResource.loadUsers
   })
 
   function loadUsers(){

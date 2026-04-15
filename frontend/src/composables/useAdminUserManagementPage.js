@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-import { useProtectedAdminBootstrap } from '@/composables/adminShared/useProtectedAdminBootstrap'
+import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
 import { useAdminUserSubmissionBanActions } from '@/composables/adminUsers/useAdminUserSubmissionBanActions'
 import { useUserListResource } from '@/composables/users/useUserListResource'
 import { useUserSearchPagination } from '@/composables/users/useUserSearchPagination'
@@ -73,16 +73,39 @@ export function useAdminUserManagementPage(){
   const normalUserCount = computed(() =>
     userManagementListResource.users.value.filter((user) => getSubmissionBanState(user) === 'none').length
   )
+  const emptyMessage = computed(() =>
+    searchPagination.appliedQuery.value
+      ? '검색 결과가 없습니다.'
+      : '표시할 사용자가 아직 없습니다.'
+  )
+  const formatCount = (value) => formatNumberCount(value, koreanNumberFormatOptions)
+
+  usePollingController({
+    task(){
+      nowTimestamp.value = Date.now()
+    },
+    enabled: true,
+    intervalMs: 1000,
+    pauseWhenHidden: false,
+    runImmediately: true
+  })
+
+  const pageAccess = useProtectedAdminPageAccess({
+    authState,
+    initializeAuth,
+    isAuthenticated,
+    hasAccess: canManageUsers,
+    onDenied: userManagementListResource.resetUsers,
+    onAllowed: userManagementListResource.loadUsers,
+    loggedOutMessage: '유저 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
+    deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
+  })
   const viewState = computed(() => {
-    if (authState.isInitializing) {
+    if (pageAccess.accessState.value === 'initializing' || pageAccess.accessState.value === 'logged-out') {
       return 'notice'
     }
 
-    if (!isAuthenticated.value) {
-      return 'notice'
-    }
-
-    if (!canManageUsers.value) {
+    if (pageAccess.accessState.value === 'denied') {
       return 'denied'
     }
 
@@ -101,16 +124,8 @@ export function useAdminUserManagementPage(){
     return 'ready'
   })
   const viewMessage = computed(() => {
-    if (authState.isInitializing) {
-      return '관리자 권한을 확인하는 중입니다.'
-    }
-
-    if (!isAuthenticated.value) {
-      return '유저 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.'
-    }
-
-    if (!canManageUsers.value) {
-      return '이 페이지는 관리자만 접근할 수 있습니다.'
+    if (!pageAccess.canAccessPage.value) {
+      return pageAccess.accessMessage.value
     }
 
     if (isLoading.value) {
@@ -122,31 +137,6 @@ export function useAdminUserManagementPage(){
     }
 
     return ''
-  })
-  const emptyMessage = computed(() =>
-    searchPagination.appliedQuery.value
-      ? '검색 결과가 없습니다.'
-      : '표시할 사용자가 아직 없습니다.'
-  )
-  const formatCount = (value) => formatNumberCount(value, koreanNumberFormatOptions)
-
-  usePollingController({
-    task(){
-      nowTimestamp.value = Date.now()
-    },
-    enabled: true,
-    intervalMs: 1000,
-    pauseWhenHidden: false,
-    runImmediately: true
-  })
-
-  useProtectedAdminBootstrap({
-    authState,
-    initializeAuth,
-    isAuthenticated,
-    hasAccess: canManageUsers,
-    onDenied: userManagementListResource.resetUsers,
-    onAllowed: userManagementListResource.loadUsers
   })
 
   function loadUsers(){
