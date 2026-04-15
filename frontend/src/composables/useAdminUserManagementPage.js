@@ -1,9 +1,8 @@
 import { computed, ref } from 'vue'
 
-import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
 import { useAdminUserSubmissionBanActions } from '@/composables/adminUsers/useAdminUserSubmissionBanActions'
 import { useManagedUserListResource } from '@/composables/users/useManagedUserListResource'
-import { useUserSearchPagination } from '@/composables/users/useUserSearchPagination'
+import { useUserListPageBase } from '@/composables/users/useUserListPageBase'
 import { usePollingController } from '@/composables/usePollingController'
 import { authStore } from '@/stores/auth/authStore'
 import { formatCount as formatNumberCount } from '@/utils/numberFormat'
@@ -54,28 +53,40 @@ export function useAdminUserManagementPage(){
     authState,
     canLoad: canManageUsers
   })
-  const searchPagination = useUserSearchPagination({
+  const isLoading = computed(() =>
+    !authState.initialized || userManagementListResource.isLoading.value
+  )
+  const userListPage = useUserListPageBase({
     users: userManagementListResource.users,
-    searchMode: 'local'
+    isLoading,
+    errorMessage: userManagementListResource.errorMessage,
+    searchMode: 'local',
+    loadUsersImpl(){
+      return userManagementListResource.loadUsers()
+    },
+    protectedAccess: {
+      authState,
+      initializeAuth,
+      isAuthenticated,
+      hasAccess: canManageUsers,
+      onDenied: userManagementListResource.resetUsers,
+      loggedOutMessage: '유저 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
+      deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
+    },
+    messages: {
+      emptyDefault: '표시할 사용자가 아직 없습니다.'
+    }
   })
   const submissionBanActions = useAdminUserSubmissionBanActions({
     authState,
     canManageUsers,
     patchUser: userManagementListResource.patchUser
   })
-  const isLoading = computed(() =>
-    !authState.initialized || userManagementListResource.isLoading.value
-  )
   const activeBanCount = computed(() =>
     userManagementListResource.users.value.filter((user) => getSubmissionBanState(user) === 'active').length
   )
   const normalUserCount = computed(() =>
     userManagementListResource.users.value.filter((user) => getSubmissionBanState(user) === 'none').length
-  )
-  const emptyMessage = computed(() =>
-    searchPagination.appliedQuery.value
-      ? '검색 결과가 없습니다.'
-      : '표시할 사용자가 아직 없습니다.'
   )
   const formatCount = (value) => formatNumberCount(value, koreanNumberFormatOptions)
 
@@ -88,59 +99,6 @@ export function useAdminUserManagementPage(){
     pauseWhenHidden: false,
     runImmediately: true
   })
-
-  const pageAccess = useProtectedAdminPageAccess({
-    authState,
-    initializeAuth,
-    isAuthenticated,
-    hasAccess: canManageUsers,
-    onDenied: userManagementListResource.resetUsers,
-    onAllowed: userManagementListResource.loadUsers,
-    loggedOutMessage: '유저 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
-    deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
-  })
-  const viewState = computed(() => {
-    if (pageAccess.accessState.value === 'initializing' || pageAccess.accessState.value === 'logged-out') {
-      return 'notice'
-    }
-
-    if (pageAccess.accessState.value === 'denied') {
-      return 'denied'
-    }
-
-    if (isLoading.value) {
-      return 'loading'
-    }
-
-    if (userManagementListResource.errorMessage.value) {
-      return 'error'
-    }
-
-    if (!searchPagination.filteredUsers.value.length) {
-      return 'empty'
-    }
-
-    return 'ready'
-  })
-  const viewMessage = computed(() => {
-    if (!pageAccess.canAccessPage.value) {
-      return pageAccess.accessMessage.value
-    }
-
-    if (isLoading.value) {
-      return '유저 목록을 불러오는 중입니다.'
-    }
-
-    if (userManagementListResource.errorMessage.value) {
-      return userManagementListResource.errorMessage.value
-    }
-
-    return ''
-  })
-
-  function loadUsers(){
-    return userManagementListResource.loadUsers()
-  }
 
   function getSubmissionBanState(user){
     if (user.submission_ban_status_loading) {
@@ -257,26 +215,26 @@ export function useAdminUserManagementPage(){
     isAuthenticated,
     canManageUsers,
     formatCount,
-    pageSize: searchPagination.pageSize,
+    pageSize: userListPage.pageSize,
     durationPresets: submissionBanActions.durationPresets,
     isLoading,
     errorMessage: userManagementListResource.errorMessage,
     users: userManagementListResource.users,
-    filteredUsers: searchPagination.filteredUsers,
-    pagedUsers: searchPagination.pagedUsers,
-    searchInput: searchPagination.searchInput,
-    appliedQuery: searchPagination.appliedQuery,
-    currentPage: searchPagination.currentPage,
-    totalPages: searchPagination.totalPages,
-    pageJumpInput: searchPagination.pageJumpInput,
-    paginationItems: searchPagination.paginationItems,
+    filteredUsers: userListPage.filteredUsers,
+    pagedUsers: userListPage.pagedUsers,
+    searchInput: userListPage.searchInput,
+    appliedQuery: userListPage.appliedQuery,
+    currentPage: userListPage.currentPage,
+    totalPages: userListPage.totalPages,
+    pageJumpInput: userListPage.pageJumpInput,
+    paginationItems: userListPage.paginationItems,
     activeBanCount,
     normalUserCount,
-    loadUsers,
-    submitSearch: searchPagination.submitSearch,
-    resetSearch: searchPagination.resetSearch,
-    goToPage: searchPagination.goToPage,
-    submitPageJump: searchPagination.submitPageJump,
+    loadUsers: userListPage.loadUsers,
+    submitSearch: userListPage.submitSearch,
+    resetSearch: userListPage.resetSearch,
+    goToPage: userListPage.goToPage,
+    submitPageJump: userListPage.submitPageJump,
     getSubmissionBanLabel,
     getSubmissionBanTone,
     formatSubmissionBanWindow,
@@ -289,8 +247,8 @@ export function useAdminUserManagementPage(){
     getCreateBanButtonLabel,
     getClearBanButtonLabel,
     isBusyUser: submissionBanActions.isBusyUser,
-    viewState,
-    viewMessage,
-    emptyMessage
+    viewState: userListPage.viewState,
+    viewMessage: userListPage.viewMessage,
+    emptyMessage: userListPage.emptyMessage
   }
 }

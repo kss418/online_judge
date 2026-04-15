@@ -1,7 +1,7 @@
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 
+import { useUserListPageBase } from '@/composables/users/useUserListPageBase'
 import { usePublicUserListResource } from '@/composables/users/usePublicUserListResource'
-import { useUserSearchPagination } from '@/composables/users/useUserSearchPagination'
 import { usePollingController } from '@/composables/usePollingController'
 import { formatRelativeTimestamp } from '@/utils/dateTime'
 import {
@@ -16,53 +16,21 @@ const koreanNumberFormatOptions = {
 export function useUsersPage(){
   const nowTimestamp = ref(Date.now())
   const userListResource = usePublicUserListResource()
-
-  function loadUsers(query = searchPagination.appliedQuery.value){
-    return userListResource.loadUsers(query)
-  }
-
-  const searchPagination = useUserSearchPagination({
-    users: userListResource.users,
-    searchMode: 'remote',
-    onSearchSubmit: loadUsers,
-    onSearchReset(){
-      return loadUsers('')
-    }
-  })
   const isLoading = computed(() =>
     !userListResource.hasLoadedOnce.value || userListResource.isLoading.value
   )
-  const viewState = computed(() => {
-    if (isLoading.value) {
-      return 'loading'
+  const userListPage = useUserListPageBase({
+    users: userListResource.users,
+    isLoading,
+    errorMessage: userListResource.errorMessage,
+    searchMode: 'remote',
+    loadUsersImpl(query){
+      return userListResource.loadUsers(query)
+    },
+    messages: {
+      emptyDefault: '표시할 유저가 아직 없습니다.'
     }
-
-    if (userListResource.errorMessage.value) {
-      return 'error'
-    }
-
-    if (!userListResource.users.value.length) {
-      return 'empty'
-    }
-
-    return 'ready'
   })
-  const viewMessage = computed(() => {
-    if (viewState.value === 'loading') {
-      return '유저 목록을 불러오는 중입니다.'
-    }
-
-    if (viewState.value === 'error') {
-      return userListResource.errorMessage.value
-    }
-
-    return ''
-  })
-  const emptyMessage = computed(() =>
-    searchPagination.appliedQuery.value
-      ? '검색 결과가 없습니다.'
-      : '표시할 유저가 아직 없습니다.'
-  )
 
   usePollingController({
     task(){
@@ -78,36 +46,32 @@ export function useUsersPage(){
     return formatRelativeTimestamp(nowTimestamp.value, timestamp)
   }
 
-  onMounted(() => {
-    void loadUsers()
-  })
-
   const formatUserCount = (value) => formatCount(value, koreanNumberFormatOptions)
   const formatUserAcceptanceRate = (acceptedSubmissionCount, submissionCount) =>
     formatAcceptanceRate(acceptedSubmissionCount, submissionCount)
 
   return {
     formatCount: formatUserCount,
-    pageSize: searchPagination.pageSize,
+    pageSize: userListPage.pageSize,
     users: userListResource.users,
     isLoading,
     errorMessage: userListResource.errorMessage,
-    searchInput: searchPagination.searchInput,
-    appliedQuery: searchPagination.appliedQuery,
-    currentPage: searchPagination.currentPage,
-    totalPages: searchPagination.totalPages,
-    pageJumpInput: searchPagination.pageJumpInput,
-    paginationItems: searchPagination.paginationItems,
-    pagedUsers: searchPagination.pagedUsers,
-    loadUsers,
-    submitSearch: searchPagination.submitSearch,
-    resetSearch: searchPagination.resetSearch,
-    goToPage: searchPagination.goToPage,
-    submitPageJump: searchPagination.submitPageJump,
+    searchInput: userListPage.searchInput,
+    appliedQuery: userListPage.appliedQuery,
+    currentPage: userListPage.currentPage,
+    totalPages: userListPage.totalPages,
+    pageJumpInput: userListPage.pageJumpInput,
+    paginationItems: userListPage.paginationItems,
+    pagedUsers: userListPage.pagedUsers,
+    loadUsers: userListPage.loadUsers,
+    submitSearch: userListPage.submitSearch,
+    resetSearch: userListPage.resetSearch,
+    goToPage: userListPage.goToPage,
+    submitPageJump: userListPage.submitPageJump,
     formatAcceptanceRate: formatUserAcceptanceRate,
     formatRelativeCreatedAt,
-    viewState,
-    viewMessage,
-    emptyMessage
+    viewState: userListPage.viewState,
+    viewMessage: userListPage.viewMessage,
+    emptyMessage: userListPage.emptyMessage
   }
 }

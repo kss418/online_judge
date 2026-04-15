@@ -1,9 +1,8 @@
 import { computed } from 'vue'
 
-import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
 import { permissionLevelToRole, useAdminUserPermissionActions } from '@/composables/adminUsers/useAdminUserPermissionActions'
 import { useAdminUserListResource } from '@/composables/users/useAdminUserListResource'
-import { useUserSearchPagination } from '@/composables/users/useUserSearchPagination'
+import { useUserListPageBase } from '@/composables/users/useUserListPageBase'
 import { authStore } from '@/stores/auth/authStore'
 
 export function useAdminUsersPage(){
@@ -20,9 +19,29 @@ export function useAdminUsersPage(){
     authState,
     canLoad: canManageUsers
   })
-  const searchPagination = useUserSearchPagination({
+  const isLoading = computed(() =>
+    !authState.initialized || userListResource.isLoading.value
+  )
+  const userListPage = useUserListPageBase({
     users: userListResource.users,
-    searchMode: 'local'
+    isLoading,
+    errorMessage: userListResource.errorMessage,
+    searchMode: 'local',
+    loadUsersImpl(){
+      return userListResource.loadUsers()
+    },
+    protectedAccess: {
+      authState,
+      initializeAuth,
+      isAuthenticated,
+      hasAccess: canManageUsers,
+      onDenied: userListResource.resetUsers,
+      loggedOutMessage: '권한 관리 페이지는 로그인한 슈퍼어드민만 사용할 수 있습니다.',
+      deniedMessage: '이 페이지는 슈퍼어드민만 접근할 수 있습니다.'
+    },
+    messages: {
+      emptyDefault: '표시할 사용자가 아직 없습니다.'
+    }
   })
   const permissionActions = useAdminUserPermissionActions({
     authState,
@@ -31,9 +50,6 @@ export function useAdminUsersPage(){
     refreshCurrentUser,
     patchUser: userListResource.patchUser
   })
-  const isLoading = computed(() =>
-    !authState.initialized || userListResource.isLoading.value
-  )
   const isBusy = computed(() =>
     authState.isInitializing || isLoading.value
   )
@@ -46,63 +62,6 @@ export function useAdminUsersPage(){
   const regularUserCount = computed(() =>
     userListResource.users.value.filter((user) => user.permission_level === 0).length
   )
-  const emptyMessage = computed(() =>
-    searchPagination.appliedQuery.value
-      ? '검색 결과가 없습니다.'
-      : '표시할 사용자가 아직 없습니다.'
-  )
-  const pageAccess = useProtectedAdminPageAccess({
-    authState,
-    initializeAuth,
-    isAuthenticated,
-    hasAccess: canManageUsers,
-    onDenied: userListResource.resetUsers,
-    onAllowed: userListResource.loadUsers,
-    loggedOutMessage: '권한 관리 페이지는 로그인한 슈퍼어드민만 사용할 수 있습니다.',
-    deniedMessage: '이 페이지는 슈퍼어드민만 접근할 수 있습니다.'
-  })
-  const viewState = computed(() => {
-    if (pageAccess.accessState.value === 'initializing' || pageAccess.accessState.value === 'logged-out') {
-      return 'notice'
-    }
-
-    if (pageAccess.accessState.value === 'denied') {
-      return 'denied'
-    }
-
-    if (isLoading.value) {
-      return 'loading'
-    }
-
-    if (userListResource.errorMessage.value) {
-      return 'error'
-    }
-
-    if (!searchPagination.filteredUsers.value.length) {
-      return 'empty'
-    }
-
-    return 'ready'
-  })
-  const viewMessage = computed(() => {
-    if (!pageAccess.canAccessPage.value) {
-      return pageAccess.accessMessage.value
-    }
-
-    if (isLoading.value) {
-      return '유저 목록을 불러오는 중입니다.'
-    }
-
-    if (userListResource.errorMessage.value) {
-      return userListResource.errorMessage.value
-    }
-
-    return ''
-  })
-
-  function loadUsers(){
-    return userListResource.loadUsers()
-  }
 
   function formatPermissionLabel(permissionLevel){
     if (permissionLevel >= permissionLevelToRole.superadmin) {
@@ -133,34 +92,34 @@ export function useAdminUsersPage(){
     isAuthenticated,
     canManageUsers,
     canEditPermissions,
-    pageSize: searchPagination.pageSize,
+    pageSize: userListPage.pageSize,
     isLoading,
     isBusy,
     errorMessage: userListResource.errorMessage,
     users: userListResource.users,
-    filteredUsers: searchPagination.filteredUsers,
-    pagedUsers: searchPagination.pagedUsers,
-    searchInput: searchPagination.searchInput,
-    appliedQuery: searchPagination.appliedQuery,
-    currentPage: searchPagination.currentPage,
-    totalPages: searchPagination.totalPages,
-    pageJumpInput: searchPagination.pageJumpInput,
-    paginationItems: searchPagination.paginationItems,
+    filteredUsers: userListPage.filteredUsers,
+    pagedUsers: userListPage.pagedUsers,
+    searchInput: userListPage.searchInput,
+    appliedQuery: userListPage.appliedQuery,
+    currentPage: userListPage.currentPage,
+    totalPages: userListPage.totalPages,
+    pageJumpInput: userListPage.pageJumpInput,
+    paginationItems: userListPage.paginationItems,
     savingUserId: permissionActions.savingUserId,
     superAdminCount,
     adminCount,
     regularUserCount,
-    loadUsers,
-    submitSearch: searchPagination.submitSearch,
-    resetSearch: searchPagination.resetSearch,
-    goToPage: searchPagination.goToPage,
-    submitPageJump: searchPagination.submitPageJump,
+    loadUsers: userListPage.loadUsers,
+    submitSearch: userListPage.submitSearch,
+    resetSearch: userListPage.resetSearch,
+    goToPage: userListPage.goToPage,
+    submitPageJump: userListPage.submitPageJump,
     handlePromoteToAdmin: permissionActions.handlePromoteToAdmin,
     handleDemoteToUser: permissionActions.handleDemoteToUser,
     formatPermissionLabel,
     getPermissionTone,
-    viewState,
-    viewMessage,
-    emptyMessage
+    viewState: userListPage.viewState,
+    viewMessage: userListPage.viewMessage,
+    emptyMessage: userListPage.emptyMessage
   }
 }
