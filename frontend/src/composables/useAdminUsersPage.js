@@ -1,12 +1,10 @@
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 import { useProtectedAdminBootstrap } from '@/composables/adminShared/useProtectedAdminBootstrap'
-import { authStore } from '@/stores/auth/authStore'
 import { permissionLevelToRole, useAdminUserPermissionActions } from '@/composables/adminUsers/useAdminUserPermissionActions'
-import { useAdminUserSearchPagination } from '@/composables/adminUsers/useAdminUserSearchPagination'
-import { useAdminUsersListResource } from '@/composables/adminUsers/useAdminUsersListResource'
-import { usePollingController } from '@/composables/usePollingController'
-import { formatRelativeTimestamp } from '@/utils/dateTime'
+import { useUserListResource } from '@/composables/users/useUserListResource'
+import { useUserSearchPagination } from '@/composables/users/useUserSearchPagination'
+import { authStore } from '@/stores/auth/authStore'
 
 export function useAdminUsersPage(){
   const {
@@ -18,13 +16,14 @@ export function useAdminUsersPage(){
   const canManageUsers = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 2)
   const canEditPermissions = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 2)
   const currentUserId = computed(() => Number(authState.currentUser?.id ?? 0))
-  const nowTimestamp = ref(Date.now())
-  const userListResource = useAdminUsersListResource({
+  const userListResource = useUserListResource({
+    mode: 'admin',
     authState,
-    canManageUsers
+    canLoad: canManageUsers
   })
-  const searchPagination = useAdminUserSearchPagination({
-    users: userListResource.users
+  const searchPagination = useUserSearchPagination({
+    users: userListResource.users,
+    searchMode: 'local'
   })
   const permissionActions = useAdminUserPermissionActions({
     authState,
@@ -36,6 +35,9 @@ export function useAdminUsersPage(){
   const isLoading = computed(() =>
     !authState.initialized || userListResource.isLoading.value
   )
+  const isBusy = computed(() =>
+    authState.isInitializing || isLoading.value
+  )
   const superAdminCount = computed(() =>
     userListResource.users.value.filter((user) => user.permission_level === 2).length
   )
@@ -45,16 +47,61 @@ export function useAdminUsersPage(){
   const regularUserCount = computed(() =>
     userListResource.users.value.filter((user) => user.permission_level === 0).length
   )
+  const viewState = computed(() => {
+    if (authState.isInitializing) {
+      return 'notice'
+    }
 
-  usePollingController({
-    task(){
-      nowTimestamp.value = Date.now()
-    },
-    enabled: true,
-    intervalMs: 1000,
-    pauseWhenHidden: false,
-    runImmediately: true
+    if (!isAuthenticated.value) {
+      return 'notice'
+    }
+
+    if (!canManageUsers.value) {
+      return 'denied'
+    }
+
+    if (isLoading.value) {
+      return 'loading'
+    }
+
+    if (userListResource.errorMessage.value) {
+      return 'error'
+    }
+
+    if (!searchPagination.filteredUsers.value.length) {
+      return 'empty'
+    }
+
+    return 'ready'
   })
+  const viewMessage = computed(() => {
+    if (authState.isInitializing) {
+      return '관리자 권한을 확인하는 중입니다.'
+    }
+
+    if (!isAuthenticated.value) {
+      return '권한 관리 페이지는 로그인한 슈퍼어드민만 사용할 수 있습니다.'
+    }
+
+    if (!canManageUsers.value) {
+      return '이 페이지는 슈퍼어드민만 접근할 수 있습니다.'
+    }
+
+    if (isLoading.value) {
+      return '유저 목록을 불러오는 중입니다.'
+    }
+
+    if (userListResource.errorMessage.value) {
+      return userListResource.errorMessage.value
+    }
+
+    return ''
+  })
+  const emptyMessage = computed(() =>
+    searchPagination.appliedQuery.value
+      ? '검색 결과가 없습니다.'
+      : '표시할 사용자가 아직 없습니다.'
+  )
 
   useProtectedAdminBootstrap({
     authState,
@@ -93,10 +140,6 @@ export function useAdminUsersPage(){
     return 'neutral'
   }
 
-  function formatRelativeCreatedAt(timestamp){
-    return formatRelativeTimestamp(nowTimestamp.value, timestamp)
-  }
-
   return {
     authState,
     isAuthenticated,
@@ -104,6 +147,7 @@ export function useAdminUsersPage(){
     canEditPermissions,
     pageSize: searchPagination.pageSize,
     isLoading,
+    isBusy,
     errorMessage: userListResource.errorMessage,
     users: userListResource.users,
     filteredUsers: searchPagination.filteredUsers,
@@ -127,6 +171,8 @@ export function useAdminUsersPage(){
     handleDemoteToUser: permissionActions.handleDemoteToUser,
     formatPermissionLabel,
     getPermissionTone,
-    formatRelativeCreatedAt
+    viewState,
+    viewMessage,
+    emptyMessage
   }
 }

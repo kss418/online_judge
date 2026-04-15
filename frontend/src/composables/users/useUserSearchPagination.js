@@ -5,24 +5,32 @@ import { buildPaginationItems } from '@/utils/pagination'
 
 const defaultPageSize = 20
 
-export function useAdminUserSearchPagination({
+export function useUserSearchPagination({
   users,
-  pageSize = defaultPageSize
+  pageSize = defaultPageSize,
+  searchMode = 'local',
+  onSearchSubmit,
+  onSearchReset
 }){
+  const normalizedSearchMode = searchMode === 'remote' ? 'remote' : 'local'
   const searchInput = ref('')
   const appliedQuery = ref('')
   const currentPage = ref(1)
   const pageJumpInput = ref('')
   const filteredUsers = computed(() => {
+    if (normalizedSearchMode === 'remote') {
+      return users.value
+    }
+
     const keyword = appliedQuery.value.trim().toLowerCase()
 
     if (!keyword) {
       return users.value
     }
 
-    return users.value.filter((user) => (
+    return users.value.filter((user) =>
       String(user.user_login_id || '').toLowerCase().includes(keyword)
-    ))
+    )
   })
   const totalPages = computed(() =>
     Math.max(1, Math.ceil(filteredUsers.value.length / pageSize))
@@ -46,14 +54,34 @@ export function useAdminUserSearchPagination({
   })
 
   function submitSearch(){
-    appliedQuery.value = searchInput.value.trim()
+    const nextQuery = searchInput.value.trim()
+
+    appliedQuery.value = nextQuery
     currentPage.value = 1
+
+    if (normalizedSearchMode === 'remote' && typeof onSearchSubmit === 'function') {
+      return onSearchSubmit(nextQuery)
+    }
+
+    return undefined
   }
 
   function resetSearch(){
     searchInput.value = ''
     appliedQuery.value = ''
     currentPage.value = 1
+
+    if (normalizedSearchMode === 'remote') {
+      if (typeof onSearchReset === 'function') {
+        return onSearchReset()
+      }
+
+      if (typeof onSearchSubmit === 'function') {
+        return onSearchSubmit('')
+      }
+    }
+
+    return undefined
   }
 
   function goToPage(pageNumber){

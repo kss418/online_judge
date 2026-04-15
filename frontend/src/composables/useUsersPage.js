@@ -1,53 +1,69 @@
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
-import { getPublicUserList } from '@/api/userQueryApi'
-import { useAsyncResource } from '@/composables/useAsyncResource'
+import { useUserListResource } from '@/composables/users/useUserListResource'
+import { useUserSearchPagination } from '@/composables/users/useUserSearchPagination'
 import { usePollingController } from '@/composables/usePollingController'
-import { formatApiError } from '@/utils/apiError'
 import { formatRelativeTimestamp } from '@/utils/dateTime'
 import {
   formatAcceptanceRate,
   formatCount
 } from '@/utils/numberFormat'
-import { parsePositiveInteger } from '@/utils/parse'
-import { buildPaginationItems } from '@/utils/pagination'
 
-const pageSize = 20
 const koreanNumberFormatOptions = {
   locale: 'ko-KR'
 }
 
 export function useUsersPage(){
-  const searchInput = ref('')
-  const appliedQuery = ref('')
-  const currentPage = ref(1)
-  const pageJumpInput = ref('')
   const nowTimestamp = ref(Date.now())
-  const userListResource = useAsyncResource({
-    initialData: () => [],
-    async load({ query }){
-      const response = await getPublicUserList(query)
-      return Array.isArray(response.users) ? response.users : []
-    },
-    getErrorMessage(error){
-      return formatApiError(error, {
-        fallback: '유저 목록을 불러오지 못했습니다.'
-      })
+  const userListResource = useUserListResource({
+    mode: 'public'
+  })
+
+  function loadUsers(query = searchPagination.appliedQuery.value){
+    return userListResource.loadUsers(query)
+  }
+
+  const searchPagination = useUserSearchPagination({
+    users: userListResource.users,
+    searchMode: 'remote',
+    onSearchSubmit: loadUsers,
+    onSearchReset(){
+      return loadUsers('')
     }
   })
-  const users = userListResource.data
   const isLoading = computed(() =>
     !userListResource.hasLoadedOnce.value || userListResource.isLoading.value
   )
-  const totalPages = computed(() =>
-    Math.max(1, Math.ceil(users.value.length / pageSize))
-  )
-  const pagedUsers = computed(() => {
-    const startIndex = (currentPage.value - 1) * pageSize
-    return users.value.slice(startIndex, startIndex + pageSize)
+  const viewState = computed(() => {
+    if (isLoading.value) {
+      return 'loading'
+    }
+
+    if (userListResource.errorMessage.value) {
+      return 'error'
+    }
+
+    if (!userListResource.users.value.length) {
+      return 'empty'
+    }
+
+    return 'ready'
   })
-  const paginationItems = computed(() =>
-    buildPaginationItems(currentPage.value, totalPages.value)
+  const viewMessage = computed(() => {
+    if (viewState.value === 'loading') {
+      return '유저 목록을 불러오는 중입니다.'
+    }
+
+    if (viewState.value === 'error') {
+      return userListResource.errorMessage.value
+    }
+
+    return ''
+  })
+  const emptyMessage = computed(() =>
+    searchPagination.appliedQuery.value
+      ? '검색 결과가 없습니다.'
+      : '표시할 유저가 아직 없습니다.'
   )
 
   usePollingController({
@@ -60,59 +76,8 @@ export function useUsersPage(){
     runImmediately: true
   })
 
-  watch(currentPage, () => {
-    pageJumpInput.value = ''
-  })
-
-  watch(totalPages, (pageCount) => {
-    if (currentPage.value > pageCount) {
-      currentPage.value = pageCount
-    }
-  })
-
   function formatRelativeCreatedAt(timestamp){
     return formatRelativeTimestamp(nowTimestamp.value, timestamp)
-  }
-
-  async function loadUsers(){
-    return userListResource.run({
-      query: appliedQuery.value
-    }, {
-      resetDataOnError: true
-    })
-  }
-
-  function submitSearch(){
-    appliedQuery.value = searchInput.value.trim()
-    currentPage.value = 1
-    void loadUsers()
-  }
-
-  function resetSearch(){
-    searchInput.value = ''
-    appliedQuery.value = ''
-    currentPage.value = 1
-    void loadUsers()
-  }
-
-  function goToPage(pageNumber){
-    const clampedPageNumber = Math.min(Math.max(pageNumber, 1), totalPages.value)
-
-    if (clampedPageNumber === currentPage.value) {
-      return
-    }
-
-    currentPage.value = clampedPageNumber
-  }
-
-  function submitPageJump(){
-    const parsedPage = parsePositiveInteger(pageJumpInput.value)
-    if (parsedPage == null) {
-      pageJumpInput.value = ''
-      return
-    }
-
-    goToPage(parsedPage)
   }
 
   onMounted(() => {
@@ -125,23 +90,26 @@ export function useUsersPage(){
 
   return {
     formatCount: formatUserCount,
-    pageSize,
-    users,
+    pageSize: searchPagination.pageSize,
+    users: userListResource.users,
     isLoading,
     errorMessage: userListResource.errorMessage,
-    searchInput,
-    appliedQuery,
-    currentPage,
-    totalPages,
-    pageJumpInput,
-    paginationItems,
-    pagedUsers,
+    searchInput: searchPagination.searchInput,
+    appliedQuery: searchPagination.appliedQuery,
+    currentPage: searchPagination.currentPage,
+    totalPages: searchPagination.totalPages,
+    pageJumpInput: searchPagination.pageJumpInput,
+    paginationItems: searchPagination.paginationItems,
+    pagedUsers: searchPagination.pagedUsers,
     loadUsers,
-    submitSearch,
-    resetSearch,
-    goToPage,
-    submitPageJump,
+    submitSearch: searchPagination.submitSearch,
+    resetSearch: searchPagination.resetSearch,
+    goToPage: searchPagination.goToPage,
+    submitPageJump: searchPagination.submitPageJump,
     formatAcceptanceRate: formatUserAcceptanceRate,
-    formatRelativeCreatedAt
+    formatRelativeCreatedAt,
+    viewState,
+    viewMessage,
+    emptyMessage
   }
 }

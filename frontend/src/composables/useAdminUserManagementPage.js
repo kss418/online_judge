@@ -1,11 +1,11 @@
 import { computed, ref } from 'vue'
 
 import { useProtectedAdminBootstrap } from '@/composables/adminShared/useProtectedAdminBootstrap'
-import { authStore } from '@/stores/auth/authStore'
-import { useAdminUserManagementListResource } from '@/composables/adminUsers/useAdminUserManagementListResource'
-import { useAdminUserSearchPagination } from '@/composables/adminUsers/useAdminUserSearchPagination'
 import { useAdminUserSubmissionBanActions } from '@/composables/adminUsers/useAdminUserSubmissionBanActions'
+import { useUserListResource } from '@/composables/users/useUserListResource'
+import { useUserSearchPagination } from '@/composables/users/useUserSearchPagination'
 import { usePollingController } from '@/composables/usePollingController'
+import { authStore } from '@/stores/auth/authStore'
 import { formatCount as formatNumberCount } from '@/utils/numberFormat'
 
 const koreanNumberFormatOptions = {
@@ -50,12 +50,14 @@ export function useAdminUserManagementPage(){
   } = authStore
   const canManageUsers = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 1)
   const nowTimestamp = ref(Date.now())
-  const userManagementListResource = useAdminUserManagementListResource({
+  const userManagementListResource = useUserListResource({
+    mode: 'management',
     authState,
-    canManageUsers
+    canLoad: canManageUsers
   })
-  const searchPagination = useAdminUserSearchPagination({
-    users: userManagementListResource.users
+  const searchPagination = useUserSearchPagination({
+    users: userManagementListResource.users,
+    searchMode: 'local'
   })
   const submissionBanActions = useAdminUserSubmissionBanActions({
     authState,
@@ -70,6 +72,61 @@ export function useAdminUserManagementPage(){
   )
   const normalUserCount = computed(() =>
     userManagementListResource.users.value.filter((user) => getSubmissionBanState(user) === 'none').length
+  )
+  const viewState = computed(() => {
+    if (authState.isInitializing) {
+      return 'notice'
+    }
+
+    if (!isAuthenticated.value) {
+      return 'notice'
+    }
+
+    if (!canManageUsers.value) {
+      return 'denied'
+    }
+
+    if (isLoading.value) {
+      return 'loading'
+    }
+
+    if (userManagementListResource.errorMessage.value) {
+      return 'error'
+    }
+
+    if (!searchPagination.filteredUsers.value.length) {
+      return 'empty'
+    }
+
+    return 'ready'
+  })
+  const viewMessage = computed(() => {
+    if (authState.isInitializing) {
+      return '관리자 권한을 확인하는 중입니다.'
+    }
+
+    if (!isAuthenticated.value) {
+      return '유저 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.'
+    }
+
+    if (!canManageUsers.value) {
+      return '이 페이지는 관리자만 접근할 수 있습니다.'
+    }
+
+    if (isLoading.value) {
+      return '유저 목록을 불러오는 중입니다.'
+    }
+
+    if (userManagementListResource.errorMessage.value) {
+      return userManagementListResource.errorMessage.value
+    }
+
+    return ''
+  })
+  const emptyMessage = computed(() =>
+    searchPagination.appliedQuery.value
+      ? '검색 결과가 없습니다.'
+      : '표시할 사용자가 아직 없습니다.'
   )
   const formatCount = (value) => formatNumberCount(value, koreanNumberFormatOptions)
 
@@ -242,6 +299,9 @@ export function useAdminUserManagementPage(){
     handleClearSubmissionBan: submissionBanActions.handleClearSubmissionBan,
     getCreateBanButtonLabel,
     getClearBanButtonLabel,
-    isBusyUser: submissionBanActions.isBusyUser
+    isBusyUser: submissionBanActions.isBusyUser,
+    viewState,
+    viewMessage,
+    emptyMessage
   }
 }
