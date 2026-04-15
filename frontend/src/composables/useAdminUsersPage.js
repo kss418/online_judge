@@ -2,7 +2,7 @@ import { computed } from 'vue'
 
 import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
 import { permissionLevelToRole, useAdminUserPermissionActions } from '@/composables/adminUsers/useAdminUserPermissionActions'
-import { useUserListResource } from '@/composables/users/useUserListResource'
+import { useAdminUserListResource } from '@/composables/users/useAdminUserListResource'
 import { useUserSearchPagination } from '@/composables/users/useUserSearchPagination'
 import { authStore } from '@/stores/auth/authStore'
 
@@ -16,8 +16,7 @@ export function useAdminUsersPage(){
   const canManageUsers = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 2)
   const canEditPermissions = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 2)
   const currentUserId = computed(() => Number(authState.currentUser?.id ?? 0))
-  const userListResource = useUserListResource({
-    mode: 'admin',
+  const userListResource = useAdminUserListResource({
     authState,
     canLoad: canManageUsers
   })

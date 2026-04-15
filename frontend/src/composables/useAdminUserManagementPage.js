@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 
 import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
 import { useAdminUserSubmissionBanActions } from '@/composables/adminUsers/useAdminUserSubmissionBanActions'
-import { useUserListResource } from '@/composables/users/useUserListResource'
+import { useManagedUserListResource } from '@/composables/users/useManagedUserListResource'
 import { useUserSearchPagination } from '@/composables/users/useUserSearchPagination'
 import { usePollingController } from '@/composables/usePollingController'
 import { authStore } from '@/stores/auth/authStore'
@@ -50,8 +50,7 @@ export function useAdminUserManagementPage(){
   } = authStore
   const canManageUsers = computed(() => Number(authState.currentUser?.permission_level ?? 0) >= 1)
   const nowTimestamp = ref(Date.now())
-  const userManagementListResource = useUserListResource({
-    mode: 'management',
+  const userManagementListResource = useManagedUserListResource({
     authState,
     canLoad: canManageUsers
   })

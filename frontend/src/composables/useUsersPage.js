@@ -1,6 +1,6 @@
 import { computed, onMounted, ref } from 'vue'
 
-import { useUserListResource } from '@/composables/users/useUserListResource'
+import { usePublicUserListResource } from '@/composables/users/usePublicUserListResource'
 import { useUserSearchPagination } from '@/composables/users/useUserSearchPagination'
 import { usePollingController } from '@/composables/usePollingController'
 import { formatRelativeTimestamp } from '@/utils/dateTime'
@@ -15,9 +15,7 @@ const koreanNumberFormatOptions = {
 
 export function useUsersPage(){
   const nowTimestamp = ref(Date.now())
-  const userListResource = useUserListResource({
-    mode: 'public'
-  })
+  const userListResource = usePublicUserListResource()
 
   function loadUsers(query = searchPagination.appliedQuery.value){
     return userListResource.loadUsers(query)
