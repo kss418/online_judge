@@ -1,7 +1,7 @@
 #include "http_handler/user_list_query_handler.hpp"
 
-#include "application/get_public_user_list_query.hpp"
-#include "application/get_user_list_query.hpp"
+#include "db_service/auth_service.hpp"
+#include "db_service/user_service.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/request_parse_guard.hpp"
@@ -12,23 +12,13 @@ namespace{
     using context_type = request_context;
     using response_type = request_context::response_type;
 
-    template <typename command_type>
-    using command_expected = std::expected<command_type, response_type>;
-
     auto make_get_public_user_list_spec(){
-        return http_endpoint::make_guarded_json_spec(
-            [](const http_guard::guard_context&,
-                const user_dto::list_filter& filter_value)
-                -> command_expected<get_public_user_list_query::command> {
-                return get_public_user_list_query::command{
-                    .filter_value = filter_value
-                };
-            },
-            http_endpoint::make_db_execute(get_public_user_list_query::execute),
-            user_json_serializer::make_public_list_object,
+        return http_endpoint::make_json_spec(
             request_parse_guard::make_query_guard<user_dto::list_filter>(
                 user_request_parser::parse_list_filter
-            )
+            ),
+            http_endpoint::make_db_execute(user_service::get_public_list),
+            user_json_serializer::make_public_list_object
         );
     }
 
@@ -36,10 +26,12 @@ namespace{
         return http_endpoint::make_guarded_json_spec(
             [](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> command_expected<get_user_list_query::command> {
-                return get_user_list_query::command{};
+                -> std::expected<http_endpoint::no_input, response_type> {
+                return http_endpoint::no_input{};
             },
-            http_endpoint::make_db_execute(get_user_list_query::execute),
+            [](auto& context, const http_endpoint::no_input&) {
+                return auth_service::get_user_list(context.db_connection_ref());
+            },
             user_json_serializer::make_list_object,
             auth_guard::make_admin_guard()
         );

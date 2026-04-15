@@ -13,5 +13,4 @@ namespace system_route_groups{
 
     std::span<const endpoint_descriptor> public_routes();
     std::span<const endpoint_descriptor> db_routes();
-    std::span<const endpoint_descriptor> all_routes();
 }

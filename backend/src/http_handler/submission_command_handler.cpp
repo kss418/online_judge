@@ -1,7 +1,7 @@
 #include "http_handler/submission_command_handler.hpp"
 
 #include "application/create_submission_action.hpp"
-#include "application/submission_command_action.hpp"
+#include "db_service/submission_command_service.hpp"
 #include "dto/submission_internal_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_endpoint/http_error_mapper.hpp"
@@ -11,9 +11,6 @@
 
 namespace{
     using response_type = submission_command_handler::response_type;
-
-    template <typename command_type>
-    using command_expected = std::expected<command_type, response_type>;
 
     auto make_post_submission_spec(std::int64_t problem_id){
         return http_endpoint::make_json_spec(
@@ -31,12 +28,12 @@ namespace{
         return http_endpoint::make_guarded_json_spec(
             [submission_id](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> command_expected<rejudge_submission_action::command> {
-                return rejudge_submission_action::command{
-                    .submission_id = submission_id
-                };
+                -> std::expected<std::int64_t, response_type> {
+                return submission_id;
             },
-            http_endpoint::make_db_execute(rejudge_submission_action::execute),
+            http_endpoint::make_db_execute(
+                submission_command_service::rejudge_submission
+            ),
             submission_json_serializer::make_queued_response_object,
             auth_guard::make_admin_guard()
         );

@@ -1,6 +1,6 @@
 #include "http_handler/problem_content_query_handler.hpp"
 
-#include "application/problem_content_query.hpp"
+#include "db_service/problem_content_service.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_guard/problem_guard.hpp"
@@ -26,7 +26,7 @@ namespace{
     auto make_get_limits_spec(std::int64_t problem_id){
         return http_endpoint::make_json_spec(
             make_problem_reference_guard(problem_id),
-            http_endpoint::make_db_execute(get_problem_limits_query::execute),
+            http_endpoint::make_db_execute(problem_content_service::get_limits),
             problem_json_serializer::make_limits_object
         );
     }
@@ -34,7 +34,7 @@ namespace{
     auto make_get_samples_spec(std::int64_t problem_id){
         return http_endpoint::make_json_spec(
             make_problem_reference_guard(problem_id),
-            http_endpoint::make_db_execute(list_problem_samples_query::execute),
+            http_endpoint::make_db_execute(problem_content_service::list_samples),
             problem_json_serializer::make_sample_list_object
         );
     }

@@ -1,8 +1,8 @@
 #include "http_handler/problem_content_command_handler.hpp"
 
-#include "application/problem_sample_action.hpp"
 #include "application/set_problem_limits_action.hpp"
 #include "application/set_problem_statement_action.hpp"
+#include "db_service/problem_content_service.hpp"
 #include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
@@ -13,8 +13,19 @@
 #include "request_parser/problem_content_request_parser.hpp"
 #include "serializer/problem_json_serializer.hpp"
 
+#include <string_view>
+
 namespace{
     using response_type = problem_content_command_handler::response_type;
+
+    struct create_problem_sample_request{
+        problem_dto::reference problem_reference_value;
+    };
+
+    struct update_problem_sample_request{
+        problem_content_dto::sample_ref sample_reference_value;
+        problem_content_dto::sample sample_value;
+    };
 
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
@@ -74,12 +85,18 @@ namespace{
         return http_endpoint::make_guarded_json_spec(
             [problem_reference_value](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> command_expected<create_problem_sample_action::command> {
-                return create_problem_sample_action::command{
+                -> command_expected<create_problem_sample_request> {
+                return create_problem_sample_request{
                     .problem_reference_value = problem_reference_value
                 };
             },
-            http_endpoint::make_db_execute(create_problem_sample_action::execute),
+            [](auto& context, const create_problem_sample_request& request) {
+                return problem_content_service::create_sample(
+                    context.db_connection_ref(),
+                    request.problem_reference_value,
+                    problem_content_dto::sample{}
+                );
+            },
             problem_json_serializer::make_versioned_sample_created_object,
             http_endpoint::spec_options{
                 .success_status = boost::beast::http::status::created
@@ -99,13 +116,19 @@ namespace{
             [sample_reference_value](const http_guard::guard_context&,
                 const auth_dto::identity&,
                 const problem_content_dto::sample& sample_value)
-                -> command_expected<update_problem_sample_action::command> {
-                return update_problem_sample_action::command{
+                -> command_expected<update_problem_sample_request> {
+                return update_problem_sample_request{
                     .sample_reference_value = sample_reference_value,
                     .sample_value = sample_value
                 };
             },
-            http_endpoint::make_db_execute(update_problem_sample_action::execute),
+            [](auto& context, const update_problem_sample_request& request) {
+                return problem_content_service::set_sample_and_get(
+                    context.db_connection_ref(),
+                    request.sample_reference_value,
+                    request.sample_value
+                );
+            },
             problem_json_serializer::make_versioned_sample_object,
             auth_guard::make_admin_guard(),
             request_parse_guard::make_json_guard<problem_content_dto::sample>(
@@ -120,10 +143,10 @@ namespace{
         return http_endpoint::make_guarded_json_spec(
             [problem_reference_value](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> command_expected<delete_problem_sample_action::command> {
+                -> command_expected<problem_dto::reference> {
                 return problem_reference_value;
             },
-            http_endpoint::make_db_execute(delete_problem_sample_action::execute),
+            http_endpoint::make_db_execute(problem_content_service::delete_sample),
             make_problem_message_serializer("problem sample deleted"),
             http_endpoint::spec_options{
                 .error_response = http_error_mapper::delete_sample_error()

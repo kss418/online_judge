@@ -1,6 +1,7 @@
 #include "http_handler/auth_command_handler.hpp"
 
-#include "application/auth_command_action.hpp"
+#include "db_service/auth_service.hpp"
+#include "db_service/login_service.hpp"
 #include "dto/auth_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_endpoint/http_error_mapper.hpp"
@@ -17,7 +18,7 @@ namespace{
             request_parse_guard::make_json_guard<auth_dto::sign_up_request>(
                 auth_request_parser::parse_sign_up_request
             ),
-            http_endpoint::make_db_execute(sign_up_action::execute),
+            http_endpoint::make_db_execute(login_service::sign_up),
             auth_json_serializer::make_session_object,
             http_endpoint::spec_options{
                 .success_status = boost::beast::http::status::created
@@ -30,7 +31,7 @@ namespace{
             request_parse_guard::make_json_guard<auth_dto::credentials>(
                 auth_request_parser::parse_credentials
             ),
-            http_endpoint::make_db_execute(login_action::execute),
+            http_endpoint::make_db_execute(login_service::login),
             auth_json_serializer::make_session_object,
             http_endpoint::spec_options{
                 .error_response = http_error_mapper::auth_login_error()
@@ -41,7 +42,7 @@ namespace{
     auto make_post_token_renew_spec(){
         return http_endpoint::make_message_spec(
             auth_guard::make_bearer_token_guard(),
-            http_endpoint::make_db_execute(renew_auth_token_action::execute),
+            http_endpoint::make_db_execute(auth_service::renew_token),
             []() -> std::string_view {
                 return "token renewed";
             },
@@ -54,7 +55,7 @@ namespace{
     auto make_post_logout_spec(){
         return http_endpoint::make_message_spec(
             auth_guard::make_bearer_token_guard(),
-            http_endpoint::make_db_execute(logout_action::execute),
+            http_endpoint::make_db_execute(auth_service::revoke_token),
             []() -> std::string_view {
                 return "logged out";
             },

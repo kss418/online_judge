@@ -20,6 +20,6 @@ system_router::response_type system_router::route(
     return http_route::dispatch_route_table(
         context,
         path,
-        system_route_groups::all_routes()
+        system_route_groups::db_routes()
     );
 }

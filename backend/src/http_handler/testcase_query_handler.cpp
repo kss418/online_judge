@@ -1,6 +1,6 @@
 #include "http_handler/testcase_query_handler.hpp"
 
-#include "application/testcase_query.hpp"
+#include "db_service/testcase_query_service.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_guard/auth_guard.hpp"
@@ -21,13 +21,13 @@ namespace{
         return http_endpoint::make_guarded_json_spec(
             [problem_id, testcase_order](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> command_expected<get_testcase_query::command> {
-                return get_testcase_query::command{
+                -> command_expected<problem_dto::testcase_ref> {
+                return problem_dto::testcase_ref{
                     .problem_id = problem_id,
                     .testcase_order = testcase_order
                 };
             },
-            http_endpoint::make_db_execute(get_testcase_query::execute),
+            http_endpoint::make_db_execute(testcase_query_service::get_testcase),
             problem_json_serializer::make_testcase_object,
             auth_guard::make_admin_guard(),
             problem_guard::make_exists_guard(problem_reference_value)
@@ -39,10 +39,12 @@ namespace{
         return http_endpoint::make_guarded_json_spec(
             [problem_reference_value](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> command_expected<list_testcase_summaries_query::command> {
+                -> command_expected<problem_dto::reference> {
                 return problem_reference_value;
             },
-            http_endpoint::make_db_execute(list_testcase_summaries_query::execute),
+            http_endpoint::make_db_execute(
+                testcase_query_service::list_testcase_summaries
+            ),
             problem_json_serializer::make_testcase_summary_list_object,
             auth_guard::make_admin_guard(),
             problem_guard::make_exists_guard(problem_reference_value)

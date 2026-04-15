@@ -1,7 +1,8 @@
 #include "http_handler/user_command_handler.hpp"
 
-#include "application/user_command_action.hpp"
 #include "common/permission_util.hpp"
+#include "db_service/auth_service.hpp"
+#include "db_service/user_service.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/request_parse_guard.hpp"
@@ -13,6 +14,16 @@
 namespace{
     using response_type = user_command_handler::response_type;
 
+    struct update_user_permission_request{
+        std::int64_t user_id = 0;
+        std::int32_t permission_level = 0;
+    };
+
+    struct create_submission_ban_request{
+        std::int64_t user_id = 0;
+        std::int32_t duration_minutes = 0;
+    };
+
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
 
@@ -23,13 +34,19 @@ namespace{
         return http_endpoint::make_guarded_json_spec(
             [user_id, permission_level](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> command_expected<update_user_permission_action::command> {
-                return update_user_permission_action::command{
+                -> command_expected<update_user_permission_request> {
+                return update_user_permission_request{
                     .user_id = user_id,
                     .permission_level = permission_level
                 };
             },
-            http_endpoint::make_db_execute(update_user_permission_action::execute),
+            [](auto& context, const update_user_permission_request& request) {
+                return auth_service::update_permission_level(
+                    context.db_connection_ref(),
+                    request.user_id,
+                    request.permission_level
+                );
+            },
             [user_id, permission_level]() {
                 return user_json_serializer::make_permission_object(
                     user_id,
@@ -53,13 +70,19 @@ namespace{
             [user_id](const http_guard::guard_context&,
                 const auth_dto::identity&,
                 const user_dto::submission_ban_request& submission_ban_request)
-                -> command_expected<create_user_submission_ban_action::command> {
-                return create_user_submission_ban_action::command{
+                -> command_expected<create_submission_ban_request> {
+                return create_submission_ban_request{
                     .user_id = user_id,
                     .duration_minutes = submission_ban_request.duration_minutes
                 };
             },
-            http_endpoint::make_db_execute(create_user_submission_ban_action::execute),
+            [](auto& context, const create_submission_ban_request& request) {
+                return user_service::create_submission_ban(
+                    context.db_connection_ref(),
+                    request.user_id,
+                    request.duration_minutes
+                );
+            },
             user_json_serializer::make_submission_ban_object,
             http_endpoint::spec_options{
                 .success_status = boost::beast::http::status::created
@@ -75,12 +98,12 @@ namespace{
         return http_endpoint::make_guarded_message_spec(
             [user_id](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> command_expected<clear_user_submission_ban_action::command> {
-                return clear_user_submission_ban_action::command{
-                    .user_id = user_id
-                };
+                -> command_expected<std::int64_t> {
+                return user_id;
             },
-            http_endpoint::make_db_execute(clear_user_submission_ban_action::execute),
+            http_endpoint::make_db_execute(
+                user_service::clear_submission_banned_until
+            ),
             []() -> std::string_view {
                 return "user submission ban cleared";
             },

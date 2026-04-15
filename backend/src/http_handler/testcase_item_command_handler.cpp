@@ -1,6 +1,6 @@
 #include "http_handler/testcase_item_command_handler.hpp"
 
-#include "application/testcase_action.hpp"
+#include "db_service/testcase_item_mutation_service.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_guard/auth_guard.hpp"
@@ -14,6 +14,16 @@
 namespace{
     using context_type = request_context;
     using response_type = request_context::response_type;
+
+    struct create_testcase_request{
+        problem_dto::reference problem_reference_value;
+        problem_dto::testcase testcase_value;
+    };
+
+    struct update_testcase_request{
+        problem_dto::testcase_ref testcase_reference_value;
+        problem_dto::testcase testcase_value;
+    };
 
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
@@ -34,13 +44,19 @@ namespace{
             [problem_reference_value](const http_guard::guard_context&,
                 const auth_dto::identity&,
                 const problem_dto::testcase& testcase_value)
-                -> command_expected<create_testcase_action::command> {
-                return create_testcase_action::command{
+                -> command_expected<create_testcase_request> {
+                return create_testcase_request{
                     .problem_reference_value = problem_reference_value,
                     .testcase_value = testcase_value
                 };
             },
-            http_endpoint::make_db_execute(create_testcase_action::execute),
+            [](auto& context, const create_testcase_request& request) {
+                return testcase_item_mutation_service::create_testcase(
+                    context.db_connection_ref(),
+                    request.problem_reference_value,
+                    request.testcase_value
+                );
+            },
             problem_json_serializer::make_versioned_testcase_created_object,
             http_endpoint::spec_options{
                 .success_status = boost::beast::http::status::created
@@ -66,13 +82,19 @@ namespace{
             [testcase_reference_value](const http_guard::guard_context&,
                 const auth_dto::identity&,
                 const problem_dto::testcase& testcase_value)
-                -> command_expected<update_testcase_action::command> {
-                return update_testcase_action::command{
+                -> command_expected<update_testcase_request> {
+                return update_testcase_request{
                     .testcase_reference_value = testcase_reference_value,
                     .testcase_value = testcase_value
                 };
             },
-            http_endpoint::make_db_execute(update_testcase_action::execute),
+            [](auto& context, const update_testcase_request& request) {
+                return testcase_item_mutation_service::set_testcase_and_get(
+                    context.db_connection_ref(),
+                    request.testcase_reference_value,
+                    request.testcase_value
+                );
+            },
             problem_json_serializer::make_versioned_testcase_object,
             auth_guard::make_admin_guard(),
             request_parse_guard::make_json_guard<problem_dto::testcase>(
@@ -88,13 +110,15 @@ namespace{
         return http_endpoint::make_guarded_json_spec(
             [problem_id, testcase_order](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> command_expected<delete_testcase_action::command> {
-                return delete_testcase_action::command{
+                -> command_expected<problem_dto::testcase_ref> {
+                return problem_dto::testcase_ref{
                     .problem_id = problem_id,
                     .testcase_order = testcase_order
                 };
             },
-            http_endpoint::make_db_execute(delete_testcase_action::execute),
+            http_endpoint::make_db_execute(
+                testcase_item_mutation_service::delete_testcase
+            ),
             make_problem_message_serializer("problem testcase deleted"),
             auth_guard::make_admin_guard()
         );

@@ -1,10 +1,7 @@
 #include "http_handler/submission_query_handler.hpp"
 
-#include "application/get_submission_status_batch_query.hpp"
-#include "application/get_submission_detail_query.hpp"
-#include "application/get_submission_history_query.hpp"
 #include "application/get_submission_source_query.hpp"
-#include "application/list_submissions_query.hpp"
+#include "db_service/submission_query_service.hpp"
 #include "dto/submission_request_dto.hpp"
 #include "dto/submission_response_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
@@ -17,6 +14,11 @@
 namespace{
     using response_type = submission_query_handler::response_type;
 
+    struct list_submissions_request{
+        submission_request_dto::list_filter filter_value;
+        std::optional<std::int64_t> viewer_user_id_opt = std::nullopt;
+    };
+
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
 
@@ -24,12 +26,12 @@ namespace{
         return http_endpoint::make_guarded_json_spec(
             [submission_id](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> command_expected<get_submission_history_query::command> {
-                return get_submission_history_query::command{
-                    .submission_id = submission_id
-                };
+                -> command_expected<std::int64_t> {
+                return submission_id;
             },
-            http_endpoint::make_db_execute(get_submission_history_query::execute),
+            http_endpoint::make_db_execute(
+                submission_query_service::get_submission_history
+            ),
             [submission_id](
                 const submission_response_dto::history_list& history_values
             ) {
@@ -64,12 +66,12 @@ namespace{
     auto make_get_submission_spec(std::int64_t submission_id){
         return http_endpoint::make_guarded_json_spec(
             [submission_id](const http_guard::guard_context&)
-                -> command_expected<get_submission_detail_query::command> {
-                return get_submission_detail_query::command{
-                    .submission_id = submission_id
-                };
+                -> command_expected<std::int64_t> {
+                return submission_id;
             },
-            http_endpoint::make_db_execute(get_submission_detail_query::execute),
+            http_endpoint::make_db_execute(
+                submission_query_service::get_submission_detail
+            ),
             submission_json_serializer::make_detail_object
         );
     }
@@ -79,7 +81,12 @@ namespace{
             request_parse_guard::make_json_guard<
                 submission_request_dto::status_batch_request
             >(submission_request_parser::parse_status_batch_request),
-            http_endpoint::make_db_execute(get_submission_status_batch_query::execute),
+            [](auto& context, const submission_request_dto::status_batch_request& request) {
+                return submission_query_service::get_submission_status_snapshots(
+                    context.db_connection_ref(),
+                    request.submission_ids
+                );
+            },
             submission_json_serializer::make_status_snapshot_batch_object
         );
     }
@@ -89,15 +96,21 @@ namespace{
             [](const http_guard::guard_context&,
                 const std::optional<auth_dto::identity>& auth_identity_opt,
                 const submission_request_dto::list_filter& filter_value)
-                -> command_expected<list_submissions_query::command> {
-                return list_submissions_query::command{
+                -> command_expected<list_submissions_request> {
+                return list_submissions_request{
                     .filter_value = filter_value,
                     .viewer_user_id_opt = auth_guard::get_viewer_user_id(
                         auth_identity_opt
                     )
                 };
             },
-            http_endpoint::make_db_execute(list_submissions_query::execute),
+            [](auto& context, const list_submissions_request& request) {
+                return submission_query_service::list_submissions(
+                    context.db_connection_ref(),
+                    request.filter_value,
+                    request.viewer_user_id_opt
+                );
+            },
             submission_json_serializer::make_list_object,
             auth_guard::make_optional_auth_guard(),
             request_parse_guard::make_submission_list_filter_guard()

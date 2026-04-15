@@ -1,6 +1,6 @@
 #include "http_handler/testcase_move_command_handler.hpp"
 
-#include "application/testcase_action.hpp"
+#include "db_service/testcase_item_mutation_service.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_guard/auth_guard.hpp"
@@ -14,6 +14,11 @@
 namespace{
     using context_type = request_context;
     using response_type = request_context::response_type;
+
+    struct move_testcase_request{
+        problem_dto::testcase_ref testcase_reference_value;
+        std::int32_t target_testcase_order = 0;
+    };
 
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
@@ -34,8 +39,8 @@ namespace{
             [problem_id](const http_guard::guard_context&,
                 const auth_dto::identity&,
                 const problem_dto::testcase_move_request& testcase_move_request)
-                -> command_expected<move_testcase_action::command> {
-                return move_testcase_action::command{
+                -> command_expected<move_testcase_request> {
+                return move_testcase_request{
                     .testcase_reference_value = problem_dto::testcase_ref{
                         .problem_id = problem_id,
                         .testcase_order = testcase_move_request.source_testcase_order
@@ -43,7 +48,13 @@ namespace{
                     .target_testcase_order = testcase_move_request.target_testcase_order
                 };
             },
-            http_endpoint::make_db_execute(move_testcase_action::execute),
+            [](auto& context, const move_testcase_request& request) {
+                return testcase_item_mutation_service::move_testcase(
+                    context.db_connection_ref(),
+                    request.testcase_reference_value,
+                    request.target_testcase_order
+                );
+            },
             make_problem_message_serializer("problem testcase moved"),
             auth_guard::make_admin_guard(),
             problem_guard::make_exists_guard(problem_reference_value),

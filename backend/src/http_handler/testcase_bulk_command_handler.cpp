@@ -1,7 +1,7 @@
 #include "http_handler/testcase_bulk_command_handler.hpp"
 
 #include "application/replace_testcases_action.hpp"
-#include "application/testcase_action.hpp"
+#include "db_service/testcase_bulk_mutation_service.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_guard/auth_guard.hpp"
@@ -56,10 +56,12 @@ namespace{
         return http_endpoint::make_guarded_json_spec(
             [problem_reference_value](const http_guard::guard_context&,
                 const auth_dto::identity&)
-                -> command_expected<delete_all_testcases_action::command> {
+                -> std::expected<problem_dto::reference, response_type> {
                 return problem_reference_value;
             },
-            http_endpoint::make_db_execute(delete_all_testcases_action::execute),
+            http_endpoint::make_db_execute(
+                testcase_bulk_mutation_service::delete_all_testcases
+            ),
             make_problem_message_serializer("problem testcases deleted"),
             auth_guard::make_admin_guard(),
             problem_guard::make_exists_guard(problem_reference_value)

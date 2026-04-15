@@ -1,8 +1,7 @@
 #include "http_handler/system_query_handler.hpp"
 
-#include "application/get_system_status_query.hpp"
-
 #include "common/language_util.hpp"
+#include "db_service/system_service.hpp"
 #include "http_core/http_response_util.hpp"
 #include "http_core/http_runtime_status_provider.hpp"
 #include "http_endpoint/endpoint.hpp"
@@ -10,8 +9,15 @@
 #include "serializer/common_json_serializer.hpp"
 #include "serializer/system_json_serializer.hpp"
 
+#include <chrono>
+
 namespace{
     using response_type = system_query_handler::response_type;
+
+    struct system_status_request{
+        system_dto::http_runtime_snapshot http_runtime_snapshot;
+        std::chrono::milliseconds judge_heartbeat_stale_after{0};
+    };
 
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
@@ -44,7 +50,7 @@ namespace{
         return http_endpoint::make_guarded_json_spec(
             [](const http_guard::guard_context& context,
                 const auth_dto::identity&)
-                -> command_expected<get_system_status_query::command> {
+                -> command_expected<system_status_request> {
                 if(!context.request_context_ref().has_http_runtime_status_provider()){
                     return std::unexpected(
                         http_response_util::create_internal_server_error(
@@ -57,12 +63,18 @@ namespace{
 
                 const auto& provider =
                     context.request_context_ref().http_runtime_status_provider_ref();
-                return get_system_status_query::command{
+                return system_status_request{
                     .http_runtime_snapshot = provider.snapshot(),
                     .judge_heartbeat_stale_after = provider.judge_heartbeat_stale_after()
                 };
             },
-            http_endpoint::make_db_execute(get_system_status_query::execute),
+            [](auto& context, const system_status_request& request) {
+                return system_service::get_status(
+                    context.db_connection_ref(),
+                    request.http_runtime_snapshot,
+                    request.judge_heartbeat_stale_after
+                );
+            },
             system_json_serializer::make_status_object,
             auth_guard::make_admin_guard()
         );

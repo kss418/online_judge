@@ -9,6 +9,6 @@ auth_router::response_type auth_router::route(
     return http_route::dispatch_route_table(
         context,
         path,
-        auth_route_groups::all_routes()
+        auth_route_groups::command_routes()
     );
 }
