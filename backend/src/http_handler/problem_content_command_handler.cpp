@@ -7,6 +7,7 @@
 #include "dto/problem_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_endpoint/http_error_mapper.hpp"
+#include "http_handler/handler_spec_helper.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
 #include "http_guard/request_parse_guard.hpp"
@@ -30,18 +31,11 @@ namespace{
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
 
-    auto make_problem_message_serializer(std::string_view message){
-        return [message](const problem_dto::mutation_result& mutation_value) {
-            return problem_json_serializer::make_message_object(
-                message,
-                mutation_value
-            );
-        };
-    }
-
     auto make_put_limits_spec(std::int64_t problem_id){
-        return http_endpoint::make_guarded_json_spec(
-            [problem_id](const http_guard::guard_context&,
+        return http_handler_spec::make_single_path_value_json_spec(
+            problem_id,
+            [](const http_guard::guard_context&,
+                std::int64_t problem_id,
                 const auth_dto::identity&,
                 const problem_content_dto::limits& limits_value)
                 -> command_expected<set_problem_limits_action::command> {
@@ -50,8 +44,11 @@ namespace{
                     .limits_value = limits_value
                 };
             },
-            http_endpoint::make_db_execute(set_problem_limits_action::execute),
-            make_problem_message_serializer("problem limits updated"),
+            set_problem_limits_action::execute,
+            http_handler_spec::make_json_message_serializer(
+                "problem limits updated",
+                problem_json_serializer::make_message_object
+            ),
             auth_guard::make_admin_guard(),
             request_parse_guard::make_json_guard<problem_content_dto::limits>(
                 problem_content_request_parser::parse_limits
@@ -60,8 +57,10 @@ namespace{
     }
 
     auto make_put_statement_spec(std::int64_t problem_id){
-        return http_endpoint::make_guarded_json_spec(
-            [problem_id](const http_guard::guard_context&,
+        return http_handler_spec::make_single_path_value_json_spec(
+            problem_id,
+            [](const http_guard::guard_context&,
+                std::int64_t problem_id,
                 const auth_dto::identity&,
                 const problem_content_dto::statement& statement_value)
                 -> command_expected<set_problem_statement_action::command> {
@@ -70,8 +69,11 @@ namespace{
                     .statement_value = statement_value
                 };
             },
-            http_endpoint::make_db_execute(set_problem_statement_action::execute),
-            make_problem_message_serializer("problem statement updated"),
+            set_problem_statement_action::execute,
+            http_handler_spec::make_json_message_serializer(
+                "problem statement updated",
+                problem_json_serializer::make_message_object
+            ),
             auth_guard::make_admin_guard(),
             request_parse_guard::make_json_guard<problem_content_dto::statement>(
                 problem_content_request_parser::parse_statement
@@ -80,19 +82,19 @@ namespace{
     }
 
     auto make_post_sample_spec(std::int64_t problem_id){
-        problem_dto::reference problem_reference_value{problem_id};
-
-        return http_endpoint::make_guarded_json_spec(
-            [problem_reference_value](const http_guard::guard_context&,
+        return http_handler_spec::make_admin_problem_json_spec(
+            problem_id,
+            [](const http_guard::guard_context&,
+                std::int64_t problem_id,
                 const auth_dto::identity&)
                 -> command_expected<create_problem_sample_request> {
                 return create_problem_sample_request{
-                    .problem_reference_value = problem_reference_value
+                    .problem_reference_value = problem_dto::reference{problem_id}
                 };
             },
-            [](auto& context, const create_problem_sample_request& request) {
+            [](auto& db_connection, const create_problem_sample_request& request) {
                 return problem_content_service::create_sample(
-                    context.db_connection_ref(),
+                    db_connection,
                     request.problem_reference_value,
                     problem_content_dto::sample{}
                 );
@@ -100,9 +102,7 @@ namespace{
             problem_json_serializer::make_versioned_sample_created_object,
             http_endpoint::spec_options{
                 .success_status = boost::beast::http::status::created
-            },
-            auth_guard::make_admin_guard(),
-            problem_guard::make_exists_guard(problem_reference_value)
+            }
         );
     }
 
@@ -138,21 +138,22 @@ namespace{
     }
 
     auto make_delete_sample_spec(std::int64_t problem_id){
-        problem_dto::reference problem_reference_value{problem_id};
-
-        return http_endpoint::make_guarded_json_spec(
-            [problem_reference_value](const http_guard::guard_context&,
+        return http_handler_spec::make_admin_problem_json_spec(
+            problem_id,
+            [](const http_guard::guard_context&,
+                std::int64_t problem_id,
                 const auth_dto::identity&)
                 -> command_expected<problem_dto::reference> {
-                return problem_reference_value;
+                return problem_dto::reference{problem_id};
             },
-            http_endpoint::make_db_execute(problem_content_service::delete_sample),
-            make_problem_message_serializer("problem sample deleted"),
+            problem_content_service::delete_sample,
+            http_handler_spec::make_json_message_serializer(
+                "problem sample deleted",
+                problem_json_serializer::make_message_object
+            ),
             http_endpoint::spec_options{
                 .error_response = http_error_mapper::delete_sample_error()
-            },
-            auth_guard::make_admin_guard(),
-            problem_guard::make_exists_guard(problem_reference_value)
+            }
         );
     }
 }

@@ -3,6 +3,7 @@
 #include "db_service/testcase_item_mutation_service.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
+#include "http_handler/handler_spec_helper.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
 #include "http_guard/request_parse_guard.hpp"
@@ -28,31 +29,22 @@ namespace{
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
 
-    auto make_problem_message_serializer(std::string_view message){
-        return [message](const problem_dto::mutation_result& mutation_value) {
-            return problem_json_serializer::make_message_object(
-                message,
-                mutation_value
-            );
-        };
-    }
-
     auto make_post_testcase_spec(std::int64_t problem_id){
-        problem_dto::reference problem_reference_value{problem_id};
-
-        return http_endpoint::make_guarded_json_spec(
-            [problem_reference_value](const http_guard::guard_context&,
+        return http_handler_spec::make_single_path_value_json_spec(
+            problem_id,
+            [](const http_guard::guard_context&,
+                std::int64_t problem_id,
                 const auth_dto::identity&,
                 const problem_dto::testcase& testcase_value)
                 -> command_expected<create_testcase_request> {
                 return create_testcase_request{
-                    .problem_reference_value = problem_reference_value,
+                    .problem_reference_value = problem_dto::reference{problem_id},
                     .testcase_value = testcase_value
                 };
             },
-            [](auto& context, const create_testcase_request& request) {
+            [](auto& db_connection, const create_testcase_request& request) {
                 return testcase_item_mutation_service::create_testcase(
-                    context.db_connection_ref(),
+                    db_connection,
                     request.problem_reference_value,
                     request.testcase_value
                 );
@@ -65,7 +57,7 @@ namespace{
             request_parse_guard::make_json_guard<problem_dto::testcase>(
                 problem_request_parser::parse_testcase
             ),
-            problem_guard::make_exists_guard(problem_reference_value)
+            problem_guard::make_exists_guard(problem_dto::reference{problem_id})
         );
     }
 
@@ -73,13 +65,13 @@ namespace{
         std::int64_t problem_id,
         std::int32_t testcase_order
     ){
-        problem_dto::testcase_ref testcase_reference_value{
-            .problem_id = problem_id,
-            .testcase_order = testcase_order
-        };
-
-        return http_endpoint::make_guarded_json_spec(
-            [testcase_reference_value](const http_guard::guard_context&,
+        return http_handler_spec::make_single_path_value_json_spec(
+            problem_dto::testcase_ref{
+                .problem_id = problem_id,
+                .testcase_order = testcase_order
+            },
+            [](const http_guard::guard_context&,
+                const problem_dto::testcase_ref& testcase_reference_value,
                 const auth_dto::identity&,
                 const problem_dto::testcase& testcase_value)
                 -> command_expected<update_testcase_request> {
@@ -88,9 +80,9 @@ namespace{
                     .testcase_value = testcase_value
                 };
             },
-            [](auto& context, const update_testcase_request& request) {
+            [](auto& db_connection, const update_testcase_request& request) {
                 return testcase_item_mutation_service::set_testcase_and_get(
-                    context.db_connection_ref(),
+                    db_connection,
                     request.testcase_reference_value,
                     request.testcase_value
                 );
@@ -107,19 +99,22 @@ namespace{
         std::int64_t problem_id,
         std::int32_t testcase_order
     ){
-        return http_endpoint::make_guarded_json_spec(
-            [problem_id, testcase_order](const http_guard::guard_context&,
+        return http_handler_spec::make_single_path_value_json_spec(
+            problem_dto::testcase_ref{
+                .problem_id = problem_id,
+                .testcase_order = testcase_order
+            },
+            [](const http_guard::guard_context&,
+                const problem_dto::testcase_ref& testcase_reference_value,
                 const auth_dto::identity&)
                 -> command_expected<problem_dto::testcase_ref> {
-                return problem_dto::testcase_ref{
-                    .problem_id = problem_id,
-                    .testcase_order = testcase_order
-                };
+                return testcase_reference_value;
             },
-            http_endpoint::make_db_execute(
-                testcase_item_mutation_service::delete_testcase
+            testcase_item_mutation_service::delete_testcase,
+            http_handler_spec::make_json_message_serializer(
+                "problem testcase deleted",
+                problem_json_serializer::make_message_object
             ),
-            make_problem_message_serializer("problem testcase deleted"),
             auth_guard::make_admin_guard()
         );
     }

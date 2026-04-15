@@ -2,6 +2,7 @@
 
 #include "db_service/user_service.hpp"
 #include "http_endpoint/endpoint.hpp"
+#include "http_handler/handler_spec_helper.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "serializer/user_json_serializer.hpp"
 
@@ -10,30 +11,27 @@ namespace{
     using response_type = request_context::response_type;
 
     auto make_get_me_submission_ban_spec(){
-        return http_endpoint::make_guarded_json_spec(
+        return http_handler_spec::make_auth_identity_json_spec(
             [](const http_guard::guard_context&,
                 const auth_dto::identity& auth_identity_value)
                 -> std::expected<std::int64_t, response_type> {
                 return auth_identity_value.user_id;
             },
-            http_endpoint::make_db_execute(
-                user_service::get_submission_ban_status
-            ),
-            user_json_serializer::make_submission_ban_status_object,
-            auth_guard::make_auth_guard()
+            user_service::get_submission_ban_status,
+            user_json_serializer::make_submission_ban_status_object
         );
     }
 
     auto make_get_user_submission_ban_spec(std::int64_t user_id){
-        return http_endpoint::make_guarded_json_spec(
-            [user_id](const http_guard::guard_context&,
+        return http_handler_spec::make_single_path_value_json_spec(
+            user_id,
+            [](const http_guard::guard_context&,
+                std::int64_t user_id,
                 const auth_dto::identity&)
                 -> std::expected<std::int64_t, response_type> {
                 return user_id;
             },
-            http_endpoint::make_db_execute(
-                user_service::get_submission_ban_status
-            ),
+            user_service::get_submission_ban_status,
             user_json_serializer::make_submission_ban_status_object,
             auth_guard::make_admin_guard()
         );

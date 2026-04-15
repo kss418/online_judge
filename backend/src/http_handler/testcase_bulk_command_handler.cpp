@@ -4,6 +4,7 @@
 #include "db_service/testcase_bulk_mutation_service.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
+#include "http_handler/handler_spec_helper.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
 #include "http_guard/testcase_upload_guard.hpp"
@@ -18,18 +19,11 @@ namespace{
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
 
-    auto make_problem_message_serializer(std::string_view message){
-        return [message](const problem_dto::mutation_result& mutation_value) {
-            return problem_json_serializer::make_message_object(
-                message,
-                mutation_value
-            );
-        };
-    }
-
     auto make_post_testcase_zip_spec(std::int64_t problem_id){
-        return http_endpoint::make_guarded_json_spec(
-            [problem_id](const http_guard::guard_context&,
+        return http_handler_spec::make_single_path_value_json_spec(
+            problem_id,
+            [](const http_guard::guard_context&,
+                std::int64_t problem_id,
                 const auth_dto::identity&,
                 const std::vector<problem_dto::testcase>& testcase_values)
                 -> command_expected<replace_testcases_action::command> {
@@ -38,33 +32,30 @@ namespace{
                     .testcase_values = testcase_values
                 };
             },
-            http_endpoint::make_db_execute(replace_testcases_action::execute),
-            [](const problem_dto::testcase_count_mutation_result& testcase_count_value) {
-                return problem_json_serializer::make_testcase_count_message_object(
-                    "problem testcases uploaded",
-                    testcase_count_value
-                );
-            },
+            replace_testcases_action::execute,
+            http_handler_spec::make_json_message_serializer(
+                "problem testcases uploaded",
+                problem_json_serializer::make_testcase_count_message_object
+            ),
             auth_guard::make_admin_guard(),
             testcase_upload_guard::make_testcase_zip_guard()
         );
     }
 
     auto make_delete_all_testcases_spec(std::int64_t problem_id){
-        problem_dto::reference problem_reference_value{problem_id};
-
-        return http_endpoint::make_guarded_json_spec(
-            [problem_reference_value](const http_guard::guard_context&,
+        return http_handler_spec::make_admin_problem_json_spec(
+            problem_id,
+            [](const http_guard::guard_context&,
+                std::int64_t problem_id,
                 const auth_dto::identity&)
                 -> std::expected<problem_dto::reference, response_type> {
-                return problem_reference_value;
+                return problem_dto::reference{problem_id};
             },
-            http_endpoint::make_db_execute(
-                testcase_bulk_mutation_service::delete_all_testcases
-            ),
-            make_problem_message_serializer("problem testcases deleted"),
-            auth_guard::make_admin_guard(),
-            problem_guard::make_exists_guard(problem_reference_value)
+            testcase_bulk_mutation_service::delete_all_testcases,
+            http_handler_spec::make_json_message_serializer(
+                "problem testcases deleted",
+                problem_json_serializer::make_message_object
+            )
         );
     }
 }

@@ -4,6 +4,7 @@
 #include "db_service/auth_service.hpp"
 #include "db_service/user_service.hpp"
 #include "http_endpoint/endpoint.hpp"
+#include "http_handler/handler_spec_helper.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/request_parse_guard.hpp"
 #include "request_parser/user_request_parser.hpp"
@@ -31,8 +32,10 @@ namespace{
         std::int64_t user_id,
         std::int32_t permission_level
     ){
-        return http_endpoint::make_guarded_json_spec(
-            [user_id, permission_level](const http_guard::guard_context&,
+        return http_handler_spec::make_single_path_value_json_spec(
+            user_id,
+            [permission_level](const http_guard::guard_context&,
+                std::int64_t user_id,
                 const auth_dto::identity&)
                 -> command_expected<update_user_permission_request> {
                 return update_user_permission_request{
@@ -40,9 +43,9 @@ namespace{
                     .permission_level = permission_level
                 };
             },
-            [](auto& context, const update_user_permission_request& request) {
+            [](auto& db_connection, const update_user_permission_request& request) {
                 return auth_service::update_permission_level(
-                    context.db_connection_ref(),
+                    db_connection,
                     request.user_id,
                     request.permission_level
                 );
@@ -66,8 +69,10 @@ namespace{
     }
 
     auto make_post_user_submission_ban_spec(std::int64_t user_id){
-        return http_endpoint::make_guarded_json_spec(
-            [user_id](const http_guard::guard_context&,
+        return http_handler_spec::make_single_path_value_json_spec(
+            user_id,
+            [](const http_guard::guard_context&,
+                std::int64_t user_id,
                 const auth_dto::identity&,
                 const user_dto::submission_ban_request& submission_ban_request)
                 -> command_expected<create_submission_ban_request> {
@@ -76,9 +81,9 @@ namespace{
                     .duration_minutes = submission_ban_request.duration_minutes
                 };
             },
-            [](auto& context, const create_submission_ban_request& request) {
+            [](auto& db_connection, const create_submission_ban_request& request) {
                 return user_service::create_submission_ban(
-                    context.db_connection_ref(),
+                    db_connection,
                     request.user_id,
                     request.duration_minutes
                 );
@@ -95,15 +100,15 @@ namespace{
     }
 
     auto make_delete_user_submission_ban_spec(std::int64_t user_id){
-        return http_endpoint::make_guarded_message_spec(
-            [user_id](const http_guard::guard_context&,
+        return http_handler_spec::make_single_path_value_message_spec(
+            user_id,
+            [](const http_guard::guard_context&,
+                std::int64_t user_id,
                 const auth_dto::identity&)
                 -> command_expected<std::int64_t> {
                 return user_id;
             },
-            http_endpoint::make_db_execute(
-                user_service::clear_submission_banned_until
-            ),
+            user_service::clear_submission_banned_until,
             []() -> std::string_view {
                 return "user submission ban cleared";
             },

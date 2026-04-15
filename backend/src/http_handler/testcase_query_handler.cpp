@@ -3,6 +3,7 @@
 #include "db_service/testcase_query_service.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
+#include "http_handler/handler_spec_helper.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
 #include "serializer/problem_json_serializer.hpp"
@@ -17,9 +18,10 @@ namespace{
         std::int64_t problem_id,
         std::int32_t testcase_order
     ){
-        problem_dto::reference problem_reference_value{problem_id};
-        return http_endpoint::make_guarded_json_spec(
-            [problem_id, testcase_order](const http_guard::guard_context&,
+        return http_handler_spec::make_single_path_value_json_spec(
+            problem_id,
+            [testcase_order](const http_guard::guard_context&,
+                std::int64_t problem_id,
                 const auth_dto::identity&)
                 -> command_expected<problem_dto::testcase_ref> {
                 return problem_dto::testcase_ref{
@@ -27,27 +29,25 @@ namespace{
                     .testcase_order = testcase_order
                 };
             },
-            http_endpoint::make_db_execute(testcase_query_service::get_testcase),
+            testcase_query_service::get_testcase,
             problem_json_serializer::make_testcase_object,
             auth_guard::make_admin_guard(),
-            problem_guard::make_exists_guard(problem_reference_value)
+            problem_guard::make_exists_guard(problem_dto::reference{problem_id})
         );
     }
 
     auto make_get_testcases_spec(std::int64_t problem_id){
-        problem_dto::reference problem_reference_value{problem_id};
-        return http_endpoint::make_guarded_json_spec(
-            [problem_reference_value](const http_guard::guard_context&,
+        return http_handler_spec::make_single_path_value_json_spec(
+            problem_id,
+            [](const http_guard::guard_context&, std::int64_t problem_id,
                 const auth_dto::identity&)
                 -> command_expected<problem_dto::reference> {
-                return problem_reference_value;
+                return problem_dto::reference{problem_id};
             },
-            http_endpoint::make_db_execute(
-                testcase_query_service::list_testcase_summaries
-            ),
+            testcase_query_service::list_testcase_summaries,
             problem_json_serializer::make_testcase_summary_list_object,
             auth_guard::make_admin_guard(),
-            problem_guard::make_exists_guard(problem_reference_value)
+            problem_guard::make_exists_guard(problem_dto::reference{problem_id})
         );
     }
 }

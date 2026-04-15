@@ -4,6 +4,7 @@
 #include "db_service/submission_command_service.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
+#include "http_handler/handler_spec_helper.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
 #include "http_guard/request_parse_guard.hpp"
@@ -22,15 +23,6 @@ namespace{
 
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
-
-    auto make_problem_message_serializer(std::string_view message){
-        return [message](const problem_dto::mutation_result& mutation_value) {
-            return problem_json_serializer::make_message_object(
-                message,
-                mutation_value
-            );
-        };
-    }
 
     auto make_post_problem_spec(){
         return http_endpoint::make_guarded_json_spec(
@@ -53,27 +45,29 @@ namespace{
     }
 
     auto make_put_problem_spec(std::int64_t problem_id){
-        problem_dto::reference problem_reference_value{problem_id};
-        return http_endpoint::make_guarded_json_spec(
-            [problem_reference_value](const http_guard::guard_context&,
+        return http_handler_spec::make_admin_problem_json_spec(
+            problem_id,
+            [](const http_guard::guard_context&,
+                std::int64_t problem_id,
                 const auth_dto::identity&,
                 const problem_dto::update_request& update_request_value)
                 -> command_expected<update_problem_request> {
                 return update_problem_request{
-                    .problem_reference_value = problem_reference_value,
+                    .problem_reference_value = problem_dto::reference{problem_id},
                     .update_request_value = update_request_value
                 };
             },
-            [](auto& context, const update_problem_request& request) {
+            [](auto& db_connection, const update_problem_request& request) {
                 return problem_command_service::update_problem(
-                    context.db_connection_ref(),
+                    db_connection,
                     request.problem_reference_value,
                     request.update_request_value
                 );
             },
-            make_problem_message_serializer("problem updated"),
-            auth_guard::make_admin_guard(),
-            problem_guard::make_exists_guard(problem_reference_value),
+            http_handler_spec::make_json_message_serializer(
+                "problem updated",
+                problem_json_serializer::make_message_object
+            ),
             request_parse_guard::make_json_guard<problem_dto::update_request>(
                 problem_request_parser::parse_update_request
             )
@@ -81,36 +75,34 @@ namespace{
     }
 
     auto make_delete_problem_spec(std::int64_t problem_id){
-        problem_dto::reference problem_reference_value{problem_id};
-        return http_endpoint::make_guarded_message_spec(
-            [problem_reference_value](const http_guard::guard_context&,
+        return http_handler_spec::make_admin_problem_message_spec(
+            problem_id,
+            [](const http_guard::guard_context&,
+                std::int64_t problem_id,
                 const auth_dto::identity&)
                 -> command_expected<problem_dto::reference> {
-                return problem_reference_value;
+                return problem_dto::reference{problem_id};
             },
-            http_endpoint::make_db_execute(problem_command_service::delete_problem),
+            problem_command_service::delete_problem,
             []() -> std::string_view {
                 return "problem deleted";
-            },
-            auth_guard::make_admin_guard(),
-            problem_guard::make_exists_guard(problem_reference_value)
+            }
         );
     }
 
     auto make_post_problem_rejudge_spec(std::int64_t problem_id){
-        problem_dto::reference problem_reference_value{problem_id};
-        return http_endpoint::make_guarded_message_spec(
-            [problem_id](const http_guard::guard_context&,
+        return http_handler_spec::make_admin_problem_message_spec(
+            problem_id,
+            [](const http_guard::guard_context&,
+                std::int64_t problem_id,
                 const auth_dto::identity&)
                 -> command_expected<std::int64_t> {
                 return problem_id;
             },
-            http_endpoint::make_db_execute(submission_command_service::rejudge_problem),
+            submission_command_service::rejudge_problem,
             []() -> std::string_view {
                 return "problem submissions requeued";
-            },
-            auth_guard::make_admin_guard(),
-            problem_guard::make_exists_guard(problem_reference_value)
+            }
         );
     }
 }

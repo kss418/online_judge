@@ -3,6 +3,7 @@
 #include "db_service/testcase_item_mutation_service.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
+#include "http_handler/handler_spec_helper.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/problem_guard.hpp"
 #include "http_guard/request_parse_guard.hpp"
@@ -23,20 +24,11 @@ namespace{
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
 
-    auto make_problem_message_serializer(std::string_view message){
-        return [message](const problem_dto::mutation_result& mutation_value) {
-            return problem_json_serializer::make_message_object(
-                message,
-                mutation_value
-            );
-        };
-    }
-
     auto make_move_testcase_spec(std::int64_t problem_id){
-        problem_dto::reference problem_reference_value{problem_id};
-
-        return http_endpoint::make_guarded_json_spec(
-            [problem_id](const http_guard::guard_context&,
+        return http_handler_spec::make_admin_problem_json_spec(
+            problem_id,
+            [](const http_guard::guard_context&,
+                std::int64_t problem_id,
                 const auth_dto::identity&,
                 const problem_dto::testcase_move_request& testcase_move_request)
                 -> command_expected<move_testcase_request> {
@@ -48,16 +40,17 @@ namespace{
                     .target_testcase_order = testcase_move_request.target_testcase_order
                 };
             },
-            [](auto& context, const move_testcase_request& request) {
+            [](auto& db_connection, const move_testcase_request& request) {
                 return testcase_item_mutation_service::move_testcase(
-                    context.db_connection_ref(),
+                    db_connection,
                     request.testcase_reference_value,
                     request.target_testcase_order
                 );
             },
-            make_problem_message_serializer("problem testcase moved"),
-            auth_guard::make_admin_guard(),
-            problem_guard::make_exists_guard(problem_reference_value),
+            http_handler_spec::make_json_message_serializer(
+                "problem testcase moved",
+                problem_json_serializer::make_message_object
+            ),
             request_parse_guard::make_json_guard<problem_dto::testcase_move_request>(
                 problem_request_parser::parse_testcase_move_request
             )

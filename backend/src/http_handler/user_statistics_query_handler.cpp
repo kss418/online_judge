@@ -2,7 +2,7 @@
 
 #include "application/get_user_submission_statistics_query.hpp"
 #include "http_endpoint/endpoint.hpp"
-#include "http_guard/auth_guard.hpp"
+#include "http_handler/handler_spec_helper.hpp"
 #include "serializer/user_json_serializer.hpp"
 
 namespace{
@@ -13,7 +13,7 @@ namespace{
     using command_expected = std::expected<command_type, response_type>;
 
     auto make_get_me_submission_statistics_spec(){
-        return http_endpoint::make_guarded_json_spec(
+        return http_handler_spec::make_auth_identity_json_spec(
             [](const http_guard::guard_context&,
                 const auth_dto::identity& auth_identity_value)
                 -> command_expected<get_user_submission_statistics_query::command> {
@@ -21,25 +21,21 @@ namespace{
                     .user_id = auth_identity_value.user_id
                 };
             },
-            http_endpoint::make_db_execute(
-                get_user_submission_statistics_query::execute
-            ),
-            user_json_serializer::make_submission_statistics_object,
-            auth_guard::make_auth_guard()
+            get_user_submission_statistics_query::execute,
+            user_json_serializer::make_submission_statistics_object
         );
     }
 
     auto make_get_user_submission_statistics_spec(std::int64_t user_id){
-        return http_endpoint::make_guarded_json_spec(
-            [user_id](const http_guard::guard_context&)
+        return http_handler_spec::make_single_path_value_json_spec(
+            user_id,
+            [](const http_guard::guard_context&, std::int64_t user_id)
                 -> command_expected<get_user_submission_statistics_query::command> {
                 return get_user_submission_statistics_query::command{
                     .user_id = user_id
                 };
             },
-            http_endpoint::make_db_execute(
-                get_user_submission_statistics_query::execute
-            ),
+            get_user_submission_statistics_query::execute,
             user_json_serializer::make_submission_statistics_object
         );
     }
