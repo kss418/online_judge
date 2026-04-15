@@ -5,7 +5,6 @@
 #include "http_endpoint/endpoint.hpp"
 #include "http_handler/handler_spec_helper.hpp"
 #include "http_guard/auth_guard.hpp"
-#include "http_guard/problem_guard.hpp"
 #include "http_guard/request_parse_guard.hpp"
 #include "request_parser/problem_request_parser.hpp"
 #include "serializer/problem_json_serializer.hpp"
@@ -30,7 +29,7 @@ namespace{
     using command_expected = std::expected<command_type, response_type>;
 
     auto make_post_testcase_spec(std::int64_t problem_id){
-        return http_handler_spec::make_single_path_value_json_spec(
+        return http_handler_spec::make_admin_problem_json_spec(
             problem_id,
             [](const http_guard::guard_context&,
                 std::int64_t problem_id,
@@ -53,11 +52,9 @@ namespace{
             http_endpoint::spec_options{
                 .success_status = boost::beast::http::status::created
             },
-            auth_guard::make_admin_guard(),
             request_parse_guard::make_json_guard<problem_dto::testcase>(
                 problem_request_parser::parse_testcase
-            ),
-            problem_guard::make_exists_guard(problem_dto::reference{problem_id})
+            )
         );
     }
 
@@ -65,11 +62,9 @@ namespace{
         std::int64_t problem_id,
         std::int32_t testcase_order
     ){
-        return http_handler_spec::make_single_path_value_json_spec(
-            problem_dto::testcase_ref{
-                .problem_id = problem_id,
-                .testcase_order = testcase_order
-            },
+        return http_handler_spec::make_testcase_ref_json_spec(
+            problem_id,
+            testcase_order,
             [](const http_guard::guard_context&,
                 const problem_dto::testcase_ref& testcase_reference_value,
                 const auth_dto::identity&,
@@ -99,11 +94,9 @@ namespace{
         std::int64_t problem_id,
         std::int32_t testcase_order
     ){
-        return http_handler_spec::make_single_path_value_json_spec(
-            problem_dto::testcase_ref{
-                .problem_id = problem_id,
-                .testcase_order = testcase_order
-            },
+        return http_handler_spec::make_testcase_ref_json_spec(
+            problem_id,
+            testcase_order,
             [](const http_guard::guard_context&,
                 const problem_dto::testcase_ref& testcase_reference_value,
                 const auth_dto::identity&)

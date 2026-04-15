@@ -71,7 +71,7 @@ namespace{
     }
 
     auto make_post_user_submission_ban_spec(std::int64_t user_id){
-        return http_handler_spec::make_single_path_value_json_spec(
+        return http_handler_spec::make_admin_user_json_spec(
             user_id,
             [](const http_guard::guard_context&,
                 std::int64_t user_id,
@@ -94,8 +94,6 @@ namespace{
             http_endpoint::spec_options{
                 .success_status = boost::beast::http::status::created
             },
-            auth_guard::make_admin_guard(),
-            user_guard::make_exists_guard(user_id),
             request_parse_guard::make_json_guard<user_dto::submission_ban_request>(
                 user_request_parser::parse_submission_ban_request
             )
@@ -103,7 +101,7 @@ namespace{
     }
 
     auto make_delete_user_submission_ban_spec(std::int64_t user_id){
-        return http_handler_spec::make_single_path_value_message_spec(
+        return http_handler_spec::make_admin_user_message_spec(
             user_id,
             [](const http_guard::guard_context&,
                 std::int64_t user_id,
@@ -114,9 +112,7 @@ namespace{
             user_service::clear_submission_banned_until,
             []() -> std::string_view {
                 return "user submission ban cleared";
-            },
-            auth_guard::make_admin_guard(),
-            user_guard::make_exists_guard(user_id)
+            }
         );
     }
 }

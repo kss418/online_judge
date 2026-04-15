@@ -3,8 +3,6 @@
 #include "db_service/user_service.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_handler/handler_spec_helper.hpp"
-#include "http_guard/auth_guard.hpp"
-#include "http_guard/user_guard.hpp"
 #include "serializer/user_json_serializer.hpp"
 
 namespace{
@@ -24,7 +22,7 @@ namespace{
     }
 
     auto make_get_user_submission_ban_spec(std::int64_t user_id){
-        return http_handler_spec::make_single_path_value_json_spec(
+        return http_handler_spec::make_admin_user_json_spec(
             user_id,
             [](const http_guard::guard_context&,
                 std::int64_t user_id,
@@ -33,9 +31,7 @@ namespace{
                 return user_id;
             },
             user_service::get_submission_ban_status,
-            user_json_serializer::make_submission_ban_status_object,
-            auth_guard::make_admin_guard(),
-            user_guard::make_exists_guard(user_id)
+            user_json_serializer::make_submission_ban_status_object
         );
     }
 }
