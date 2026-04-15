@@ -6,7 +6,7 @@ import { useProblemDetailResource } from '@/composables/adminProblems/useProblem
 import { useProblemEditorDraft } from '@/composables/adminProblems/useProblemEditorDraft'
 import { formatProblemLimit } from '@/composables/adminProblems/problemHelpers'
 import { useProblemListResource } from '@/composables/adminProblems/useProblemListResource'
-import { useProtectedAdminBootstrap } from '@/composables/adminShared/useProtectedAdminBootstrap'
+import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
 import { useProblemSearchQuery } from '@/composables/adminProblems/useProblemSearchQuery'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
@@ -161,32 +161,6 @@ export function useAdminProblemsPage(){
     }
   )
 
-  watch(problemQuery.preferredProblemIdFromRoute, (problemId) => {
-    if (!authState.initialized || !isAuthenticated.value || !canManageProblems.value || !problemId) {
-      return
-    }
-
-    void problemListResource.loadProblems({ preferredProblemId: problemId })
-  })
-
-  watch(
-    () => [
-      problemQuery.routeSearchMode.value,
-      problemQuery.routeTitleSearch.value,
-      problemQuery.routeProblemIdSearch.value
-    ],
-    () => {
-      if (!authState.initialized || !isAuthenticated.value || !canManageProblems.value) {
-        return
-      }
-
-      problemQuery.syncSearchControlsFromRoute()
-      void problemListResource.loadProblems({
-        preferredProblemId: problemQuery.preferredProblemIdForReload.value
-      })
-    }
-  )
-
   function resetPageState(){
     problemQuery.searchMode.value = 'title'
     problemQuery.titleSearchInput.value = ''
@@ -206,7 +180,7 @@ export function useAdminProblemsPage(){
     })
   }
 
-  useProtectedAdminBootstrap({
+  const pageAccess = useProtectedAdminPageAccess({
     authState,
     initializeAuth,
     isAuthenticated,
@@ -219,11 +193,37 @@ export function useAdminProblemsPage(){
         preferredProblemId:
           problemQuery.preferredProblemIdFromRoute.value || problemDetailResource.selectedProblemId.value
       })
-    }
+    },
+    loggedOutMessage: '문제 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
+    deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
   })
+
+  pageAccess.watchWhenAllowed(problemQuery.preferredProblemIdFromRoute, (problemId) => {
+    if (!problemId) {
+      return
+    }
+
+    void problemListResource.loadProblems({ preferredProblemId: problemId })
+  })
+
+  pageAccess.watchWhenAllowed(
+    () => [
+      problemQuery.routeSearchMode.value,
+      problemQuery.routeTitleSearch.value,
+      problemQuery.routeProblemIdSearch.value
+    ],
+    () => {
+      problemQuery.syncSearchControlsFromRoute()
+      void problemListResource.loadProblems({
+        preferredProblemId: problemQuery.preferredProblemIdForReload.value
+      })
+    }
+  )
 
   return {
     authState,
+    accessState: pageAccess.accessState,
+    accessMessage: pageAccess.accessMessage,
     isAuthenticated,
     canManageProblems,
     isLoadingProblems: problemListResource.isLoadingProblems,

@@ -8,29 +8,21 @@
     </div>
 
     <div class="admin-testcases-grid">
-      <label class="field-block">
-        <span class="field-label">입력</span>
-        <textarea
-          :value="section.model.newTestcaseInput"
-          class="admin-testcases-textarea"
-          spellcheck="false"
-          :disabled="Boolean(section.model.busySection)"
-          placeholder="빈 입력도 허용됩니다."
-          @input="handleNewTestcaseInput"
-        />
-      </label>
+      <AdminTextareaPanel
+        :model-value="section.model.newTestcaseInput"
+        label="입력"
+        placeholder="빈 입력도 허용됩니다."
+        :disabled="Boolean(section.model.busySection)"
+        @update:model-value="section.actions.updateNewTestcaseInput"
+      />
 
-      <label class="field-block">
-        <span class="field-label">출력</span>
-        <textarea
-          :value="section.model.newTestcaseOutput"
-          class="admin-testcases-textarea"
-          spellcheck="false"
-          :disabled="Boolean(section.model.busySection)"
-          placeholder="빈 출력도 허용됩니다."
-          @input="handleNewTestcaseOutput"
-        />
-      </label>
+      <AdminTextareaPanel
+        :model-value="section.model.newTestcaseOutput"
+        label="출력"
+        placeholder="빈 출력도 허용됩니다."
+        :disabled="Boolean(section.model.busySection)"
+        @update:model-value="section.actions.updateNewTestcaseOutput"
+      />
     </div>
 
     <div class="admin-testcases-actions">
@@ -49,6 +41,8 @@
 <script setup>
 import { computed } from 'vue'
 
+import AdminTextareaPanel from '@/components/adminShared/AdminTextareaPanel.vue'
+
 const props = defineProps({
   section: {
     type: Object,
@@ -57,14 +51,6 @@ const props = defineProps({
 })
 
 const section = computed(() => props.section)
-
-function handleNewTestcaseInput(event){
-  section.value.actions.updateNewTestcaseInput(event.target.value)
-}
-
-function handleNewTestcaseOutput(event){
-  section.value.actions.updateNewTestcaseOutput(event.target.value)
-}
 
 function handleCreateTestcase(){
   section.value.actions.createTestcase()
@@ -86,24 +72,6 @@ function handleCreateTestcase(){
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
-}
-
-.admin-testcases-textarea {
-  width: 100%;
-  min-height: 12rem;
-  padding: 0.9rem 1rem;
-  border-radius: 18px;
-  border: 1px solid var(--line);
-  background: var(--admin-testcases-nested-surface);
-  color: var(--ink-strong);
-  font: inherit;
-  resize: vertical;
-  line-height: 1.6;
-}
-
-.admin-testcases-textarea:focus {
-  outline: 2px solid rgba(217, 119, 6, 0.18);
-  border-color: rgba(217, 119, 6, 0.5);
 }
 
 .admin-testcases-actions {

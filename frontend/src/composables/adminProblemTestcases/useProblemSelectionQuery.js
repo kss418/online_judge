@@ -1,10 +1,8 @@
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
-import { useAdminProblemSearchControls } from '@/composables/useAdminProblemSearchControls'
-import { useRouteQueryState } from '@/composables/useRouteQueryState'
+import { useAdminProblemSelectionQueryBase } from '@/composables/adminShared/useAdminProblemSelectionQueryBase'
 import {
   buildRouteQuery as buildProblemAdminSearchRouteQuery,
-  normalizeSearchMode,
   parseRouteQuery as parseProblemAdminSearchRouteQuery
 } from '@/queryState/problemAdminSearch'
 import { parsePositiveInteger } from '@/utils/parse'
@@ -17,25 +15,15 @@ export function useProblemSelectionQuery({
   showErrorNotice
 }){
   const selectedProblemId = computed(() => parsePositiveInteger(route.params.problemId) ?? 0)
-  const queryState = useRouteQueryState({
+  const query = useAdminProblemSelectionQueryBase({
     route,
     router,
+    formatCount,
+    selectedProblemId,
+    reloadProblems,
+    showErrorNotice,
     parseQuery: parseProblemAdminSearchRouteQuery,
     buildQuery: buildProblemAdminSearchRouteQuery,
-    createLocalState(){
-      return {
-        searchMode: ref('title'),
-        titleSearchInput: ref(''),
-        problemIdSearchInput: ref('')
-      }
-    },
-    syncLocalState(localState, state){
-      localState.searchMode.value = state.searchMode
-      localState.titleSearchInput.value = state.titleSearch
-      localState.problemIdSearchInput.value = state.problemIdSearch != null
-        ? String(state.problemIdSearch)
-        : ''
-    },
     buildLocation({ query }){
       return {
         name: 'admin-problem-testcases',
@@ -49,23 +37,9 @@ export function useProblemSelectionQuery({
     }
   })
 
-  function buildSearchState(mode, options = {}){
-    const nextMode = normalizeSearchMode(mode)
-
-    return {
-      searchMode: nextMode,
-      titleSearch: nextMode === 'problem-id'
-        ? ''
-        : String(options.title ?? '').trim(),
-      problemIdSearch: nextMode === 'problem-id'
-        ? parsePositiveInteger(options.problemId)
-        : null
-    }
-  }
-
   async function replaceProblemRoute(problemId, options = {}){
     const method = options.push ? 'push' : 'replace'
-    const query = options.query ?? queryState.buildCanonicalQuery(queryState.routeState.value)
+    const nextQuery = options.query ?? query.buildCanonicalQuery(query.routeState.value)
 
     await router[method]({
       name: 'admin-problem-testcases',
@@ -74,17 +48,9 @@ export function useProblemSelectionQuery({
           problemId: String(problemId)
         }
         : {},
-      query
+      query: nextQuery
     })
   }
-  const searchControls = useAdminProblemSearchControls({
-    queryState,
-    selectedProblemId,
-    formatCount,
-    reloadProblems,
-    showErrorNotice,
-    createSearchState: buildSearchState
-  })
 
   async function selectProblem(problemId){
     if (problemId === selectedProblemId.value) {
@@ -98,23 +64,23 @@ export function useProblemSelectionQuery({
 
   return {
     selectedProblemId,
-    searchMode: queryState.localState.searchMode,
-    titleSearchInput: queryState.localState.titleSearchInput,
-    problemIdSearchInput: queryState.localState.problemIdSearchInput,
-    routeSearchMode: searchControls.routeSearchMode,
-    routeTitleSearch: searchControls.routeTitleSearch,
-    routeProblemIdSearch: searchControls.routeProblemIdSearch,
-    routeState: queryState.routeState,
-    hasAppliedSearch: searchControls.hasAppliedSearch,
-    problemListCaption: searchControls.problemListCaption,
-    emptyProblemListMessage: searchControls.emptyProblemListMessage,
-    preferredProblemIdForReload: searchControls.preferredProblemIdForReload,
-    syncSearchControlsFromRoute: searchControls.syncSearchControlsFromRoute,
-    setSearchMode: searchControls.setSearchMode,
-    handleProblemIdSearchInput: searchControls.handleProblemIdSearchInput,
+    searchMode: query.searchMode,
+    titleSearchInput: query.titleSearchInput,
+    problemIdSearchInput: query.problemIdSearchInput,
+    routeSearchMode: query.routeSearchMode,
+    routeTitleSearch: query.routeTitleSearch,
+    routeProblemIdSearch: query.routeProblemIdSearch,
+    routeState: query.routeState,
+    hasAppliedSearch: query.hasAppliedSearch,
+    problemListCaption: query.problemListCaption,
+    emptyProblemListMessage: query.emptyProblemListMessage,
+    preferredProblemIdForReload: query.preferredProblemIdForReload,
+    syncSearchControlsFromRoute: query.syncSearchControlsFromRoute,
+    setSearchMode: query.setSearchMode,
+    handleProblemIdSearchInput: query.handleProblemIdSearchInput,
     replaceProblemRoute,
     selectProblem,
-    submitSearch: searchControls.submitSearch,
-    resetSearch: searchControls.resetSearch
+    submitSearch: query.submitSearch,
+    resetSearch: query.resetSearch
   }
 }

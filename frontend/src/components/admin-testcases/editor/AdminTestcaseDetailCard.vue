@@ -51,9 +51,21 @@
     <AdminTestcaseMetadataHeader :section="metadataSection" />
 
     <div class="admin-testcases-grid">
-      <AdminTestcaseInputPanel :section="inputPanelSection" />
+      <AdminTextareaPanel
+        :model-value="section.model.selectedTestcaseInputDraft"
+        label="입력"
+        placeholder="빈 입력도 허용됩니다."
+        :disabled="Boolean(section.model.busySection)"
+        @update:model-value="section.actions.updateSelectedTestcaseInputDraft"
+      />
 
-      <AdminTestcaseOutputPanel :section="outputPanelSection" />
+      <AdminTextareaPanel
+        :model-value="section.model.selectedTestcaseOutputDraft"
+        label="출력"
+        placeholder="빈 출력도 허용됩니다."
+        :disabled="Boolean(section.model.busySection)"
+        @update:model-value="section.actions.updateSelectedTestcaseOutputDraft"
+      />
     </div>
 
     <div class="admin-testcases-actions">
@@ -81,9 +93,8 @@
 <script setup>
 import { computed } from 'vue'
 
-import AdminTestcaseInputPanel from '@/components/admin-testcases/editor/AdminTestcaseInputPanel.vue'
+import AdminTextareaPanel from '@/components/adminShared/AdminTextareaPanel.vue'
 import AdminTestcaseMetadataHeader from '@/components/admin-testcases/editor/AdminTestcaseMetadataHeader.vue'
-import AdminTestcaseOutputPanel from '@/components/admin-testcases/editor/AdminTestcaseOutputPanel.vue'
 
 const props = defineProps({
   section: {
@@ -103,26 +114,6 @@ const metadataSection = computed(() => ({
   },
   actions: {
     deleteSelectedTestcase: section.value.actions.deleteSelectedTestcase
-  }
-}))
-
-const inputPanelSection = computed(() => ({
-  model: {
-    selectedTestcaseInputDraft: section.value.model.selectedTestcaseInputDraft,
-    busySection: section.value.model.busySection
-  },
-  actions: {
-    updateSelectedTestcaseInputDraft: section.value.actions.updateSelectedTestcaseInputDraft
-  }
-}))
-
-const outputPanelSection = computed(() => ({
-  model: {
-    selectedTestcaseOutputDraft: section.value.model.selectedTestcaseOutputDraft,
-    busySection: section.value.model.busySection
-  },
-  actions: {
-    updateSelectedTestcaseOutputDraft: section.value.actions.updateSelectedTestcaseOutputDraft
   }
 }))
 

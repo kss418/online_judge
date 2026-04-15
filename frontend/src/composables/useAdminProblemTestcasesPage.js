@@ -3,7 +3,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useProblemSelectionQuery } from '@/composables/adminProblemTestcases/useProblemSelectionQuery'
 import { useProblemTestcaseListResource } from '@/composables/adminProblemTestcases/useProblemTestcaseListResource'
-import { useProtectedAdminBootstrap } from '@/composables/adminShared/useProtectedAdminBootstrap'
+import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
 import { formatProblemLimit } from '@/composables/adminProblemTestcases/testcaseHelpers'
 import { useTestcaseEditorDraft } from '@/composables/adminProblemTestcases/useTestcaseEditorDraft'
 import { useTestcaseReorder } from '@/composables/adminProblemTestcases/useTestcaseReorder'
@@ -128,12 +128,25 @@ export function useAdminProblemTestcasesPage(){
     return 'success'
   })
 
-  watch(query.selectedProblemId, () => {
-    resetSelectedProblemState()
+  const pageAccess = useProtectedAdminPageAccess({
+    authState,
+    initializeAuth,
+    isAuthenticated,
+    hasAccess: canManageProblems,
+    onDenied: resetPageState,
+    async onAllowed(){
+      query.syncSearchControlsFromRoute()
+      await listResource.loadProblems({
+        preferredProblemId: query.preferredProblemIdForReload.value
+      })
+      await listResource.loadSelectedProblemData()
+    },
+    loggedOutMessage: '테스트케이스 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
+    deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
+  })
 
-    if (!authState.initialized || !canManageProblems.value) {
-      return
-    }
+  pageAccess.watchWhenAllowed(query.selectedProblemId, () => {
+    resetSelectedProblemState()
 
     if (query.selectedProblemId.value > 0) {
       void listResource.loadSelectedProblemData()
@@ -151,11 +164,7 @@ export function useAdminProblemTestcasesPage(){
     immediate: true
   })
 
-  watch(draft.selectedTestcaseSummary, (testcaseSummary) => {
-    if (!authState.initialized || !canManageProblems.value) {
-      return
-    }
-
+  pageAccess.watchWhenAllowed(draft.selectedTestcaseSummary, (testcaseSummary) => {
     if (!authState.token || query.selectedProblemId.value <= 0 || !testcaseSummary) {
       listResource.clearSelectedTestcaseDetail()
       return
@@ -164,13 +173,9 @@ export function useAdminProblemTestcasesPage(){
     void listResource.loadSelectedTestcaseDetail(testcaseSummary.testcase_order)
   })
 
-  watch(
+  pageAccess.watchWhenAllowed(
     () => [query.routeSearchMode.value, query.routeTitleSearch.value, query.routeProblemIdSearch.value],
     () => {
-      if (!authState.initialized || !isAuthenticated.value || !canManageProblems.value) {
-        return
-      }
-
       query.syncSearchControlsFromRoute()
       void listResource.loadProblems({
         preferredProblemId: query.preferredProblemIdForReload.value
@@ -258,23 +263,10 @@ export function useAdminProblemTestcasesPage(){
     await listResource.loadSelectedProblemData()
   }
 
-  useProtectedAdminBootstrap({
-    authState,
-    initializeAuth,
-    isAuthenticated,
-    hasAccess: canManageProblems,
-    onDenied: resetPageState,
-    async onAllowed(){
-      query.syncSearchControlsFromRoute()
-      await listResource.loadProblems({
-        preferredProblemId: query.preferredProblemIdForReload.value
-      })
-      await listResource.loadSelectedProblemData()
-    }
-  })
-
   return {
     authState,
+    accessState: pageAccess.accessState,
+    accessMessage: pageAccess.accessMessage,
     isAuthenticated,
     canManageProblems,
     selectedProblemId: query.selectedProblemId,

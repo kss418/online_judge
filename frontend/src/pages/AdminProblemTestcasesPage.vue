@@ -1,6 +1,9 @@
 <template>
-  <section class="page-grid single-column">
-    <article class="panel admin-testcases-shell">
+  <AdminSplitWorkspaceShell
+    :access-state="accessState"
+    :access-message="accessMessage"
+  >
+    <template #toolbar>
       <AdminTestcasesToolbar
         :toolbar-status-label="toolbarStatusLabel"
         :toolbar-status-tone="toolbarStatusTone"
@@ -12,65 +15,54 @@
         :selected-problem-id="selectedProblemId"
         @refresh="refreshPage"
       />
+    </template>
 
-      <div v-if="authState.isInitializing" class="empty-state">
-        <p>관리자 권한을 확인하는 중입니다.</p>
-      </div>
+    <template #sidebar>
+      <AdminProblemSelectionSidebar
+        v-model:title-search-input="titleSearchInput"
+        title-search-input-id="admin-testcase-problem-search"
+        problem-id-search-input-id="admin-testcase-problem-id-search"
+        :search-mode="searchMode"
+        :problem-id-search-input="problemIdSearchInput"
+        :is-loading-problems="isLoadingProblems"
+        :busy-section="busySection"
+        :has-applied-search="hasAppliedSearch"
+        :problem-list-caption="problemListCaption"
+        :problem-count="problemCount"
+        :list-error-message="listErrorMessage"
+        :empty-problem-list-message="emptyProblemListMessage"
+        :problems="problems"
+        :selected-problem-id="selectedProblemId"
+        :format-count="formatCount"
+        :format-problem-limit="formatProblemLimit"
+        @set-search-mode="setSearchMode"
+        @problem-id-input="handleProblemIdSearchInput"
+        @submit-search="submitSearch"
+        @reset-search="resetSearch"
+        @select-problem="selectProblem"
+      />
+    </template>
 
-      <div v-else-if="!isAuthenticated" class="empty-state">
-        <p>테스트케이스 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.</p>
-      </div>
-
-      <div v-else-if="!canManageProblems" class="empty-state error-state">
-        <p>이 페이지는 관리자만 접근할 수 있습니다.</p>
-      </div>
-
-      <template v-else>
-        <div class="admin-testcases-layout">
-          <AdminTestcasesSidebar
-            v-model:title-search-input="titleSearchInput"
-            :search-mode="searchMode"
-            :problem-id-search-input="problemIdSearchInput"
-            :is-loading-problems="isLoadingProblems"
-            :busy-section="busySection"
-            :has-applied-search="hasAppliedSearch"
-            :problem-list-caption="problemListCaption"
-            :problem-count="problemCount"
-            :list-error-message="listErrorMessage"
-            :empty-problem-list-message="emptyProblemListMessage"
-            :problems="problems"
-            :selected-problem-id="selectedProblemId"
-            :format-count="formatCount"
-            :format-problem-limit="formatProblemLimit"
-            @set-search-mode="setSearchMode"
-            @problem-id-input="handleProblemIdSearchInput"
-            @submit-search="submitSearch"
-            @reset-search="resetSearch"
-            @select-problem="selectProblem"
-          />
-
-          <AdminTestcasesEditor
-            :editor-state="testcaseEditorState"
-            :editor-draft="testcaseEditorDraft"
-            :editor-actions="testcaseEditorActions"
-          />
-        </div>
-      </template>
-    </article>
-  </section>
+    <AdminTestcasesEditor
+      :editor-state="testcaseEditorState"
+      :editor-draft="testcaseEditorDraft"
+      :editor-actions="testcaseEditorActions"
+    />
+  </AdminSplitWorkspaceShell>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 
+import AdminProblemSelectionSidebar from '@/components/adminShared/AdminProblemSelectionSidebar.vue'
+import AdminSplitWorkspaceShell from '@/components/adminShared/AdminSplitWorkspaceShell.vue'
 import AdminTestcasesEditor from '@/components/admin-testcases/AdminTestcasesEditor.vue'
-import AdminTestcasesSidebar from '@/components/admin-testcases/AdminTestcasesSidebar.vue'
 import AdminTestcasesToolbar from '@/components/admin-testcases/AdminTestcasesToolbar.vue'
 import { useAdminProblemTestcasesPage } from '@/composables/useAdminProblemTestcasesPage'
 
 const {
-  authState,
-  isAuthenticated,
+  accessState,
+  accessMessage,
   canManageProblems,
   selectedProblemId,
   isLoadingProblems,
@@ -211,43 +203,3 @@ const testcaseEditorActions = {
   saveSelectedTestcase: handleSaveSelectedTestcase
 }
 </script>
-
-<style scoped>
-.admin-testcases-shell {
-  display: grid;
-  gap: 1.25rem;
-  --admin-testcases-shell-surface: linear-gradient(
-    180deg,
-    rgba(246, 248, 251, 0.98),
-    rgba(239, 243, 248, 0.94)
-  );
-  --admin-testcases-shell-border: rgba(148, 163, 184, 0.18);
-  --admin-testcases-section-surface: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.98),
-    rgba(248, 250, 252, 0.95)
-  );
-  --admin-testcases-section-border: rgba(148, 163, 184, 0.12);
-  --admin-testcases-nested-surface: rgba(255, 255, 255, 0.98);
-  --admin-testcases-nested-border: rgba(148, 163, 184, 0.14);
-  --admin-testcases-shell-shadow:
-    0 18px 36px rgba(20, 33, 61, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  --admin-testcases-section-shadow:
-    0 12px 28px rgba(20, 33, 61, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.76);
-}
-
-.admin-testcases-layout {
-  display: grid;
-  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
-  gap: 1rem;
-  align-items: start;
-}
-
-@media (max-width: 1100px) {
-  .admin-testcases-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-</style>
