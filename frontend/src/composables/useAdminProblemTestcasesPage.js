@@ -3,7 +3,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useProblemSelectionQuery } from '@/composables/adminProblemTestcases/useProblemSelectionQuery'
 import { useProblemTestcaseListResource } from '@/composables/adminProblemTestcases/useProblemTestcaseListResource'
-import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
+import { useAdminProblemWorkspaceBase } from '@/composables/adminShared/useAdminProblemWorkspaceBase'
 import { formatProblemLimit } from '@/composables/adminProblemTestcases/testcaseHelpers'
 import { useTestcaseEditorDraft } from '@/composables/adminProblemTestcases/useTestcaseEditorDraft'
 import { useTestcaseReorder } from '@/composables/adminProblemTestcases/useTestcaseReorder'
@@ -128,34 +128,42 @@ export function useAdminProblemTestcasesPage(){
     return 'success'
   })
 
-  const pageAccess = useProtectedAdminPageAccess({
+  const problemWorkspace = useAdminProblemWorkspaceBase({
     authState,
     initializeAuth,
     isAuthenticated,
     hasAccess: canManageProblems,
-    onDenied: resetPageState,
-    async onAllowed(){
-      query.syncSearchControlsFromRoute()
-      await listResource.loadProblems({
-        preferredProblemId: query.preferredProblemIdForReload.value
-      })
-      await listResource.loadSelectedProblemData()
-    },
     loggedOutMessage: '테스트케이스 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
-    deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
-  })
-
-  pageAccess.watchWhenAllowed(query.selectedProblemId, () => {
-    resetSelectedProblemState()
-
-    if (query.selectedProblemId.value > 0) {
-      void listResource.loadSelectedProblemData()
-      return
+    deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.',
+    routeSearchSources: [
+      query.routeSearchMode,
+      query.routeTitleSearch,
+      query.routeProblemIdSearch
+    ],
+    syncSearchControlsFromRoute: query.syncSearchControlsFromRoute,
+    loadProblems: listResource.loadProblems,
+    getInitialPreferredProblemId(){
+      return query.preferredProblemIdForReload.value
+    },
+    getRefreshPreferredProblemId(){
+      return query.preferredProblemIdForReload.value
+    },
+    resetPageState,
+    afterInitialProblemLoad: listResource.loadSelectedProblemData,
+    afterRefreshProblemLoad: listResource.loadSelectedProblemData,
+    selectedProblemIdSource: query.selectedProblemId,
+    resetSelectedProblemState,
+    reloadSelectedProblemData: listResource.loadSelectedProblemData,
+    clearSelectedProblemState(){
+      listResource.isLoadingProblem.value = false
+      listResource.isLoadingTestcases.value = false
+    },
+    isRefreshBlocked(){
+      return Boolean(busySection.value)
     }
-
-    listResource.isLoadingProblem.value = false
-    listResource.isLoadingTestcases.value = false
   })
+  const pageAccess = problemWorkspace.pageAccess
+  const refreshPage = problemWorkspace.refreshWorkspace
 
   watch(listResource.selectedTestcase, (testcase) => {
     draft.selectedTestcaseInputDraft.value = testcase?.testcase_input ?? ''
@@ -172,16 +180,6 @@ export function useAdminProblemTestcasesPage(){
 
     void listResource.loadSelectedTestcaseDetail(testcaseSummary.testcase_order)
   })
-
-  pageAccess.watchWhenAllowed(
-    () => [query.routeSearchMode.value, query.routeTitleSearch.value, query.routeProblemIdSearch.value],
-    () => {
-      query.syncSearchControlsFromRoute()
-      void listResource.loadProblems({
-        preferredProblemId: query.preferredProblemIdForReload.value
-      })
-    }
-  )
 
   function describeTestcaseContent(charCount, lineCount){
     const normalizedCharCount = Number(charCount ?? 0)
@@ -250,17 +248,6 @@ export function useAdminProblemTestcasesPage(){
     if (draft.handleViewSelectedTestcase()) {
       void scrollSelectedTestcaseIntoView()
     }
-  }
-
-  async function refreshPage(){
-    if (busySection.value) {
-      return
-    }
-
-    await listResource.loadProblems({
-      preferredProblemId: query.preferredProblemIdForReload.value
-    })
-    await listResource.loadSelectedProblemData()
   }
 
   return {

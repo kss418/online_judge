@@ -6,7 +6,7 @@ import { useProblemDetailResource } from '@/composables/adminProblems/useProblem
 import { useProblemEditorDraft } from '@/composables/adminProblems/useProblemEditorDraft'
 import { formatProblemLimit } from '@/composables/adminProblems/problemHelpers'
 import { useProblemListResource } from '@/composables/adminProblems/useProblemListResource'
-import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
+import { useAdminProblemWorkspaceBase } from '@/composables/adminShared/useAdminProblemWorkspaceBase'
 import { useProblemSearchQuery } from '@/composables/adminProblems/useProblemSearchQuery'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
@@ -174,51 +174,36 @@ export function useAdminProblemsPage(){
     editorDraft.resetEditorDrafts()
   }
 
-  async function refreshProblems(){
-    await problemListResource.loadProblems({
-      preferredProblemId: problemDetailResource.selectedProblemId.value
-    })
-  }
-
-  const pageAccess = useProtectedAdminPageAccess({
+  const problemWorkspace = useAdminProblemWorkspaceBase({
     authState,
     initializeAuth,
     isAuthenticated,
     hasAccess: canManageProblems,
-    onDenied: resetPageState,
-    onAllowed(){
-      problemQuery.syncSearchControlsFromRoute()
-
-      return problemListResource.loadProblems({
-        preferredProblemId:
-          problemQuery.preferredProblemIdFromRoute.value || problemDetailResource.selectedProblemId.value
-      })
-    },
     loggedOutMessage: '문제 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
-    deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
-  })
-
-  pageAccess.watchWhenAllowed(problemQuery.preferredProblemIdFromRoute, (problemId) => {
-    if (!problemId) {
-      return
-    }
-
-    void problemListResource.loadProblems({ preferredProblemId: problemId })
-  })
-
-  pageAccess.watchWhenAllowed(
-    () => [
-      problemQuery.routeSearchMode.value,
-      problemQuery.routeTitleSearch.value,
-      problemQuery.routeProblemIdSearch.value
+    deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.',
+    routeSearchSources: [
+      problemQuery.routeSearchMode,
+      problemQuery.routeTitleSearch,
+      problemQuery.routeProblemIdSearch
     ],
-    () => {
-      problemQuery.syncSearchControlsFromRoute()
-      void problemListResource.loadProblems({
-        preferredProblemId: problemQuery.preferredProblemIdForReload.value
+    syncSearchControlsFromRoute: problemQuery.syncSearchControlsFromRoute,
+    loadProblems: problemListResource.loadProblems,
+    getInitialPreferredProblemId(){
+      return problemQuery.preferredProblemIdFromRoute.value || problemDetailResource.selectedProblemId.value
+    },
+    getRefreshPreferredProblemId(){
+      return problemQuery.preferredProblemIdForReload.value
+    },
+    resetPageState,
+    preferredProblemIdSource: problemQuery.preferredProblemIdFromRoute,
+    onPreferredProblemIdChange(problemId){
+      return problemListResource.loadProblems({
+        preferredProblemId: problemId
       })
     }
-  )
+  })
+  const pageAccess = problemWorkspace.pageAccess
+  const refreshProblems = problemWorkspace.refreshWorkspace
 
   return {
     authState,
