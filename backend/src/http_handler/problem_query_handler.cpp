@@ -1,7 +1,7 @@
 #include "http_handler/problem_query_handler.hpp"
 
-#include "application/get_problem_detail_query.hpp"
 #include "application/list_problems_query.hpp"
+#include "db_service/problem_query_service.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_core/http_response_util.hpp"
 #include "http_endpoint/endpoint.hpp"
@@ -12,6 +12,11 @@
 
 namespace{
     using response_type = problem_query_handler::response_type;
+
+    struct problem_detail_request{
+        problem_dto::reference problem_reference_value;
+        std::optional<std::int64_t> viewer_user_id_opt = std::nullopt;
+    };
 
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
@@ -58,15 +63,23 @@ namespace{
         return http_endpoint::make_guarded_json_spec(
             [problem_id](const http_guard::guard_context&,
                 const std::optional<auth_dto::identity>& auth_identity_opt)
-                -> command_expected<get_problem_detail_query::command> {
-                return get_problem_detail_query::command{
+                -> command_expected<problem_detail_request> {
+                return problem_detail_request{
                     .problem_reference_value = problem_dto::reference{problem_id},
                     .viewer_user_id_opt = auth_guard::get_viewer_user_id(
                         auth_identity_opt
                     )
                 };
             },
-            http_endpoint::make_db_execute(get_problem_detail_query::execute),
+            http_endpoint::make_db_execute(
+                [](auto& connection, const problem_detail_request& request) {
+                    return problem_query_service::get_problem_detail(
+                        connection,
+                        request.problem_reference_value,
+                        request.viewer_user_id_opt
+                    );
+                }
+            ),
             [](const problem_dto::detail& problem_detail) {
                 return problem_json_serializer::make_detail_object(problem_detail);
             },

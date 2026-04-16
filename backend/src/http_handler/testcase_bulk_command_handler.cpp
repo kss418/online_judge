@@ -1,6 +1,5 @@
 #include "http_handler/testcase_bulk_command_handler.hpp"
 
-#include "application/replace_testcases_action.hpp"
 #include "db_service/testcase_bulk_mutation_service.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
@@ -16,6 +15,11 @@ namespace{
     using context_type = request_context;
     using response_type = request_context::response_type;
 
+    struct replace_testcases_request{
+        problem_dto::reference problem_reference_value;
+        std::vector<problem_dto::testcase> testcase_values;
+    };
+
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
 
@@ -26,13 +30,19 @@ namespace{
                 std::int64_t problem_id,
                 const auth_dto::identity&,
                 const std::vector<problem_dto::testcase>& testcase_values)
-                -> command_expected<replace_testcases_action::command> {
-                return replace_testcases_action::command{
+                -> command_expected<replace_testcases_request> {
+                return replace_testcases_request{
                     .problem_reference_value = problem_dto::reference{problem_id},
                     .testcase_values = testcase_values
                 };
             },
-            replace_testcases_action::execute,
+            [](auto& connection, const replace_testcases_request& request) {
+                return testcase_bulk_mutation_service::replace_testcases(
+                    connection,
+                    request.problem_reference_value,
+                    request.testcase_values
+                );
+            },
             http_handler_spec::make_json_message_serializer(
                 "problem testcases uploaded",
                 problem_json_serializer::make_testcase_count_message_object

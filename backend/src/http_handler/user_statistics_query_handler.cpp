@@ -1,6 +1,6 @@
 #include "http_handler/user_statistics_query_handler.hpp"
 
-#include "application/get_user_submission_statistics_query.hpp"
+#include "db_service/user_statistics_service.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_handler/handler_spec_helper.hpp"
 #include "http_guard/user_guard.hpp"
@@ -17,12 +17,10 @@ namespace{
         return http_handler_spec::make_auth_identity_json_spec(
             [](const http_guard::guard_context&,
                 const auth_dto::identity& auth_identity_value)
-                -> command_expected<get_user_submission_statistics_query::command> {
-                return get_user_submission_statistics_query::command{
-                    .user_id = auth_identity_value.user_id
-                };
+                -> command_expected<std::int64_t> {
+                return auth_identity_value.user_id;
             },
-            get_user_submission_statistics_query::execute,
+            user_statistics_service::get_submission_statistics,
             user_json_serializer::make_submission_statistics_object
         );
     }
@@ -31,12 +29,10 @@ namespace{
         return http_handler_spec::make_single_path_value_json_spec(
             user_id,
             [](const http_guard::guard_context&, std::int64_t user_id)
-                -> command_expected<get_user_submission_statistics_query::command> {
-                return get_user_submission_statistics_query::command{
-                    .user_id = user_id
-                };
+                -> command_expected<std::int64_t> {
+                return user_id;
             },
-            get_user_submission_statistics_query::execute,
+            user_statistics_service::get_submission_statistics,
             user_json_serializer::make_submission_statistics_object,
             user_guard::make_exists_guard(user_id)
         );

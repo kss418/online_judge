@@ -1,13 +1,6 @@
 target_sources(lib
     PRIVATE
         create_submission_action.cpp
-        get_problem_detail_query.cpp
         get_submission_source_query.cpp
-        get_user_submission_statistics_query.cpp
         list_problems_query.cpp
-        list_user_solved_problems_query.cpp
-        list_user_wrong_problems_query.cpp
-        replace_testcases_action.cpp
-        set_problem_limits_action.cpp
-        set_problem_statement_action.cpp
 )

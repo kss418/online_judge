@@ -1,7 +1,5 @@
 #include "http_handler/problem_content_command_handler.hpp"
 
-#include "application/set_problem_limits_action.hpp"
-#include "application/set_problem_statement_action.hpp"
 #include "db_service/problem_content_service.hpp"
 #include "dto/problem_content_dto.hpp"
 #include "dto/problem_dto.hpp"
@@ -28,6 +26,16 @@ namespace{
         problem_content_dto::sample sample_value;
     };
 
+    struct update_problem_limits_request{
+        problem_dto::reference problem_reference_value;
+        problem_content_dto::limits limits_value;
+    };
+
+    struct update_problem_statement_request{
+        problem_dto::reference problem_reference_value;
+        problem_content_dto::statement statement_value;
+    };
+
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
 
@@ -38,13 +46,19 @@ namespace{
                 std::int64_t problem_id,
                 const auth_dto::identity&,
                 const problem_content_dto::limits& limits_value)
-                -> command_expected<set_problem_limits_action::command> {
-                return set_problem_limits_action::command{
+                -> command_expected<update_problem_limits_request> {
+                return update_problem_limits_request{
                     .problem_reference_value = problem_dto::reference{problem_id},
                     .limits_value = limits_value
                 };
             },
-            set_problem_limits_action::execute,
+            [](auto& connection, const update_problem_limits_request& request) {
+                return problem_content_service::set_limits(
+                    connection,
+                    request.problem_reference_value,
+                    request.limits_value
+                );
+            },
             http_handler_spec::make_json_message_serializer(
                 "problem limits updated",
                 problem_json_serializer::make_message_object
@@ -62,13 +76,19 @@ namespace{
                 std::int64_t problem_id,
                 const auth_dto::identity&,
                 const problem_content_dto::statement& statement_value)
-                -> command_expected<set_problem_statement_action::command> {
-                return set_problem_statement_action::command{
+                -> command_expected<update_problem_statement_request> {
+                return update_problem_statement_request{
                     .problem_reference_value = problem_dto::reference{problem_id},
                     .statement_value = statement_value
                 };
             },
-            set_problem_statement_action::execute,
+            [](auto& connection, const update_problem_statement_request& request) {
+                return problem_content_service::set_statement(
+                    connection,
+                    request.problem_reference_value,
+                    request.statement_value
+                );
+            },
             http_handler_spec::make_json_message_serializer(
                 "problem statement updated",
                 problem_json_serializer::make_message_object

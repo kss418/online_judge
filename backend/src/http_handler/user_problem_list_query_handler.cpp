@@ -1,7 +1,6 @@
 #include "http_handler/user_problem_list_query_handler.hpp"
 
-#include "application/list_user_solved_problems_query.hpp"
-#include "application/list_user_wrong_problems_query.hpp"
+#include "db_service/problem_query_service.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/user_guard.hpp"
@@ -13,6 +12,11 @@
 namespace{
     using context_type = request_context;
     using response_type = request_context::response_type;
+
+    struct user_problem_list_request{
+        std::int64_t user_id = 0;
+        std::optional<std::int64_t> viewer_user_id_opt = std::nullopt;
+    };
 
     template <typename command_type>
     using command_expected = std::expected<command_type, response_type>;
@@ -38,14 +42,20 @@ namespace{
         return http_endpoint::make_guarded_json_spec(
             [](const http_guard::guard_context&,
                 const auth_dto::identity& auth_identity_value)
-                -> command_expected<list_user_solved_problems_query::command> {
-                return list_user_solved_problems_query::command{
+                -> command_expected<user_problem_list_request> {
+                return user_problem_list_request{
                     .user_id = auth_identity_value.user_id,
                     .viewer_user_id_opt = auth_identity_value.user_id
                 };
             },
             http_endpoint::make_db_execute(
-                list_user_solved_problems_query::execute
+                [](auto& connection, const user_problem_list_request& request) {
+                    return problem_query_service::list_user_solved_problems(
+                        connection,
+                        request.user_id,
+                        request.viewer_user_id_opt
+                    );
+                }
             ),
             user_json_serializer::make_solved_problem_list_object,
             auth_guard::make_auth_guard()
@@ -56,14 +66,20 @@ namespace{
         return http_endpoint::make_guarded_json_spec(
             [](const http_guard::guard_context&,
                 const auth_dto::identity& auth_identity_value)
-                -> command_expected<list_user_wrong_problems_query::command> {
-                return list_user_wrong_problems_query::command{
+                -> command_expected<user_problem_list_request> {
+                return user_problem_list_request{
                     .user_id = auth_identity_value.user_id,
                     .viewer_user_id_opt = auth_identity_value.user_id
                 };
             },
             http_endpoint::make_db_execute(
-                list_user_wrong_problems_query::execute
+                [](auto& connection, const user_problem_list_request& request) {
+                    return problem_query_service::list_user_wrong_problems(
+                        connection,
+                        request.user_id,
+                        request.viewer_user_id_opt
+                    );
+                }
             ),
             user_json_serializer::make_wrong_problem_list_object,
             auth_guard::make_auth_guard()
@@ -75,15 +91,21 @@ namespace{
             user_id,
             [user_id](const http_guard::guard_context&,
                 const std::optional<auth_dto::identity>& auth_identity_opt)
-                -> command_expected<list_user_solved_problems_query::command> {
-                return list_user_solved_problems_query::command{
+                -> command_expected<user_problem_list_request> {
+                return user_problem_list_request{
                     .user_id = user_id,
                     .viewer_user_id_opt = auth_guard::get_viewer_user_id(
                         auth_identity_opt
                     )
                 };
             },
-            list_user_solved_problems_query::execute,
+            [](auto& connection, const user_problem_list_request& request) {
+                return problem_query_service::list_user_solved_problems(
+                    connection,
+                    request.user_id,
+                    request.viewer_user_id_opt
+                );
+            },
             user_json_serializer::make_solved_problem_list_object
         );
     }
@@ -93,15 +115,21 @@ namespace{
             user_id,
             [user_id](const http_guard::guard_context&,
                 const std::optional<auth_dto::identity>& auth_identity_opt)
-                -> command_expected<list_user_wrong_problems_query::command> {
-                return list_user_wrong_problems_query::command{
+                -> command_expected<user_problem_list_request> {
+                return user_problem_list_request{
                     .user_id = user_id,
                     .viewer_user_id_opt = auth_guard::get_viewer_user_id(
                         auth_identity_opt
                     )
                 };
             },
-            list_user_wrong_problems_query::execute,
+            [](auto& connection, const user_problem_list_request& request) {
+                return problem_query_service::list_user_wrong_problems(
+                    connection,
+                    request.user_id,
+                    request.viewer_user_id_opt
+                );
+            },
             user_json_serializer::make_wrong_problem_list_object
         );
     }
