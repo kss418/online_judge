@@ -2,7 +2,8 @@
 
 #include "db_service/user_service.hpp"
 #include "http_endpoint/endpoint.hpp"
-#include "http_handler/handler_spec_helper.hpp"
+#include "http_handler/optional_auth_spec_helper.hpp"
+#include "http_handler/path_value_spec_helper.hpp"
 #include "serializer/user_json_serializer.hpp"
 
 #include <string>
@@ -24,12 +25,8 @@ namespace{
     }
 
     auto make_get_user_summary_spec(std::int64_t user_id){
-        return http_handler_spec::make_single_path_value_json_spec(
+        return http_handler_spec::make_path_value_json_spec(
             user_id,
-            [](const http_guard::guard_context&, std::int64_t user_id)
-                -> std::expected<std::int64_t, response_type> {
-                return user_id;
-            },
             user_service::get_summary,
             user_json_serializer::make_summary_object
         );

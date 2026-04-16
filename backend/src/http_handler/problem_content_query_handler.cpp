@@ -3,39 +3,30 @@
 #include "db_service/problem_content_service.hpp"
 #include "dto/problem_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
+#include "http_handler/path_value_spec_helper.hpp"
 #include "http_guard/problem_guard.hpp"
 #include "serializer/problem_json_serializer.hpp"
 
 namespace{
-    using response_type = problem_content_query_handler::response_type;
+    auto make_get_limits_spec(std::int64_t problem_id){
+        const problem_dto::reference problem_reference_value{problem_id};
 
-    template <typename command_type>
-    using command_expected = std::expected<command_type, response_type>;
-
-    auto make_problem_reference_guard(std::int64_t problem_id){
-        problem_dto::reference problem_reference_value{problem_id};
-        return http_guard::make_composite_guard(
-            [problem_reference_value](const http_guard::guard_context&)
-                -> command_expected<problem_dto::reference> {
-                return problem_reference_value;
-            },
+        return http_handler_spec::make_path_value_json_spec(
+            problem_reference_value,
+            problem_content_service::get_limits,
+            problem_json_serializer::make_limits_object,
             problem_guard::make_exists_guard(problem_reference_value)
         );
     }
 
-    auto make_get_limits_spec(std::int64_t problem_id){
-        return http_endpoint::make_json_spec(
-            make_problem_reference_guard(problem_id),
-            http_endpoint::make_db_execute(problem_content_service::get_limits),
-            problem_json_serializer::make_limits_object
-        );
-    }
-
     auto make_get_samples_spec(std::int64_t problem_id){
-        return http_endpoint::make_json_spec(
-            make_problem_reference_guard(problem_id),
-            http_endpoint::make_db_execute(problem_content_service::list_samples),
-            problem_json_serializer::make_sample_list_object
+        const problem_dto::reference problem_reference_value{problem_id};
+
+        return http_handler_spec::make_path_value_json_spec(
+            problem_reference_value,
+            problem_content_service::list_samples,
+            problem_json_serializer::make_sample_list_object,
+            problem_guard::make_exists_guard(problem_reference_value)
         );
     }
 }
