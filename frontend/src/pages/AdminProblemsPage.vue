@@ -67,11 +67,7 @@
       </AdminProblemSelectionSidebar>
     </template>
 
-    <AdminProblemsEditor
-      :editor-state="problemEditorState"
-      :editor-draft="problemEditorDraft"
-      :editor-actions="problemEditorActions"
-    />
+    <AdminProblemsEditor :editor="problemEditor" />
   </AdminSplitWorkspaceShell>
 
   <AdminProblemConfirmDialog
@@ -115,13 +111,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-
 import AdminProblemSelectionSidebar from '@/components/adminShared/AdminProblemSelectionSidebar.vue'
 import AdminSplitWorkspaceShell from '@/components/adminShared/AdminSplitWorkspaceShell.vue'
 import AdminProblemConfirmDialog from '@/components/admin-problems/AdminProblemConfirmDialog.vue'
 import AdminProblemsEditor from '@/components/admin-problems/AdminProblemsEditor.vue'
 import AdminProblemsToolbar from '@/components/admin-problems/AdminProblemsToolbar.vue'
+import { useProblemEditorSections } from '@/composables/adminProblems/useProblemEditorSections'
 import { useAdminProblemsPage } from '@/composables/useAdminProblemsPage'
 
 const {
@@ -208,89 +203,48 @@ const {
   handleDeleteProblem
 } = useAdminProblemsPage()
 
-const problemEditorState = computed(() => ({
-  isLoadingDetail: isLoadingDetail.value,
-  detailErrorMessage: detailErrorMessage.value,
-  selectedProblemDetail: selectedProblemDetail.value,
-  busySection: busySection.value,
-  canSaveTitle: canSaveTitle.value,
-  canSaveLimits: canSaveLimits.value,
-  canSaveStatement: canSaveStatement.value,
-  canCreateSample: canCreateSample.value,
-  canUploadTestcaseZip: canUploadTestcaseZip.value,
-  canDeleteLastSample: canDeleteLastSample.value,
-  isSavingTitle: isSavingTitle.value,
-  isSavingLimits: isSavingLimits.value,
-  isSavingStatement: isSavingStatement.value,
-  isCreatingSample: isCreatingSample.value,
-  isDeletingLastSample: isDeletingLastSample.value,
-  isUploadingTestcaseZip: isUploadingTestcaseZip.value,
+const problemEditor = useProblemEditorSections({
+  isLoadingDetail,
+  detailErrorMessage,
+  selectedProblemDetail,
+  busySection,
+  canSaveTitle,
+  canSaveLimits,
+  canSaveStatement,
+  canCreateSample,
+  canUploadTestcaseZip,
+  canDeleteLastSample,
+  isSavingTitle,
+  isSavingLimits,
+  isSavingStatement,
+  isCreatingSample,
+  isDeletingLastSample,
+  isUploadingTestcaseZip,
+  titleDraft,
+  timeLimitDraft,
+  memoryLimitDraft,
+  descriptionDraft,
+  inputFormatDraft,
+  outputFormatDraft,
+  noteDraft,
+  sampleDrafts,
+  testcaseZipInputKey,
+  selectedTestcaseZipName,
   formatCount,
   isSavingSample,
   canSaveSample,
-  isLastSample
-}))
-
-const problemEditorDraft = computed(() => ({
-  titleDraft: titleDraft.value,
-  timeLimitDraft: timeLimitDraft.value,
-  memoryLimitDraft: memoryLimitDraft.value,
-  descriptionDraft: descriptionDraft.value,
-  inputFormatDraft: inputFormatDraft.value,
-  outputFormatDraft: outputFormatDraft.value,
-  noteDraft: noteDraft.value,
-  sampleDrafts: sampleDrafts.value,
-  testcaseZipInputKey: testcaseZipInputKey.value,
-  selectedTestcaseZipName: selectedTestcaseZipName.value
-}))
-
-function updateTitleDraft(value){
-  titleDraft.value = value
-}
-
-function updateTimeLimitDraft(value){
-  timeLimitDraft.value = value
-}
-
-function updateMemoryLimitDraft(value){
-  memoryLimitDraft.value = value
-}
-
-function updateDescriptionDraft(value){
-  descriptionDraft.value = value
-}
-
-function updateInputFormatDraft(value){
-  inputFormatDraft.value = value
-}
-
-function updateOutputFormatDraft(value){
-  outputFormatDraft.value = value
-}
-
-function updateNoteDraft(value){
-  noteDraft.value = value
-}
-
-const problemEditorActions = {
-  updateTitleDraft,
-  updateTimeLimitDraft,
-  updateMemoryLimitDraft,
-  updateDescriptionDraft,
-  updateInputFormatDraft,
-  updateOutputFormatDraft,
-  updateNoteDraft,
-  saveTitle: handleSaveTitle,
-  saveLimits: handleSaveLimits,
-  saveStatement: handleSaveStatement,
-  createSample: handleCreateSample,
-  saveSample: handleSaveSample,
-  deleteLastSample: handleDeleteLastSample,
-  changeTestcaseZip: handleTestcaseZipFileChange,
-  uploadTestcaseZip: handleUploadTestcaseZip,
+  isLastSample,
+  handleSaveTitle,
+  handleSaveLimits,
+  handleSaveStatement,
+  handleCreateSample,
+  handleSaveSample,
+  handleDeleteLastSample,
+  handleTestcaseZipFileChange,
+  handleUploadTestcaseZip,
   openRejudgeDialog,
   openDeleteDialog
-}
+})
 </script>
 
 <style scoped>

@@ -43,21 +43,16 @@
       />
     </template>
 
-    <AdminTestcasesEditor
-      :editor-state="testcaseEditorState"
-      :editor-draft="testcaseEditorDraft"
-      :editor-actions="testcaseEditorActions"
-    />
+    <AdminTestcasesEditor :editor="testcaseEditor" />
   </AdminSplitWorkspaceShell>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-
 import AdminProblemSelectionSidebar from '@/components/adminShared/AdminProblemSelectionSidebar.vue'
 import AdminSplitWorkspaceShell from '@/components/adminShared/AdminSplitWorkspaceShell.vue'
 import AdminTestcasesEditor from '@/components/admin-testcases/AdminTestcasesEditor.vue'
 import AdminTestcasesToolbar from '@/components/admin-testcases/AdminTestcasesToolbar.vue'
+import { useTestcaseEditorSections } from '@/composables/adminProblemTestcases/useTestcaseEditorSections'
 import { useAdminProblemTestcasesPage } from '@/composables/useAdminProblemTestcasesPage'
 
 const {
@@ -127,79 +122,48 @@ const {
   setTestcaseSummaryElement
 } = useAdminProblemTestcasesPage()
 
-const testcaseEditorState = computed(() => ({
-  selectedProblemId: selectedProblemId.value,
-  isLoadingProblem: isLoadingProblem.value,
-  problemErrorMessage: problemErrorMessage.value,
-  problemDetail: problemDetail.value,
-  busySection: busySection.value,
-  canUploadTestcaseZip: canUploadTestcaseZip.value,
-  isUploadingTestcaseZip: isUploadingTestcaseZip.value,
-  canCreateTestcase: canCreateTestcase.value,
-  isCreatingTestcase: isCreatingTestcase.value,
-  canViewSpecificTestcase: canViewSpecificTestcase.value,
-  isLoadingTestcases: isLoadingTestcases.value,
-  isLoadingSelectedTestcase: isLoadingSelectedTestcase.value,
-  testcaseItems: testcaseItems.value,
-  testcaseErrorMessage: testcaseErrorMessage.value,
-  selectedTestcaseErrorMessage: selectedTestcaseErrorMessage.value,
-  selectedTestcaseOrder: selectedTestcaseOrder.value,
-  selectedTestcase: selectedTestcase.value,
-  canDeleteSelectedTestcase: canDeleteSelectedTestcase.value,
-  isDeletingSelectedTestcase: isDeletingSelectedTestcase.value,
-  canMoveTestcases: canMoveTestcases.value,
-  isMovingTestcase: isMovingTestcase.value,
-  canSaveSelectedTestcase: canSaveSelectedTestcase.value,
-  isSavingSelectedTestcase: isSavingSelectedTestcase.value,
+const testcaseEditor = useTestcaseEditorSections({
+  selectedProblemId,
+  isLoadingProblem,
+  problemErrorMessage,
+  problemDetail,
+  busySection,
+  canUploadTestcaseZip,
+  isUploadingTestcaseZip,
+  canCreateTestcase,
+  isCreatingTestcase,
+  canViewSpecificTestcase,
+  isLoadingTestcases,
+  isLoadingSelectedTestcase,
+  testcaseItems,
+  testcaseErrorMessage,
+  selectedTestcaseErrorMessage,
+  selectedTestcaseOrder,
+  selectedTestcase,
+  canDeleteSelectedTestcase,
+  isDeletingSelectedTestcase,
+  canMoveTestcases,
+  isMovingTestcase,
+  canSaveSelectedTestcase,
+  isSavingSelectedTestcase,
   formatCount,
   describeTestcaseContent,
   isLastTestcase,
-  setTestcaseSummaryElement
-}))
-
-const testcaseEditorDraft = computed(() => ({
-  testcaseZipInputKey: testcaseZipInputKey.value,
-  selectedTestcaseZipName: selectedTestcaseZipName.value,
-  newTestcaseInput: newTestcaseInput.value,
-  newTestcaseOutput: newTestcaseOutput.value,
-  viewTestcaseOrderInput: viewTestcaseOrderInput.value,
-  selectedTestcaseInputDraft: selectedTestcaseInputDraft.value,
-  selectedTestcaseOutputDraft: selectedTestcaseOutputDraft.value
-}))
-
-function updateNewTestcaseInput(value){
-  newTestcaseInput.value = value
-}
-
-function updateNewTestcaseOutput(value){
-  newTestcaseOutput.value = value
-}
-
-function updateViewTestcaseOrderInput(value){
-  viewTestcaseOrderInput.value = value
-}
-
-function updateSelectedTestcaseInputDraft(value){
-  selectedTestcaseInputDraft.value = value
-}
-
-function updateSelectedTestcaseOutputDraft(value){
-  selectedTestcaseOutputDraft.value = value
-}
-
-const testcaseEditorActions = {
-  updateNewTestcaseInput,
-  updateNewTestcaseOutput,
-  updateViewTestcaseOrderInput,
-  updateSelectedTestcaseInputDraft,
-  updateSelectedTestcaseOutputDraft,
-  changeTestcaseZip: handleTestcaseZipFileChange,
-  uploadTestcaseZip: handleUploadTestcaseZip,
-  createTestcase: handleCreateTestcase,
-  viewSelectedTestcase: handleViewSelectedTestcase,
+  setTestcaseSummaryElement,
+  testcaseZipInputKey,
+  selectedTestcaseZipName,
+  newTestcaseInput,
+  newTestcaseOutput,
+  viewTestcaseOrderInput,
+  selectedTestcaseInputDraft,
+  selectedTestcaseOutputDraft,
+  handleTestcaseZipFileChange,
+  handleUploadTestcaseZip,
+  handleCreateTestcase,
   selectTestcase,
-  deleteSelectedTestcase: handleDeleteSelectedTestcase,
-  moveTestcase: handleMoveTestcase,
-  saveSelectedTestcase: handleSaveSelectedTestcase
-}
+  handleDeleteSelectedTestcase,
+  handleMoveTestcase,
+  handleSaveSelectedTestcase,
+  handleViewSelectedTestcase
+})
 </script>

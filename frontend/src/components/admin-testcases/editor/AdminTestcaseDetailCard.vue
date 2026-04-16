@@ -48,7 +48,7 @@
     v-else-if="section.model.selectedTestcase"
     class="admin-testcase-card"
   >
-    <AdminTestcaseMetadataHeader :section="metadataSection" />
+    <AdminTestcaseMetadataHeader :section="section.metadataSection" />
 
     <div class="admin-testcases-grid">
       <AdminTextareaPanel
@@ -104,18 +104,6 @@ const props = defineProps({
 })
 
 const section = computed(() => props.section)
-
-const metadataSection = computed(() => ({
-  model: {
-    selectedTestcase: section.value.model.selectedTestcase,
-    canDeleteSelectedTestcase: section.value.model.canDeleteSelectedTestcase,
-    isDeletingSelectedTestcase: section.value.model.isDeletingSelectedTestcase,
-    formatCount: section.value.model.formatCount
-  },
-  actions: {
-    deleteSelectedTestcase: section.value.actions.deleteSelectedTestcase
-  }
-}))
 
 function handleSaveSelectedTestcase(){
   section.value.actions.saveSelectedTestcase()
