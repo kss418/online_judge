@@ -6,9 +6,9 @@ import { useProblemAdminActions } from '@/composables/adminProblems/useProblemAd
 import { useProblemDetailResource } from '@/composables/adminProblems/useProblemDetailResource'
 import { useProblemEditorDraft } from '@/composables/adminProblems/useProblemEditorDraft'
 import { formatProblemLimit } from '@/composables/adminProblems/problemHelpers'
-import { useProblemListResource } from '@/composables/adminProblems/useProblemListResource'
+import { useAdminProblemCatalogQuery } from '@/composables/adminShared/useAdminProblemCatalogQuery'
+import { useAdminProblemCatalogResource } from '@/composables/adminShared/useAdminProblemCatalogResource'
 import { useAdminProblemWorkspaceBase } from '@/composables/adminShared/useAdminProblemWorkspaceBase'
-import { useProblemSearchQuery } from '@/composables/adminProblems/useProblemSearchQuery'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatCount } from '@/utils/numberFormat'
@@ -31,7 +31,7 @@ export function useAdminProblemsPage(){
   const newProblemTitle = ref('')
   const selectedProblemId = ref(0)
 
-  const problemQuery = useProblemSearchQuery({
+  const problemQuery = useAdminProblemCatalogQuery({
     route,
     router,
     formatCount,
@@ -39,11 +39,11 @@ export function useAdminProblemsPage(){
     reloadProblems: async (preferredProblemId) => {
       await loadProblems({ preferredProblemId })
     },
-    showErrorNotice
+    showErrorNotice,
+    includeSelectedProblemIdInQuery: true
   })
-  const problemListResource = useProblemListResource({
+  const problemListResource = useAdminProblemCatalogResource({
     authState,
-    canManageProblems,
     routeQueryState: problemQuery.routeState
   })
   const problemDetailResource = useProblemDetailResource({
@@ -162,6 +162,12 @@ export function useAdminProblemsPage(){
   }
 
   async function loadProblems(options = {}){
+    if (!authState.token || !canManageProblems.value) {
+      return {
+        status: 'blocked'
+      }
+    }
+
     const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
     problemActionFeedback.clearActionError()
 

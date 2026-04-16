@@ -1,40 +1,18 @@
 import { computed } from 'vue'
 
-import {
-  getProblemDetail,
-  getProblemList
-} from '@/api/problemQueryApi'
+import { getProblemDetail } from '@/api/problemQueryApi'
 import {
   getProblemTestcase,
   getProblemTestcases
 } from '@/api/testcaseApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
-import { buildApiQuery as buildProblemAdminSearchApiQuery } from '@/queryState/problemAdminSearch'
 import { formatApiError } from '@/utils/apiError'
 
-export function useProblemTestcaseListResource({
+export function useProblemTestcaseResource({
   authState,
   selectedProblemId,
-  routeQueryState
+  mergeProblemSummary
 }){
-  const problemListResource = useAsyncResource({
-    initialData: [],
-    async load({ routeQuery }){
-      const apiQuery = buildProblemAdminSearchApiQuery(routeQuery)
-      const response = await getProblemList({
-        title: apiQuery.title,
-        problemId: apiQuery.problemId,
-        bearerToken: authState.token || ''
-      })
-
-      return response.problems
-    },
-    getErrorMessage(error){
-      return formatApiError(error, {
-        fallback: '문제 목록을 불러오지 못했습니다.'
-      })
-    }
-  })
   const problemDetailResource = useAsyncResource({
     initialData: null,
     async load(problemId){
@@ -77,34 +55,17 @@ export function useProblemTestcaseListResource({
     }
   })
 
-  const isLoadingProblems = problemListResource.isLoading
   const isLoadingProblem = problemDetailResource.isLoading
   const isLoadingTestcases = testcaseListResource.isLoading
   const isLoadingSelectedTestcase = selectedTestcaseResource.isLoading
-  const listErrorMessage = problemListResource.errorMessage
   const problemErrorMessage = problemDetailResource.errorMessage
   const testcaseErrorMessage = testcaseListResource.errorMessage
   const selectedTestcaseErrorMessage = selectedTestcaseResource.errorMessage
-  const problems = problemListResource.data
   const problemDetail = problemDetailResource.data
   const testcaseItems = testcaseListResource.data
   const selectedTestcase = selectedTestcaseResource.data
 
-  const problemCount = computed(() => problems.value.length)
   const testcaseCount = computed(() => testcaseItems.value.length)
-
-  function mergeProblemSummary(problemId, patch){
-    problemListResource.mutate((problemItems) =>
-      problemItems.map((problem) =>
-        problem.problem_id === problemId
-          ? {
-            ...problem,
-            ...patch
-          }
-          : problem
-      )
-    )
-  }
 
   function applyProblemVersion(problemId, version){
     const normalizedVersion = Number(version)
@@ -119,9 +80,11 @@ export function useProblemTestcaseListResource({
       }
     }
 
-    mergeProblemSummary(problemId, {
-      version: normalizedVersion
-    })
+    if (typeof mergeProblemSummary === 'function') {
+      mergeProblemSummary(problemId, {
+        version: normalizedVersion
+      })
+    }
   }
 
   function setTestcaseItems(nextValueOrUpdater){
@@ -150,20 +113,6 @@ export function useProblemTestcaseListResource({
     })
   }
 
-  async function loadProblems(){
-    return problemListResource.run({
-      routeQuery: routeQueryState.value
-    }, {
-      resetDataOnError: true
-    })
-  }
-
-  function resetProblemListResource(){
-    problemListResource.reset({
-      preserveHasLoadedOnce: true
-    })
-  }
-
   async function loadProblemDetail(){
     if (selectedProblemId.value <= 0) {
       problemDetailResource.reset({
@@ -183,10 +132,12 @@ export function useProblemTestcaseListResource({
       return result
     }
 
-    mergeProblemSummary(selectedProblemId.value, {
-      title: result.data.title,
-      version: result.data.version
-    })
+    if (typeof mergeProblemSummary === 'function') {
+      mergeProblemSummary(selectedProblemId.value, {
+        title: result.data.title,
+        version: result.data.version
+      })
+    }
     return result
   }
 
@@ -237,28 +188,21 @@ export function useProblemTestcaseListResource({
   }
 
   return {
-    isLoadingProblems,
     isLoadingProblem,
     isLoadingTestcases,
     isLoadingSelectedTestcase,
-    listErrorMessage,
     problemErrorMessage,
     testcaseErrorMessage,
     selectedTestcaseErrorMessage,
-    problems,
     problemDetail,
     testcaseItems,
     selectedTestcase,
-    problemCount,
     testcaseCount,
-    mergeProblemSummary,
     applyProblemVersion,
     setTestcaseItems,
     setSelectedTestcase,
-    resetProblemListResource,
     resetSelectedProblemResource,
     clearSelectedTestcaseDetail,
-    loadProblems,
     loadProblemDetail,
     loadSelectedTestcaseDetail,
     loadTestcases

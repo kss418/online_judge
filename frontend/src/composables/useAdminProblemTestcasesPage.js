@@ -1,8 +1,9 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { useProblemSelectionQuery } from '@/composables/adminProblemTestcases/useProblemSelectionQuery'
-import { useProblemTestcaseListResource } from '@/composables/adminProblemTestcases/useProblemTestcaseListResource'
+import { useProblemTestcaseResource } from '@/composables/adminProblemTestcases/useProblemTestcaseResource'
+import { useAdminProblemCatalogQuery } from '@/composables/adminShared/useAdminProblemCatalogQuery'
+import { useAdminProblemCatalogResource } from '@/composables/adminShared/useAdminProblemCatalogResource'
 import { useAdminProblemWorkspaceBase } from '@/composables/adminShared/useAdminProblemWorkspaceBase'
 import { formatProblemLimit } from '@/composables/adminProblemTestcases/testcaseHelpers'
 import { useTestcaseEditorDraft } from '@/composables/adminProblemTestcases/useTestcaseEditorDraft'
@@ -11,6 +12,7 @@ import { useTestcaseUploadActions } from '@/composables/adminProblemTestcases/us
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatCount } from '@/utils/numberFormat'
+import { parsePositiveInteger } from '@/utils/parse'
 
 export function useAdminProblemTestcasesPage(){
   const route = useRoute()
@@ -27,21 +29,64 @@ export function useAdminProblemTestcasesPage(){
   } = noticeStore
   const busySection = ref('')
   const testcaseSummaryElementMap = new Map()
+  const selectedProblemId = computed(() => parsePositiveInteger(route.params.problemId) ?? 0)
 
-  const query = useProblemSelectionQuery({
+  const query = useAdminProblemCatalogQuery({
     route,
     router,
     formatCount,
+    selectedProblemId,
     reloadProblems: async (preferredProblemId) => {
       await loadProblems({ preferredProblemId })
     },
-    showErrorNotice
+    showErrorNotice,
+    buildLocation({ query: nextQuery }){
+      return {
+        name: 'admin-problem-testcases',
+        params: selectedProblemId.value > 0
+          ? {
+            problemId: String(selectedProblemId.value)
+          }
+          : {},
+        query: nextQuery
+      }
+    }
   })
-  const listResource = useProblemTestcaseListResource({
+  const problemCatalogResource = useAdminProblemCatalogResource({
     authState,
-    selectedProblemId: query.selectedProblemId,
     routeQueryState: query.routeState
   })
+  const listResource = useProblemTestcaseResource({
+    authState,
+    selectedProblemId,
+    mergeProblemSummary: problemCatalogResource.mergeProblemSummary
+  })
+
+  async function replaceProblemRoute(problemId, options = {}){
+    const method = options.push ? 'push' : 'replace'
+    const nextQuery = options.query ?? query.buildCanonicalQuery(query.routeState.value)
+
+    await router[method]({
+      name: 'admin-problem-testcases',
+      params: problemId > 0
+        ? {
+          problemId: String(problemId)
+        }
+        : {},
+      query: nextQuery
+    })
+  }
+
+  async function selectProblem(problemId){
+    if (problemId === selectedProblemId.value) {
+      return
+    }
+
+    await replaceProblemRoute(problemId, {
+      push: true
+    })
+  }
+
   const draft = useTestcaseEditorDraft({
     authState,
     busySection,
@@ -55,7 +100,7 @@ export function useAdminProblemTestcasesPage(){
     formatCount,
     showErrorNotice,
     showSuccessNotice,
-    selectedProblemId: query.selectedProblemId,
+    selectedProblemId,
     selectedTestcase: listResource.selectedTestcase,
     selectedTestcaseSummary: draft.selectedTestcaseSummary,
     newTestcaseInput: draft.newTestcaseInput,
@@ -77,7 +122,7 @@ export function useAdminProblemTestcasesPage(){
     authState,
     busySection,
     testcaseItems: listResource.testcaseItems,
-    selectedProblemId: query.selectedProblemId,
+    selectedProblemId,
     selectedTestcaseSummary: draft.selectedTestcaseSummary,
     applyProblemVersion: listResource.applyProblemVersion,
     updateTestcaseItems: listResource.setTestcaseItems,
@@ -112,7 +157,7 @@ export function useAdminProblemTestcasesPage(){
     resetPageState,
     afterInitialProblemLoad: loadSelectedProblemData,
     afterRefreshProblemLoad: loadSelectedProblemData,
-    selectedProblemIdSource: query.selectedProblemId,
+    selectedProblemIdSource: selectedProblemId,
     resetSelectedProblemState,
     reloadSelectedProblemData: loadSelectedProblemData,
     isRefreshBlocked(){
@@ -122,7 +167,7 @@ export function useAdminProblemTestcasesPage(){
   const pageAccess = problemWorkspace.pageAccess
   const refreshPage = problemWorkspace.refreshWorkspace
   const isLoadingProblems = computed(() =>
-    pageAccess.accessState.value === 'initializing' || listResource.isLoadingProblems.value
+    pageAccess.accessState.value === 'initializing' || problemCatalogResource.isLoadingProblems.value
   )
   const toolbarStatusLabel = computed(() => {
     if (
@@ -133,15 +178,15 @@ export function useAdminProblemTestcasesPage(){
       return 'Loading'
     }
 
-    if (query.selectedProblemId.value > 0) {
+    if (selectedProblemId.value > 0) {
       return `${formatCount(listResource.testcaseCount.value)} Testcases`
     }
 
-    return `${formatCount(listResource.problemCount.value)} Problems`
+    return `${formatCount(problemCatalogResource.problemCount.value)} Problems`
   })
   const toolbarStatusTone = computed(() => {
     if (
-      listResource.listErrorMessage.value ||
+      problemCatalogResource.listErrorMessage.value ||
       listResource.problemErrorMessage.value ||
       listResource.testcaseErrorMessage.value
     ) {
@@ -159,7 +204,7 @@ export function useAdminProblemTestcasesPage(){
   })
 
   pageAccess.watchWhenAllowed(draft.selectedTestcaseSummary, (testcaseSummary) => {
-    if (!authState.token || query.selectedProblemId.value <= 0 || !testcaseSummary) {
+    if (!authState.token || selectedProblemId.value <= 0 || !testcaseSummary) {
       listResource.clearSelectedTestcaseDetail()
       return
     }
@@ -201,27 +246,27 @@ export function useAdminProblemTestcasesPage(){
   }
 
   async function loadProblems(options = {}){
-    const preferredProblemId = Number(options.preferredProblemId ?? query.selectedProblemId.value)
-    const result = await listResource.loadProblems()
+    const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
+    const result = await problemCatalogResource.loadProblems()
 
     if (result.status !== 'success') {
       return result
     }
 
-    if (!listResource.problems.value.length) {
-      if (query.selectedProblemId.value > 0) {
-        await query.replaceProblemRoute(0)
+    if (!problemCatalogResource.problems.value.length) {
+      if (selectedProblemId.value > 0) {
+        await replaceProblemRoute(0)
       } else {
         resetSelectedProblemState()
       }
       return result
     }
 
-    const nextProblemId = listResource.problems.value.some((problem) => problem.problem_id === preferredProblemId)
+    const nextProblemId = problemCatalogResource.problems.value.some((problem) => problem.problem_id === preferredProblemId)
       ? preferredProblemId
-      : listResource.problems.value[0].problem_id
-    if (nextProblemId > 0 && nextProblemId !== query.selectedProblemId.value) {
-      await query.replaceProblemRoute(nextProblemId)
+      : problemCatalogResource.problems.value[0].problem_id
+    if (nextProblemId > 0 && nextProblemId !== selectedProblemId.value) {
+      await replaceProblemRoute(nextProblemId)
     }
 
     return result
@@ -240,7 +285,7 @@ export function useAdminProblemTestcasesPage(){
   }
 
   async function loadSelectedProblemData(){
-    if (query.selectedProblemId.value <= 0) {
+    if (selectedProblemId.value <= 0) {
       listResource.resetSelectedProblemResource()
       resetSelectedTestcaseState()
       return {
@@ -262,7 +307,7 @@ export function useAdminProblemTestcasesPage(){
     query.problemIdSearchInput.value = ''
     busySection.value = ''
     testcaseSummaryElementMap.clear()
-    listResource.resetProblemListResource()
+    problemCatalogResource.resetProblems()
     listResource.resetSelectedProblemResource()
     draft.resetDraftState()
   }
@@ -307,19 +352,19 @@ export function useAdminProblemTestcasesPage(){
     accessMessage: pageAccess.accessMessage,
     isAuthenticated,
     canManageProblems,
-    selectedProblemId: query.selectedProblemId,
+    selectedProblemId,
     isLoadingProblems,
     isLoadingProblem: listResource.isLoadingProblem,
     isLoadingTestcases: listResource.isLoadingTestcases,
     isLoadingSelectedTestcase: listResource.isLoadingSelectedTestcase,
-    listErrorMessage: listResource.listErrorMessage,
+    listErrorMessage: problemCatalogResource.listErrorMessage,
     problemErrorMessage: listResource.problemErrorMessage,
     testcaseErrorMessage: listResource.testcaseErrorMessage,
     selectedTestcaseErrorMessage: listResource.selectedTestcaseErrorMessage,
     searchMode: query.searchMode,
     titleSearchInput: query.titleSearchInput,
     problemIdSearchInput: query.problemIdSearchInput,
-    problems: listResource.problems,
+    problems: problemCatalogResource.problems,
     problemDetail: listResource.problemDetail,
     testcaseItems: listResource.testcaseItems,
     newTestcaseInput: draft.newTestcaseInput,
@@ -330,7 +375,7 @@ export function useAdminProblemTestcasesPage(){
     selectedTestcaseOutputDraft: draft.selectedTestcaseOutputDraft,
     viewTestcaseOrderInput: draft.viewTestcaseOrderInput,
     busySection,
-    problemCount: listResource.problemCount,
+    problemCount: problemCatalogResource.problemCount,
     toolbarStatusLabel,
     toolbarStatusTone,
     hasAppliedSearch: query.hasAppliedSearch,
@@ -357,7 +402,7 @@ export function useAdminProblemTestcasesPage(){
     handleProblemIdSearchInput: query.handleProblemIdSearchInput,
     submitSearch: query.submitSearch,
     resetSearch: query.resetSearch,
-    selectProblem: query.selectProblem,
+    selectProblem,
     refreshPage,
     handleTestcaseZipFileChange: draft.handleTestcaseZipFileChange,
     handleUploadTestcaseZip: uploadActions.handleUploadTestcaseZip,

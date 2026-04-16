@@ -5,9 +5,8 @@ import { useAsyncResource } from '@/composables/useAsyncResource'
 import { buildApiQuery as buildProblemAdminSearchApiQuery } from '@/queryState/problemAdminSearch'
 import { formatApiError } from '@/utils/apiError'
 
-export function useProblemListResource({
+export function useAdminProblemCatalogResource({
   authState,
-  canManageProblems,
   routeQueryState
 }){
   const problemListResource = useAsyncResource({
@@ -17,7 +16,7 @@ export function useProblemListResource({
       const response = await getProblemList({
         title: apiQuery.title,
         problemId: apiQuery.problemId,
-        bearerToken: authState.token
+        bearerToken: authState.token || ''
       })
 
       return response.problems
@@ -48,12 +47,6 @@ export function useProblemListResource({
   }
 
   async function loadProblems(){
-    if (!authState.token || !canManageProblems.value) {
-      return {
-        status: 'blocked'
-      }
-    }
-
     return problemListResource.run({
       routeQuery: routeQueryState.value
     }, {
