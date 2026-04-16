@@ -433,7 +433,14 @@ print(json.dumps({"duration_minutes": 60}, separators=(",", ":")))
 PY
 )"
 
-printf '%s\n' 'not-a-zip' > "${invalid_zip_request_file}"
+python3 - "${invalid_zip_request_file}" <<'PY'
+import sys
+import zipfile
+
+with zipfile.ZipFile(sys.argv[1], "w") as testcase_zip:
+    testcase_zip.writestr("001.in", "1 2\n")
+    testcase_zip.writestr("001.out", "3\n")
+PY
 
 request_contract_cases="$(cat <<EOF
 invalid json sign-up|POST|${base_url}/api/auth/sign-up||{"user_login_id":"broken"|400|invalid_json|invalid json|

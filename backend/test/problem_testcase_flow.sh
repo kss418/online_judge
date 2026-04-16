@@ -43,6 +43,7 @@ testcase_detail_response_file="$(mktemp)"
 update_testcase_response_file="$(mktemp)"
 updated_testcases_response_file="$(mktemp)"
 move_testcase_response_file="$(mktemp)"
+move_same_testcase_response_file="$(mktemp)"
 move_testcases_response_file="$(mktemp)"
 delete_testcase_response_file="$(mktemp)"
 delete_all_testcases_response_file="$(mktemp)"
@@ -91,6 +92,7 @@ cleanup(){
         "${update_testcase_response_file}" \
         "${updated_testcases_response_file}" \
         "${move_testcase_response_file}" \
+        "${move_same_testcase_response_file}" \
         "${move_testcases_response_file}" \
         "${delete_testcase_response_file}" \
         "${delete_all_testcases_response_file}" \
@@ -630,6 +632,46 @@ assert_json_field_equals \
     "int"
 
 print_success_log "problem testcase move success"
+
+send_http_request_and_assert_status \
+    "POST" \
+    "${base_url}/api/problem/${problem_id}/testcase/move" \
+    "${move_same_testcase_response_file}" \
+    "200" \
+    "move testcase to same order" \
+    "${sign_up_token}" \
+    "$(
+        python3 <<'PY'
+import json
+
+print(
+    json.dumps(
+        {
+            "source_testcase_order": 1,
+            "target_testcase_order": 1,
+        }
+    )
+)
+PY
+    )"
+assert_json_message \
+    "${move_same_testcase_response_file}" \
+    "problem testcase moved" \
+    "move testcase to same order"
+assert_json_field_equals \
+    "${move_same_testcase_response_file}" \
+    "problem_id" \
+    "${problem_id}" \
+    "move testcase to same order problem_id" \
+    "int"
+assert_json_field_equals \
+    "${move_same_testcase_response_file}" \
+    "version" \
+    "5" \
+    "move testcase to same order version" \
+    "int"
+
+print_success_log "problem testcase same-order move success"
 
 send_http_request_and_assert_status \
     "GET" \

@@ -50,17 +50,16 @@ testcase_bulk_mutation_service::delete_all_testcases(
             }
 
             if(testcase_count_exp->testcase_count <= 0){
-                const auto version_exp = testcase_mutation_publish_helper::get_current_version(
+                return testcase_mutation_publish_helper::with_current_version(
                     transaction,
-                    problem_reference_value
-                );
-                if(!version_exp){
-                    return std::unexpected(version_exp.error());
-                }
-
-                return testcase_mutation_publish_helper::make_mutation_result(
                     problem_reference_value,
-                    *version_exp
+                    [&](const problem_dto::version& version_value)
+                        -> std::expected<problem_dto::mutation_result, service_error> {
+                        return testcase_mutation_publish_helper::make_mutation_result(
+                            problem_reference_value,
+                            version_value
+                        );
+                    }
                 );
             }
 
@@ -72,18 +71,16 @@ testcase_bulk_mutation_service::delete_all_testcases(
                 return std::unexpected(clear_testcases_exp.error());
             }
 
-            const auto version_exp =
-                testcase_mutation_publish_helper::increase_version_and_publish_current_snapshot(
-                    transaction,
-                    problem_reference_value
-                );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
-            return testcase_mutation_publish_helper::make_mutation_result(
+            return testcase_mutation_publish_helper::with_published_version(
+                transaction,
                 problem_reference_value,
-                *version_exp
+                [&](const problem_dto::version& version_value)
+                    -> std::expected<problem_dto::mutation_result, service_error> {
+                    return testcase_mutation_publish_helper::make_mutation_result(
+                        problem_reference_value,
+                        version_value
+                    );
+                }
             );
         }
     );
@@ -119,6 +116,8 @@ testcase_bulk_mutation_service::replace_testcases(
             if(!current_testcase_count_exp){
                 return std::unexpected(current_testcase_count_exp.error());
             }
+            const bool has_changes =
+                current_testcase_count_exp->testcase_count > 0 || !testcase_values.empty();
 
             if(current_testcase_count_exp->testcase_count > 0){
                 const auto clear_testcases_exp = delete_all_testcases_and_clear_count(
@@ -159,35 +158,32 @@ testcase_bulk_mutation_service::replace_testcases(
                 testcase_count_value = *next_testcase_count_exp;
             }
 
-            if(current_testcase_count_exp->testcase_count > 0 || !testcase_values.empty()){
-                const auto version_exp =
-                    testcase_mutation_publish_helper::increase_version_and_publish_current_snapshot(
-                        transaction,
-                        problem_reference_value
-                    );
-                if(!version_exp){
-                    return std::unexpected(version_exp.error());
-                }
-
-                return testcase_mutation_publish_helper::make_testcase_count_mutation_result(
-                    testcase_count_value,
+            if(has_changes){
+                return testcase_mutation_publish_helper::with_published_version(
+                    transaction,
                     problem_reference_value,
-                    *version_exp
+                    [&](const problem_dto::version& version_value)
+                        -> std::expected<problem_dto::testcase_count_mutation_result, service_error> {
+                        return testcase_mutation_publish_helper::make_testcase_count_mutation_result(
+                            testcase_count_value,
+                            problem_reference_value,
+                            version_value
+                        );
+                    }
                 );
             }
 
-            const auto version_exp = testcase_mutation_publish_helper::get_current_version(
+            return testcase_mutation_publish_helper::with_current_version(
                 transaction,
-                problem_reference_value
-            );
-            if(!version_exp){
-                return std::unexpected(version_exp.error());
-            }
-
-            return testcase_mutation_publish_helper::make_testcase_count_mutation_result(
-                testcase_count_value,
                 problem_reference_value,
-                *version_exp
+                [&](const problem_dto::version& version_value)
+                    -> std::expected<problem_dto::testcase_count_mutation_result, service_error> {
+                    return testcase_mutation_publish_helper::make_testcase_count_mutation_result(
+                        testcase_count_value,
+                        problem_reference_value,
+                        version_value
+                    );
+                }
             );
         }
     );
