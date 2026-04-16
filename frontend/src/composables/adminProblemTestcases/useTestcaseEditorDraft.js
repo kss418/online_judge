@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 
+import { useTestcaseZipInput } from '@/composables/adminShared/useTestcaseZipInput'
 import { parsePositiveInteger } from '@/utils/parse'
 
 export function useTestcaseEditorDraft({
@@ -11,14 +12,22 @@ export function useTestcaseEditorDraft({
 }){
   const newTestcaseInput = ref('')
   const newTestcaseOutput = ref('')
-  const testcaseZipFile = ref(null)
-  const testcaseZipInputKey = ref(0)
   const selectedTestcaseOrder = ref(0)
   const selectedTestcaseInputDraft = ref('')
   const selectedTestcaseOutputDraft = ref('')
   const viewTestcaseOrderInput = ref('')
+  const {
+    testcaseZipFile,
+    testcaseZipInputKey,
+    selectedTestcaseZipName,
+    resetTestcaseZipSelection,
+    handleTestcaseZipFileChange
+  } = useTestcaseZipInput({
+    onInvalidZip(){
+      showErrorNotice('ZIP 파일만 업로드할 수 있습니다.')
+    }
+  })
 
-  const selectedTestcaseZipName = computed(() => testcaseZipFile.value?.name || '')
   const selectedTestcaseSummary = computed(() =>
     testcaseItems.value.find((testcase) => testcase.testcase_order === selectedTestcaseOrder.value) || null
   )
@@ -43,8 +52,7 @@ export function useTestcaseEditorDraft({
   function resetDraftState(){
     newTestcaseInput.value = ''
     newTestcaseOutput.value = ''
-    testcaseZipFile.value = null
-    testcaseZipInputKey.value += 1
+    resetTestcaseZipSelection()
     selectedTestcaseOrder.value = 0
     selectedTestcaseInputDraft.value = ''
     selectedTestcaseOutputDraft.value = ''
@@ -121,23 +129,6 @@ export function useTestcaseEditorDraft({
     return true
   }
 
-  function handleTestcaseZipFileChange(event){
-    const nextFile = event.target?.files?.[0] || null
-    if (!nextFile) {
-      testcaseZipFile.value = null
-      return
-    }
-
-    if (!nextFile.name.toLowerCase().endsWith('.zip')) {
-      testcaseZipFile.value = null
-      testcaseZipInputKey.value += 1
-      showErrorNotice('ZIP 파일만 업로드할 수 있습니다.')
-      return
-    }
-
-    testcaseZipFile.value = nextFile
-  }
-
   return {
     newTestcaseInput,
     newTestcaseOutput,
@@ -152,6 +143,7 @@ export function useTestcaseEditorDraft({
     canViewSpecificTestcase,
     canSaveSelectedTestcase,
     resetDraftState,
+    resetTestcaseZipSelection,
     resetSelectedTestcaseState,
     syncSelectedTestcase,
     syncSelectedTestcaseById,

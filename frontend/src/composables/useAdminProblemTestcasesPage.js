@@ -108,7 +108,7 @@ export function useAdminProblemTestcasesPage(){
     newTestcaseInput: draft.newTestcaseInput,
     newTestcaseOutput: draft.newTestcaseOutput,
     testcaseZipFile: draft.testcaseZipFile,
-    testcaseZipInputKey: draft.testcaseZipInputKey,
+    resetTestcaseZipSelection: draft.resetTestcaseZipSelection,
     selectedTestcaseInputDraft: draft.selectedTestcaseInputDraft,
     selectedTestcaseOutputDraft: draft.selectedTestcaseOutputDraft,
     canSaveSelectedTestcase: draft.canSaveSelectedTestcase,

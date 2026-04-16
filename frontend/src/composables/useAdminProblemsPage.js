@@ -70,6 +70,7 @@ export function useAdminProblemsPage(){
     selectedProblemDetail: problemDetailResource.selectedProblemDetail,
     updateSelectedProblemDetail: problemDetailResource.setSelectedProblemDetail,
     testcaseZipFile: editorDraft.testcaseZipFile,
+    resetTestcaseZipSelection: editorDraft.resetTestcaseZipSelection,
     titleDraft: editorDraft.titleDraft,
     timeLimitDraft: editorDraft.timeLimitDraft,
     memoryLimitDraft: editorDraft.memoryLimitDraft,
@@ -121,7 +122,7 @@ export function useAdminProblemsPage(){
     })
   }
 
-  async function loadSelectedProblem(problemId){
+  async function loadSelectedProblem(problemId, options = {}){
     const normalizedProblemId = Number(problemId)
     if (!Number.isInteger(normalizedProblemId) || normalizedProblemId <= 0) {
       return
@@ -129,7 +130,9 @@ export function useAdminProblemsPage(){
 
     selectedProblemId.value = normalizedProblemId
     problemActionFeedback.clearActionError()
-    editorDraft.resetEditorDrafts()
+    editorDraft.resetEditorDrafts({
+      skipTestcaseZipReset: options.skipTestcaseZipReset === true
+    })
 
     const result = await problemDetailResource.loadProblemDetail(normalizedProblemId)
 

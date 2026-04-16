@@ -13,6 +13,7 @@ export function useProblemAdminActions({
   selectedProblemDetail,
   updateSelectedProblemDetail,
   testcaseZipFile,
+  resetTestcaseZipSelection,
   titleDraft,
   timeLimitDraft,
   memoryLimitDraft,
@@ -94,6 +95,7 @@ export function useProblemAdminActions({
     formatCount,
     selectedProblemDetail,
     testcaseZipFile,
+    resetTestcaseZipSelection,
     applySelectedProblemVersion,
     loadSelectedProblem,
     setActionFeedback: feedback.setActionFeedback

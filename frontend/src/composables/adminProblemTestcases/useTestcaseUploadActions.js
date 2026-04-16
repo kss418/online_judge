@@ -1,12 +1,12 @@
 import { computed } from 'vue'
 
 import { runBusyAction } from '@/composables/adminShared/runBusyAction'
+import { useTestcaseZipUploadAction } from '@/composables/adminShared/useTestcaseZipUploadAction'
 import { testcaseBusySection } from '@/composables/adminProblemTestcases/testcaseBusySection'
 import {
   createProblemTestcase,
   deleteProblemTestcase,
-  updateProblemTestcase,
-  uploadProblemTestcaseZip
+  updateProblemTestcase
 } from '@/api/testcaseApi'
 import { formatApiError } from '@/utils/apiError'
 
@@ -22,7 +22,7 @@ export function useTestcaseUploadActions({
   newTestcaseInput,
   newTestcaseOutput,
   testcaseZipFile,
-  testcaseZipInputKey,
+  resetTestcaseZipSelection,
   selectedTestcaseInputDraft,
   selectedTestcaseOutputDraft,
   canSaveSelectedTestcase,
@@ -35,18 +35,11 @@ export function useTestcaseUploadActions({
   syncSelectedTestcase
 }){
   const isCreatingTestcase = computed(() => busySection.value === testcaseBusySection.CREATE)
-  const isUploadingTestcaseZip = computed(() => busySection.value === testcaseBusySection.UPLOAD_ZIP)
   const isDeletingSelectedTestcase = computed(() => busySection.value === testcaseBusySection.DELETE_SELECTED)
   const isSavingSelectedTestcase = computed(() => busySection.value === testcaseBusySection.SAVE_SELECTED)
   const canCreateTestcase = computed(() =>
     selectedProblemId.value > 0 &&
     Boolean(authState.token) &&
-    !busySection.value
-  )
-  const canUploadTestcaseZip = computed(() =>
-    selectedProblemId.value > 0 &&
-    Boolean(authState.token) &&
-    Boolean(testcaseZipFile.value) &&
     !busySection.value
   )
   const canDeleteSelectedTestcase = computed(() =>
@@ -93,38 +86,32 @@ export function useTestcaseUploadActions({
     })
   }
 
-  async function handleUploadTestcaseZip(){
-    if (!canUploadTestcaseZip.value || !authState.token || !testcaseZipFile.value) {
-      return
-    }
-
-    const uploadFile = testcaseZipFile.value
-
-    return runBusyAction({
-      busySection,
-      section: testcaseBusySection.UPLOAD_ZIP,
-      run: async () => {
-        const response = await uploadProblemTestcaseZip(selectedProblemId.value, uploadFile, authState.token)
-        testcaseZipFile.value = null
-        testcaseZipInputKey.value += 1
-        applyProblemVersion(selectedProblemId.value, response.version)
-        await Promise.all([
-          reloadProblems(),
-          reloadSelectedProblemData()
-        ])
-
-        const uploadedTestcaseCount = Number(response.testcase_count ?? 0)
-        showSuccessNotice(`테스트케이스 ${formatCount(uploadedTestcaseCount)}개를 업로드했습니다.`)
-      },
-      onError: (error) => {
-        showErrorNotice(
-          formatApiError(error, {
-            fallback: '테스트케이스 ZIP을 업로드하지 못했습니다.'
-          })
-        )
-      }
-    })
-  }
+  const testcaseZipUploadAction = useTestcaseZipUploadAction({
+    authState,
+    busySection,
+    uploadSection: testcaseBusySection.UPLOAD_ZIP,
+    selectedProblemId,
+    testcaseZipFile,
+    resetTestcaseZipSelection,
+    async afterUpload(response, problemId){
+      applyProblemVersion(problemId, response.version)
+      await Promise.all([
+        reloadProblems(),
+        reloadSelectedProblemData()
+      ])
+    },
+    showSuccess(message){
+      showSuccessNotice(message)
+    },
+    showError(error){
+      showErrorNotice(error)
+    },
+    formatSuccessMessage(response){
+      const uploadedTestcaseCount = Number(response.testcase_count ?? 0)
+      return `테스트케이스 ${formatCount(uploadedTestcaseCount)}개를 업로드했습니다.`
+    },
+    fallbackError: '테스트케이스 ZIP을 업로드하지 못했습니다.'
+  })
 
   async function handleDeleteSelectedTestcase(){
     if (!canDeleteSelectedTestcase.value || !authState.token || !selectedTestcaseSummary.value) {
@@ -209,14 +196,14 @@ export function useTestcaseUploadActions({
 
   return {
     isCreatingTestcase,
-    isUploadingTestcaseZip,
+    isUploadingTestcaseZip: testcaseZipUploadAction.isUploadingTestcaseZip,
     isDeletingSelectedTestcase,
     isSavingSelectedTestcase,
     canCreateTestcase,
-    canUploadTestcaseZip,
+    canUploadTestcaseZip: testcaseZipUploadAction.canUploadTestcaseZip,
     canDeleteSelectedTestcase,
     handleCreateTestcase,
-    handleUploadTestcaseZip,
+    handleUploadTestcaseZip: testcaseZipUploadAction.handleUploadTestcaseZip,
     handleDeleteSelectedTestcase,
     handleSaveSelectedTestcase
   }

@@ -6,6 +6,7 @@ import {
 import {
   makeSampleDraft
 } from '@/composables/adminProblems/problemHelpers'
+import { useTestcaseZipInput } from '@/composables/adminShared/useTestcaseZipInput'
 import { parsePositiveInteger } from '@/utils/parse'
 
 export function useProblemEditorDraft({
@@ -22,10 +23,26 @@ export function useProblemEditorDraft({
   const outputFormatDraft = ref('')
   const noteDraft = ref('')
   const sampleDrafts = ref([])
-  const testcaseZipFile = ref(null)
-  const testcaseZipInputKey = ref(0)
+  const {
+    testcaseZipFile,
+    testcaseZipInputKey,
+    selectedTestcaseZipName,
+    resetTestcaseZipSelection,
+    handleTestcaseZipFileChange
+  } = useTestcaseZipInput({
+    onInvalidZip(){
+      setActionFeedback({
+        message: '',
+        error: 'ZIP 파일만 업로드할 수 있습니다.'
+      })
+    },
+    onValidZip(){
+      setActionFeedback({
+        error: ''
+      })
+    }
+  })
 
-  const selectedTestcaseZipName = computed(() => testcaseZipFile.value?.name || '')
   const canSaveTitle = computed(() => {
     const problemDetail = selectedProblemDetail.value
     if (!problemDetail || !authState.token || busySection.value) {
@@ -75,7 +92,7 @@ export function useProblemEditorDraft({
     )
   })
 
-  function resetEditorDrafts(){
+  function resetEditorDrafts(options = {}){
     titleDraft.value = ''
     timeLimitDraft.value = ''
     memoryLimitDraft.value = ''
@@ -84,8 +101,10 @@ export function useProblemEditorDraft({
     outputFormatDraft.value = ''
     noteDraft.value = ''
     sampleDrafts.value = []
-    testcaseZipFile.value = null
-    testcaseZipInputKey.value += 1
+
+    if (!options.skipTestcaseZipReset) {
+      resetTestcaseZipSelection()
+    }
   }
 
   function assignEditorDrafts(problemDetail){
@@ -142,29 +161,6 @@ export function useProblemEditorDraft({
     return samples[samples.length - 1].sample_order === sampleOrder
   }
 
-  function handleTestcaseZipFileChange(event){
-    const nextFile = event.target?.files?.[0] || null
-    if (!nextFile) {
-      testcaseZipFile.value = null
-      return
-    }
-
-    if (!nextFile.name.toLowerCase().endsWith('.zip')) {
-      testcaseZipFile.value = null
-      testcaseZipInputKey.value += 1
-      setActionFeedback({
-        message: '',
-        error: 'ZIP 파일만 업로드할 수 있습니다.'
-      })
-      return
-    }
-
-    testcaseZipFile.value = nextFile
-    setActionFeedback({
-      error: ''
-    })
-  }
-
   return {
     titleDraft,
     timeLimitDraft,
@@ -181,6 +177,7 @@ export function useProblemEditorDraft({
     canSaveLimits,
     canSaveStatement,
     resetEditorDrafts,
+    resetTestcaseZipSelection,
     assignEditorDrafts,
     syncSampleDrafts,
     getSampleDraft,
