@@ -25,7 +25,7 @@ namespace{
     }
 
     auto make_get_user_summary_spec(std::int64_t user_id){
-        return http_handler_spec::make_path_value_json_spec(
+        return http_handler_spec::make_existing_user_json_spec(
             user_id,
             user_service::get_summary,
             user_json_serializer::make_summary_object

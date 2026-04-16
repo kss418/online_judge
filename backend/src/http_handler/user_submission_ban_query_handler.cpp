@@ -10,12 +10,7 @@ namespace{
     using response_type = request_context::response_type;
 
     auto make_get_me_submission_ban_spec(){
-        return http_handler_spec::make_auth_identity_json_spec(
-            [](const http_guard::guard_context&,
-                const auth_dto::identity& auth_identity_value)
-                -> std::expected<std::int64_t, response_type> {
-                return auth_identity_value.user_id;
-            },
+        return http_handler_spec::make_auth_user_id_json_spec(
             user_service::get_submission_ban_status,
             user_json_serializer::make_submission_ban_status_object
         );
