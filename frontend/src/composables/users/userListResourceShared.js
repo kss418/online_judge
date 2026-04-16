@@ -1,4 +1,5 @@
 import { formatApiError } from '@/utils/apiError'
+import { createSubmissionBanState } from '@/utils/submissionBan'
 
 export function createUserListErrorMessage(error){
   return formatApiError(error, {
@@ -30,6 +31,7 @@ export function mergeManagedUserBanStatuses(users, statusResults){
       if (!statusResult) {
         return {
           ...user,
+          ...createSubmissionBanState(),
           submission_ban_status_loading: false,
           submission_ban_status_error: true
         }

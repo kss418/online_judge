@@ -6,39 +6,13 @@ import { useUserListPageBase } from '@/composables/users/useUserListPageBase'
 import { usePollingController } from '@/composables/usePollingController'
 import { authStore } from '@/stores/auth/authStore'
 import { formatCount as formatNumberCount } from '@/utils/numberFormat'
+import {
+  formatSubmissionBanRemaining,
+  getSubmissionBanPhase
+} from '@/utils/submissionBan'
 
 const koreanNumberFormatOptions = {
   locale: 'ko-KR'
-}
-
-function formatTimeDistance(distanceMs){
-  const totalSeconds = Math.max(1, Math.floor(distanceMs / 1000))
-
-  if (totalSeconds < 60) {
-    return `${totalSeconds}초`
-  }
-
-  const totalMinutes = Math.floor(totalSeconds / 60)
-  if (totalMinutes < 60) {
-    return `${totalMinutes}분`
-  }
-
-  const totalHours = Math.floor(totalMinutes / 60)
-  if (totalHours < 24) {
-    return `${totalHours}시간`
-  }
-
-  const totalDays = Math.floor(totalHours / 24)
-  if (totalDays < 30) {
-    return `${totalDays}일`
-  }
-
-  const totalMonths = Math.floor(totalDays / 30)
-  if (totalMonths < 12) {
-    return `${totalMonths}달`
-  }
-
-  return `${Math.floor(totalDays / 365)}년`
 }
 
 export function useAdminUserManagementPage(){
@@ -101,26 +75,12 @@ export function useAdminUserManagementPage(){
   })
 
   function getSubmissionBanState(user){
-    if (user.submission_ban_status_loading) {
-      return 'loading'
-    }
-
-    if (user.submission_ban_status_error) {
-      return 'error'
-    }
-
-    if (
-      typeof user.submission_banned_until_timestamp !== 'number' ||
-      Number.isNaN(user.submission_banned_until_timestamp)
-    ) {
-      return 'none'
-    }
-
-    if (user.submission_banned_until_timestamp > nowTimestamp.value) {
-      return 'active'
-    }
-
-    return 'none'
+    return getSubmissionBanPhase({
+      nowTimestamp: nowTimestamp.value,
+      submissionBanTimestamp: user.submission_banned_until_timestamp,
+      isLoading: user.submission_ban_status_loading,
+      hasError: user.submission_ban_status_error
+    })
   }
 
   function getSubmissionBanLabel(user){
@@ -174,14 +134,11 @@ export function useAdminUserManagementPage(){
       return ''
     }
 
-    const timestamp = user.submission_banned_until_timestamp
-
-    if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
-      return '시각 확인 불가'
-    }
-
     if (state === 'active') {
-      return `${formatTimeDistance(Math.abs(timestamp - nowTimestamp.value))} 남음`
+      return `${formatSubmissionBanRemaining(
+        nowTimestamp.value,
+        user.submission_banned_until_timestamp
+      )} 남음`
     }
 
     return ''

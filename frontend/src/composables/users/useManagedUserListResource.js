@@ -8,13 +8,12 @@ import {
   patchUserInList
 } from '@/composables/users/userListResourceShared'
 import { noticeStore } from '@/stores/notice/noticeStore'
+import { createSubmissionBanState } from '@/utils/submissionBan'
 
 function createBaseManagedUser(user){
   return {
     ...user,
-    submission_banned_until: null,
-    submission_banned_until_timestamp: null,
-    submission_banned_until_label: '',
+    ...createSubmissionBanState(),
     submission_ban_status_loading: true,
     submission_ban_status_error: false
   }
@@ -52,9 +51,7 @@ async function loadManagedUsers(token){
       } catch {
         return {
           user_id: user.user_id,
-          submission_banned_until: null,
-          submission_banned_until_timestamp: null,
-          submission_banned_until_label: '',
+          ...createSubmissionBanState(),
           has_error: true
         }
       }

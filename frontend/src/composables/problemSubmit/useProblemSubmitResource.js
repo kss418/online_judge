@@ -6,15 +6,12 @@ import { getMySubmissionBan } from '@/api/userQueryApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { usePollingController } from '@/composables/usePollingController'
 import { formatApiError } from '@/utils/apiError'
-import { formatRemainingDuration, formatTimestamp } from '@/utils/dateTime'
-
-function createInitialSubmissionBanState(){
-  return {
-    submission_banned_until: null,
-    timestamp: null,
-    label: ''
-  }
-}
+import {
+  createSubmissionBanState,
+  formatSubmissionBanRemaining,
+  formatSubmissionBanUntil,
+  isSubmissionBanActive as checkSubmissionBanActive
+} from '@/utils/submissionBan'
 
 export function useProblemSubmitResource({
   authState,
@@ -46,15 +43,9 @@ export function useProblemSubmitResource({
     }
   })
   const submissionBanResource = useAsyncResource({
-    initialData: createInitialSubmissionBanState,
+    initialData: createSubmissionBanState,
     async load(token){
-      const response = await getMySubmissionBan(token)
-
-      return {
-        submission_banned_until: response.submission_banned_until,
-        timestamp: response.submission_banned_until_timestamp,
-        label: response.submission_banned_until_label
-      }
+      return getMySubmissionBan(token)
     },
     getErrorMessage(error){
       return formatApiError(error, {
@@ -83,26 +74,25 @@ export function useProblemSubmitResource({
   const submissionBan = submissionBanResource.data
   const submissionBanErrorMessage = submissionBanResource.errorMessage
   const isSubmissionBanActive = computed(() => (
-    typeof submissionBan.value.timestamp === 'number' &&
-    !Number.isNaN(submissionBan.value.timestamp) &&
-    submissionBan.value.timestamp > nowTimestamp.value
+    checkSubmissionBanActive(
+      nowTimestamp.value,
+      submissionBan.value.submission_banned_until_timestamp
+    )
   ))
-  const submissionBanUntilText = computed(() => {
-    if (
-      typeof submissionBan.value.submission_banned_until !== 'string' ||
-      !submissionBan.value.submission_banned_until
-    ) {
-      return '-'
-    }
-
-    return formatTimestamp(submissionBan.value.submission_banned_until)
-  })
+  const submissionBanUntilText = computed(() =>
+    formatSubmissionBanUntil(submissionBan.value.submission_banned_until)
+  )
   const submissionBanRemainingText = computed(() => {
-    if (!isSubmissionBanActive.value) {
+    const remainingText = formatSubmissionBanRemaining(
+      nowTimestamp.value,
+      submissionBan.value.submission_banned_until_timestamp
+    )
+
+    if (!remainingText) {
       return ''
     }
 
-    return `약 ${formatRemainingDuration(nowTimestamp.value, submissionBan.value.timestamp)} 남음`
+    return `약 ${remainingText} 남음`
   })
 
   function resetProblemDetail(){
