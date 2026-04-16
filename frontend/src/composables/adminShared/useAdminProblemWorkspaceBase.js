@@ -36,7 +36,6 @@ export function useAdminProblemWorkspaceBase({
   selectedProblemIdSource,
   resetSelectedProblemState,
   reloadSelectedProblemData,
-  clearSelectedProblemState,
   isRefreshBlocked
 }){
   async function reloadProblems(preferredProblemId){
@@ -89,10 +88,7 @@ export function useAdminProblemWorkspaceBase({
         if (typeof reloadSelectedProblemData === 'function') {
           void reloadSelectedProblemData(problemId)
         }
-        return
       }
-
-      clearSelectedProblemState?.()
     })
   }
 

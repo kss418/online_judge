@@ -90,13 +90,6 @@ export function useAdminProblemsPage(){
     onCreatedProblem: handleCreatedProblem
   })
 
-  const toolbarStatusLabel = computed(() =>
-    problemListResource.isLoadingProblems.value ? 'Loading' : `${problemListResource.problemCount.value} Problems`
-  )
-  const toolbarStatusTone = computed(() =>
-    problemListResource.listErrorMessage.value ? 'danger' : 'success'
-  )
-
   watch(problemActionFeedback.actionMessage, (message) => {
     if (message) {
       showSuccessNotice(message)
@@ -109,22 +102,9 @@ export function useAdminProblemsPage(){
     }
   })
 
-  watch(
-    () => authState.initialized,
-    (initialized) => {
-      if (!initialized) {
-        problemListResource.isLoadingProblems.value = true
-      }
-    },
-    {
-      immediate: true
-    }
-  )
-
   function clearSelectedProblemState(){
     selectedProblemId.value = 0
-    problemDetailResource.invalidateSelectedProblemResource()
-    problemDetailResource.detailErrorMessage.value = ''
+    problemDetailResource.resetSelectedProblemResource()
     editorDraft.resetEditorDrafts()
   }
 
@@ -263,6 +243,15 @@ export function useAdminProblemsPage(){
   })
   const pageAccess = problemWorkspace.pageAccess
   const refreshProblems = problemWorkspace.refreshWorkspace
+  const isLoadingProblems = computed(() =>
+    pageAccess.accessState.value === 'initializing' || problemListResource.isLoadingProblems.value
+  )
+  const toolbarStatusLabel = computed(() =>
+    isLoadingProblems.value ? 'Loading' : `${problemListResource.problemCount.value} Problems`
+  )
+  const toolbarStatusTone = computed(() =>
+    problemListResource.listErrorMessage.value ? 'danger' : 'success'
+  )
 
   return {
     authState,
@@ -270,7 +259,7 @@ export function useAdminProblemsPage(){
     accessMessage: pageAccess.accessMessage,
     isAuthenticated,
     canManageProblems,
-    isLoadingProblems: problemListResource.isLoadingProblems,
+    isLoadingProblems,
     isLoadingDetail: problemDetailResource.isLoadingDetail,
     listErrorMessage: problemListResource.listErrorMessage,
     detailErrorMessage: problemDetailResource.detailErrorMessage,

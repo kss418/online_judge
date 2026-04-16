@@ -24,7 +24,7 @@ export function useProblemDetailResource({
   const detailErrorMessage = detailResource.errorMessage
   const selectedProblemDetail = detailResource.data
 
-  function invalidateSelectedProblemResource(){
+  function resetSelectedProblemResource(){
     detailResource.reset({
       preserveHasLoadedOnce: true
     })
@@ -75,7 +75,7 @@ export function useProblemDetailResource({
 
   async function loadProblemDetail(problemId = selectedProblemId.value){
     if (!problemId) {
-      invalidateSelectedProblemResource()
+      resetSelectedProblemResource()
       return {
         status: 'reset'
       }
@@ -91,7 +91,7 @@ export function useProblemDetailResource({
     isLoadingDetail,
     detailErrorMessage,
     selectedProblemDetail,
-    invalidateSelectedProblemResource,
+    resetSelectedProblemResource,
     setSelectedProblemDetail,
     setSelectedProblemSamples,
     applySelectedProblemVersion,

@@ -89,33 +89,6 @@ export function useAdminProblemTestcasesPage(){
     }
   })
 
-  const toolbarStatusLabel = computed(() => {
-    if (
-      listResource.isLoadingProblems.value ||
-      listResource.isLoadingProblem.value ||
-      listResource.isLoadingTestcases.value
-    ) {
-      return 'Loading'
-    }
-
-    if (query.selectedProblemId.value > 0) {
-      return `${formatCount(listResource.testcaseCount.value)} Testcases`
-    }
-
-    return `${formatCount(listResource.problemCount.value)} Problems`
-  })
-  const toolbarStatusTone = computed(() => {
-    if (
-      listResource.listErrorMessage.value ||
-      listResource.problemErrorMessage.value ||
-      listResource.testcaseErrorMessage.value
-    ) {
-      return 'danger'
-    }
-
-    return 'success'
-  })
-
   const problemWorkspace = useAdminProblemWorkspaceBase({
     authState,
     initializeAuth,
@@ -142,16 +115,41 @@ export function useAdminProblemTestcasesPage(){
     selectedProblemIdSource: query.selectedProblemId,
     resetSelectedProblemState,
     reloadSelectedProblemData: loadSelectedProblemData,
-    clearSelectedProblemState(){
-      listResource.isLoadingProblem.value = false
-      listResource.isLoadingTestcases.value = false
-    },
     isRefreshBlocked(){
       return Boolean(busySection.value)
     }
   })
   const pageAccess = problemWorkspace.pageAccess
   const refreshPage = problemWorkspace.refreshWorkspace
+  const isLoadingProblems = computed(() =>
+    pageAccess.accessState.value === 'initializing' || listResource.isLoadingProblems.value
+  )
+  const toolbarStatusLabel = computed(() => {
+    if (
+      isLoadingProblems.value ||
+      listResource.isLoadingProblem.value ||
+      listResource.isLoadingTestcases.value
+    ) {
+      return 'Loading'
+    }
+
+    if (query.selectedProblemId.value > 0) {
+      return `${formatCount(listResource.testcaseCount.value)} Testcases`
+    }
+
+    return `${formatCount(listResource.problemCount.value)} Problems`
+  })
+  const toolbarStatusTone = computed(() => {
+    if (
+      listResource.listErrorMessage.value ||
+      listResource.problemErrorMessage.value ||
+      listResource.testcaseErrorMessage.value
+    ) {
+      return 'danger'
+    }
+
+    return 'success'
+  })
 
   watch(listResource.selectedTestcase, (testcase) => {
     draft.selectedTestcaseInputDraft.value = testcase?.testcase_input ?? ''
@@ -310,7 +308,7 @@ export function useAdminProblemTestcasesPage(){
     isAuthenticated,
     canManageProblems,
     selectedProblemId: query.selectedProblemId,
-    isLoadingProblems: listResource.isLoadingProblems,
+    isLoadingProblems,
     isLoadingProblem: listResource.isLoadingProblem,
     isLoadingTestcases: listResource.isLoadingTestcases,
     isLoadingSelectedTestcase: listResource.isLoadingSelectedTestcase,
