@@ -8,7 +8,8 @@ import { useProblemEditorDraft } from '@/composables/adminProblems/useProblemEdi
 import { formatProblemLimit } from '@/composables/adminProblems/problemHelpers'
 import { useAdminProblemCatalogQuery } from '@/composables/adminShared/useAdminProblemCatalogQuery'
 import { useAdminProblemCatalogResource } from '@/composables/adminShared/useAdminProblemCatalogResource'
-import { useAdminProblemWorkspaceBase } from '@/composables/adminShared/useAdminProblemWorkspaceBase'
+import { useAdminProblemRouteCatalogReload } from '@/composables/adminShared/useAdminProblemRouteCatalogReload'
+import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatCount } from '@/utils/numberFormat'
@@ -224,31 +225,52 @@ export function useAdminProblemsPage(){
     problemActionFeedback.resetActionState()
   }
 
-  const problemWorkspace = useAdminProblemWorkspaceBase({
+  const preferredProblemIdForCatalogReload = computed(() => (
+    problemQuery.routeSearchMode.value === 'problem-id'
+      ? problemQuery.preferredProblemIdForReload.value
+      : (problemQuery.preferredProblemIdFromRoute.value || selectedProblemId.value)
+  ))
+  const pageAccess = useProtectedAdminPageAccess({
     authState,
     initializeAuth,
     isAuthenticated,
     hasAccess: canManageProblems,
+    onDenied: resetPageState,
+    async onAllowed(){
+      problemQuery.syncSearchControlsFromRoute()
+      await loadProblems({
+        preferredProblemId: preferredProblemIdForCatalogReload.value
+      })
+    },
     loggedOutMessage: '문제 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
-    deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.',
-    routeSearchSources: [
+    deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
+  })
+
+  useAdminProblemRouteCatalogReload({
+    pageAccess,
+    sources: [
       problemQuery.routeSearchMode,
       problemQuery.routeTitleSearch,
-      problemQuery.routeProblemIdSearch
+      problemQuery.routeProblemIdSearch,
+      problemQuery.preferredProblemIdFromRoute
     ],
-    syncSearchControlsFromRoute: problemQuery.syncSearchControlsFromRoute,
-    loadProblems,
-    getInitialPreferredProblemId(){
-      return problemQuery.preferredProblemIdFromRoute.value || selectedProblemId.value
+    syncFromRoute: problemQuery.syncSearchControlsFromRoute,
+    reloadCatalog(preferredProblemId){
+      return loadProblems({
+        preferredProblemId
+      })
     },
-    getRefreshPreferredProblemId(){
-      return problemQuery.preferredProblemIdForReload.value
-    },
-    resetPageState,
-    preferredProblemIdSource: problemQuery.preferredProblemIdFromRoute
+    getPreferredProblemId(){
+      return preferredProblemIdForCatalogReload.value
+    }
   })
-  const pageAccess = problemWorkspace.pageAccess
-  const refreshProblems = problemWorkspace.refreshWorkspace
+
+  async function refreshProblems(){
+    await loadProblems({
+      preferredProblemId: preferredProblemIdForCatalogReload.value
+    })
+  }
+
   const isLoadingProblems = computed(() =>
     pageAccess.accessState.value === 'initializing' || problemListResource.isLoadingProblems.value
   )

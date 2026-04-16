@@ -4,7 +4,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { useProblemTestcaseResource } from '@/composables/adminProblemTestcases/useProblemTestcaseResource'
 import { useAdminProblemCatalogQuery } from '@/composables/adminShared/useAdminProblemCatalogQuery'
 import { useAdminProblemCatalogResource } from '@/composables/adminShared/useAdminProblemCatalogResource'
-import { useAdminProblemWorkspaceBase } from '@/composables/adminShared/useAdminProblemWorkspaceBase'
+import { useAdminProblemRouteCatalogReload } from '@/composables/adminShared/useAdminProblemRouteCatalogReload'
+import { useAdminProblemSelectionReload } from '@/composables/adminShared/useAdminProblemSelectionReload'
+import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
 import { formatProblemLimit } from '@/composables/adminProblemTestcases/testcaseHelpers'
 import { useTestcaseEditorDraft } from '@/composables/adminProblemTestcases/useTestcaseEditorDraft'
 import { useTestcaseReorder } from '@/composables/adminProblemTestcases/useTestcaseReorder'
@@ -134,38 +136,59 @@ export function useAdminProblemTestcasesPage(){
     }
   })
 
-  const problemWorkspace = useAdminProblemWorkspaceBase({
+  const pageAccess = useProtectedAdminPageAccess({
     authState,
     initializeAuth,
     isAuthenticated,
     hasAccess: canManageProblems,
+    onDenied: resetPageState,
+    async onAllowed(){
+      query.syncSearchControlsFromRoute()
+      await loadProblems({
+        preferredProblemId: query.preferredProblemIdForReload.value
+      })
+      await loadSelectedProblemData()
+    },
     loggedOutMessage: '테스트케이스 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
-    deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.',
-    routeSearchSources: [
+    deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
+  })
+
+  useAdminProblemRouteCatalogReload({
+    pageAccess,
+    sources: [
       query.routeSearchMode,
       query.routeTitleSearch,
       query.routeProblemIdSearch
     ],
-    syncSearchControlsFromRoute: query.syncSearchControlsFromRoute,
-    loadProblems,
-    getInitialPreferredProblemId(){
-      return query.preferredProblemIdForReload.value
+    syncFromRoute: query.syncSearchControlsFromRoute,
+    reloadCatalog(preferredProblemId){
+      return loadProblems({
+        preferredProblemId
+      })
     },
-    getRefreshPreferredProblemId(){
+    getPreferredProblemId(){
       return query.preferredProblemIdForReload.value
-    },
-    resetPageState,
-    afterInitialProblemLoad: loadSelectedProblemData,
-    afterRefreshProblemLoad: loadSelectedProblemData,
-    selectedProblemIdSource: selectedProblemId,
-    resetSelectedProblemState,
-    reloadSelectedProblemData: loadSelectedProblemData,
-    isRefreshBlocked(){
-      return Boolean(busySection.value)
     }
   })
-  const pageAccess = problemWorkspace.pageAccess
-  const refreshPage = problemWorkspace.refreshWorkspace
+
+  useAdminProblemSelectionReload({
+    pageAccess,
+    selectedProblemId,
+    resetSelectedProblemState,
+    reloadSelectedProblemData: loadSelectedProblemData
+  })
+
+  async function refreshPage(){
+    if (busySection.value) {
+      return
+    }
+
+    await loadProblems({
+      preferredProblemId: query.preferredProblemIdForReload.value
+    })
+    await loadSelectedProblemData()
+  }
+
   const isLoadingProblems = computed(() =>
     pageAccess.accessState.value === 'initializing' || problemCatalogResource.isLoadingProblems.value
   )
