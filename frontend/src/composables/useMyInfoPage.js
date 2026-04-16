@@ -16,6 +16,51 @@ import {
   submissionStatisticsVisibleCatalog
 } from '@/generated/submissionStatusCatalog'
 
+function useMyInfoPanelStatus({
+  shouldShowLoadingState,
+  showExtendedProfilePanels,
+  isLoading,
+  errorMessage,
+  getSuccessLabel,
+  successTone
+}){
+  const statusLabel = computed(() => {
+    if (shouldShowLoadingState.value || isLoading.value) {
+      return 'Loading'
+    }
+
+    if (!showExtendedProfilePanels.value) {
+      return 'Guest'
+    }
+
+    if (errorMessage.value) {
+      return 'Error'
+    }
+
+    return getSuccessLabel()
+  })
+  const statusTone = computed(() => {
+    if (shouldShowLoadingState.value || isLoading.value) {
+      return 'neutral'
+    }
+
+    if (!showExtendedProfilePanels.value) {
+      return 'neutral'
+    }
+
+    if (errorMessage.value) {
+      return 'danger'
+    }
+
+    return successTone
+  })
+
+  return {
+    statusLabel,
+    statusTone
+  }
+}
+
 export function useMyInfoPage(){
   const route = useRoute()
   const {
@@ -55,91 +100,44 @@ export function useMyInfoPage(){
     runImmediately: true
   })
 
-  const statisticsStatusLabel = computed(() => {
-    if (profile.shouldShowLoadingState.value || statistics.isStatisticsLoading.value) {
-      return 'Loading'
-    }
-
-    if (!profile.showExtendedProfilePanels.value) {
-      return 'Guest'
-    }
-
-    return statistics.statisticsErrorMessage.value ? 'Error' : 'Loaded'
+  const {
+    statusLabel: statisticsStatusLabel,
+    statusTone: statisticsStatusTone
+  } = useMyInfoPanelStatus({
+    shouldShowLoadingState: profile.shouldShowLoadingState,
+    showExtendedProfilePanels: profile.showExtendedProfilePanels,
+    isLoading: statistics.isStatisticsLoading,
+    errorMessage: statistics.statisticsErrorMessage,
+    getSuccessLabel(){
+      return 'Loaded'
+    },
+    successTone: 'success'
   })
-  const statisticsStatusTone = computed(() => {
-    if (profile.shouldShowLoadingState.value || statistics.isStatisticsLoading.value) {
-      return 'neutral'
-    }
-
-    if (!profile.showExtendedProfilePanels.value) {
-      return 'neutral'
-    }
-
-    if (statistics.statisticsErrorMessage.value) {
-      return 'danger'
-    }
-
-    return 'success'
+  const {
+    statusLabel: solvedProblemsStatusLabel,
+    statusTone: solvedProblemsStatusTone
+  } = useMyInfoPanelStatus({
+    shouldShowLoadingState: profile.shouldShowLoadingState,
+    showExtendedProfilePanels: profile.showExtendedProfilePanels,
+    isLoading: solvedProblems.isSolvedProblemsLoading,
+    errorMessage: solvedProblems.solvedProblemsErrorMessage,
+    getSuccessLabel(){
+      return `${solvedProblems.solvedProblems.value.length} Solved`
+    },
+    successTone: 'success'
   })
-  const solvedProblemsStatusLabel = computed(() => {
-    if (profile.shouldShowLoadingState.value || solvedProblems.isSolvedProblemsLoading.value) {
-      return 'Loading'
-    }
-
-    if (!profile.showExtendedProfilePanels.value) {
-      return 'Guest'
-    }
-
-    if (solvedProblems.solvedProblemsErrorMessage.value) {
-      return 'Error'
-    }
-
-    return `${solvedProblems.solvedProblems.value.length} Solved`
-  })
-  const solvedProblemsStatusTone = computed(() => {
-    if (profile.shouldShowLoadingState.value || solvedProblems.isSolvedProblemsLoading.value) {
-      return 'neutral'
-    }
-
-    if (!profile.showExtendedProfilePanels.value) {
-      return 'neutral'
-    }
-
-    if (solvedProblems.solvedProblemsErrorMessage.value) {
-      return 'danger'
-    }
-
-    return 'success'
-  })
-  const wrongProblemsStatusLabel = computed(() => {
-    if (profile.shouldShowLoadingState.value || wrongProblems.isWrongProblemsLoading.value) {
-      return 'Loading'
-    }
-
-    if (!profile.showExtendedProfilePanels.value) {
-      return 'Guest'
-    }
-
-    if (wrongProblems.wrongProblemsErrorMessage.value) {
-      return 'Error'
-    }
-
-    return `${wrongProblems.wrongProblems.value.length} Wrong`
-  })
-  const wrongProblemsStatusTone = computed(() => {
-    if (profile.shouldShowLoadingState.value || wrongProblems.isWrongProblemsLoading.value) {
-      return 'neutral'
-    }
-
-    if (!profile.showExtendedProfilePanels.value) {
-      return 'neutral'
-    }
-
-    if (wrongProblems.wrongProblemsErrorMessage.value) {
-      return 'danger'
-    }
-
-    return 'danger'
+  const {
+    statusLabel: wrongProblemsStatusLabel,
+    statusTone: wrongProblemsStatusTone
+  } = useMyInfoPanelStatus({
+    shouldShowLoadingState: profile.shouldShowLoadingState,
+    showExtendedProfilePanels: profile.showExtendedProfilePanels,
+    isLoading: wrongProblems.isWrongProblemsLoading,
+    errorMessage: wrongProblems.wrongProblemsErrorMessage,
+    getSuccessLabel(){
+      return `${wrongProblems.wrongProblems.value.length} Wrong`
+    },
+    successTone: 'danger'
   })
   const statisticsItems = computed(() => {
     const defaultStatusCounts = Object.fromEntries(

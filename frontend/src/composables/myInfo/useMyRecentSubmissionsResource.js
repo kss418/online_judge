@@ -1,11 +1,15 @@
 import { getSubmissionList } from '@/api/submission'
-import { useAsyncResource } from '@/composables/useAsyncResource'
+import { useProfileUserIdAsyncResource } from '@/composables/myInfo/profileUserIdResourceShared'
 import { formatApiError } from '@/utils/apiError'
 
 export function useMyRecentSubmissionsResource({
   authState
 }){
-  const recentSubmissionsResource = useAsyncResource({
+  const {
+    resource: recentSubmissionsResource,
+    reset: resetRecentSubmissions,
+    loadByProfileUserId: loadRecentSubmissions
+  } = useProfileUserIdAsyncResource({
     initialData: [],
     async load(profileUserId){
       const payload = await getSubmissionList({
@@ -22,30 +26,6 @@ export function useMyRecentSubmissionsResource({
       })
     }
   })
-
-  function resetRecentSubmissions(){
-    recentSubmissionsResource.reset({
-      preserveHasLoadedOnce: true,
-      clearLastArgs: true
-    })
-  }
-
-  async function loadRecentSubmissions(profileUserId){
-    const normalizedProfileUserId = Number(profileUserId)
-
-    if (!Number.isInteger(normalizedProfileUserId) || normalizedProfileUserId <= 0) {
-      resetRecentSubmissions()
-
-      return {
-        status: 'reset',
-        data: recentSubmissionsResource.data.value
-      }
-    }
-
-    return recentSubmissionsResource.run(normalizedProfileUserId, {
-      resetDataOnError: true
-    })
-  }
 
   return {
     recentSubmissions: recentSubmissionsResource.data,

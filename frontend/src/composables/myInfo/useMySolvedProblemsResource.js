@@ -1,11 +1,15 @@
 import { getUserSolvedProblems } from '@/api/userStatisticsApi'
-import { useAsyncResource } from '@/composables/useAsyncResource'
+import { useProfileUserIdAsyncResource } from '@/composables/myInfo/profileUserIdResourceShared'
 import { formatApiError } from '@/utils/apiError'
 
 export function useMySolvedProblemsResource({
   authState
 }){
-  const solvedProblemsResource = useAsyncResource({
+  const {
+    resource: solvedProblemsResource,
+    reset: resetSolvedProblems,
+    loadByProfileUserId: loadSolvedProblems
+  } = useProfileUserIdAsyncResource({
     initialData: [],
     async load(profileUserId){
       const payload = await getUserSolvedProblems(
@@ -21,30 +25,6 @@ export function useMySolvedProblemsResource({
       })
     }
   })
-
-  function resetSolvedProblems(){
-    solvedProblemsResource.reset({
-      preserveHasLoadedOnce: true,
-      clearLastArgs: true
-    })
-  }
-
-  async function loadSolvedProblems(profileUserId){
-    const normalizedProfileUserId = Number(profileUserId)
-
-    if (!Number.isInteger(normalizedProfileUserId) || normalizedProfileUserId <= 0) {
-      resetSolvedProblems()
-
-      return {
-        status: 'reset',
-        data: solvedProblemsResource.data.value
-      }
-    }
-
-    return solvedProblemsResource.run(normalizedProfileUserId, {
-      resetDataOnError: true
-    })
-  }
 
   return {
     solvedProblems: solvedProblemsResource.data,

@@ -1,11 +1,15 @@
 import { getUserWrongProblems } from '@/api/userStatisticsApi'
-import { useAsyncResource } from '@/composables/useAsyncResource'
+import { useProfileUserIdAsyncResource } from '@/composables/myInfo/profileUserIdResourceShared'
 import { formatApiError } from '@/utils/apiError'
 
 export function useMyWrongProblemsResource({
   authState
 }){
-  const wrongProblemsResource = useAsyncResource({
+  const {
+    resource: wrongProblemsResource,
+    reset: resetWrongProblems,
+    loadByProfileUserId: loadWrongProblems
+  } = useProfileUserIdAsyncResource({
     initialData: [],
     async load(profileUserId){
       const payload = await getUserWrongProblems(
@@ -21,30 +25,6 @@ export function useMyWrongProblemsResource({
       })
     }
   })
-
-  function resetWrongProblems(){
-    wrongProblemsResource.reset({
-      preserveHasLoadedOnce: true,
-      clearLastArgs: true
-    })
-  }
-
-  async function loadWrongProblems(profileUserId){
-    const normalizedProfileUserId = Number(profileUserId)
-
-    if (!Number.isInteger(normalizedProfileUserId) || normalizedProfileUserId <= 0) {
-      resetWrongProblems()
-
-      return {
-        status: 'reset',
-        data: wrongProblemsResource.data.value
-      }
-    }
-
-    return wrongProblemsResource.run(normalizedProfileUserId, {
-      resetDataOnError: true
-    })
-  }
 
   return {
     wrongProblems: wrongProblemsResource.data,

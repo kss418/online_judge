@@ -1,9 +1,13 @@
 import { getUserSubmissionStatistics } from '@/api/userStatisticsApi'
-import { useAsyncResource } from '@/composables/useAsyncResource'
+import { useProfileUserIdAsyncResource } from '@/composables/myInfo/profileUserIdResourceShared'
 import { formatApiError } from '@/utils/apiError'
 
 export function useMyStatisticsResource(){
-  const statisticsResource = useAsyncResource({
+  const {
+    resource: statisticsResource,
+    reset: resetSubmissionStatistics,
+    loadByProfileUserId: loadSubmissionStatistics
+  } = useProfileUserIdAsyncResource({
     initialData: null,
     async load(profileUserId){
       return getUserSubmissionStatistics(profileUserId)
@@ -14,30 +18,6 @@ export function useMyStatisticsResource(){
       })
     }
   })
-
-  function resetSubmissionStatistics(){
-    statisticsResource.reset({
-      preserveHasLoadedOnce: true,
-      clearLastArgs: true
-    })
-  }
-
-  async function loadSubmissionStatistics(profileUserId){
-    const normalizedProfileUserId = Number(profileUserId)
-
-    if (!Number.isInteger(normalizedProfileUserId) || normalizedProfileUserId <= 0) {
-      resetSubmissionStatistics()
-
-      return {
-        status: 'reset',
-        data: statisticsResource.data.value
-      }
-    }
-
-    return statisticsResource.run(normalizedProfileUserId, {
-      resetDataOnError: true
-    })
-  }
 
   return {
     submissionStatistics: statisticsResource.data,
