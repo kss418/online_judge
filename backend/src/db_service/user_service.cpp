@@ -145,33 +145,6 @@ user_service::get_submission_ban_status(
     );
 }
 
-std::expected<void, service_error> user_service::update_submission_banned_until(
-    db_connection& connection,
-    std::int64_t user_id,
-    std::string_view submission_banned_until
-){
-    if(user_id <= 0 || submission_banned_until.empty()){
-        return std::unexpected(service_error::validation_error);
-    }
-
-    return db_service_util::with_retry_service_write_transaction(
-        connection,
-        [&](pqxx::work& transaction) -> std::expected<void, service_error> {
-            const auto update_submission_banned_until_exp =
-                user_repository::update_submission_banned_until(
-                    transaction,
-                    user_id,
-                    submission_banned_until
-                );
-            if(!update_submission_banned_until_exp){
-                return std::unexpected(update_submission_banned_until_exp.error());
-            }
-
-            return {};
-        }
-    );
-}
-
 std::expected<void, service_error> user_service::clear_submission_banned_until(
     db_connection& connection,
     std::int64_t user_id

@@ -41,11 +41,6 @@ namespace user_repository{
         pqxx::transaction_base& transaction,
         std::int64_t user_id
     );
-    std::expected<void, repository_error> update_submission_banned_until(
-        pqxx::transaction_base& transaction,
-        std::int64_t user_id,
-        std::string_view submission_banned_until
-    );
     std::expected<void, repository_error> clear_submission_banned_until(
         pqxx::transaction_base& transaction,
         std::int64_t user_id

@@ -189,35 +189,6 @@ user_repository::get_active_submission_banned_until(
     return user_info_result[0][0].as<std::string>();
 }
 
-std::expected<void, repository_error> user_repository::update_submission_banned_until(
-    pqxx::transaction_base& transaction,
-    std::int64_t user_id,
-    std::string_view submission_banned_until
-){
-    if(user_id <= 0 || submission_banned_until.empty()){
-        return std::unexpected(
-            user_id <= 0
-                ? repository_error::invalid_reference
-                : repository_error::invalid_input
-        );
-    }
-
-    const auto update_result = transaction.exec(
-        "UPDATE user_info "
-        "SET "
-        "submission_banned_until = $2::timestamptz, "
-        "updated_at = NOW() "
-        "WHERE user_id = $1",
-        pqxx::params{user_id, submission_banned_until}
-    );
-
-    if(update_result.affected_rows() == 0){
-        return std::unexpected(repository_error::not_found);
-    }
-
-    return {};
-}
-
 std::expected<void, repository_error> user_repository::clear_submission_banned_until(
     pqxx::transaction_base& transaction,
     std::int64_t user_id

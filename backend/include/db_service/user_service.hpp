@@ -36,11 +36,6 @@ namespace user_service{
         db_connection& connection,
         std::int64_t user_id
     );
-    std::expected<void, service_error> update_submission_banned_until(
-        db_connection& connection,
-        std::int64_t user_id,
-        std::string_view submission_banned_until
-    );
     std::expected<void, service_error> clear_submission_banned_until(
         db_connection& connection,
         std::int64_t user_id
