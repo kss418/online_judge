@@ -33,7 +33,6 @@ export function useAdminProblemWorkspaceBase({
   afterInitialProblemLoad,
   afterRefreshProblemLoad,
   preferredProblemIdSource,
-  onPreferredProblemIdChange,
   selectedProblemIdSource,
   resetSelectedProblemState,
   reloadSelectedProblemData,
@@ -65,11 +64,6 @@ export function useAdminProblemWorkspaceBase({
     pageAccess.watchWhenAllowed(preferredProblemIdSource, (problemId) => {
       const nextProblemId = normalizeProblemId(problemId)
       if (nextProblemId <= 0) {
-        return
-      }
-
-      if (typeof onPreferredProblemIdChange === 'function') {
-        void onPreferredProblemIdChange(nextProblemId)
         return
       }
 

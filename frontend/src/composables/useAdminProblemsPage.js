@@ -259,12 +259,7 @@ export function useAdminProblemsPage(){
       return problemQuery.preferredProblemIdForReload.value
     },
     resetPageState,
-    preferredProblemIdSource: problemQuery.preferredProblemIdFromRoute,
-    onPreferredProblemIdChange(problemId){
-      return loadProblems({
-        preferredProblemId: problemId
-      })
-    }
+    preferredProblemIdSource: problemQuery.preferredProblemIdFromRoute
   })
   const pageAccess = problemWorkspace.pageAccess
   const refreshProblems = problemWorkspace.refreshWorkspace

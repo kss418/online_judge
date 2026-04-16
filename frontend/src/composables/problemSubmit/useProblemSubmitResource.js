@@ -70,9 +70,7 @@ export function useProblemSubmitResource({
   const isLoadingLanguages = languageResource.isLoading
   const languageErrorMessage = languageResource.errorMessage
   const supportedLanguages = languageResource.data
-  const isLoadingSubmissionBan = submissionBanResource.isLoading
   const submissionBan = submissionBanResource.data
-  const submissionBanErrorMessage = submissionBanResource.errorMessage
   const isSubmissionBanActive = computed(() => (
     checkSubmissionBanActive(
       nowTimestamp.value,
@@ -120,14 +118,7 @@ export function useProblemSubmitResource({
     })
   }
 
-  function resetSupportedLanguages(){
-    languageResource.reset({
-      preserveHasLoadedOnce: true,
-      clearLastArgs: true
-    })
-  }
-
-  async function loadSupportedLanguageList(){
+  function loadSupportedLanguageList(){
     return languageResource.run(undefined, {
       resetDataOnError: true
     })
@@ -162,15 +153,10 @@ export function useProblemSubmitResource({
     isLoadingLanguages,
     languageErrorMessage,
     supportedLanguages,
-    isLoadingSubmissionBan,
-    submissionBan,
-    submissionBanErrorMessage,
     isSubmissionBanActive,
     submissionBanUntilText,
     submissionBanRemainingText,
-    resetProblemDetail,
     loadProblemDetail,
-    resetSupportedLanguages,
     loadSupportedLanguageList,
     resetSubmissionBan,
     loadMySubmissionBan

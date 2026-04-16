@@ -52,7 +52,6 @@ export function useAdminUserListResource({
     users: userListResource.data,
     isLoading: userListResource.isLoading,
     errorMessage: userListResource.errorMessage,
-    hasLoadedOnce: userListResource.hasLoadedOnce,
     resetUsers,
     loadUsers,
     patchUser

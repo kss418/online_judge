@@ -1,9 +1,6 @@
 import { getPublicUserList } from '@/api/userQueryApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
-import {
-  createUserListErrorMessage,
-  patchUserInList
-} from '@/composables/users/userListResourceShared'
+import { createUserListErrorMessage } from '@/composables/users/userListResourceShared'
 
 function createInitialUserList(){
   return []
@@ -19,20 +16,10 @@ export function usePublicUserListResource(){
     getErrorMessage: createUserListErrorMessage
   })
 
-  function resetUsers(){
-    userListResource.reset({
-      clearLastArgs: true
-    })
-  }
-
   async function loadUsers(query = ''){
     return userListResource.run(query, {
       resetDataOnError: true
     })
-  }
-
-  function patchUser(userId, patch){
-    userListResource.mutate((users) => patchUserInList(users, userId, patch))
   }
 
   return {
@@ -40,8 +27,6 @@ export function usePublicUserListResource(){
     isLoading: userListResource.isLoading,
     errorMessage: userListResource.errorMessage,
     hasLoadedOnce: userListResource.hasLoadedOnce,
-    resetUsers,
-    loadUsers,
-    patchUser
+    loadUsers
   }
 }

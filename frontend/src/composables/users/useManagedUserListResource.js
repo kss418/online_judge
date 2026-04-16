@@ -114,7 +114,6 @@ export function useManagedUserListResource({
     users,
     isLoading: userManagementResource.isLoading,
     errorMessage: userManagementResource.errorMessage,
-    hasLoadedOnce: userManagementResource.hasLoadedOnce,
     resetUsers,
     loadUsers,
     patchUser

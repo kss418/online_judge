@@ -7,8 +7,7 @@ import {
   createSubmissionBanState,
   formatSubmissionBanRemaining,
   formatSubmissionBanUntil,
-  getSubmissionBanPhase,
-  isSubmissionBanActive
+  getSubmissionBanPhase
 } from '@/utils/submissionBan'
 
 export function useMySubmissionBanResource({
@@ -43,13 +42,6 @@ export function useMySubmissionBanResource({
       hasError: Boolean(mySubmissionBanErrorMessage.value)
     })
   })
-  const isMySubmissionBanActive = computed(() => (
-    isOwnProfile.value &&
-    isSubmissionBanActive(
-      nowTimestamp.value,
-      mySubmissionBan.value.submission_banned_until_timestamp
-    )
-  ))
   const mySubmissionBanStatusLabel = computed(() => {
     if (!isOwnProfile.value) {
       return ''
@@ -142,9 +134,6 @@ export function useMySubmissionBanResource({
 
   return {
     mySubmissionBan,
-    isMySubmissionBanLoading,
-    mySubmissionBanErrorMessage,
-    isMySubmissionBanActive,
     mySubmissionBanStatusLabel,
     mySubmissionBanStatusTone,
     mySubmissionBanWindowText,
