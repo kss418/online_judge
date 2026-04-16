@@ -1,4 +1,4 @@
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { authStore } from '@/stores/auth/authStore'
@@ -15,29 +15,32 @@ export function useProblemSubmitPage(){
     initializeAuth
   } = authStore
   const numericProblemId = computed(() => parsePositiveInteger(route.params.problemId) ?? 0)
-
-  let problemSubmitAction
+  const selectedLanguage = ref('')
+  const sourceCode = ref('')
+  const sourceEditorElement = ref(null)
 
   const problemSubmitResource = useProblemSubmitResource({
     authState,
     isAuthenticated,
     numericProblemId
   })
-  const problemSubmitEditor = useProblemSubmitEditor({
-    supportedLanguages: problemSubmitResource.supportedLanguages,
-    isSubmittingSubmission: computed(() => problemSubmitAction?.isSubmittingSubmission.value ?? false),
-    submitSolution: () => problemSubmitAction?.submitSolution()
-  })
-
-  problemSubmitAction = useProblemSubmitAction({
+  const problemSubmitAction = useProblemSubmitAction({
     authState,
     isAuthenticated,
     numericProblemId,
-    selectedLanguage: problemSubmitEditor.selectedLanguage,
-    sourceCode: problemSubmitEditor.sourceCode,
+    selectedLanguage,
+    sourceCode,
     isLoadingLanguages: problemSubmitResource.isLoadingLanguages,
     isSubmissionBanActive: problemSubmitResource.isSubmissionBanActive,
     refreshSubmissionBan: problemSubmitResource.loadMySubmissionBan
+  })
+  const problemSubmitEditor = useProblemSubmitEditor({
+    selectedLanguage,
+    sourceCode,
+    sourceEditorElement,
+    supportedLanguages: problemSubmitResource.supportedLanguages,
+    isSubmittingSubmission: problemSubmitAction.isSubmittingSubmission,
+    onSubmit: problemSubmitAction.submitSolution
   })
 
   watch(numericProblemId, () => {
@@ -85,9 +88,9 @@ export function useProblemSubmitPage(){
     isSubmissionBanActive: problemSubmitResource.isSubmissionBanActive,
     submissionBanUntilText: problemSubmitResource.submissionBanUntilText,
     submissionBanRemainingText: problemSubmitResource.submissionBanRemainingText,
-    selectedLanguage: problemSubmitEditor.selectedLanguage,
-    sourceCode: problemSubmitEditor.sourceCode,
-    sourceEditorElement: problemSubmitEditor.sourceEditorElement,
+    selectedLanguage,
+    sourceCode,
+    sourceEditorElement,
     activeLanguage: problemSubmitEditor.activeLanguage,
     editorLineNumbers: problemSubmitEditor.editorLineNumbers,
     editorPlaceholder: problemSubmitEditor.editorPlaceholder,

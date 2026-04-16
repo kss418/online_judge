@@ -17,7 +17,6 @@ export function useTestcaseUploadActions({
   showErrorNotice,
   showSuccessNotice,
   selectedProblemId,
-  testcaseItems,
   selectedTestcase,
   selectedTestcaseSummary,
   newTestcaseInput,
@@ -28,11 +27,12 @@ export function useTestcaseUploadActions({
   selectedTestcaseOutputDraft,
   canSaveSelectedTestcase,
   applyProblemVersion,
-  loadProblems,
-  loadSelectedProblemData,
-  loadTestcases,
-  syncSelectedTestcase,
-  resetSelectedTestcaseState
+  reloadProblems,
+  reloadSelectedProblemData,
+  reloadTestcases,
+  updateTestcaseItems,
+  setSelectedTestcaseDetail,
+  syncSelectedTestcase
 }){
   const isCreatingTestcase = computed(() => busySection.value === testcaseBusySection.CREATE)
   const isUploadingTestcaseZip = computed(() => busySection.value === testcaseBusySection.UPLOAD_ZIP)
@@ -78,7 +78,7 @@ export function useTestcaseUploadActions({
         )
 
         applyProblemVersion(selectedProblemId.value, response.version)
-        await loadTestcases(Number(response.testcase_order ?? 0))
+        await reloadTestcases(Number(response.testcase_order ?? 0))
         newTestcaseInput.value = ''
         newTestcaseOutput.value = ''
         showSuccessNotice('테스트케이스를 마지막에 추가했습니다.')
@@ -109,8 +109,8 @@ export function useTestcaseUploadActions({
         testcaseZipInputKey.value += 1
         applyProblemVersion(selectedProblemId.value, response.version)
         await Promise.all([
-          loadProblems(),
-          loadSelectedProblemData()
+          reloadProblems(),
+          reloadSelectedProblemData()
         ])
 
         const uploadedTestcaseCount = Number(response.testcase_count ?? 0)
@@ -143,14 +143,14 @@ export function useTestcaseUploadActions({
           authState.token
         )
         applyProblemVersion(selectedProblemId.value, response.version)
-        testcaseItems.value = testcaseItems.value
+        updateTestcaseItems((testcaseItems) => testcaseItems
           .filter((testcase) => testcase.testcase_order !== deletedTestcaseOrder)
           .map((testcase) => ({
             ...testcase,
             testcase_order: testcase.testcase_order > deletedTestcaseOrder
               ? testcase.testcase_order - 1
               : testcase.testcase_order
-          }))
+          })))
         syncSelectedTestcase(deletedTestcaseOrder)
         showSuccessNotice(`테스트케이스 ${deletedTestcaseOrder}번을 삭제했습니다.`)
       },
@@ -188,13 +188,13 @@ export function useTestcaseUploadActions({
         )
 
         applyProblemVersion(selectedProblemId.value, response.version)
-        selectedTestcase.value = {
+        setSelectedTestcaseDetail({
           testcase_id: Number(response?.testcase_id ?? 0),
           testcase_order: Number(response?.testcase_order ?? 0),
           testcase_input: typeof response?.testcase_input === 'string' ? response.testcase_input : '',
           testcase_output: typeof response?.testcase_output === 'string' ? response.testcase_output : ''
-        }
-        await loadTestcases(testcaseOrder)
+        })
+        await reloadTestcases(testcaseOrder)
         showSuccessNotice(`테스트케이스 ${testcaseOrder}번을 저장했습니다.`)
       },
       onError: (error) => {

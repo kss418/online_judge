@@ -8,14 +8,7 @@ import { formatApiError } from '@/utils/apiError'
 export function useProblemListResource({
   authState,
   canManageProblems,
-  routeQueryState,
-  selectedProblemId,
-  selectedProblemDetail,
-  detailErrorMessage,
-  resetEditorDrafts,
-  clearActionError,
-  invalidateSelectedProblemResource,
-  selectProblem
+  routeQueryState
 }){
   const problemListResource = useAsyncResource({
     initialData: [],
@@ -54,47 +47,17 @@ export function useProblemListResource({
     )
   }
 
-  async function loadProblems(options = {}){
+  async function loadProblems(){
     if (!authState.token || !canManageProblems.value) {
-      return
+      return {
+        status: 'blocked'
+      }
     }
 
-    const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
-
-    clearActionError()
-
-    const result = await problemListResource.run({
+    return problemListResource.run({
       routeQuery: routeQueryState.value
     }, {
       resetDataOnError: true
-    })
-
-    if (result.status === 'error') {
-      selectedProblemId.value = 0
-      invalidateSelectedProblemResource()
-      detailErrorMessage.value = ''
-      resetEditorDrafts()
-      return
-    }
-
-    if (result.status !== 'success') {
-      return
-    }
-
-    if (!problems.value.length) {
-      selectedProblemId.value = 0
-      invalidateSelectedProblemResource()
-      detailErrorMessage.value = ''
-      resetEditorDrafts()
-      return
-    }
-
-    const nextProblemId = problems.value.some((problem) => problem.problem_id === preferredProblemId)
-      ? preferredProblemId
-      : problems.value[0].problem_id
-
-    void selectProblem(nextProblemId, {
-      force: nextProblemId !== selectedProblemId.value || !selectedProblemDetail.value
     })
   }
 

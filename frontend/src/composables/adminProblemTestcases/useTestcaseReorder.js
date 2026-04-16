@@ -12,6 +12,7 @@ export function useTestcaseReorder({
   selectedProblemId,
   selectedTestcaseSummary,
   applyProblemVersion,
+  updateTestcaseItems,
   showErrorNotice,
   showSuccessNotice,
   syncSelectedTestcaseById
@@ -59,7 +60,7 @@ export function useTestcaseReorder({
     })
 
     nextTestcaseItems.sort((left, right) => left.testcase_order - right.testcase_order)
-    testcaseItems.value = nextTestcaseItems
+    updateTestcaseItems(nextTestcaseItems)
   }
 
   async function handleMoveTestcase({ sourceTestcaseOrder, targetTestcaseOrder }){

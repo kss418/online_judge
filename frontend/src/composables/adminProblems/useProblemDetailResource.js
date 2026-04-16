@@ -1,17 +1,11 @@
-import { ref } from 'vue'
-
 import { getProblemDetail } from '@/api/problemQueryApi'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { formatApiError } from '@/utils/apiError'
 
 export function useProblemDetailResource({
   authState,
-  mergeProblemSummary,
-  resetEditorDrafts,
-  assignEditorDrafts,
-  clearActionError
+  selectedProblemId
 }){
-  const selectedProblemId = ref(0)
   const detailResource = useAsyncResource({
     initialData: null,
     async load(problemId){
@@ -36,82 +30,71 @@ export function useProblemDetailResource({
     })
   }
 
+  function setSelectedProblemDetail(nextValueOrUpdater){
+    detailResource.mutate(nextValueOrUpdater)
+  }
+
   function setSelectedProblemSamples(samples){
     if (!selectedProblemDetail.value) {
       return
     }
 
-    selectedProblemDetail.value = {
-      ...selectedProblemDetail.value,
-      samples: Array.isArray(samples) ? samples : []
-    }
+    setSelectedProblemDetail((problemDetail) => {
+      if (!problemDetail) {
+        return problemDetail
+      }
+
+      return {
+        ...problemDetail,
+        samples: Array.isArray(samples) ? samples : []
+      }
+    })
   }
 
   function applySelectedProblemVersion(problemId, version){
     const normalizedVersion = Number(version)
-    if (!Number.isInteger(normalizedVersion) || normalizedVersion <= 0) {
+    if (
+      !Number.isInteger(normalizedVersion) ||
+      normalizedVersion <= 0 ||
+      selectedProblemDetail.value?.problem_id !== problemId
+    ) {
       return
     }
 
-    const selectedProblem = selectedProblemDetail.value
-    if (selectedProblem && selectedProblem.problem_id === problemId) {
-      selectedProblemDetail.value = {
-        ...selectedProblem,
+    setSelectedProblemDetail((problemDetail) => {
+      if (!problemDetail) {
+        return problemDetail
+      }
+
+      return {
+        ...problemDetail,
         version: normalizedVersion
+      }
+    })
+  }
+
+  async function loadProblemDetail(problemId = selectedProblemId.value){
+    if (!problemId) {
+      invalidateSelectedProblemResource()
+      return {
+        status: 'reset'
       }
     }
 
-    mergeProblemSummary(problemId, {
-      version: normalizedVersion
-    })
-  }
-
-  async function loadSelectedProblem(problemId){
-    if (!problemId) {
-      return
-    }
-
-    selectedProblemId.value = problemId
-    clearActionError()
-    resetEditorDrafts()
-
-    const result = await detailResource.run(problemId, {
+    return detailResource.run(problemId, {
       resetDataOnRun: true,
       resetDataOnError: true
     })
-
-    if (result.status !== 'success') {
-      return
-    }
-
-    mergeProblemSummary(problemId, {
-      title: result.data.title,
-      version: result.data.version
-    })
-    assignEditorDrafts(result.data)
-  }
-
-  async function selectProblem(problemId, options = {}){
-    if (!problemId) {
-      return
-    }
-
-    if (!options.force && selectedProblemId.value === problemId && selectedProblemDetail.value) {
-      return
-    }
-
-    await loadSelectedProblem(problemId)
   }
 
   return {
     isLoadingDetail,
     detailErrorMessage,
-    selectedProblemId,
     selectedProblemDetail,
     invalidateSelectedProblemResource,
+    setSelectedProblemDetail,
     setSelectedProblemSamples,
     applySelectedProblemVersion,
-    loadSelectedProblem,
-    selectProblem
+    loadProblemDetail
   }
 }

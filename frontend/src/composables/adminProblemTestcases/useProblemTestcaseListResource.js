@@ -15,10 +15,7 @@ import { formatApiError } from '@/utils/apiError'
 export function useProblemTestcaseListResource({
   authState,
   selectedProblemId,
-  routeQueryState,
-  replaceProblemRoute,
-  syncSelectedTestcase,
-  resetSelectedTestcaseState
+  routeQueryState
 }){
   const problemListResource = useAsyncResource({
     initialData: [],
@@ -127,6 +124,14 @@ export function useProblemTestcaseListResource({
     })
   }
 
+  function setTestcaseItems(nextValueOrUpdater){
+    testcaseListResource.mutate(nextValueOrUpdater)
+  }
+
+  function setSelectedTestcase(nextValueOrUpdater){
+    selectedTestcaseResource.mutate(nextValueOrUpdater)
+  }
+
   function resetSelectedProblemResource(){
     problemDetailResource.reset({
       preserveHasLoadedOnce: true
@@ -145,34 +150,12 @@ export function useProblemTestcaseListResource({
     })
   }
 
-  async function loadProblems(options = {}){
-    const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
-
-    const result = await problemListResource.run({
+  async function loadProblems(){
+    return problemListResource.run({
       routeQuery: routeQueryState.value
     }, {
       resetDataOnError: true
     })
-
-    if (result.status !== 'success') {
-      return
-    }
-
-    if (!problems.value.length) {
-      if (selectedProblemId.value > 0) {
-        await replaceProblemRoute(0)
-      } else {
-        resetSelectedProblemResource()
-      }
-      return
-    }
-
-    const nextProblemId = problems.value.some((problem) => problem.problem_id === preferredProblemId)
-      ? preferredProblemId
-      : problems.value[0].problem_id
-    if (nextProblemId > 0 && nextProblemId !== selectedProblemId.value) {
-      await replaceProblemRoute(nextProblemId)
-    }
   }
 
   function resetProblemListResource(){
@@ -186,7 +169,9 @@ export function useProblemTestcaseListResource({
       problemDetailResource.reset({
         preserveHasLoadedOnce: true
       })
-      return
+      return {
+        status: 'reset'
+      }
     }
 
     const result = await problemDetailResource.run(selectedProblemId.value, {
@@ -195,16 +180,24 @@ export function useProblemTestcaseListResource({
     })
 
     if (result.status !== 'success') {
-      return
+      return result
     }
 
     mergeProblemSummary(selectedProblemId.value, {
       title: result.data.title,
       version: result.data.version
     })
+    return result
   }
 
   async function loadSelectedTestcaseDetail(testcaseOrder){
+    if (selectedProblemId.value <= 0 || !Number.isInteger(testcaseOrder) || testcaseOrder <= 0) {
+      clearSelectedTestcaseDetail()
+      return {
+        status: 'reset'
+      }
+    }
+
     const result = await selectedTestcaseResource.run({
       problemId: selectedProblemId.value,
       testcaseOrder
@@ -213,12 +206,10 @@ export function useProblemTestcaseListResource({
       resetDataOnError: true
     })
 
-    if (result.status !== 'success') {
-      return
-    }
+    return result
   }
 
-  async function loadTestcases(preferredOrder){
+  async function loadTestcases(){
     if (!authState.token || selectedProblemId.value <= 0) {
       testcaseListResource.reset({
         preserveHasLoadedOnce: true
@@ -226,7 +217,9 @@ export function useProblemTestcaseListResource({
       selectedTestcaseResource.reset({
         preserveHasLoadedOnce: true
       })
-      return
+      return {
+        status: 'reset'
+      }
     }
 
     const result = await testcaseListResource.run(selectedProblemId.value, {
@@ -237,28 +230,10 @@ export function useProblemTestcaseListResource({
       selectedTestcaseResource.reset({
         preserveHasLoadedOnce: true
       })
-      resetSelectedTestcaseState()
-      return
+      return result
     }
 
-    syncSelectedTestcase(preferredOrder)
-  }
-
-  async function loadSelectedProblemData(){
-    if (selectedProblemId.value <= 0) {
-      problemDetailResource.reset({
-        preserveHasLoadedOnce: true
-      })
-      testcaseListResource.reset({
-        preserveHasLoadedOnce: true
-      })
-      return
-    }
-
-    await Promise.all([
-      loadProblemDetail(),
-      loadTestcases()
-    ])
+    return result
   }
 
   return {
@@ -278,13 +253,14 @@ export function useProblemTestcaseListResource({
     testcaseCount,
     mergeProblemSummary,
     applyProblemVersion,
+    setTestcaseItems,
+    setSelectedTestcase,
     resetProblemListResource,
     resetSelectedProblemResource,
     clearSelectedTestcaseDetail,
     loadProblems,
     loadProblemDetail,
     loadSelectedTestcaseDetail,
-    loadTestcases,
-    loadSelectedProblemData
+    loadTestcases
   }
 }

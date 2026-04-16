@@ -28,39 +28,27 @@ export function useAdminProblemTestcasesPage(){
   const busySection = ref('')
   const testcaseSummaryElementMap = new Map()
 
-  let listResource
-
-  const draft = useTestcaseEditorDraft({
-    authState,
-    busySection,
-    testcaseItems: computed(() => listResource?.testcaseItems.value ?? []),
-    selectedTestcase: computed(() => listResource?.selectedTestcase.value ?? null),
-    showErrorNotice
-  })
-
   const query = useProblemSelectionQuery({
     route,
     router,
     formatCount,
     reloadProblems: async (preferredProblemId) => {
-      if (!listResource) {
-        return
-      }
-
-      await listResource.loadProblems({ preferredProblemId })
+      await loadProblems({ preferredProblemId })
     },
     showErrorNotice
   })
-
-  listResource = useProblemTestcaseListResource({
+  const listResource = useProblemTestcaseListResource({
     authState,
     selectedProblemId: query.selectedProblemId,
-    routeQueryState: query.routeState,
-    replaceProblemRoute: query.replaceProblemRoute,
-    syncSelectedTestcase: draft.syncSelectedTestcase,
-    resetSelectedTestcaseState: draft.resetSelectedTestcaseState
+    routeQueryState: query.routeState
   })
-
+  const draft = useTestcaseEditorDraft({
+    authState,
+    busySection,
+    testcaseItems: listResource.testcaseItems,
+    selectedTestcase: listResource.selectedTestcase,
+    showErrorNotice
+  })
   const uploadActions = useTestcaseUploadActions({
     authState,
     busySection,
@@ -68,7 +56,6 @@ export function useAdminProblemTestcasesPage(){
     showErrorNotice,
     showSuccessNotice,
     selectedProblemId: query.selectedProblemId,
-    testcaseItems: listResource.testcaseItems,
     selectedTestcase: listResource.selectedTestcase,
     selectedTestcaseSummary: draft.selectedTestcaseSummary,
     newTestcaseInput: draft.newTestcaseInput,
@@ -79,13 +66,13 @@ export function useAdminProblemTestcasesPage(){
     selectedTestcaseOutputDraft: draft.selectedTestcaseOutputDraft,
     canSaveSelectedTestcase: draft.canSaveSelectedTestcase,
     applyProblemVersion: listResource.applyProblemVersion,
-    loadProblems: listResource.loadProblems,
-    loadSelectedProblemData: listResource.loadSelectedProblemData,
-    loadTestcases: listResource.loadTestcases,
-    syncSelectedTestcase: draft.syncSelectedTestcase,
-    resetSelectedTestcaseState: draft.resetSelectedTestcaseState
+    reloadProblems: loadProblems,
+    reloadSelectedProblemData: loadSelectedProblemData,
+    reloadTestcases: loadTestcases,
+    updateTestcaseItems: listResource.setTestcaseItems,
+    setSelectedTestcaseDetail: listResource.setSelectedTestcase,
+    syncSelectedTestcase
   })
-
   const reorderActions = useTestcaseReorder({
     authState,
     busySection,
@@ -93,6 +80,7 @@ export function useAdminProblemTestcasesPage(){
     selectedProblemId: query.selectedProblemId,
     selectedTestcaseSummary: draft.selectedTestcaseSummary,
     applyProblemVersion: listResource.applyProblemVersion,
+    updateTestcaseItems: listResource.setTestcaseItems,
     showErrorNotice,
     showSuccessNotice,
     syncSelectedTestcaseById(preferredTestcaseId, fallbackOrder){
@@ -141,7 +129,7 @@ export function useAdminProblemTestcasesPage(){
       query.routeProblemIdSearch
     ],
     syncSearchControlsFromRoute: query.syncSearchControlsFromRoute,
-    loadProblems: listResource.loadProblems,
+    loadProblems,
     getInitialPreferredProblemId(){
       return query.preferredProblemIdForReload.value
     },
@@ -149,11 +137,11 @@ export function useAdminProblemTestcasesPage(){
       return query.preferredProblemIdForReload.value
     },
     resetPageState,
-    afterInitialProblemLoad: listResource.loadSelectedProblemData,
-    afterRefreshProblemLoad: listResource.loadSelectedProblemData,
+    afterInitialProblemLoad: loadSelectedProblemData,
+    afterRefreshProblemLoad: loadSelectedProblemData,
     selectedProblemIdSource: query.selectedProblemId,
     resetSelectedProblemState,
-    reloadSelectedProblemData: listResource.loadSelectedProblemData,
+    reloadSelectedProblemData: loadSelectedProblemData,
     clearSelectedProblemState(){
       listResource.isLoadingProblem.value = false
       listResource.isLoadingTestcases.value = false
@@ -203,6 +191,71 @@ export function useAdminProblemTestcasesPage(){
   function resetSelectedProblemState(){
     listResource.resetSelectedProblemResource()
     draft.resetDraftState()
+  }
+
+  function resetSelectedTestcaseState(){
+    draft.resetSelectedTestcaseState()
+    listResource.clearSelectedTestcaseDetail()
+  }
+
+  function syncSelectedTestcase(preferredOrder){
+    draft.syncSelectedTestcase(preferredOrder)
+  }
+
+  async function loadProblems(options = {}){
+    const preferredProblemId = Number(options.preferredProblemId ?? query.selectedProblemId.value)
+    const result = await listResource.loadProblems()
+
+    if (result.status !== 'success') {
+      return result
+    }
+
+    if (!listResource.problems.value.length) {
+      if (query.selectedProblemId.value > 0) {
+        await query.replaceProblemRoute(0)
+      } else {
+        resetSelectedProblemState()
+      }
+      return result
+    }
+
+    const nextProblemId = listResource.problems.value.some((problem) => problem.problem_id === preferredProblemId)
+      ? preferredProblemId
+      : listResource.problems.value[0].problem_id
+    if (nextProblemId > 0 && nextProblemId !== query.selectedProblemId.value) {
+      await query.replaceProblemRoute(nextProblemId)
+    }
+
+    return result
+  }
+
+  async function loadTestcases(preferredOrder){
+    const result = await listResource.loadTestcases()
+
+    if (result.status !== 'success') {
+      resetSelectedTestcaseState()
+      return result
+    }
+
+    syncSelectedTestcase(preferredOrder)
+    return result
+  }
+
+  async function loadSelectedProblemData(){
+    if (query.selectedProblemId.value <= 0) {
+      listResource.resetSelectedProblemResource()
+      resetSelectedTestcaseState()
+      return {
+        status: 'reset'
+      }
+    }
+
+    const [problemResult, testcaseResult] = await Promise.all([
+      listResource.loadProblemDetail(),
+      loadTestcases()
+    ])
+
+    return problemResult?.status === 'error' ? problemResult : testcaseResult
   }
 
   function resetPageState(){

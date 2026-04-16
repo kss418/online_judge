@@ -10,6 +10,7 @@ export function useProblemStatementActions({
   busySection,
   formatCount,
   selectedProblemDetail,
+  updateSelectedProblemDetail,
   descriptionDraft,
   inputFormatDraft,
   outputFormatDraft,
@@ -44,15 +45,18 @@ export function useProblemStatementActions({
       run: async () => {
         const response = await updateProblemStatement(problemId, nextStatement, authState.token)
 
-        selectedProblemDetail.value = {
-          ...selectedProblemDetail.value,
-          statement: {
-            description: descriptionDraft.value,
-            input_format: inputFormatDraft.value,
-            output_format: outputFormatDraft.value,
-            note: noteDraft.value
+        updateSelectedProblemDetail((problemDetail) => problemDetail
+          ? {
+            ...problemDetail,
+            statement: {
+              description: descriptionDraft.value,
+              input_format: inputFormatDraft.value,
+              output_format: outputFormatDraft.value,
+              note: noteDraft.value
+            }
           }
-        }
+          : problemDetail
+        )
         applySelectedProblemVersion(problemId, response.version)
         setActionFeedback({
           message: `문제 #${formatCount(problemId)} 설명을 저장했습니다.`

@@ -1,4 +1,4 @@
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, watch } from 'vue'
 
 function buildEditorPlaceholder(activeLanguage){
   if (!activeLanguage) {
@@ -51,14 +51,13 @@ function buildEditorPlaceholder(activeLanguage){
 }
 
 export function useProblemSubmitEditor({
+  selectedLanguage,
+  sourceCode,
+  sourceEditorElement,
   supportedLanguages,
   isSubmittingSubmission,
-  submitSolution
+  onSubmit
 }){
-  const selectedLanguage = ref('')
-  const sourceCode = ref('')
-  const sourceEditorElement = ref(null)
-
   const activeLanguage = computed(() =>
     supportedLanguages.value.find((language) => language.language === selectedLanguage.value) || null
   )
@@ -113,7 +112,7 @@ export function useProblemSubmitEditor({
   function handleEditorKeydown(event){
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault()
-      void submitSolution()
+      void onSubmit()
       return
     }
 
@@ -245,9 +244,6 @@ export function useProblemSubmitEditor({
   }
 
   return {
-    selectedLanguage,
-    sourceCode,
-    sourceEditorElement,
     activeLanguage,
     editorLineNumbers,
     editorPlaceholder,

@@ -23,9 +23,7 @@ export function useSubmissionListResource({
   numericProblemId,
   currentUserId,
   appliedLanguageFilter,
-  selectedLanguageFilter,
-  pagination,
-  resetRejudgingSubmissions
+  selectedLanguageFilter
 }){
   const isLoadingLanguages = ref(true)
   const supportedSubmissionLanguages = ref([])
@@ -170,27 +168,26 @@ export function useSubmissionListResource({
   async function loadSubmissions(options = {}){
     const targetPageNumber = Number.isInteger(options.pageNumber) && options.pageNumber > 0
       ? options.pageNumber
-      : pagination.currentPage.value
+      : 1
     const targetBeforeSubmissionId =
       Number.isInteger(options.beforeSubmissionId) && options.beforeSubmissionId > 0
         ? options.beforeSubmissionId
         : null
     const targetPreviousBeforeSubmissionIds = Array.isArray(options.previousBeforeSubmissionIds)
       ? [...options.previousBeforeSubmissionIds]
-      : [...pagination.previousBeforeSubmissionIds.value]
+      : []
 
     isLoading.value = true
     errorMessage.value = ''
-    resetRejudgingSubmissions()
 
     if (isMineScope.value && !isAuthenticated.value) {
       submissionListResource.mutate(createInitialSubmissionListState())
-      pagination.hasMoreSubmissions.value = false
-      pagination.nextBeforeSubmissionId.value = null
       errorMessage.value = '내 제출을 보려면 로그인하세요.'
       hasLoadedOnce.value = true
       isLoading.value = false
-      return
+      return {
+        status: 'blocked'
+      }
     }
 
     const result = await submissionListResource.run({
@@ -201,29 +198,14 @@ export function useSubmissionListResource({
       resetDataOnError: true
     })
 
-    if (result.status === 'error') {
-      pagination.hasMoreSubmissions.value = false
-      pagination.nextBeforeSubmissionId.value = null
-      return
-    }
-
     if (result.status !== 'success') {
-      return
+      return result
     }
 
-    pagination.hasMoreSubmissions.value = result.data.hasMoreSubmissions
-    pagination.nextBeforeSubmissionId.value = result.data.nextBeforeSubmissionId
-    pagination.currentBeforeSubmissionId.value = result.data.currentBeforeSubmissionId
-    pagination.previousBeforeSubmissionIds.value = result.data.previousBeforeSubmissionIds
-    pagination.currentPage.value = result.data.currentPage
-  }
-
-  async function refreshSubmissions(){
-    await loadSubmissions({
-      pageNumber: pagination.currentPage.value,
-      beforeSubmissionId: pagination.currentBeforeSubmissionId.value,
-      previousBeforeSubmissionIds: pagination.previousBeforeSubmissionIds.value
-    })
+    return {
+      status: 'success',
+      data: result.data
+    }
   }
 
   return {
@@ -236,7 +218,6 @@ export function useSubmissionListResource({
     patchSubmission,
     mergeSubmissionStatusBatch,
     loadSupportedSubmissionLanguages,
-    loadSubmissions,
-    refreshSubmissions
+    loadSubmissions
   }
 }

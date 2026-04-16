@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { useProblemActionFeedback } from '@/composables/adminProblems/useProblemActionFeedback'
 import { useProblemAdminActions } from '@/composables/adminProblems/useProblemAdminActions'
 import { useProblemDetailResource } from '@/composables/adminProblems/useProblemDetailResource'
 import { useProblemEditorDraft } from '@/composables/adminProblems/useProblemEditorDraft'
@@ -28,86 +29,45 @@ export function useAdminProblemsPage(){
 
   const busySection = ref('')
   const newProblemTitle = ref('')
-
-  let problemListResource
-  let problemDetailResource
-
-  const editorDraft = useProblemEditorDraft({
-    authState,
-    busySection,
-    getSelectedProblemDetail: () => problemDetailResource?.selectedProblemDetail.value ?? null,
-    setActionFeedback: ({ message, error }) => {
-      if (!problemActions) {
-        return
-      }
-
-      problemActions.setActionFeedback({ message, error })
-    }
-  })
+  const selectedProblemId = ref(0)
 
   const problemQuery = useProblemSearchQuery({
     route,
     router,
     formatCount,
-    selectedProblemId: computed(() => problemDetailResource?.selectedProblemId.value ?? 0),
+    selectedProblemId,
     reloadProblems: async (preferredProblemId) => {
-      if (!problemListResource) {
-        return
-      }
-
-      await problemListResource.loadProblems({ preferredProblemId })
+      await loadProblems({ preferredProblemId })
     },
     showErrorNotice
   })
-
-  problemDetailResource = useProblemDetailResource({
-    authState,
-    mergeProblemSummary(problemId, patch){
-      problemListResource?.mergeProblemSummary(problemId, patch)
-    },
-    resetEditorDrafts: editorDraft.resetEditorDrafts,
-    assignEditorDrafts: editorDraft.assignEditorDrafts,
-    clearActionError(){
-      problemActions?.clearActionError()
-    }
-  })
-
-  problemListResource = useProblemListResource({
+  const problemListResource = useProblemListResource({
     authState,
     canManageProblems,
-    routeQueryState: problemQuery.routeState,
-    selectedProblemId: problemDetailResource.selectedProblemId,
-    selectedProblemDetail: problemDetailResource.selectedProblemDetail,
-    detailErrorMessage: problemDetailResource.detailErrorMessage,
-    resetEditorDrafts: editorDraft.resetEditorDrafts,
-    clearActionError(){
-      problemActions?.clearActionError()
-    },
-    invalidateSelectedProblemResource: problemDetailResource.invalidateSelectedProblemResource,
-    selectProblem: problemDetailResource.selectProblem
+    routeQueryState: problemQuery.routeState
   })
-
-  async function handleCreatedProblem(problemId){
-    problemQuery.searchMode.value = 'title'
-    problemQuery.titleSearchInput.value = ''
-    problemQuery.problemIdSearchInput.value = ''
-
-    await router.replace({
-      query: {
-        problemId: String(problemId ?? '')
-      }
-    })
-    await problemListResource.loadProblems({
-      preferredProblemId: Number(problemId ?? 0)
-    })
-  }
-
-  let problemActions = useProblemAdminActions({
+  const problemDetailResource = useProblemDetailResource({
+    authState,
+    selectedProblemId
+  })
+  const problemActionFeedback = useProblemActionFeedback({
+    selectedProblemDetail: problemDetailResource.selectedProblemDetail,
+    busySection
+  })
+  const editorDraft = useProblemEditorDraft({
+    authState,
+    busySection,
+    selectedProblemDetail: problemDetailResource.selectedProblemDetail,
+    setActionFeedback: problemActionFeedback.setActionFeedback
+  })
+  const problemActions = useProblemAdminActions({
     authState,
     formatCount,
     busySection,
+    feedback: problemActionFeedback,
     newProblemTitle,
     selectedProblemDetail: problemDetailResource.selectedProblemDetail,
+    updateSelectedProblemDetail: problemDetailResource.setSelectedProblemDetail,
     testcaseZipFile: editorDraft.testcaseZipFile,
     titleDraft: editorDraft.titleDraft,
     timeLimitDraft: editorDraft.timeLimitDraft,
@@ -123,10 +83,10 @@ export function useAdminProblemsPage(){
     getSampleDraft: editorDraft.getSampleDraft,
     syncSampleDrafts: editorDraft.syncSampleDrafts,
     setSelectedProblemSamples: problemDetailResource.setSelectedProblemSamples,
-    applySelectedProblemVersion: problemDetailResource.applySelectedProblemVersion,
+    applySelectedProblemVersion,
     mergeProblemSummary: problemListResource.mergeProblemSummary,
-    loadProblems: problemListResource.loadProblems,
-    loadSelectedProblem: problemDetailResource.loadSelectedProblem,
+    loadProblems,
+    loadSelectedProblem,
     onCreatedProblem: handleCreatedProblem
   })
 
@@ -137,13 +97,13 @@ export function useAdminProblemsPage(){
     problemListResource.listErrorMessage.value ? 'danger' : 'success'
   )
 
-  watch(problemActions.actionMessage, (message) => {
+  watch(problemActionFeedback.actionMessage, (message) => {
     if (message) {
       showSuccessNotice(message)
     }
   })
 
-  watch(problemActions.actionErrorMessage, (message) => {
+  watch(problemActionFeedback.actionErrorMessage, (message) => {
     if (message) {
       showErrorNotice(message, { duration: 5000 })
     }
@@ -161,17 +121,121 @@ export function useAdminProblemsPage(){
     }
   )
 
+  function clearSelectedProblemState(){
+    selectedProblemId.value = 0
+    problemDetailResource.invalidateSelectedProblemResource()
+    problemDetailResource.detailErrorMessage.value = ''
+    editorDraft.resetEditorDrafts()
+  }
+
+  function applySelectedProblemVersion(problemId, version){
+    const normalizedVersion = Number(version)
+    if (!Number.isInteger(normalizedVersion) || normalizedVersion <= 0) {
+      return
+    }
+
+    problemDetailResource.applySelectedProblemVersion(problemId, normalizedVersion)
+    problemListResource.mergeProblemSummary(problemId, {
+      version: normalizedVersion
+    })
+  }
+
+  async function loadSelectedProblem(problemId){
+    const normalizedProblemId = Number(problemId)
+    if (!Number.isInteger(normalizedProblemId) || normalizedProblemId <= 0) {
+      return
+    }
+
+    selectedProblemId.value = normalizedProblemId
+    problemActionFeedback.clearActionError()
+    editorDraft.resetEditorDrafts()
+
+    const result = await problemDetailResource.loadProblemDetail(normalizedProblemId)
+
+    if (result.status !== 'success') {
+      return result
+    }
+
+    problemListResource.mergeProblemSummary(normalizedProblemId, {
+      title: result.data.title,
+      version: result.data.version
+    })
+    editorDraft.assignEditorDrafts(result.data)
+    return result
+  }
+
+  async function selectProblem(problemId, options = {}){
+    const normalizedProblemId = Number(problemId)
+    if (!Number.isInteger(normalizedProblemId) || normalizedProblemId <= 0) {
+      return
+    }
+
+    if (
+      !options.force &&
+      selectedProblemId.value === normalizedProblemId &&
+      problemDetailResource.selectedProblemDetail.value
+    ) {
+      return
+    }
+
+    return loadSelectedProblem(normalizedProblemId)
+  }
+
+  async function loadProblems(options = {}){
+    const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
+    problemActionFeedback.clearActionError()
+
+    const result = await problemListResource.loadProblems()
+
+    if (result.status === 'error') {
+      clearSelectedProblemState()
+      return result
+    }
+
+    if (result.status !== 'success') {
+      return result
+    }
+
+    if (!problemListResource.problems.value.length) {
+      clearSelectedProblemState()
+      return result
+    }
+
+    const nextProblemId = problemListResource.problems.value.some((problem) => problem.problem_id === preferredProblemId)
+      ? preferredProblemId
+      : problemListResource.problems.value[0].problem_id
+
+    await selectProblem(nextProblemId, {
+      force: nextProblemId !== selectedProblemId.value || !problemDetailResource.selectedProblemDetail.value
+    })
+
+    return result
+  }
+
+  async function handleCreatedProblem(problemId){
+    problemQuery.searchMode.value = 'title'
+    problemQuery.titleSearchInput.value = ''
+    problemQuery.problemIdSearchInput.value = ''
+
+    await router.replace({
+      query: {
+        problemId: String(problemId ?? '')
+      }
+    })
+    await loadProblems({
+      preferredProblemId: Number(problemId ?? 0)
+    })
+  }
+
   function resetPageState(){
     problemQuery.searchMode.value = 'title'
     problemQuery.titleSearchInput.value = ''
     problemQuery.problemIdSearchInput.value = ''
     newProblemTitle.value = ''
-    problemListResource.resetProblems()
-    problemDetailResource.selectedProblemId.value = 0
-    problemDetailResource.invalidateSelectedProblemResource()
     busySection.value = ''
-    problemActions.resetActionState()
-    editorDraft.resetEditorDrafts()
+    problemListResource.resetProblems()
+    clearSelectedProblemState()
+    problemActionFeedback.resetActionState()
   }
 
   const problemWorkspace = useAdminProblemWorkspaceBase({
@@ -187,9 +251,9 @@ export function useAdminProblemsPage(){
       problemQuery.routeProblemIdSearch
     ],
     syncSearchControlsFromRoute: problemQuery.syncSearchControlsFromRoute,
-    loadProblems: problemListResource.loadProblems,
+    loadProblems,
     getInitialPreferredProblemId(){
-      return problemQuery.preferredProblemIdFromRoute.value || problemDetailResource.selectedProblemId.value
+      return problemQuery.preferredProblemIdFromRoute.value || selectedProblemId.value
     },
     getRefreshPreferredProblemId(){
       return problemQuery.preferredProblemIdForReload.value
@@ -197,7 +261,7 @@ export function useAdminProblemsPage(){
     resetPageState,
     preferredProblemIdSource: problemQuery.preferredProblemIdFromRoute,
     onPreferredProblemIdChange(problemId){
-      return problemListResource.loadProblems({
+      return loadProblems({
         preferredProblemId: problemId
       })
     }
@@ -220,7 +284,7 @@ export function useAdminProblemsPage(){
     problemIdSearchInput: problemQuery.problemIdSearchInput,
     newProblemTitle,
     problems: problemListResource.problems,
-    selectedProblemId: problemDetailResource.selectedProblemId,
+    selectedProblemId,
     selectedProblemDetail: problemDetailResource.selectedProblemDetail,
     titleDraft: editorDraft.titleDraft,
     timeLimitDraft: editorDraft.timeLimitDraft,
@@ -233,12 +297,12 @@ export function useAdminProblemsPage(){
     testcaseZipInputKey: editorDraft.testcaseZipInputKey,
     selectedTestcaseZipName: editorDraft.selectedTestcaseZipName,
     busySection,
-    rejudgeDialogOpen: problemActions.rejudgeDialogOpen,
-    rejudgeConfirmProblemId: problemActions.rejudgeConfirmProblemId,
-    rejudgeConfirmTitle: problemActions.rejudgeConfirmTitle,
-    deleteDialogOpen: problemActions.deleteDialogOpen,
-    deleteConfirmProblemId: problemActions.deleteConfirmProblemId,
-    deleteConfirmTitle: problemActions.deleteConfirmTitle,
+    rejudgeDialogOpen: problemActionFeedback.rejudgeDialogOpen,
+    rejudgeConfirmProblemId: problemActionFeedback.rejudgeConfirmProblemId,
+    rejudgeConfirmTitle: problemActionFeedback.rejudgeConfirmTitle,
+    deleteDialogOpen: problemActionFeedback.deleteDialogOpen,
+    deleteConfirmProblemId: problemActionFeedback.deleteConfirmProblemId,
+    deleteConfirmTitle: problemActionFeedback.deleteConfirmTitle,
     problemCount: problemListResource.problemCount,
     canCreateProblem: problemActions.canCreateProblem,
     isCreatingProblem: problemActions.isCreatingProblem,
@@ -256,8 +320,8 @@ export function useAdminProblemsPage(){
     canSaveTitle: editorDraft.canSaveTitle,
     canSaveLimits: editorDraft.canSaveLimits,
     canSaveStatement: editorDraft.canSaveStatement,
-    canDeleteSelectedProblem: problemActions.canDeleteSelectedProblem,
-    canRejudgeSelectedProblem: problemActions.canRejudgeSelectedProblem,
+    canDeleteSelectedProblem: problemActionFeedback.canDeleteSelectedProblem,
+    canRejudgeSelectedProblem: problemActionFeedback.canRejudgeSelectedProblem,
     hasAppliedSearch: problemQuery.hasAppliedSearch,
     problemListCaption: problemQuery.problemListCaption,
     emptyProblemListMessage: problemQuery.emptyProblemListMessage,
@@ -273,7 +337,7 @@ export function useAdminProblemsPage(){
     submitSearch: problemQuery.submitSearch,
     resetSearch: problemQuery.resetSearch,
     refreshProblems,
-    selectProblem: problemDetailResource.selectProblem,
+    selectProblem,
     handleCreateProblem: problemActions.handleCreateProblem,
     handleSaveTitle: problemActions.handleSaveTitle,
     handleSaveLimits: problemActions.handleSaveLimits,
@@ -283,10 +347,10 @@ export function useAdminProblemsPage(){
     handleDeleteLastSample: problemActions.handleDeleteLastSample,
     handleTestcaseZipFileChange: editorDraft.handleTestcaseZipFileChange,
     handleUploadTestcaseZip: problemActions.handleUploadTestcaseZip,
-    openDeleteDialog: problemActions.openDeleteDialog,
-    openRejudgeDialog: problemActions.openRejudgeDialog,
-    closeDeleteDialog: problemActions.closeDeleteDialog,
-    closeRejudgeDialog: problemActions.closeRejudgeDialog,
+    openDeleteDialog: problemActionFeedback.openDeleteDialog,
+    openRejudgeDialog: problemActionFeedback.openRejudgeDialog,
+    closeDeleteDialog: problemActionFeedback.closeDeleteDialog,
+    closeRejudgeDialog: problemActionFeedback.closeRejudgeDialog,
     handleRejudgeProblem: problemActions.handleRejudgeProblem,
     handleDeleteProblem: problemActions.handleDeleteProblem
   }

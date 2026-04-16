@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 
 import { listLimit } from '@/composables/submissions/submissionHelpers'
 
-export function useSubmissionPagination({ submissions, formatCount, loadSubmissions }){
+export function useSubmissionPagination({ submissions, formatCount }){
   const currentPage = ref(1)
   const hasMoreSubmissions = ref(false)
   const nextBeforeSubmissionId = ref(null)
@@ -23,31 +23,76 @@ export function useSubmissionPagination({ submissions, formatCount, loadSubmissi
 
   function resetPagination(){
     currentPage.value = 1
-    hasMoreSubmissions.value = false
-    nextBeforeSubmissionId.value = null
+    clearNextPageAvailability()
     currentBeforeSubmissionId.value = null
     previousBeforeSubmissionIds.value = []
   }
 
-  function goToPreviousPage(){
+  function clearNextPageAvailability(){
+    hasMoreSubmissions.value = false
+    nextBeforeSubmissionId.value = null
+  }
+
+  function applyLoadedPage({
+    currentPage: nextCurrentPage,
+    hasMoreSubmissions: nextHasMoreSubmissions,
+    nextBeforeSubmissionId: nextNextBeforeSubmissionId,
+    currentBeforeSubmissionId: nextCurrentBeforeSubmissionId,
+    previousBeforeSubmissionIds: nextPreviousBeforeSubmissionIds
+  }){
+    currentPage.value = Number.isInteger(nextCurrentPage) && nextCurrentPage > 0
+      ? nextCurrentPage
+      : 1
+    hasMoreSubmissions.value = Boolean(nextHasMoreSubmissions)
+    nextBeforeSubmissionId.value =
+      Number.isInteger(nextNextBeforeSubmissionId) && nextNextBeforeSubmissionId > 0
+        ? nextNextBeforeSubmissionId
+        : null
+    currentBeforeSubmissionId.value =
+      Number.isInteger(nextCurrentBeforeSubmissionId) && nextCurrentBeforeSubmissionId > 0
+        ? nextCurrentBeforeSubmissionId
+        : null
+    previousBeforeSubmissionIds.value = Array.isArray(nextPreviousBeforeSubmissionIds)
+      ? [...nextPreviousBeforeSubmissionIds]
+      : []
+  }
+
+  function buildCurrentLoadOptions(){
+    return {
+      pageNumber: currentPage.value,
+      beforeSubmissionId: currentBeforeSubmissionId.value,
+      previousBeforeSubmissionIds: [...previousBeforeSubmissionIds.value]
+    }
+  }
+
+  function buildPreviousPageLoadOptions(){
+    if (!hasPreviousPage.value) {
+      return null
+    }
+
     const nextPreviousBeforeSubmissionIds = [...previousBeforeSubmissionIds.value]
     const previousBeforeSubmissionId = nextPreviousBeforeSubmissionIds.pop() ?? null
-    void loadSubmissions({
+
+    return {
       pageNumber: Math.max(1, currentPage.value - 1),
       beforeSubmissionId: previousBeforeSubmissionId,
       previousBeforeSubmissionIds: nextPreviousBeforeSubmissionIds
-    })
+    }
   }
 
-  function goToNextPage(){
-    void loadSubmissions({
+  function buildNextPageLoadOptions(){
+    if (!hasMoreSubmissions.value || !Number.isInteger(nextBeforeSubmissionId.value)) {
+      return null
+    }
+
+    return {
       pageNumber: currentPage.value + 1,
       beforeSubmissionId: nextBeforeSubmissionId.value,
       previousBeforeSubmissionIds: [
         ...previousBeforeSubmissionIds.value,
         currentBeforeSubmissionId.value
       ]
-    })
+    }
   }
 
   return {
@@ -60,7 +105,10 @@ export function useSubmissionPagination({ submissions, formatCount, loadSubmissi
     hasPreviousPage,
     visibleRangeText,
     resetPagination,
-    goToPreviousPage,
-    goToNextPage
+    clearNextPageAvailability,
+    applyLoadedPage,
+    buildCurrentLoadOptions,
+    buildPreviousPageLoadOptions,
+    buildNextPageLoadOptions
   }
 }

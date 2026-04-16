@@ -1,4 +1,3 @@
-import { useProblemActionFeedback } from '@/composables/adminProblems/useProblemActionFeedback'
 import { useProblemBasicsActions } from '@/composables/adminProblems/useProblemBasicsActions'
 import { useProblemCrudActions } from '@/composables/adminProblems/useProblemCrudActions'
 import { useProblemSampleActions } from '@/composables/adminProblems/useProblemSampleActions'
@@ -9,8 +8,10 @@ export function useProblemAdminActions({
   authState,
   formatCount,
   busySection,
+  feedback,
   newProblemTitle,
   selectedProblemDetail,
+  updateSelectedProblemDetail,
   testcaseZipFile,
   titleDraft,
   timeLimitDraft,
@@ -32,10 +33,6 @@ export function useProblemAdminActions({
   loadSelectedProblem,
   onCreatedProblem
 }){
-  const feedback = useProblemActionFeedback({
-    selectedProblemDetail,
-    busySection
-  })
   const crudActions = useProblemCrudActions({
     authState,
     busySection,
@@ -55,6 +52,7 @@ export function useProblemAdminActions({
     busySection,
     formatCount,
     selectedProblemDetail,
+    updateSelectedProblemDetail,
     titleDraft,
     timeLimitDraft,
     memoryLimitDraft,
@@ -69,6 +67,7 @@ export function useProblemAdminActions({
     busySection,
     formatCount,
     selectedProblemDetail,
+    updateSelectedProblemDetail,
     descriptionDraft,
     inputFormatDraft,
     outputFormatDraft,

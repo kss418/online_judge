@@ -14,6 +14,7 @@ export function useProblemBasicsActions({
   busySection,
   formatCount,
   selectedProblemDetail,
+  updateSelectedProblemDetail,
   titleDraft,
   timeLimitDraft,
   memoryLimitDraft,
@@ -47,10 +48,13 @@ export function useProblemBasicsActions({
           title: nextTitle
         }, authState.token)
 
-        selectedProblemDetail.value = {
-          ...selectedProblemDetail.value,
-          title: nextTitle
-        }
+        updateSelectedProblemDetail((problemDetail) => problemDetail
+          ? {
+            ...problemDetail,
+            title: nextTitle
+          }
+          : problemDetail
+        )
         titleDraft.value = nextTitle
         applySelectedProblemVersion(problemId, response.version)
         mergeProblemSummary(problemId, {
@@ -93,13 +97,16 @@ export function useProblemBasicsActions({
           memory_limit_mb: nextMemoryLimit
         }, authState.token)
 
-        selectedProblemDetail.value = {
-          ...selectedProblemDetail.value,
-          limits: {
-            time_limit_ms: nextTimeLimit,
-            memory_limit_mb: nextMemoryLimit
+        updateSelectedProblemDetail((problemDetail) => problemDetail
+          ? {
+            ...problemDetail,
+            limits: {
+              time_limit_ms: nextTimeLimit,
+              memory_limit_mb: nextMemoryLimit
+            }
           }
-        }
+          : problemDetail
+        )
         timeLimitDraft.value = String(nextTimeLimit)
         memoryLimitDraft.value = String(nextMemoryLimit)
         applySelectedProblemVersion(problemId, response.version)

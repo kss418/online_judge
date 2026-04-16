@@ -44,34 +44,7 @@ export function useSubmissionsPage(){
     router,
     formatCount
   })
-
-  let listResource
-
-  const pagination = useSubmissionPagination({
-    submissions: computed(() => listResource?.submissions.value ?? []),
-    formatCount,
-    loadSubmissions(options){
-      if (!listResource) {
-        return
-      }
-
-      if (
-        listResource.isLoading.value &&
-        (
-          options?.beforeSubmissionId === pagination.currentBeforeSubmissionId.value ||
-          (!options?.beforeSubmissionId && !pagination.currentBeforeSubmissionId.value)
-        )
-      ) {
-        return
-      }
-
-      listResource.loadSubmissions(options)
-    }
-  })
-
-  let actions
-
-  listResource = useSubmissionListResource({
+  const listResource = useSubmissionListResource({
     isAuthenticated,
     authenticatedBearerToken,
     isMineScope: query.isMineScope,
@@ -79,17 +52,16 @@ export function useSubmissionsPage(){
     numericProblemId: query.numericProblemId,
     currentUserId,
     appliedLanguageFilter: query.appliedLanguageFilter,
-    selectedLanguageFilter: query.selectedLanguageFilter,
-    pagination,
-    resetRejudgingSubmissions(){
-      actions?.resetRejudgingSubmissions()
-    }
+    selectedLanguageFilter: query.selectedLanguageFilter
   })
-
-  actions = useSubmissionActions({
+  const actions = useSubmissionActions({
     authState,
     formatCount,
     patchSubmission: listResource.patchSubmission
+  })
+  const pagination = useSubmissionPagination({
+    submissions: listResource.submissions,
+    formatCount
   })
 
   const dialogs = useSubmissionDialogs({
@@ -136,7 +108,7 @@ export function useSubmissionsPage(){
       pagination.resetPagination()
     }
 
-    void listResource.loadSubmissions()
+    void loadSubmissions()
   })
 
   watch(
@@ -155,28 +127,81 @@ export function useSubmissionsPage(){
 
       query.syncSelectedFiltersFromRoute()
       pagination.resetPagination()
-      void listResource.loadSubmissions()
+      void loadSubmissions()
     }
   )
 
-  function goToPreviousPage(){
-    if (listResource.isLoading.value || !pagination.hasPreviousPage.value) {
-      return
-    }
+  function normalizeLoadOptions(options = {}){
+    const currentLoadOptions = pagination.buildCurrentLoadOptions()
 
-    pagination.goToPreviousPage()
+    return {
+      pageNumber: Number.isInteger(options.pageNumber) && options.pageNumber > 0
+        ? options.pageNumber
+        : currentLoadOptions.pageNumber,
+      beforeSubmissionId:
+        Number.isInteger(options.beforeSubmissionId) && options.beforeSubmissionId > 0
+          ? options.beforeSubmissionId
+          : null,
+      previousBeforeSubmissionIds: Array.isArray(options.previousBeforeSubmissionIds)
+        ? [...options.previousBeforeSubmissionIds]
+        : currentLoadOptions.previousBeforeSubmissionIds
+    }
   }
 
-  function goToNextPage(){
+  async function loadSubmissions(options = {}){
+    const nextLoadOptions = normalizeLoadOptions(options)
+
     if (
-      listResource.isLoading.value ||
-      !pagination.hasMoreSubmissions.value ||
-      !Number.isInteger(pagination.nextBeforeSubmissionId.value)
+      listResource.isLoading.value &&
+      (
+        nextLoadOptions.beforeSubmissionId === pagination.currentBeforeSubmissionId.value ||
+        (!nextLoadOptions.beforeSubmissionId && !pagination.currentBeforeSubmissionId.value)
+      )
     ) {
       return
     }
 
-    pagination.goToNextPage()
+    actions.resetRejudgingSubmissions()
+
+    const result = await listResource.loadSubmissions(nextLoadOptions)
+
+    if (result?.status === 'success') {
+      pagination.applyLoadedPage(result.data)
+      return result
+    }
+
+    pagination.clearNextPageAvailability()
+    return result
+  }
+
+  function goToPreviousPage(){
+    if (listResource.isLoading.value) {
+      return
+    }
+
+    const previousPageLoadOptions = pagination.buildPreviousPageLoadOptions()
+    if (!previousPageLoadOptions) {
+      return
+    }
+
+    void loadSubmissions(previousPageLoadOptions)
+  }
+
+  function goToNextPage(){
+    if (listResource.isLoading.value) {
+      return
+    }
+
+    const nextPageLoadOptions = pagination.buildNextPageLoadOptions()
+    if (!nextPageLoadOptions) {
+      return
+    }
+
+    void loadSubmissions(nextPageLoadOptions)
+  }
+
+  function refreshSubmissions(){
+    return loadSubmissions(pagination.buildCurrentLoadOptions())
   }
 
   onMounted(async () => {
@@ -188,7 +213,7 @@ export function useSubmissionsPage(){
     }
 
     if (!listResource.hasLoadedOnce.value) {
-      void listResource.loadSubmissions()
+      void loadSubmissions()
     }
   })
 
@@ -246,7 +271,7 @@ export function useSubmissionsPage(){
     closeSourceDialog: dialogs.closeSourceDialog,
     copySourceCode: dialogs.copySourceCode,
     handleRejudgeSubmission: actions.handleRejudgeSubmission,
-    refreshSubmissions: listResource.refreshSubmissions,
+    refreshSubmissions,
     goToPreviousPage,
     goToNextPage
   }

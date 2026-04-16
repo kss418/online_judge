@@ -1,8 +1,7 @@
 import { computed, ref } from 'vue'
 
 import {
-  isProblemSampleBusySection,
-  makeProblemSampleBusySection
+  isProblemSampleBusySection
 } from '@/composables/adminProblems/problemBusySection'
 import {
   makeSampleDraft
@@ -12,7 +11,7 @@ import { parsePositiveInteger } from '@/utils/parse'
 export function useProblemEditorDraft({
   authState,
   busySection,
-  getSelectedProblemDetail,
+  selectedProblemDetail,
   setActionFeedback
 }){
   const titleDraft = ref('')
@@ -28,17 +27,17 @@ export function useProblemEditorDraft({
 
   const selectedTestcaseZipName = computed(() => testcaseZipFile.value?.name || '')
   const canSaveTitle = computed(() => {
-    const selectedProblemDetail = getSelectedProblemDetail()
-    if (!selectedProblemDetail || !authState.token || busySection.value) {
+    const problemDetail = selectedProblemDetail.value
+    if (!problemDetail || !authState.token || busySection.value) {
       return false
     }
 
     const nextTitle = titleDraft.value.trim()
-    return Boolean(nextTitle) && nextTitle !== selectedProblemDetail.title
+    return Boolean(nextTitle) && nextTitle !== problemDetail.title
   })
   const canSaveLimits = computed(() => {
-    const selectedProblemDetail = getSelectedProblemDetail()
-    if (!selectedProblemDetail || !authState.token || busySection.value) {
+    const problemDetail = selectedProblemDetail.value
+    if (!problemDetail || !authState.token || busySection.value) {
       return false
     }
 
@@ -50,13 +49,13 @@ export function useProblemEditorDraft({
     }
 
     return (
-      nextTimeLimit !== selectedProblemDetail.limits.time_limit_ms ||
-      nextMemoryLimit !== selectedProblemDetail.limits.memory_limit_mb
+      nextTimeLimit !== problemDetail.limits.time_limit_ms ||
+      nextMemoryLimit !== problemDetail.limits.memory_limit_mb
     )
   })
   const canSaveStatement = computed(() => {
-    const selectedProblemDetail = getSelectedProblemDetail()
-    if (!selectedProblemDetail || !authState.token || busySection.value) {
+    const problemDetail = selectedProblemDetail.value
+    if (!problemDetail || !authState.token || busySection.value) {
       return false
     }
 
@@ -69,10 +68,10 @@ export function useProblemEditorDraft({
     }
 
     return (
-      descriptionDraft.value !== selectedProblemDetail.statement.description ||
-      inputFormatDraft.value !== selectedProblemDetail.statement.input_format ||
-      outputFormatDraft.value !== selectedProblemDetail.statement.output_format ||
-      noteDraft.value !== selectedProblemDetail.statement.note
+      descriptionDraft.value !== problemDetail.statement.description ||
+      inputFormatDraft.value !== problemDetail.statement.input_format ||
+      outputFormatDraft.value !== problemDetail.statement.output_format ||
+      noteDraft.value !== problemDetail.statement.note
     )
   })
 
@@ -105,7 +104,7 @@ export function useProblemEditorDraft({
   }
 
   function getSelectedProblemSample(sampleOrder){
-    return getSelectedProblemDetail()?.samples.find((sample) => sample.sample_order === sampleOrder) || null
+    return selectedProblemDetail.value?.samples.find((sample) => sample.sample_order === sampleOrder) || null
   }
 
   function getSampleDraft(sampleOrder){
@@ -117,8 +116,8 @@ export function useProblemEditorDraft({
   }
 
   function canSaveSample(sampleOrder){
-    const selectedProblemDetail = getSelectedProblemDetail()
-    if (!selectedProblemDetail || !authState.token || busySection.value) {
+    const problemDetail = selectedProblemDetail.value
+    if (!problemDetail || !authState.token || busySection.value) {
       return false
     }
 
@@ -135,7 +134,7 @@ export function useProblemEditorDraft({
   }
 
   function isLastSample(sampleOrder){
-    const samples = getSelectedProblemDetail()?.samples || []
+    const samples = selectedProblemDetail.value?.samples || []
     if (!samples.length) {
       return false
     }
