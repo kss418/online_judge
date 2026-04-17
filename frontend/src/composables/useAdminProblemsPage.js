@@ -6,7 +6,10 @@ import { useProblemDetailEditorActions } from '@/composables/adminProblems/usePr
 import { useProblemEditorDraft } from '@/composables/adminProblems/useProblemEditorDraft'
 import { useProblemLifecycleActions } from '@/composables/adminProblems/useProblemLifecycleActions'
 import { formatProblemLimit } from '@/composables/adminProblems/problemHelpers'
-import { useAdminProblemSelectionWorkspace } from '@/composables/adminShared/useAdminProblemSelectionWorkspace'
+import {
+  useAdminProblemSelectionWorkspaceCore,
+  useAdminProblemSelectionWorkspaceEffects
+} from '@/composables/adminShared/useAdminProblemSelectionWorkspace'
 import { useAdminProblemSidebarModel } from '@/composables/adminShared/useAdminProblemSidebarModel'
 import { useAdminProblemToolbarState } from '@/composables/adminShared/useAdminProblemToolbarState'
 import { authStore } from '@/stores/auth/authStore'
@@ -273,56 +276,19 @@ export function useAdminProblemsPage(){
 
   const busySection = ref('')
   const newProblemTitle = ref('')
-
-  async function resetSelectedProblemStateForWorkspace({
-    problemDetailResource
-  }){
-    problemDetailResource.resetSelectedProblemDetail()
-    editorDraft.resetEditorDrafts()
-  }
-
-  async function loadSelectedProblemDataForWorkspace({
-    problemId,
-    problemDetailResource,
-    selectedProblemId
-  }){
-    return loadSelectedProblem(problemId ?? selectedProblemId.value, {}, problemDetailResource)
-  }
-
-  async function resetPageStateForWorkspace({
-    query,
-    problemCatalogResource,
-    problemDetailResource
-  }){
-    query.resetSearchControls()
-    newProblemTitle.value = ''
-    busySection.value = ''
-    problemCatalogResource.resetProblems()
-    await resetSelectedProblemStateForWorkspace({
-      problemDetailResource
-    })
-    problemActionFeedback.resetActionState()
-  }
-
-  const workspace = useAdminProblemSelectionWorkspace({
+  const workspaceCore = useAdminProblemSelectionWorkspaceCore({
     route,
     router,
     routeName: 'admin-problems',
     authState,
-    initializeAuth,
-    isAuthenticated,
     canManageProblems,
     showErrorNotice,
-    formatCount,
-    accessMessages: {
-      loggedOutMessage: '문제 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
-      deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
-    }
+    formatCount
   })
 
-  const selectedProblemId = workspace.selectedProblemId
-  const problemListResource = workspace.problemCatalogResource
-  const problemDetailResource = workspace.problemDetailResource
+  const selectedProblemId = workspaceCore.selectedProblemId
+  const problemListResource = workspaceCore.problemCatalogResource
+  const problemDetailResource = workspaceCore.problemDetailResource
   const problemActionFeedback = useProblemActionFeedback({
     selectedProblemDetail: problemDetailResource.selectedProblemDetail,
     busySection
@@ -360,21 +326,57 @@ export function useAdminProblemsPage(){
   }
 
   async function handleCreatedProblem(problemId){
-    const hadAppliedSearch = workspace.query.hasAppliedSearch.value
-    const didNavigate = await workspace.query.selectCreatedProblem(problemId)
+    const hadAppliedSearch = workspaceCore.query.hasAppliedSearch.value
+    const didNavigate = await workspaceCore.query.selectCreatedProblem(problemId)
 
     if (didNavigate && !hadAppliedSearch) {
-      await workspace.loadProblems({
+      await workspaceCore.loadProblems({
         preferredProblemId: problemId
       })
     }
+  }
+
+  async function resetSelectedProblemStateForWorkspace(){
+    problemDetailResource.resetSelectedProblemDetail()
+    editorDraft.resetEditorDrafts()
+  }
+
+  async function loadSelectedProblemDataForWorkspace(problemId = selectedProblemId.value){
+    return loadSelectedProblem(problemId)
+  }
+
+  async function resetPageStateForWorkspace(){
+    workspaceCore.query.resetSearchControls()
+    newProblemTitle.value = ''
+    busySection.value = ''
+    problemListResource.resetProblems()
+    await resetSelectedProblemStateForWorkspace()
+    problemActionFeedback.resetActionState()
   }
 
   function updateNewProblemTitle(value){
     newProblemTitle.value = value
   }
 
-  const loadProblems = workspace.loadProblems
+  const workspaceEffects = useAdminProblemSelectionWorkspaceEffects({
+    core: workspaceCore,
+    authState,
+    initializeAuth,
+    isAuthenticated,
+    canManageProblems,
+    accessMessages: {
+      loggedOutMessage: '문제 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
+      deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
+    },
+    resetSelectedProblemState: resetSelectedProblemStateForWorkspace,
+    loadSelectedProblemData: loadSelectedProblemDataForWorkspace,
+    resetPageState: resetPageStateForWorkspace
+  })
+  const workspace = {
+    ...workspaceCore,
+    ...workspaceEffects
+  }
+  const loadProblems = workspaceCore.loadProblems
 
   const problemLifecycleActions = useProblemLifecycleActions({
     authState,
@@ -395,12 +397,6 @@ export function useAdminProblemsPage(){
     problemDetailResource,
     problemCatalogResource: problemListResource,
     loadSelectedProblem
-  })
-
-  workspace.activate({
-    resetSelectedProblemState: resetSelectedProblemStateForWorkspace,
-    loadSelectedProblemData: loadSelectedProblemDataForWorkspace,
-    resetPageState: resetPageStateForWorkspace
   })
 
   watch(problemActionFeedback.actionMessage, (message) => {

@@ -6,7 +6,10 @@ import { useSelectedTestcaseResource } from '@/composables/adminProblemTestcases
 import { useTestcaseSelectionState } from '@/composables/adminProblemTestcases/useTestcaseSelectionState'
 import { formatProblemLimit } from '@/composables/adminProblemTestcases/testcaseHelpers'
 import { useTestcaseListResource } from '@/composables/adminProblemTestcases/useTestcaseListResource'
-import { useAdminProblemSelectionWorkspace } from '@/composables/adminShared/useAdminProblemSelectionWorkspace'
+import {
+  useAdminProblemSelectionWorkspaceCore,
+  useAdminProblemSelectionWorkspaceEffects
+} from '@/composables/adminShared/useAdminProblemSelectionWorkspace'
 import { useAdminProblemSidebarModel } from '@/composables/adminShared/useAdminProblemSidebarModel'
 import { useAdminProblemToolbarState } from '@/composables/adminShared/useAdminProblemToolbarState'
 import { useTestcaseZipInput } from '@/composables/adminShared/useTestcaseZipInput'
@@ -245,6 +248,12 @@ export function useAdminProblemTestcasesPage(){
       showErrorNotice('ZIP 파일만 업로드할 수 있습니다.')
     }
   })
+  const canAccessTestcasePage = computed(() => (
+    authState.initialized &&
+    !authState.isInitializing &&
+    isAuthenticated.value &&
+    canManageProblems.value
+  ))
 
   function resetTestcaseDraftState(){
     newTestcaseInput.value = ''
@@ -253,58 +262,19 @@ export function useAdminProblemTestcasesPage(){
     selectedTestcaseOutputDraft.value = ''
     resetTestcaseZipSelection()
   }
-
-  async function resetSelectedProblemStateForWorkspace({
-    problemDetailResource
-  }){
-    problemDetailResource.resetSelectedProblemDetail()
-    testcaseListResource.resetTestcaseList()
-    selectionState.resetSelectedTestcaseState()
-    resetTestcaseDraftState()
-  }
-
-  async function loadSelectedProblemDataForWorkspace({
-    problemId,
-    problemDetailResource,
-    selectedProblemId
-  }){
-    return loadSelectedProblemData(problemId, problemDetailResource, selectedProblemId)
-  }
-
-  async function resetPageStateForWorkspace({
-    query,
-    problemCatalogResource,
-    problemDetailResource
-  }){
-    query.resetSearchControls()
-    busySection.value = ''
-    problemCatalogResource.resetProblems()
-    await resetSelectedProblemStateForWorkspace({
-      problemDetailResource
-    })
-  }
-
-  const workspace = useAdminProblemSelectionWorkspace({
+  const workspaceCore = useAdminProblemSelectionWorkspaceCore({
     route,
     router,
     routeName: 'admin-problem-testcases',
     authState,
-    initializeAuth,
-    isAuthenticated,
     canManageProblems,
     showErrorNotice,
-    formatCount,
-    accessMessages: {
-      loggedOutMessage: '테스트케이스 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
-      deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
-    },
-    canRefresh: () => !busySection.value
+    formatCount
   })
 
-  const selectedProblemId = workspace.selectedProblemId
-  const problemCatalogResource = workspace.problemCatalogResource
-  const problemDetailResource = workspace.problemDetailResource
-  const pageAccess = workspace.pageAccess
+  const selectedProblemId = workspaceCore.selectedProblemId
+  const problemCatalogResource = workspaceCore.problemCatalogResource
+  const problemDetailResource = workspaceCore.problemDetailResource
   const testcaseListResource = useTestcaseListResource({
     authState,
     selectedProblemId
@@ -315,7 +285,7 @@ export function useAdminProblemTestcasesPage(){
   })
   const selectionState = useTestcaseSelectionState({
     authState,
-    pageAccess,
+    canAccessPage: canAccessTestcasePage,
     selectedProblemId,
     testcaseListResource,
     selectedTestcaseResource,
@@ -331,6 +301,65 @@ export function useAdminProblemTestcasesPage(){
       selectedTestcaseOutputDraft.value !== selectedTestcaseResource.selectedTestcase.value.testcase_output
     )
   })
+
+  async function resetSelectedProblemStateForWorkspace(){
+    problemDetailResource.resetSelectedProblemDetail()
+    testcaseListResource.resetTestcaseList()
+    selectionState.resetSelectedTestcaseState()
+    resetTestcaseDraftState()
+  }
+
+  async function loadSelectedProblemData(problemId = selectedProblemId.value, detailResource = problemDetailResource){
+    const normalizedProblemId = parsePositiveInteger(problemId)
+
+    if (normalizedProblemId == null) {
+      detailResource.resetSelectedProblemDetail()
+      testcaseListResource.resetTestcaseList()
+      selectionState.resetSelectedTestcaseState()
+      resetTestcaseDraftState()
+      return {
+        status: 'reset'
+      }
+    }
+
+    const [problemResult, testcaseResult] = await Promise.all([
+      detailResource.loadProblemDetail(normalizedProblemId),
+      selectionState.loadTestcases()
+    ])
+
+    return problemResult?.status === 'error' ? problemResult : testcaseResult
+  }
+
+  async function loadSelectedProblemDataForWorkspace(problemId = selectedProblemId.value){
+    return loadSelectedProblemData(problemId)
+  }
+
+  async function resetPageStateForWorkspace(){
+    workspaceCore.query.resetSearchControls()
+    busySection.value = ''
+    problemCatalogResource.resetProblems()
+    await resetSelectedProblemStateForWorkspace()
+  }
+
+  const workspaceEffects = useAdminProblemSelectionWorkspaceEffects({
+    core: workspaceCore,
+    authState,
+    initializeAuth,
+    isAuthenticated,
+    canManageProblems,
+    accessMessages: {
+      loggedOutMessage: '테스트케이스 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
+      deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
+    },
+    canRefresh: () => !busySection.value,
+    resetSelectedProblemState: resetSelectedProblemStateForWorkspace,
+    loadSelectedProblemData: loadSelectedProblemDataForWorkspace,
+    resetPageState: resetPageStateForWorkspace
+  })
+  const workspace = {
+    ...workspaceCore,
+    ...workspaceEffects
+  }
   const testcaseEditorActions = useTestcaseEditorActions({
     authState,
     busySection,
@@ -347,16 +376,10 @@ export function useAdminProblemTestcasesPage(){
     testcaseListResource,
     selectedTestcaseResource,
     problemDetailResource,
-    reloadProblems: workspace.loadProblems,
+    reloadProblems: workspaceCore.loadProblems,
     reloadSelectedProblemData: loadSelectedProblemData,
     showErrorNotice,
     showSuccessNotice
-  })
-
-  workspace.activate({
-    resetSelectedProblemState: resetSelectedProblemStateForWorkspace,
-    loadSelectedProblemData: loadSelectedProblemDataForWorkspace,
-    resetPageState: resetPageStateForWorkspace
   })
 
   const toolbarStatusLabel = computed(() => {
@@ -412,27 +435,6 @@ export function useAdminProblemTestcasesPage(){
     return testcaseListResource.testcaseItems.value[
       testcaseListResource.testcaseItems.value.length - 1
     ].testcase_order === testcaseOrder
-  }
-
-  async function loadSelectedProblemData(problemId = selectedProblemId.value, detailResource = problemDetailResource, currentSelectedProblemId = selectedProblemId){
-    const normalizedProblemId = parsePositiveInteger(problemId ?? currentSelectedProblemId.value)
-
-    if (normalizedProblemId == null) {
-      detailResource.resetSelectedProblemDetail()
-      testcaseListResource.resetTestcaseList()
-      selectionState.resetSelectedTestcaseState()
-      resetTestcaseDraftState()
-      return {
-        status: 'reset'
-      }
-    }
-
-    const [problemResult, testcaseResult] = await Promise.all([
-      detailResource.loadProblemDetail(normalizedProblemId),
-      selectionState.loadTestcases()
-    ])
-
-    return problemResult?.status === 'error' ? problemResult : testcaseResult
   }
 
   const shell = workspace.shell

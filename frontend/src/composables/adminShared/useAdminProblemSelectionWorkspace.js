@@ -6,10 +6,6 @@ import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtec
 import { useSelectedProblemDetailResource } from '@/composables/adminShared/useSelectedProblemDetailResource'
 import { parsePositiveInteger } from '@/utils/parse'
 
-const inactiveWorkspaceResult = Object.freeze({
-  status: 'inactive'
-})
-
 function canRefreshWorkspace(canRefresh){
   if (typeof canRefresh === 'function') {
     return Boolean(canRefresh())
@@ -26,20 +22,49 @@ function canRefreshWorkspace(canRefresh){
   return Boolean(canRefresh)
 }
 
-export function useAdminProblemSelectionWorkspace({
+export function useAdminProblemSelectionWorkspaceCore({
   route,
   router,
   routeName,
   authState,
-  initializeAuth,
-  isAuthenticated,
   canManageProblems,
   showErrorNotice,
-  formatCount,
-  accessMessages,
-  canRefresh
+  formatCount
 }){
   const selectedProblemId = computed(() => parsePositiveInteger(route.params.problemId) ?? 0)
+
+  async function loadProblems(options = {}){
+    if (!authState.token || !canManageProblems.value) {
+      return {
+        status: 'blocked'
+      }
+    }
+
+    const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
+    const result = await problemCatalogResource.loadProblems()
+
+    if (result.status !== 'success') {
+      return result
+    }
+
+    if (!problemCatalogResource.problems.value.length) {
+      if (selectedProblemId.value > 0) {
+        await query.replaceSelectedProblem(0)
+      }
+
+      return result
+    }
+
+    const nextProblemId = problemCatalogResource.problems.value.some((problem) => problem.problem_id === preferredProblemId)
+      ? preferredProblemId
+      : problemCatalogResource.problems.value[0].problem_id
+
+    if (nextProblemId > 0 && nextProblemId !== selectedProblemId.value) {
+      await query.replaceSelectedProblem(nextProblemId)
+    }
+
+    return result
+  }
 
   const query = useAdminProblemCatalogQuery({
     route,
@@ -75,47 +100,6 @@ export function useAdminProblemSelectionWorkspace({
     selectedProblemId,
     mergeProblemSummary: problemCatalogResource.mergeProblemSummary
   })
-  const pageCallbacks = {
-    resetSelectedProblemState: null,
-    loadSelectedProblemData: null,
-    resetPageState: null
-  }
-  let isActivated = false
-  let hasRegisteredPageWatches = false
-
-  async function runResetSelectedProblemState(){
-    if (typeof pageCallbacks.resetSelectedProblemState !== 'function') {
-      return inactiveWorkspaceResult
-    }
-
-    return pageCallbacks.resetSelectedProblemState({
-      problemDetailResource
-    })
-  }
-
-  async function runLoadSelectedProblemData(problemId = selectedProblemId.value){
-    if (typeof pageCallbacks.loadSelectedProblemData !== 'function') {
-      return inactiveWorkspaceResult
-    }
-
-    return pageCallbacks.loadSelectedProblemData({
-      problemId,
-      problemDetailResource,
-      selectedProblemId
-    })
-  }
-
-  async function runResetPageState(){
-    if (typeof pageCallbacks.resetPageState !== 'function') {
-      return inactiveWorkspaceResult
-    }
-
-    return pageCallbacks.resetPageState({
-      query,
-      problemCatalogResource,
-      problemDetailResource
-    })
-  }
 
   async function selectProblem(problemId){
     const normalizedProblemId = parsePositiveInteger(problemId)
@@ -128,8 +112,30 @@ export function useAdminProblemSelectionWorkspace({
     })
   }
 
+  return {
+    selectedProblemId,
+    query,
+    problemCatalogResource,
+    problemDetailResource,
+    selectProblem,
+    loadProblems
+  }
+}
+
+export function useAdminProblemSelectionWorkspaceEffects({
+  core,
+  authState,
+  initializeAuth,
+  isAuthenticated,
+  canManageProblems,
+  accessMessages,
+  canRefresh,
+  resetSelectedProblemState,
+  loadSelectedProblemData,
+  resetPageState
+}){
   async function syncSelectedProblemRouteState(problemId){
-    await runResetSelectedProblemState()
+    await resetSelectedProblemState()
 
     if ((parsePositiveInteger(problemId) ?? 0) <= 0) {
       return {
@@ -137,65 +143,23 @@ export function useAdminProblemSelectionWorkspace({
       }
     }
 
-    return runLoadSelectedProblemData(problemId)
-  }
-
-  async function loadProblems(options = {}){
-    if (!authState.token || !canManageProblems.value) {
-      return {
-        status: 'blocked'
-      }
-    }
-
-    const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
-    const result = await problemCatalogResource.loadProblems()
-
-    if (result.status !== 'success') {
-      return result
-    }
-
-    if (!problemCatalogResource.problems.value.length) {
-      if (selectedProblemId.value > 0) {
-        await query.replaceSelectedProblem(0)
-      } else {
-        await runResetSelectedProblemState()
-      }
-      return result
-    }
-
-    const nextProblemId = problemCatalogResource.problems.value.some((problem) => problem.problem_id === preferredProblemId)
-      ? preferredProblemId
-      : problemCatalogResource.problems.value[0].problem_id
-
-    if (nextProblemId > 0 && nextProblemId !== selectedProblemId.value) {
-      await query.replaceSelectedProblem(nextProblemId)
-    }
-
-    return result
+    return loadSelectedProblemData(problemId)
   }
 
   async function runAllowedCallbacks(){
-    if (!isActivated) {
-      return inactiveWorkspaceResult
-    }
+    const previousSelectedProblemId = core.selectedProblemId.value
 
-    const previousSelectedProblemId = selectedProblemId.value
+    await core.query.syncFromRouteAndReload()
 
-    await query.syncFromRouteAndReload()
-
-    if (selectedProblemId.value !== previousSelectedProblemId) {
+    if (core.selectedProblemId.value !== previousSelectedProblemId) {
       return
     }
 
-    return runLoadSelectedProblemData()
+    return loadSelectedProblemData()
   }
 
   async function runDeniedCallbacks(){
-    if (!isActivated) {
-      return inactiveWorkspaceResult
-    }
-
-    return runResetPageState()
+    return resetPageState()
   }
 
   const pageAccess = useProtectedAdminPageAccess({
@@ -209,84 +173,41 @@ export function useAdminProblemSelectionWorkspace({
     deniedMessage: accessMessages.deniedMessage
   })
 
-  function registerPageWatches(){
-    if (hasRegisteredPageWatches) {
-      return
+  pageAccess.watchWhenAllowed(
+    () => [
+      core.query.routeSearchMode.value,
+      core.query.routeTitleSearch.value,
+      core.query.routeProblemIdSearch.value
+    ],
+    () => {
+      void core.query.syncFromRouteAndReload()
     }
+  )
 
-    pageAccess.watchWhenAllowed(
-      () => [
-        query.routeSearchMode.value,
-        query.routeTitleSearch.value,
-        query.routeProblemIdSearch.value
-      ],
-      () => {
-        void query.syncFromRouteAndReload()
-      }
-    )
-
-    pageAccess.watchWhenAllowed(selectedProblemId, (problemId) => {
-      void syncSelectedProblemRouteState(problemId)
-    })
-
-    hasRegisteredPageWatches = true
-  }
-
-  function replayCurrentAccessState(){
-    if (pageAccess.accessState.value === 'initializing') {
-      return
-    }
-
-    if (pageAccess.accessState.value === 'allowed') {
-      void runAllowedCallbacks()
-      return
-    }
-
-    void runDeniedCallbacks()
-  }
-
-  function activate({
-    resetSelectedProblemState,
-    loadSelectedProblemData,
-    resetPageState
-  }){
-    if (isActivated) {
-      return
-    }
-
-    pageCallbacks.resetSelectedProblemState = resetSelectedProblemState
-    pageCallbacks.loadSelectedProblemData = loadSelectedProblemData
-    pageCallbacks.resetPageState = resetPageState
-    isActivated = true
-
-    registerPageWatches()
-    replayCurrentAccessState()
-  }
+  pageAccess.watchWhenAllowed(core.selectedProblemId, (problemId) => {
+    void syncSelectedProblemRouteState(problemId)
+  })
 
   async function refreshWorkspace(){
-    if (!isActivated) {
-      return inactiveWorkspaceResult
-    }
-
     if (!canRefreshWorkspace(canRefresh)) {
       return
     }
 
-    const previousSelectedProblemId = selectedProblemId.value
+    const previousSelectedProblemId = core.selectedProblemId.value
 
-    await loadProblems({
-      preferredProblemId: query.preferredProblemIdForReload.value
+    await core.loadProblems({
+      preferredProblemId: core.query.preferredProblemIdForReload.value
     })
 
-    if (selectedProblemId.value !== previousSelectedProblemId) {
+    if (core.selectedProblemId.value !== previousSelectedProblemId) {
       return
     }
 
-    return runLoadSelectedProblemData()
+    return loadSelectedProblemData()
   }
 
   const isLoadingProblems = computed(() =>
-    pageAccess.accessState.value === 'initializing' || problemCatalogResource.isLoadingProblems.value
+    pageAccess.accessState.value === 'initializing' || core.problemCatalogResource.isLoadingProblems.value
   )
   const shell = computed(() => ({
     state: pageAccess.accessState.value,
@@ -294,16 +215,9 @@ export function useAdminProblemSelectionWorkspace({
   }))
 
   return {
-    selectedProblemId,
-    query,
-    problemCatalogResource,
-    problemDetailResource,
     pageAccess,
     isLoadingProblems,
     shell,
-    activate,
-    selectProblem,
-    loadProblems,
     refreshWorkspace
   }
 }

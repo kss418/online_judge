@@ -1,10 +1,10 @@
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import { parsePositiveInteger } from '@/utils/parse'
 
 export function useTestcaseSelectionState({
   authState,
-  pageAccess,
+  canAccessPage,
   selectedProblemId,
   testcaseListResource,
   selectedTestcaseResource,
@@ -142,13 +142,15 @@ export function useTestcaseSelectionState({
     testcaseSummaryElementMap.set(testcaseOrder, element)
   }
 
-  pageAccess.watchWhenAllowed(selectedTestcaseSummary, (testcaseSummary) => {
-    if (!authState.token || selectedProblemId.value <= 0 || !testcaseSummary) {
+  watch([selectedTestcaseSummary, canAccessPage], ([testcaseSummary, isAllowed]) => {
+    if (!isAllowed || !authState.token || selectedProblemId.value <= 0 || !testcaseSummary) {
       selectedTestcaseResource.clearSelectedTestcaseDetail()
       return
     }
 
     void selectedTestcaseResource.loadSelectedTestcaseDetail(testcaseSummary.testcase_order)
+  }, {
+    immediate: true
   })
 
   return {
