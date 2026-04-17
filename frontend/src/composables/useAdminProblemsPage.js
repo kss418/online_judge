@@ -3,13 +3,13 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useProblemActionFeedback } from '@/composables/adminProblems/useProblemActionFeedback'
 import { useProblemAdminActions } from '@/composables/adminProblems/useProblemAdminActions'
-import { useProblemDetailResource } from '@/composables/adminProblems/useProblemDetailResource'
 import { useProblemEditorDraft } from '@/composables/adminProblems/useProblemEditorDraft'
 import { formatProblemLimit } from '@/composables/adminProblems/problemHelpers'
 import { useAdminProblemCatalogQuery } from '@/composables/adminShared/useAdminProblemCatalogQuery'
 import { useAdminProblemCatalogResource } from '@/composables/adminShared/useAdminProblemCatalogResource'
 import { useAdminProblemRouteCatalogReload } from '@/composables/adminShared/useAdminProblemRouteCatalogReload'
 import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
+import { useSelectedProblemDetailResource } from '@/composables/adminShared/useSelectedProblemDetailResource'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatCount } from '@/utils/numberFormat'
@@ -290,9 +290,10 @@ export function useAdminProblemsPage(){
     authState,
     routeQueryState: problemQuery.routeState
   })
-  const problemDetailResource = useProblemDetailResource({
+  const problemDetailResource = useSelectedProblemDetailResource({
     authState,
-    selectedProblemId
+    selectedProblemId,
+    mergeProblemSummary: problemListResource.mergeProblemSummary
   })
   const problemActionFeedback = useProblemActionFeedback({
     selectedProblemDetail: problemDetailResource.selectedProblemDetail,
@@ -328,7 +329,7 @@ export function useAdminProblemsPage(){
     getSampleDraft: editorDraft.getSampleDraft,
     syncSampleDrafts: editorDraft.syncSampleDrafts,
     setSelectedProblemSamples: problemDetailResource.setSelectedProblemSamples,
-    applySelectedProblemVersion,
+    applySelectedProblemVersion: problemDetailResource.applyProblemVersion,
     mergeProblemSummary: problemListResource.mergeProblemSummary,
     loadProblems,
     loadSelectedProblem,
@@ -349,20 +350,8 @@ export function useAdminProblemsPage(){
 
   function clearSelectedProblemState(){
     selectedProblemId.value = 0
-    problemDetailResource.resetSelectedProblemResource()
+    problemDetailResource.resetSelectedProblemDetail()
     editorDraft.resetEditorDrafts()
-  }
-
-  function applySelectedProblemVersion(problemId, version){
-    const normalizedVersion = Number(version)
-    if (!Number.isInteger(normalizedVersion) || normalizedVersion <= 0) {
-      return
-    }
-
-    problemDetailResource.applySelectedProblemVersion(problemId, normalizedVersion)
-    problemListResource.mergeProblemSummary(problemId, {
-      version: normalizedVersion
-    })
   }
 
   async function loadSelectedProblem(problemId, options = {}){
@@ -383,10 +372,6 @@ export function useAdminProblemsPage(){
       return result
     }
 
-    problemListResource.mergeProblemSummary(normalizedProblemId, {
-      title: result.data.title,
-      version: result.data.version
-    })
     editorDraft.assignEditorDrafts(result.data)
     return result
   }

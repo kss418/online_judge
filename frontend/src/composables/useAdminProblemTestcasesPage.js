@@ -1,16 +1,18 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { useProblemTestcaseResource } from '@/composables/adminProblemTestcases/useProblemTestcaseResource'
+import { useSelectedTestcaseResource } from '@/composables/adminProblemTestcases/useSelectedTestcaseResource'
 import { formatProblemLimit } from '@/composables/adminProblemTestcases/testcaseHelpers'
 import { useTestcaseEditorDraft } from '@/composables/adminProblemTestcases/useTestcaseEditorDraft'
 import { useTestcaseReorder } from '@/composables/adminProblemTestcases/useTestcaseReorder'
+import { useTestcaseListResource } from '@/composables/adminProblemTestcases/useTestcaseListResource'
 import { useTestcaseUploadActions } from '@/composables/adminProblemTestcases/useTestcaseUploadActions'
 import { useAdminProblemCatalogQuery } from '@/composables/adminShared/useAdminProblemCatalogQuery'
 import { useAdminProblemCatalogResource } from '@/composables/adminShared/useAdminProblemCatalogResource'
 import { useAdminProblemRouteCatalogReload } from '@/composables/adminShared/useAdminProblemRouteCatalogReload'
 import { useAdminProblemSelectionReload } from '@/composables/adminShared/useAdminProblemSelectionReload'
 import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
+import { useSelectedProblemDetailResource } from '@/composables/adminShared/useSelectedProblemDetailResource'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatCount } from '@/utils/numberFormat'
@@ -263,10 +265,18 @@ export function useAdminProblemTestcasesPage(){
     authState,
     routeQueryState: query.routeState
   })
-  const listResource = useProblemTestcaseResource({
+  const problemDetailResource = useSelectedProblemDetailResource({
     authState,
     selectedProblemId,
     mergeProblemSummary: problemCatalogResource.mergeProblemSummary
+  })
+  const testcaseListResource = useTestcaseListResource({
+    authState,
+    selectedProblemId
+  })
+  const selectedTestcaseResource = useSelectedTestcaseResource({
+    authState,
+    selectedProblemId
   })
 
   async function selectProblem(problemId){
@@ -282,8 +292,8 @@ export function useAdminProblemTestcasesPage(){
   const draft = useTestcaseEditorDraft({
     authState,
     busySection,
-    testcaseItems: listResource.testcaseItems,
-    selectedTestcase: listResource.selectedTestcase,
+    testcaseItems: testcaseListResource.testcaseItems,
+    selectedTestcase: selectedTestcaseResource.selectedTestcase,
     showErrorNotice
   })
   const uploadActions = useTestcaseUploadActions({
@@ -293,7 +303,7 @@ export function useAdminProblemTestcasesPage(){
     showErrorNotice,
     showSuccessNotice,
     selectedProblemId,
-    selectedTestcase: listResource.selectedTestcase,
+    selectedTestcase: selectedTestcaseResource.selectedTestcase,
     selectedTestcaseSummary: draft.selectedTestcaseSummary,
     newTestcaseInput: draft.newTestcaseInput,
     newTestcaseOutput: draft.newTestcaseOutput,
@@ -302,22 +312,22 @@ export function useAdminProblemTestcasesPage(){
     selectedTestcaseInputDraft: draft.selectedTestcaseInputDraft,
     selectedTestcaseOutputDraft: draft.selectedTestcaseOutputDraft,
     canSaveSelectedTestcase: draft.canSaveSelectedTestcase,
-    applyProblemVersion: listResource.applyProblemVersion,
+    applyProblemVersion: problemDetailResource.applyProblemVersion,
     reloadProblems: loadProblems,
     reloadSelectedProblemData: loadSelectedProblemData,
     reloadTestcases: loadTestcases,
-    updateTestcaseItems: listResource.setTestcaseItems,
-    setSelectedTestcaseDetail: listResource.setSelectedTestcase,
+    updateTestcaseItems: testcaseListResource.setTestcaseItems,
+    setSelectedTestcaseDetail: selectedTestcaseResource.setSelectedTestcase,
     syncSelectedTestcase
   })
   const reorderActions = useTestcaseReorder({
     authState,
     busySection,
-    testcaseItems: listResource.testcaseItems,
+    testcaseItems: testcaseListResource.testcaseItems,
     selectedProblemId,
     selectedTestcaseSummary: draft.selectedTestcaseSummary,
-    applyProblemVersion: listResource.applyProblemVersion,
-    updateTestcaseItems: listResource.setTestcaseItems,
+    applyProblemVersion: problemDetailResource.applyProblemVersion,
+    updateTestcaseItems: testcaseListResource.setTestcaseItems,
     showErrorNotice,
     showSuccessNotice,
     syncSelectedTestcaseById(preferredTestcaseId, fallbackOrder){
@@ -369,14 +379,14 @@ export function useAdminProblemTestcasesPage(){
   const toolbarStatusLabel = computed(() => {
     if (
       isLoadingProblems.value ||
-      listResource.isLoadingProblem.value ||
-      listResource.isLoadingTestcases.value
+      problemDetailResource.isLoadingDetail.value ||
+      testcaseListResource.isLoadingTestcases.value
     ) {
       return 'Loading'
     }
 
     if (selectedProblemId.value > 0) {
-      return `${formatCount(listResource.testcaseCount.value)} Testcases`
+      return `${formatCount(testcaseListResource.testcaseCount.value)} Testcases`
     }
 
     return `${formatCount(problemCatalogResource.problemCount.value)} Problems`
@@ -384,8 +394,8 @@ export function useAdminProblemTestcasesPage(){
   const toolbarStatusTone = computed(() => {
     if (
       problemCatalogResource.listErrorMessage.value ||
-      listResource.problemErrorMessage.value ||
-      listResource.testcaseErrorMessage.value
+      problemDetailResource.detailErrorMessage.value ||
+      testcaseListResource.testcaseErrorMessage.value
     ) {
       return 'danger'
     }
@@ -393,7 +403,7 @@ export function useAdminProblemTestcasesPage(){
     return 'success'
   })
 
-  watch(listResource.selectedTestcase, (testcase) => {
+  watch(selectedTestcaseResource.selectedTestcase, (testcase) => {
     draft.selectedTestcaseInputDraft.value = testcase?.testcase_input ?? ''
     draft.selectedTestcaseOutputDraft.value = testcase?.testcase_output ?? ''
   }, {
@@ -402,11 +412,11 @@ export function useAdminProblemTestcasesPage(){
 
   pageAccess.watchWhenAllowed(draft.selectedTestcaseSummary, (testcaseSummary) => {
     if (!authState.token || selectedProblemId.value <= 0 || !testcaseSummary) {
-      listResource.clearSelectedTestcaseDetail()
+      selectedTestcaseResource.clearSelectedTestcaseDetail()
       return
     }
 
-    void listResource.loadSelectedTestcaseDetail(testcaseSummary.testcase_order)
+    void selectedTestcaseResource.loadSelectedTestcaseDetail(testcaseSummary.testcase_order)
   })
 
   function describeTestcaseContent(charCount, lineCount){
@@ -421,21 +431,25 @@ export function useAdminProblemTestcasesPage(){
   }
 
   function isLastTestcase(testcaseOrder){
-    if (!listResource.testcaseItems.value.length) {
+    if (!testcaseListResource.testcaseItems.value.length) {
       return false
     }
 
-    return listResource.testcaseItems.value[listResource.testcaseItems.value.length - 1].testcase_order === testcaseOrder
+    return testcaseListResource.testcaseItems.value[
+      testcaseListResource.testcaseItems.value.length - 1
+    ].testcase_order === testcaseOrder
   }
 
   function resetSelectedProblemState(){
-    listResource.resetSelectedProblemResource()
+    problemDetailResource.resetSelectedProblemDetail()
+    testcaseListResource.resetTestcaseList()
+    selectedTestcaseResource.clearSelectedTestcaseDetail()
     draft.resetDraftState()
   }
 
   function resetSelectedTestcaseState(){
     draft.resetSelectedTestcaseState()
-    listResource.clearSelectedTestcaseDetail()
+    selectedTestcaseResource.clearSelectedTestcaseDetail()
   }
 
   function syncSelectedTestcase(preferredOrder){
@@ -470,7 +484,7 @@ export function useAdminProblemTestcasesPage(){
   }
 
   async function loadTestcases(preferredOrder){
-    const result = await listResource.loadTestcases()
+    const result = await testcaseListResource.loadTestcases()
 
     if (result.status !== 'success') {
       resetSelectedTestcaseState()
@@ -483,7 +497,8 @@ export function useAdminProblemTestcasesPage(){
 
   async function loadSelectedProblemData(){
     if (selectedProblemId.value <= 0) {
-      listResource.resetSelectedProblemResource()
+      problemDetailResource.resetSelectedProblemDetail()
+      testcaseListResource.resetTestcaseList()
       resetSelectedTestcaseState()
       return {
         status: 'reset'
@@ -491,7 +506,7 @@ export function useAdminProblemTestcasesPage(){
     }
 
     const [problemResult, testcaseResult] = await Promise.all([
-      listResource.loadProblemDetail(),
+      problemDetailResource.loadProblemDetail(),
       loadTestcases()
     ])
 
@@ -503,7 +518,9 @@ export function useAdminProblemTestcasesPage(){
     busySection.value = ''
     testcaseSummaryElementMap.clear()
     problemCatalogResource.resetProblems()
-    listResource.resetSelectedProblemResource()
+    problemDetailResource.resetSelectedProblemDetail()
+    testcaseListResource.resetTestcaseList()
+    selectedTestcaseResource.clearSelectedTestcaseDetail()
     draft.resetDraftState()
   }
 
@@ -552,8 +569,8 @@ export function useAdminProblemTestcasesPage(){
       canManageProblems: canManageProblems.value,
       busySection: busySection.value,
       isLoadingProblems: isLoadingProblems.value,
-      isLoadingProblem: listResource.isLoadingProblem.value,
-      isLoadingTestcases: listResource.isLoadingTestcases.value,
+      isLoadingProblem: problemDetailResource.isLoadingDetail.value,
+      isLoadingTestcases: testcaseListResource.isLoadingTestcases.value,
       selectedProblemId: selectedProblemId.value
     },
     actions: {
@@ -590,22 +607,22 @@ export function useAdminProblemTestcasesPage(){
   }))
   const editor = createTestcaseEditorViewModel({
     selectedProblemId,
-    isLoadingProblem: listResource.isLoadingProblem,
-    problemErrorMessage: listResource.problemErrorMessage,
-    problemDetail: listResource.problemDetail,
+    isLoadingProblem: problemDetailResource.isLoadingDetail,
+    problemErrorMessage: problemDetailResource.detailErrorMessage,
+    problemDetail: problemDetailResource.selectedProblemDetail,
     busySection,
     canUploadTestcaseZip: uploadActions.canUploadTestcaseZip,
     isUploadingTestcaseZip: uploadActions.isUploadingTestcaseZip,
     canCreateTestcase: uploadActions.canCreateTestcase,
     isCreatingTestcase: uploadActions.isCreatingTestcase,
     canViewSpecificTestcase: draft.canViewSpecificTestcase,
-    isLoadingTestcases: listResource.isLoadingTestcases,
-    isLoadingSelectedTestcase: listResource.isLoadingSelectedTestcase,
-    testcaseItems: listResource.testcaseItems,
-    testcaseErrorMessage: listResource.testcaseErrorMessage,
-    selectedTestcaseErrorMessage: listResource.selectedTestcaseErrorMessage,
+    isLoadingTestcases: testcaseListResource.isLoadingTestcases,
+    isLoadingSelectedTestcase: selectedTestcaseResource.isLoadingSelectedTestcase,
+    testcaseItems: testcaseListResource.testcaseItems,
+    testcaseErrorMessage: testcaseListResource.testcaseErrorMessage,
+    selectedTestcaseErrorMessage: selectedTestcaseResource.selectedTestcaseErrorMessage,
     selectedTestcaseOrder: draft.selectedTestcaseOrder,
-    selectedTestcase: listResource.selectedTestcase,
+    selectedTestcase: selectedTestcaseResource.selectedTestcase,
     canDeleteSelectedTestcase: uploadActions.canDeleteSelectedTestcase,
     isDeletingSelectedTestcase: uploadActions.isDeletingSelectedTestcase,
     canMoveTestcases: reorderActions.canMoveTestcases,
