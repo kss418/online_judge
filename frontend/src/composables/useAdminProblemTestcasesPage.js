@@ -6,16 +6,13 @@ import { useTestcaseMutationState } from '@/composables/adminProblemTestcases/us
 import { useSelectedTestcaseResource } from '@/composables/adminProblemTestcases/useSelectedTestcaseResource'
 import { useTestcaseSelectionState } from '@/composables/adminProblemTestcases/useTestcaseSelectionState'
 import { useTestcaseListResource } from '@/composables/adminProblemTestcases/useTestcaseListResource'
+import { useAdminProblemTestcasesWorkspaceEffects } from '@/composables/adminProblemTestcases/useAdminProblemTestcasesWorkspaceEffects'
 import { useTestcaseUploadState } from '@/composables/adminProblemTestcases/useTestcaseUploadState'
 import {
   normalizeAdminProblemId,
   sanitizeNumericInputValue
 } from '@/composables/adminShared/adminProblemSelectionHelpers'
-import {
-  resetAdminProblemSelectionPageState,
-  useAdminProblemSelectionPageShell,
-  useAdminProblemSelectionPageWorkspace
-} from '@/composables/adminShared/useAdminProblemSelectionPageState'
+import { useAdminProblemSelectionPageShell } from '@/composables/adminShared/useAdminProblemSelectionPageState'
 import { useAdminProblemSelectionWorkspaceCore } from '@/composables/adminShared/useAdminProblemSelectionWorkspace'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
@@ -303,14 +300,13 @@ export function useAdminProblemTestcasesPage(){
   }
 
   async function resetPageState(){
-    await resetAdminProblemSelectionPageState({
-      workspaceCore,
-      busySection,
-      resetSelectedProblemState
-    })
+    workspaceCore.query.resetSearchControls()
+    busySection.value = ''
+    problemCatalogResource.resetProblems()
+    await resetSelectedProblemState()
   }
 
-  const workspace = useAdminProblemSelectionPageWorkspace({
+  const workspaceEffects = useAdminProblemTestcasesWorkspaceEffects({
     core: workspaceCore,
     authState,
     initializeAuth,
@@ -320,11 +316,15 @@ export function useAdminProblemTestcasesPage(){
       loggedOutMessage: '테스트케이스 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
       deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
     },
-    canRefresh: () => !busySection.value,
+    busySection,
     resetSelectedProblemState,
     loadSelectedProblemData,
     resetPageState
   })
+  const workspace = {
+    ...workspaceCore,
+    ...workspaceEffects
+  }
   const testcaseMutationState = useTestcaseMutationState({
     authState,
     busySection,

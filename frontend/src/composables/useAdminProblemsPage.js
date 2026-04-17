@@ -5,12 +5,9 @@ import { useProblemActionFeedback } from '@/composables/adminProblems/useProblem
 import { useProblemDetailEditorState } from '@/composables/adminProblems/useProblemDetailEditorState'
 import { useProblemLifecycleState } from '@/composables/adminProblems/useProblemLifecycleState'
 import { useProblemSampleEditorState } from '@/composables/adminProblems/useProblemSampleEditorState'
+import { useAdminProblemsWorkspaceEffects } from '@/composables/adminProblems/useAdminProblemsWorkspaceEffects'
 import { normalizeAdminProblemId } from '@/composables/adminShared/adminProblemSelectionHelpers'
-import {
-  resetAdminProblemSelectionPageState,
-  useAdminProblemSelectionPageShell,
-  useAdminProblemSelectionPageWorkspace
-} from '@/composables/adminShared/useAdminProblemSelectionPageState'
+import { useAdminProblemSelectionPageShell } from '@/composables/adminShared/useAdminProblemSelectionPageState'
 import { useAdminProblemSelectionWorkspaceCore } from '@/composables/adminShared/useAdminProblemSelectionWorkspace'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
@@ -361,11 +358,10 @@ export function useAdminProblemsPage(){
 
   async function resetPageState(){
     problemLifecycleState.newProblemTitle.value = ''
-    await resetAdminProblemSelectionPageState({
-      workspaceCore,
-      busySection,
-      resetSelectedProblemState
-    })
+    workspaceCore.query.resetSearchControls()
+    busySection.value = ''
+    problemListResource.resetProblems()
+    await resetSelectedProblemState()
     problemActionFeedback.resetActionState()
   }
 
@@ -379,7 +375,7 @@ export function useAdminProblemsPage(){
     onCreatedProblem: handleCreatedProblem
   })
 
-  const workspace = useAdminProblemSelectionPageWorkspace({
+  const workspaceEffects = useAdminProblemsWorkspaceEffects({
     core: workspaceCore,
     authState,
     initializeAuth,
@@ -393,6 +389,10 @@ export function useAdminProblemsPage(){
     loadSelectedProblemData,
     resetPageState
   })
+  const workspace = {
+    ...workspaceCore,
+    ...workspaceEffects
+  }
 
   watch(problemActionFeedback.actionMessage, (message) => {
     if (message) {
