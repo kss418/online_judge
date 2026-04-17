@@ -5,7 +5,7 @@
 #include "dto/problem_dto.hpp"
 #include "http_core/http_response_util.hpp"
 #include "http_endpoint/endpoint.hpp"
-#include "http_guard/auth_guard.hpp"
+#include "http_handler/optional_auth_spec_helper.hpp"
 #include "http_guard/request_parse_guard.hpp"
 #include "request_parser/problem_request_parser.hpp"
 #include "serializer/problem_json_serializer.hpp"
@@ -14,7 +14,7 @@ namespace{
     using response_type = problem_query_handler::response_type;
 
     struct problem_detail_request{
-        problem_dto::reference problem_reference_value;
+        std::int64_t problem_id = 0;
         std::optional<std::int64_t> viewer_user_id_opt = std::nullopt;
     };
 
@@ -22,7 +22,7 @@ namespace{
     using command_expected = std::expected<command_type, response_type>;
 
     auto make_get_problems_spec(){
-        return http_endpoint::make_guarded_json_spec(
+        return http_handler_spec::make_auth_optional_json_spec(
             [](const http_guard::guard_context& context,
                 const std::optional<auth_dto::identity>& auth_identity_opt,
                 const problem_dto::list_filter& filter_value)
@@ -47,43 +47,41 @@ namespace{
 
                 return command_value;
             },
-            http_endpoint::make_db_execute(list_problems_query::execute),
+            list_problems_query::execute,
             [](const list_problems_query::result& result_value) {
                 return problem_json_serializer::make_list_object(
                     result_value.summary_values,
                     result_value.total_problem_count
                 );
             },
-            auth_guard::make_optional_auth_guard(),
             request_parse_guard::make_problem_list_filter_guard()
         );
     }
 
     auto make_get_problem_spec(std::int64_t problem_id){
-        return http_endpoint::make_guarded_json_spec(
-            [problem_id](const http_guard::guard_context&,
+        return http_handler_spec::make_auth_optional_path_json_spec(
+            problem_id,
+            [](const http_guard::guard_context&,
+                std::int64_t problem_id_value,
                 const std::optional<auth_dto::identity>& auth_identity_opt)
                 -> command_expected<problem_detail_request> {
                 return problem_detail_request{
-                    .problem_reference_value = problem_dto::reference{problem_id},
+                    .problem_id = problem_id_value,
                     .viewer_user_id_opt = auth_guard::get_viewer_user_id(
                         auth_identity_opt
                     )
                 };
             },
-            http_endpoint::make_db_execute(
-                [](auto& connection, const problem_detail_request& request) {
-                    return problem_query_service::get_problem_detail(
-                        connection,
-                        request.problem_reference_value,
-                        request.viewer_user_id_opt
-                    );
-                }
-            ),
+            [](auto& connection, const problem_detail_request& request) {
+                return problem_query_service::get_problem_detail(
+                    connection,
+                    problem_dto::reference{request.problem_id},
+                    request.viewer_user_id_opt
+                );
+            },
             [](const problem_dto::detail& problem_detail) {
                 return problem_json_serializer::make_detail_object(problem_detail);
-            },
-            auth_guard::make_optional_auth_guard()
+            }
         );
     }
 }

@@ -3,7 +3,7 @@
 #include "db_service/auth_service.hpp"
 #include "db_service/user_service.hpp"
 #include "http_endpoint/endpoint.hpp"
-#include "http_guard/auth_guard.hpp"
+#include "http_handler/optional_auth_spec_helper.hpp"
 #include "http_guard/request_parse_guard.hpp"
 #include "request_parser/user_request_parser.hpp"
 #include "serializer/user_json_serializer.hpp"
@@ -23,17 +23,16 @@ namespace{
     }
 
     auto make_get_user_list_spec(){
-        return http_endpoint::make_guarded_json_spec(
+        return http_handler_spec::make_admin_identity_json_spec(
             [](const http_guard::guard_context&,
                 const auth_dto::identity&)
                 -> std::expected<http_endpoint::no_input, response_type> {
                 return http_endpoint::no_input{};
             },
-            [](auto& context, const http_endpoint::no_input&) {
+            [](request_context& context, const http_endpoint::no_input&) {
                 return auth_service::get_user_list(context.db_connection_ref());
             },
-            user_json_serializer::make_list_object,
-            auth_guard::make_admin_guard()
+            user_json_serializer::make_list_object
         );
     }
 }

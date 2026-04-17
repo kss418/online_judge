@@ -5,6 +5,7 @@
 #include "dto/submission_internal_dto.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_endpoint/http_error_mapper.hpp"
+#include "http_handler/path_value_spec_helper.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/submission_guard.hpp"
 #include "serializer/submission_json_serializer.hpp"
@@ -25,15 +26,15 @@ namespace{
     }
 
     auto make_post_submission_rejudge_spec(std::int64_t submission_id){
-        return http_endpoint::make_guarded_json_spec(
-            [submission_id](const http_guard::guard_context&,
+        return http_handler_spec::make_single_path_value_json_spec(
+            submission_id,
+            [](const http_guard::guard_context&,
+                std::int64_t submission_id_value,
                 const auth_dto::identity&)
                 -> std::expected<std::int64_t, response_type> {
-                return submission_id;
+                return submission_id_value;
             },
-            http_endpoint::make_db_execute(
-                submission_command_service::rejudge_submission
-            ),
+            submission_command_service::rejudge_submission,
             submission_json_serializer::make_queued_response_object,
             auth_guard::make_admin_guard()
         );

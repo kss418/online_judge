@@ -5,7 +5,7 @@
 #include "http_core/http_response_util.hpp"
 #include "http_core/http_runtime_status_provider.hpp"
 #include "http_endpoint/endpoint.hpp"
-#include "http_guard/auth_guard.hpp"
+#include "http_handler/optional_auth_spec_helper.hpp"
 #include "serializer/common_json_serializer.hpp"
 #include "serializer/system_json_serializer.hpp"
 
@@ -47,7 +47,7 @@ namespace{
     }
 
     auto make_get_status_spec(){
-        return http_endpoint::make_guarded_json_spec(
+        return http_handler_spec::make_admin_identity_json_spec(
             [](const http_guard::guard_context& context,
                 const auth_dto::identity&)
                 -> command_expected<system_status_request> {
@@ -68,15 +68,14 @@ namespace{
                     .judge_heartbeat_stale_after = provider.judge_heartbeat_stale_after()
                 };
             },
-            [](auto& context, const system_status_request& request) {
+            [](request_context& context, const system_status_request& request) {
                 return system_service::get_status(
                     context.db_connection_ref(),
                     request.http_runtime_snapshot,
                     request.judge_heartbeat_stale_after
                 );
             },
-            system_json_serializer::make_status_object,
-            auth_guard::make_admin_guard()
+            system_json_serializer::make_status_object
         );
     }
 }
