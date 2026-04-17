@@ -2,7 +2,8 @@
 
 #include "db_service/user_service.hpp"
 #include "http_endpoint/endpoint.hpp"
-#include "http_handler/handler_spec_helper.hpp"
+#include "http_handler/admin_user_spec_helper.hpp"
+#include "http_handler/optional_auth_spec_helper.hpp"
 #include "serializer/user_json_serializer.hpp"
 
 namespace{
