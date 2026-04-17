@@ -2,7 +2,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 
 import { parsePositiveInteger } from '@/utils/parse'
 
-export function useTestcaseSelectionState({
+export function useTestcaseSelectionSyncState({
   authState,
   canAccessPage,
   selectedProblemId,

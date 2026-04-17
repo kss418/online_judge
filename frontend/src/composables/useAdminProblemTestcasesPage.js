@@ -1,12 +1,10 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { useTestcaseDraftState } from '@/composables/adminProblemTestcases/useTestcaseDraftState'
-import { useTestcaseMutationState } from '@/composables/adminProblemTestcases/useTestcaseMutationState'
+import { useTestcaseListDetailMutationState } from '@/composables/adminProblemTestcases/useTestcaseListDetailMutationState'
 import { useSelectedTestcaseResource } from '@/composables/adminProblemTestcases/useSelectedTestcaseResource'
-import { useTestcaseSelectionState } from '@/composables/adminProblemTestcases/useTestcaseSelectionState'
+import { useTestcaseSelectionSyncState } from '@/composables/adminProblemTestcases/useTestcaseSelectionSyncState'
 import { useTestcaseListResource } from '@/composables/adminProblemTestcases/useTestcaseListResource'
-import { useTestcaseUploadState } from '@/composables/adminProblemTestcases/useTestcaseUploadState'
 import {
   sanitizeNumericInputValue
 } from '@/composables/adminShared/adminProblemSelectionHelpers'
@@ -257,19 +255,32 @@ export function useAdminProblemTestcasesPage(){
     authState,
     selectedProblemId
   })
-  const testcaseDraftState = useTestcaseDraftState({
-    authState,
-    busySection,
-    selectedTestcaseResource,
-    showErrorNotice
-  })
-  const selectionState = useTestcaseSelectionState({
+  const selectionState = useTestcaseSelectionSyncState({
     authState,
     canAccessPage: canAccessTestcasePage,
     selectedProblemId,
     testcaseListResource,
     selectedTestcaseResource,
     showErrorNotice
+  })
+
+  async function reloadSelectedProblemData(...args){
+    return pageState.loadSelectedProblemData(...args)
+  }
+
+  const testcaseListDetailMutationState = useTestcaseListDetailMutationState({
+    authState,
+    busySection,
+    formatCount,
+    selectedProblemId,
+    problemDetailResource,
+    testcaseListResource,
+    selectedTestcaseResource,
+    selectionState,
+    reloadProblems: workspaceCore.loadProblems,
+    reloadSelectedProblemData,
+    showErrorNotice,
+    showSuccessNotice
   })
 
   const pageState = useAdminProblemSelectionPageState({
@@ -287,7 +298,7 @@ export function useAdminProblemTestcasesPage(){
     selectionResetters: [
       testcaseListResource.resetTestcaseList,
       selectionState.resetSelectedTestcaseState,
-      testcaseDraftState.resetDrafts
+      testcaseListDetailMutationState.reset
     ],
     additionalSelectedProblemLoaders: [
       () => selectionState.loadTestcases()
@@ -297,31 +308,6 @@ export function useAdminProblemTestcasesPage(){
     ...workspaceCore,
     ...pageState
   }
-  const testcaseMutationState = useTestcaseMutationState({
-    authState,
-    busySection,
-    selectedProblemId,
-    draftState: testcaseDraftState,
-    selectionState,
-    testcaseListResource,
-    selectedTestcaseResource,
-    problemDetailResource,
-    showErrorNotice,
-    showSuccessNotice
-  })
-  const testcaseUploadState = useTestcaseUploadState({
-    authState,
-    busySection,
-    formatCount,
-    selectedProblemId,
-    testcaseZipFile: testcaseDraftState.testcaseZipFile,
-    resetZipSelection: testcaseDraftState.resetZipSelection,
-    problemDetailResource,
-    reloadProblems: workspaceCore.loadProblems,
-    reloadSelectedProblemData: pageState.loadSelectedProblemData,
-    showErrorNotice,
-    showSuccessNotice
-  })
 
   const toolbarStatusLabel = computed(() => {
     if (
@@ -396,10 +382,10 @@ export function useAdminProblemTestcasesPage(){
     problemErrorMessage: problemDetailResource.detailErrorMessage,
     problemDetail: problemDetailResource.selectedProblemDetail,
     busySection,
-    canUploadTestcaseZip: testcaseUploadState.canUploadTestcaseZip,
-    isUploadingTestcaseZip: testcaseUploadState.isUploadingTestcaseZip,
-    canCreateTestcase: testcaseMutationState.canCreateTestcase,
-    isCreatingTestcase: testcaseMutationState.isCreatingTestcase,
+    canUploadTestcaseZip: testcaseListDetailMutationState.canUploadTestcaseZip,
+    isUploadingTestcaseZip: testcaseListDetailMutationState.isUploadingTestcaseZip,
+    canCreateTestcase: testcaseListDetailMutationState.canCreateTestcase,
+    isCreatingTestcase: testcaseListDetailMutationState.isCreatingTestcase,
     canViewSpecificTestcase: selectionState.canViewSpecificTestcase,
     isLoadingTestcases: testcaseListResource.isLoadingTestcases,
     isLoadingSelectedTestcase: selectedTestcaseResource.isLoadingSelectedTestcase,
@@ -408,30 +394,30 @@ export function useAdminProblemTestcasesPage(){
     selectedTestcaseErrorMessage: selectedTestcaseResource.selectedTestcaseErrorMessage,
     selectedTestcaseOrder: selectionState.selectedTestcaseOrder,
     selectedTestcase: selectedTestcaseResource.selectedTestcase,
-    canDeleteSelectedTestcase: testcaseMutationState.canDeleteSelectedTestcase,
-    isDeletingSelectedTestcase: testcaseMutationState.isDeletingSelectedTestcase,
-    canMoveTestcases: testcaseMutationState.canMoveTestcases,
-    isMovingTestcase: testcaseMutationState.isMovingTestcase,
-    canSaveSelectedTestcase: testcaseDraftState.canSaveSelectedTestcase,
-    isSavingSelectedTestcase: testcaseMutationState.isSavingSelectedTestcase,
+    canDeleteSelectedTestcase: testcaseListDetailMutationState.canDeleteSelectedTestcase,
+    isDeletingSelectedTestcase: testcaseListDetailMutationState.isDeletingSelectedTestcase,
+    canMoveTestcases: testcaseListDetailMutationState.canMoveTestcases,
+    isMovingTestcase: testcaseListDetailMutationState.isMovingTestcase,
+    canSaveSelectedTestcase: testcaseListDetailMutationState.canSaveSelectedTestcase,
+    isSavingSelectedTestcase: testcaseListDetailMutationState.isSavingSelectedTestcase,
     formatCount,
     describeTestcaseContent,
     isLastTestcase,
     setTestcaseSummaryElement: selectionState.setTestcaseSummaryElement,
-    testcaseZipInputKey: testcaseDraftState.testcaseZipInputKey,
-    selectedTestcaseZipName: testcaseDraftState.selectedTestcaseZipName,
-    newTestcaseInput: testcaseDraftState.newTestcaseInput,
-    newTestcaseOutput: testcaseDraftState.newTestcaseOutput,
+    testcaseZipInputKey: testcaseListDetailMutationState.testcaseZipInputKey,
+    selectedTestcaseZipName: testcaseListDetailMutationState.selectedTestcaseZipName,
+    newTestcaseInput: testcaseListDetailMutationState.newTestcaseInput,
+    newTestcaseOutput: testcaseListDetailMutationState.newTestcaseOutput,
     viewTestcaseOrderInput: selectionState.viewTestcaseOrderInput,
-    selectedTestcaseInputDraft: testcaseDraftState.selectedTestcaseInputDraft,
-    selectedTestcaseOutputDraft: testcaseDraftState.selectedTestcaseOutputDraft,
-    handleTestcaseZipFileChange: testcaseDraftState.handleTestcaseZipFileChange,
-    handleUploadTestcaseZip: testcaseUploadState.handleUploadTestcaseZip,
-    handleCreateTestcase: testcaseMutationState.handleCreateTestcase,
+    selectedTestcaseInputDraft: testcaseListDetailMutationState.selectedTestcaseInputDraft,
+    selectedTestcaseOutputDraft: testcaseListDetailMutationState.selectedTestcaseOutputDraft,
+    handleTestcaseZipFileChange: testcaseListDetailMutationState.handleTestcaseZipFileChange,
+    handleUploadTestcaseZip: testcaseListDetailMutationState.handleUploadTestcaseZip,
+    handleCreateTestcase: testcaseListDetailMutationState.handleCreateTestcase,
     selectTestcase: selectionState.selectTestcase,
-    handleDeleteSelectedTestcase: testcaseMutationState.handleDeleteSelectedTestcase,
-    handleMoveTestcase: testcaseMutationState.handleMoveTestcase,
-    handleSaveSelectedTestcase: testcaseMutationState.handleSaveSelectedTestcase,
+    handleDeleteSelectedTestcase: testcaseListDetailMutationState.handleDeleteSelectedTestcase,
+    handleMoveTestcase: testcaseListDetailMutationState.handleMoveTestcase,
+    handleSaveSelectedTestcase: testcaseListDetailMutationState.handleSaveSelectedTestcase,
     handleViewSelectedTestcase: selectionState.handleViewSelectedTestcase
   })
 
