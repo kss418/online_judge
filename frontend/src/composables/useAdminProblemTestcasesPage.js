@@ -247,13 +247,6 @@ export function useAdminProblemTestcasesPage(){
       showErrorNotice('ZIP 파일만 업로드할 수 있습니다.')
     }
   })
-  let pageSetupReady = false
-
-  async function waitForPageSetup(){
-    while (!pageSetupReady) {
-      await Promise.resolve()
-    }
-  }
 
   function resetTestcaseDraftState(){
     newTestcaseInput.value = ''
@@ -266,7 +259,6 @@ export function useAdminProblemTestcasesPage(){
   async function resetSelectedProblemStateForWorkspace({
     problemDetailResource
   }){
-    await waitForPageSetup()
     problemDetailResource.resetSelectedProblemDetail()
     testcaseListResource.resetTestcaseList()
     selectionSync.resetSelectedTestcaseState()
@@ -278,7 +270,6 @@ export function useAdminProblemTestcasesPage(){
     problemDetailResource,
     selectedProblemId
   }){
-    await waitForPageSetup()
     return loadSelectedProblemData(problemId, problemDetailResource, selectedProblemId)
   }
 
@@ -287,7 +278,6 @@ export function useAdminProblemTestcasesPage(){
     problemCatalogResource,
     problemDetailResource
   }){
-    await waitForPageSetup()
     query.resetSearchControls()
     busySection.value = ''
     testcaseSummaryElementMap.clear()
@@ -311,9 +301,6 @@ export function useAdminProblemTestcasesPage(){
       loggedOutMessage: '테스트케이스 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
       deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
     },
-    resetSelectedProblemState: resetSelectedProblemStateForWorkspace,
-    loadSelectedProblemData: loadSelectedProblemDataForWorkspace,
-    resetPageState: resetPageStateForWorkspace,
     canRefresh: () => !busySection.value
   })
 
@@ -376,7 +363,11 @@ export function useAdminProblemTestcasesPage(){
     }
   })
 
-  pageSetupReady = true
+  workspace.activate({
+    resetSelectedProblemState: resetSelectedProblemStateForWorkspace,
+    loadSelectedProblemData: loadSelectedProblemDataForWorkspace,
+    resetPageState: resetPageStateForWorkspace
+  })
 
   const toolbarStatusLabel = computed(() => {
     if (
@@ -434,8 +425,6 @@ export function useAdminProblemTestcasesPage(){
   }
 
   async function loadSelectedProblemData(problemId = selectedProblemId.value, detailResource = problemDetailResource, currentSelectedProblemId = selectedProblemId){
-    await waitForPageSetup()
-
     const normalizedProblemId = parsePositiveInteger(problemId ?? currentSelectedProblemId.value)
 
     if (normalizedProblemId == null) {

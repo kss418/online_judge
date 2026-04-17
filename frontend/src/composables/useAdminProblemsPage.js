@@ -272,13 +272,6 @@ export function useAdminProblemsPage(){
 
   const busySection = ref('')
   const newProblemTitle = ref('')
-  let pageSetupReady = false
-
-  async function waitForPageSetup(){
-    while (!pageSetupReady) {
-      await Promise.resolve()
-    }
-  }
 
   function readLegacySelectedProblemId(){
     const queryProblemId = Array.isArray(route.query.problemId)
@@ -303,7 +296,6 @@ export function useAdminProblemsPage(){
   async function resetSelectedProblemStateForWorkspace({
     problemDetailResource
   }){
-    await waitForPageSetup()
     problemDetailResource.resetSelectedProblemDetail()
     editorDraft.resetEditorDrafts()
   }
@@ -313,18 +305,7 @@ export function useAdminProblemsPage(){
     problemDetailResource,
     selectedProblemId
   }){
-    await waitForPageSetup()
-
-    const normalizedProblemId = parsePositiveInteger(problemId ?? selectedProblemId.value)
-    if (normalizedProblemId == null) {
-      problemDetailResource.resetSelectedProblemDetail()
-      editorDraft.resetEditorDrafts()
-      return {
-        status: 'reset'
-      }
-    }
-
-    return loadSelectedProblem(normalizedProblemId, {}, problemDetailResource)
+    return loadSelectedProblem(problemId ?? selectedProblemId.value, {}, problemDetailResource)
   }
 
   async function resetPageStateForWorkspace({
@@ -332,7 +313,6 @@ export function useAdminProblemsPage(){
     problemCatalogResource,
     problemDetailResource
   }){
-    await waitForPageSetup()
     query.resetSearchControls()
     newProblemTitle.value = ''
     busySection.value = ''
@@ -356,11 +336,7 @@ export function useAdminProblemsPage(){
     accessMessages: {
       loggedOutMessage: '문제 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
       deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
-    },
-    beforeAllowed: canonicalizeLegacySelectedProblemRoute,
-    resetSelectedProblemState: resetSelectedProblemStateForWorkspace,
-    loadSelectedProblemData: loadSelectedProblemDataForWorkspace,
-    resetPageState: resetPageStateForWorkspace
+    }
   })
 
   const selectedProblemId = workspace.selectedProblemId
@@ -378,8 +354,6 @@ export function useAdminProblemsPage(){
   })
 
   async function loadSelectedProblem(problemId = selectedProblemId.value, options = {}, detailResource = problemDetailResource){
-    await waitForPageSetup()
-
     const normalizedProblemId = parsePositiveInteger(problemId)
     if (normalizedProblemId == null) {
       detailResource.resetSelectedProblemDetail()
@@ -435,7 +409,12 @@ export function useAdminProblemsPage(){
     onCreatedProblem: handleCreatedProblem
   })
 
-  pageSetupReady = true
+  workspace.activate({
+    beforeAllowed: canonicalizeLegacySelectedProblemRoute,
+    resetSelectedProblemState: resetSelectedProblemStateForWorkspace,
+    loadSelectedProblemData: loadSelectedProblemDataForWorkspace,
+    resetPageState: resetPageStateForWorkspace
+  })
 
   watch(problemActionFeedback.actionMessage, (message) => {
     if (message) {

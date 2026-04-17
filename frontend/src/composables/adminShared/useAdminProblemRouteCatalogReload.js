@@ -6,7 +6,7 @@ export function useAdminProblemRouteCatalogReload({
     return
   }
 
-  pageAccess.watchWhenAllowed(
+  return pageAccess.watchWhenAllowed(
     () => [
       query.routeSearchMode.value,
       query.routeTitleSearch.value,

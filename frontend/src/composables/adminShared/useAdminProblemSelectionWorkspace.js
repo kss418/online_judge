@@ -7,6 +7,10 @@ import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtec
 import { useSelectedProblemDetailResource } from '@/composables/adminShared/useSelectedProblemDetailResource'
 import { parsePositiveInteger } from '@/utils/parse'
 
+const inactiveWorkspaceResult = Object.freeze({
+  status: 'inactive'
+})
+
 function canRefreshWorkspace(canRefresh){
   if (typeof canRefresh === 'function') {
     return Boolean(canRefresh())
@@ -34,10 +38,6 @@ export function useAdminProblemSelectionWorkspace({
   showErrorNotice,
   formatCount,
   accessMessages,
-  beforeAllowed,
-  resetSelectedProblemState,
-  loadSelectedProblemData,
-  resetPageState,
   canRefresh
 }){
   const selectedProblemId = computed(() => parsePositiveInteger(route.params.problemId) ?? 0)
@@ -76,15 +76,31 @@ export function useAdminProblemSelectionWorkspace({
     selectedProblemId,
     mergeProblemSummary: problemCatalogResource.mergeProblemSummary
   })
+  const pageCallbacks = {
+    beforeAllowed: null,
+    resetSelectedProblemState: null,
+    loadSelectedProblemData: null,
+    resetPageState: null
+  }
+  let isActivated = false
+  let hasRegisteredPageWatches = false
 
   async function runResetSelectedProblemState(){
-    return resetSelectedProblemState({
+    if (typeof pageCallbacks.resetSelectedProblemState !== 'function') {
+      return inactiveWorkspaceResult
+    }
+
+    return pageCallbacks.resetSelectedProblemState({
       problemDetailResource
     })
   }
 
   async function runLoadSelectedProblemData(problemId = selectedProblemId.value){
-    return loadSelectedProblemData({
+    if (typeof pageCallbacks.loadSelectedProblemData !== 'function') {
+      return inactiveWorkspaceResult
+    }
+
+    return pageCallbacks.loadSelectedProblemData({
       problemId,
       problemDetailResource,
       selectedProblemId
@@ -92,7 +108,11 @@ export function useAdminProblemSelectionWorkspace({
   }
 
   async function runResetPageState(){
-    return resetPageState({
+    if (typeof pageCallbacks.resetPageState !== 'function') {
+      return inactiveWorkspaceResult
+    }
+
+    return pageCallbacks.resetPageState({
       query,
       problemCatalogResource,
       problemDetailResource
@@ -156,44 +176,103 @@ export function useAdminProblemSelectionWorkspace({
     return result
   }
 
+  async function runAllowedCallbacks(){
+    if (!isActivated) {
+      return inactiveWorkspaceResult
+    }
+
+    if (typeof pageCallbacks.beforeAllowed === 'function') {
+      await pageCallbacks.beforeAllowed({
+        selectedProblemId,
+        query
+      })
+    }
+
+    const previousSelectedProblemId = selectedProblemId.value
+
+    await query.syncFromRouteAndReload()
+
+    if (selectedProblemId.value !== previousSelectedProblemId) {
+      return
+    }
+
+    return runLoadSelectedProblemData()
+  }
+
+  async function runDeniedCallbacks(){
+    if (!isActivated) {
+      return inactiveWorkspaceResult
+    }
+
+    return runResetPageState()
+  }
+
   const pageAccess = useProtectedAdminPageAccess({
     authState,
     initializeAuth,
     isAuthenticated,
     hasAccess: canManageProblems,
-    onDenied: runResetPageState,
-    async onAllowed(){
-      if (typeof beforeAllowed === 'function') {
-        await beforeAllowed({
-          selectedProblemId,
-          query
-        })
-      }
-
-      const previousSelectedProblemId = selectedProblemId.value
-
-      await query.syncFromRouteAndReload()
-
-      if (selectedProblemId.value !== previousSelectedProblemId) {
-        return
-      }
-
-      await runLoadSelectedProblemData()
-    },
+    onDenied: runDeniedCallbacks,
+    onAllowed: runAllowedCallbacks,
     loggedOutMessage: accessMessages.loggedOutMessage,
     deniedMessage: accessMessages.deniedMessage
   })
 
-  useAdminProblemRouteCatalogReload({
-    pageAccess,
-    query
-  })
+  function registerPageWatches(){
+    if (hasRegisteredPageWatches) {
+      return
+    }
 
-  pageAccess.watchWhenAllowed(selectedProblemId, (problemId) => {
-    void syncSelectedProblemRouteState(problemId)
-  })
+    useAdminProblemRouteCatalogReload({
+      pageAccess,
+      query
+    })
+
+    pageAccess.watchWhenAllowed(selectedProblemId, (problemId) => {
+      void syncSelectedProblemRouteState(problemId)
+    })
+
+    hasRegisteredPageWatches = true
+  }
+
+  function replayCurrentAccessState(){
+    if (pageAccess.accessState.value === 'initializing') {
+      return
+    }
+
+    if (pageAccess.accessState.value === 'allowed') {
+      void runAllowedCallbacks()
+      return
+    }
+
+    void runDeniedCallbacks()
+  }
+
+  function activate({
+    beforeAllowed,
+    resetSelectedProblemState,
+    loadSelectedProblemData,
+    resetPageState
+  }){
+    if (isActivated) {
+      return
+    }
+
+    pageCallbacks.beforeAllowed = beforeAllowed
+    pageCallbacks.resetSelectedProblemState = resetSelectedProblemState
+    pageCallbacks.loadSelectedProblemData = loadSelectedProblemData
+    pageCallbacks.resetPageState = resetPageState
+    isActivated = true
+
+    registerPageWatches()
+    replayCurrentAccessState()
+  }
 
   async function refreshWorkspace(){
+    if (!isActivated) {
+      return inactiveWorkspaceResult
+    }
+
     if (!canRefreshWorkspace(canRefresh)) {
       return
     }
@@ -227,6 +306,7 @@ export function useAdminProblemSelectionWorkspace({
     pageAccess,
     isLoadingProblems,
     shell,
+    activate,
     selectProblem,
     loadProblems,
     refreshWorkspace
