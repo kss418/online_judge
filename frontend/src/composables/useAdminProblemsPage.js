@@ -5,9 +5,10 @@ import { useProblemActionFeedback } from '@/composables/adminProblems/useProblem
 import { useProblemDetailEditorState } from '@/composables/adminProblems/useProblemDetailEditorState'
 import { useProblemLifecycleState } from '@/composables/adminProblems/useProblemLifecycleState'
 import { useProblemSampleEditorState } from '@/composables/adminProblems/useProblemSampleEditorState'
-import { useAdminProblemsWorkspaceEffects } from '@/composables/adminProblems/useAdminProblemsWorkspaceEffects'
-import { normalizeAdminProblemId } from '@/composables/adminShared/adminProblemSelectionHelpers'
-import { useAdminProblemSelectionPageShell } from '@/composables/adminShared/useAdminProblemSelectionPageState'
+import {
+  useAdminProblemSelectionPageShell,
+  useAdminProblemSelectionPageState
+} from '@/composables/adminShared/useAdminProblemSelectionPageState'
 import { useAdminProblemSelectionWorkspaceCore } from '@/composables/adminShared/useAdminProblemSelectionWorkspace'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
@@ -307,32 +308,8 @@ export function useAdminProblemsPage(){
     loadSelectedProblem
   })
 
-  async function loadSelectedProblem(problemId = selectedProblemId.value, options = {}, detailResource = problemDetailResource){
-    const normalizedProblemId = normalizeAdminProblemId(problemId)
-    if (!normalizedProblemId) {
-      detailResource.resetSelectedProblemDetail()
-      problemDetailEditorState.reset()
-      problemSampleEditorState.reset()
-      return {
-        status: 'reset'
-      }
-    }
-
-    problemActionFeedback.clearActionError()
-    problemDetailEditorState.reset()
-    problemSampleEditorState.reset({
-      skipTestcaseZipReset: options.skipTestcaseZipReset === true
-    })
-
-    const result = await detailResource.loadProblemDetail(normalizedProblemId)
-
-    if (result.status !== 'success') {
-      return result
-    }
-
-    problemDetailEditorState.assignFromProblemDetail(result.data)
-    problemSampleEditorState.assignSamples(result.data.samples)
-    return result
+  async function loadSelectedProblem(problemId = selectedProblemId.value, context = {}){
+    return pageState.loadSelectedProblemData(problemId, context)
   }
 
   async function handleCreatedProblem(problemId){
@@ -346,25 +323,6 @@ export function useAdminProblemsPage(){
     }
   }
 
-  async function resetSelectedProblemState(){
-    problemDetailResource.resetSelectedProblemDetail()
-    problemDetailEditorState.reset()
-    problemSampleEditorState.reset()
-  }
-
-  async function loadSelectedProblemData(problemId = selectedProblemId.value){
-    return loadSelectedProblem(problemId)
-  }
-
-  async function resetPageState(){
-    problemLifecycleState.newProblemTitle.value = ''
-    workspaceCore.query.resetSearchControls()
-    busySection.value = ''
-    problemListResource.resetProblems()
-    await resetSelectedProblemState()
-    problemActionFeedback.resetActionState()
-  }
-
   const problemLifecycleState = useProblemLifecycleState({
     authState,
     busySection,
@@ -375,23 +333,40 @@ export function useAdminProblemsPage(){
     onCreatedProblem: handleCreatedProblem
   })
 
-  const workspaceEffects = useAdminProblemsWorkspaceEffects({
+  const pageState = useAdminProblemSelectionPageState({
     core: workspaceCore,
     authState,
     initializeAuth,
     isAuthenticated,
     canManageProblems,
+    busySection,
     accessMessages: {
       loggedOutMessage: '문제 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
       deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
     },
-    resetSelectedProblemState,
-    loadSelectedProblemData,
-    resetPageState
+    selectionResetters: [
+      problemDetailEditorState.reset,
+      (context) => problemSampleEditorState.reset({
+        skipTestcaseZipReset: context.skipTestcaseZipReset === true
+      })
+    ],
+    beforeSelectedProblemLoad(){
+      problemActionFeedback.clearActionError()
+    },
+    afterSelectedProblemDetailLoad(problemDetail){
+      problemDetailEditorState.assignFromProblemDetail(problemDetail)
+      problemSampleEditorState.assignSamples(problemDetail.samples)
+    },
+    pageResetters: [
+      () => {
+        problemLifecycleState.newProblemTitle.value = ''
+      },
+      problemActionFeedback.resetActionState
+    ]
   })
   const workspace = {
     ...workspaceCore,
-    ...workspaceEffects
+    ...pageState
   }
 
   watch(problemActionFeedback.actionMessage, (message) => {
