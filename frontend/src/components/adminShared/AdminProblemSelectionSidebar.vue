@@ -1,15 +1,15 @@
 <template>
   <AdminSelectionSidebarShell
-    :list-caption="problemListCaption"
-    :item-count="problemCount"
-    :is-loading="isLoadingProblems"
-    :error-message="listErrorMessage"
-    :empty-message="emptyProblemListMessage"
+    :list-caption="sidebar.model.problemListCaption"
+    :item-count="sidebar.model.problemCount"
+    :is-loading="sidebar.model.isLoadingProblems"
+    :error-message="sidebar.model.listErrorMessage"
+    :empty-message="sidebar.model.emptyProblemListMessage"
     loading-message="문제 목록을 불러오는 중입니다."
-    :format-count="formatCount"
+    :format-count="sidebar.model.formatCount"
   >
     <template #search>
-      <form class="admin-problem-selection-sidebar__search" @submit.prevent="$emit('submit-search')">
+      <form class="admin-problem-selection-sidebar__search" @submit.prevent="sidebar.actions.submitSearch()">
         <div
           class="admin-problem-selection-sidebar__mode-switch"
           role="tablist"
@@ -18,56 +18,56 @@
           <button
             type="button"
             class="ghost-button admin-problem-selection-sidebar__mode-button"
-            :class="{ 'is-active': searchMode === 'title' }"
-            :aria-pressed="searchMode === 'title'"
-            @click="$emit('set-search-mode', 'title')"
+            :class="{ 'is-active': sidebar.model.searchMode === 'title' }"
+            :aria-pressed="sidebar.model.searchMode === 'title'"
+            @click="sidebar.actions.setSearchMode('title')"
           >
             제목 검색
           </button>
           <button
             type="button"
             class="ghost-button admin-problem-selection-sidebar__mode-button"
-            :class="{ 'is-active': searchMode === 'problem-id' }"
-            :aria-pressed="searchMode === 'problem-id'"
-            @click="$emit('set-search-mode', 'problem-id')"
+            :class="{ 'is-active': sidebar.model.searchMode === 'problem-id' }"
+            :aria-pressed="sidebar.model.searchMode === 'problem-id'"
+            @click="sidebar.actions.setSearchMode('problem-id')"
           >
             번호 검색
           </button>
         </div>
         <input
-          v-if="searchMode === 'title'"
-          :id="titleSearchInputId"
-          :value="titleSearchInput"
+          v-if="sidebar.model.searchMode === 'title'"
+          :id="sidebar.model.titleSearchInputId"
+          :value="sidebar.model.titleSearchInput"
           class="field-input admin-problem-selection-sidebar__search-input"
           type="search"
           aria-label="문제 제목 검색"
           placeholder="문제 제목 검색"
-          @input="$emit('update:titleSearchInput', $event.target.value)"
+          @input="handleTitleSearchInput"
         />
         <input
           v-else
-          :id="problemIdSearchInputId"
-          :value="problemIdSearchInput"
+          :id="sidebar.model.problemIdSearchInputId"
+          :value="sidebar.model.problemIdSearchInput"
           class="field-input admin-problem-selection-sidebar__search-input"
           type="text"
           inputmode="numeric"
           aria-label="문제 번호 검색"
           placeholder="예: 123"
-          @input="$emit('problem-id-input', $event)"
+          @input="handleProblemIdSearchInput"
         />
         <button
           type="submit"
           class="ghost-button"
-          :disabled="isLoadingProblems || Boolean(busySection)"
+          :disabled="sidebar.model.isLoadingProblems || Boolean(sidebar.model.busySection)"
         >
           검색
         </button>
         <button
-          v-if="hasAppliedSearch"
+          v-if="sidebar.model.hasAppliedSearch"
           type="button"
           class="ghost-button"
-          :disabled="isLoadingProblems || Boolean(busySection)"
-          @click="$emit('reset-search')"
+          :disabled="sidebar.model.isLoadingProblems || Boolean(sidebar.model.busySection)"
+          @click="sidebar.actions.resetSearch()"
         >
           초기화
         </button>
@@ -75,108 +75,89 @@
     </template>
 
     <template #before-list>
-      <slot name="create" />
+      <form
+        v-if="sidebar.create"
+        class="admin-problems-create"
+        @submit.prevent="handleCreateProblem"
+      >
+        <div>
+          <p class="panel-kicker">create</p>
+          <h3>새 문제</h3>
+        </div>
+
+        <div class="admin-problems-create-row">
+          <input
+            :value="sidebar.create.model.newProblemTitle"
+            class="field-input"
+            type="text"
+            maxlength="120"
+            placeholder="새 문제 제목"
+            @input="handleNewProblemTitleInput"
+          />
+        </div>
+
+        <div class="admin-problems-create-actions">
+          <button
+            type="submit"
+            class="primary-button"
+            :disabled="!sidebar.create.model.canCreateProblem"
+          >
+            {{ sidebar.create.model.isCreatingProblem ? '생성 중...' : '문제 생성' }}
+          </button>
+        </div>
+      </form>
     </template>
 
     <button
-      v-for="problem in problems"
+      v-for="problem in sidebar.model.problems"
       :key="problem.problem_id"
       type="button"
       class="admin-problem-selection-sidebar__item"
-      :class="{ 'is-active': problem.problem_id === selectedProblemId }"
-      @click="$emit('select-problem', problem.problem_id)"
+      :class="{ 'is-active': problem.problem_id === sidebar.model.selectedProblemId }"
+      @click="sidebar.actions.selectProblem(problem.problem_id)"
     >
       <div class="admin-problem-selection-sidebar__item-head">
-        <strong>#{{ formatCount(problem.problem_id) }}</strong>
+        <strong>#{{ sidebar.model.formatCount(problem.problem_id) }}</strong>
         <span class="admin-problem-selection-sidebar__item-version">v{{ problem.version }}</span>
       </div>
       <strong class="admin-problem-selection-sidebar__item-title">{{ problem.title }}</strong>
       <div class="admin-problem-selection-sidebar__item-limits">
-        <span>{{ formatProblemLimit(problem.time_limit_ms, 'ms') }}</span>
-        <span>{{ formatProblemLimit(problem.memory_limit_mb, 'MB') }}</span>
+        <span>{{ sidebar.model.formatProblemLimit(problem.time_limit_ms, 'ms') }}</span>
+        <span>{{ sidebar.model.formatProblemLimit(problem.memory_limit_mb, 'MB') }}</span>
       </div>
     </button>
   </AdminSelectionSidebarShell>
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 import AdminSelectionSidebarShell from '@/components/adminShared/AdminSelectionSidebarShell.vue'
 
-defineProps({
-  searchMode: {
-    type: String,
-    required: true
-  },
-  titleSearchInput: {
-    type: String,
-    default: ''
-  },
-  problemIdSearchInput: {
-    type: String,
-    default: ''
-  },
-  titleSearchInputId: {
-    type: String,
-    default: 'admin-problem-title-search'
-  },
-  problemIdSearchInputId: {
-    type: String,
-    default: 'admin-problem-id-search'
-  },
-  isLoadingProblems: {
-    type: Boolean,
-    required: true
-  },
-  busySection: {
-    type: String,
-    default: ''
-  },
-  hasAppliedSearch: {
-    type: Boolean,
-    required: true
-  },
-  problemListCaption: {
-    type: String,
-    required: true
-  },
-  problemCount: {
-    type: Number,
-    required: true
-  },
-  listErrorMessage: {
-    type: String,
-    required: true
-  },
-  emptyProblemListMessage: {
-    type: String,
-    required: true
-  },
-  problems: {
-    type: Array,
-    required: true
-  },
-  selectedProblemId: {
-    type: Number,
-    required: true
-  },
-  formatCount: {
-    type: Function,
-    required: true
-  },
-  formatProblemLimit: {
-    type: Function,
+const props = defineProps({
+  sidebar: {
+    type: Object,
     required: true
   }
 })
 
-defineEmits([
-  'update:titleSearchInput',
-  'set-search-mode',
-  'problem-id-input',
-  'submit-search',
-  'reset-search',
-  'select-problem'
-])
+const sidebar = computed(() => props.sidebar)
+
+function handleTitleSearchInput(event){
+  sidebar.value.actions.updateTitleSearchInput(event.target.value)
+}
+
+function handleProblemIdSearchInput(event){
+  sidebar.value.actions.updateProblemIdSearchInput(event.target.value)
+}
+
+function handleNewProblemTitleInput(event){
+  sidebar.value.create?.actions.updateNewProblemTitle(event.target.value)
+}
+
+function handleCreateProblem(){
+  sidebar.value.create?.actions.createProblem()
+}
 </script>
 
 <style scoped>
@@ -208,6 +189,32 @@ defineEmits([
 
 .admin-problem-selection-sidebar__search-input {
   flex: 1 1 220px;
+}
+
+.admin-problems-create {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border-radius: 20px;
+  border: 1px solid var(--admin-workspace-section-border);
+  background: var(--admin-workspace-section-surface);
+  box-shadow: var(--admin-workspace-section-shadow);
+}
+
+.admin-problems-create-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.admin-problems-create-row .field-input {
+  flex: 1 1 220px;
+}
+
+.admin-problems-create-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .admin-problem-selection-sidebar__item {
@@ -269,6 +276,11 @@ defineEmits([
 
 @media (max-width: 720px) {
   .admin-problem-selection-sidebar__search {
+    display: grid;
+    align-items: stretch;
+  }
+
+  .admin-problems-create-row {
     display: grid;
     align-items: stretch;
   }

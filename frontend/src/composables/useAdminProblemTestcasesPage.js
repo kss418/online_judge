@@ -2,19 +2,220 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useProblemTestcaseResource } from '@/composables/adminProblemTestcases/useProblemTestcaseResource'
+import { formatProblemLimit } from '@/composables/adminProblemTestcases/testcaseHelpers'
+import { useTestcaseEditorDraft } from '@/composables/adminProblemTestcases/useTestcaseEditorDraft'
+import { useTestcaseReorder } from '@/composables/adminProblemTestcases/useTestcaseReorder'
+import { useTestcaseUploadActions } from '@/composables/adminProblemTestcases/useTestcaseUploadActions'
 import { useAdminProblemCatalogQuery } from '@/composables/adminShared/useAdminProblemCatalogQuery'
 import { useAdminProblemCatalogResource } from '@/composables/adminShared/useAdminProblemCatalogResource'
 import { useAdminProblemRouteCatalogReload } from '@/composables/adminShared/useAdminProblemRouteCatalogReload'
 import { useAdminProblemSelectionReload } from '@/composables/adminShared/useAdminProblemSelectionReload'
 import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
-import { formatProblemLimit } from '@/composables/adminProblemTestcases/testcaseHelpers'
-import { useTestcaseEditorDraft } from '@/composables/adminProblemTestcases/useTestcaseEditorDraft'
-import { useTestcaseReorder } from '@/composables/adminProblemTestcases/useTestcaseReorder'
-import { useTestcaseUploadActions } from '@/composables/adminProblemTestcases/useTestcaseUploadActions'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatCount } from '@/utils/numberFormat'
 import { parsePositiveInteger } from '@/utils/parse'
+
+function sanitizeNumericInput(value){
+  return String(value ?? '').replace(/\D+/g, '')
+}
+
+function createTestcaseEditorViewModel({
+  selectedProblemId,
+  isLoadingProblem,
+  problemErrorMessage,
+  problemDetail,
+  busySection,
+  canUploadTestcaseZip,
+  isUploadingTestcaseZip,
+  canCreateTestcase,
+  isCreatingTestcase,
+  canViewSpecificTestcase,
+  isLoadingTestcases,
+  isLoadingSelectedTestcase,
+  testcaseItems,
+  testcaseErrorMessage,
+  selectedTestcaseErrorMessage,
+  selectedTestcaseOrder,
+  selectedTestcase,
+  canDeleteSelectedTestcase,
+  isDeletingSelectedTestcase,
+  canMoveTestcases,
+  isMovingTestcase,
+  canSaveSelectedTestcase,
+  isSavingSelectedTestcase,
+  formatCount,
+  describeTestcaseContent,
+  isLastTestcase,
+  setTestcaseSummaryElement,
+  testcaseZipInputKey,
+  selectedTestcaseZipName,
+  newTestcaseInput,
+  newTestcaseOutput,
+  viewTestcaseOrderInput,
+  selectedTestcaseInputDraft,
+  selectedTestcaseOutputDraft,
+  handleTestcaseZipFileChange,
+  handleUploadTestcaseZip,
+  handleCreateTestcase,
+  selectTestcase,
+  handleDeleteSelectedTestcase,
+  handleMoveTestcase,
+  handleSaveSelectedTestcase,
+  handleViewSelectedTestcase
+}){
+  const actions = {
+    updateNewTestcaseInput(value){
+      newTestcaseInput.value = value
+    },
+    updateNewTestcaseOutput(value){
+      newTestcaseOutput.value = value
+    },
+    updateViewTestcaseOrderInput(value){
+      viewTestcaseOrderInput.value = sanitizeNumericInput(value)
+    },
+    updateSelectedTestcaseInputDraft(value){
+      selectedTestcaseInputDraft.value = value
+    },
+    updateSelectedTestcaseOutputDraft(value){
+      selectedTestcaseOutputDraft.value = value
+    },
+    changeTestcaseZip: handleTestcaseZipFileChange,
+    uploadTestcaseZip: handleUploadTestcaseZip,
+    createTestcase: handleCreateTestcase,
+    viewSelectedTestcase: handleViewSelectedTestcase,
+    selectTestcase,
+    deleteSelectedTestcase: handleDeleteSelectedTestcase,
+    moveTestcase: handleMoveTestcase,
+    saveSelectedTestcase: handleSaveSelectedTestcase
+  }
+
+  return computed(() => {
+    const shell = !selectedProblemId.value
+      ? {
+        mode: 'empty',
+        message: '왼쪽 목록에서 문제를 선택하면 테스트케이스를 관리할 수 있습니다.'
+      }
+      : isLoadingProblem.value
+        ? {
+          mode: 'loading',
+          message: '문제 정보를 불러오는 중입니다.'
+        }
+        : problemErrorMessage.value
+          ? {
+            mode: 'error',
+            message: problemErrorMessage.value
+          }
+          : !problemDetail.value
+            ? {
+              mode: 'empty',
+              message: '문제 정보를 불러오지 못했습니다.'
+            }
+            : {
+              mode: 'ready',
+              message: ''
+            }
+
+    return {
+      shell,
+      sections: {
+        header: {
+          model: {
+            problemDetail: problemDetail.value,
+            testcaseItems: testcaseItems.value,
+            formatCount
+          },
+          actions: {}
+        },
+        upload: {
+          model: {
+            testcaseZipInputKey: testcaseZipInputKey.value,
+            busySection: busySection.value,
+            selectedTestcaseZipName: selectedTestcaseZipName.value,
+            canUploadTestcaseZip: canUploadTestcaseZip.value,
+            isUploadingTestcaseZip: isUploadingTestcaseZip.value
+          },
+          actions: {
+            changeTestcaseZip: actions.changeTestcaseZip,
+            uploadTestcaseZip: actions.uploadTestcaseZip
+          }
+        },
+        create: {
+          model: {
+            newTestcaseInput: newTestcaseInput.value,
+            newTestcaseOutput: newTestcaseOutput.value,
+            busySection: busySection.value,
+            canCreateTestcase: canCreateTestcase.value,
+            isCreatingTestcase: isCreatingTestcase.value
+          },
+          actions: {
+            updateNewTestcaseInput: actions.updateNewTestcaseInput,
+            updateNewTestcaseOutput: actions.updateNewTestcaseOutput,
+            createTestcase: actions.createTestcase
+          }
+        },
+        reorder: {
+          model: {
+            viewTestcaseOrderInput: viewTestcaseOrderInput.value,
+            canViewSpecificTestcase: canViewSpecificTestcase.value,
+            isLoadingTestcases: isLoadingTestcases.value,
+            testcaseItems: testcaseItems.value,
+            testcaseErrorMessage: testcaseErrorMessage.value,
+            selectedTestcaseOrder: selectedTestcaseOrder.value,
+            selectedTestcase: selectedTestcase.value,
+            canMoveTestcases: canMoveTestcases.value,
+            isMovingTestcase: isMovingTestcase.value,
+            formatCount,
+            describeTestcaseContent,
+            isLastTestcase,
+            setTestcaseSummaryElement
+          },
+          actions: {
+            updateViewTestcaseOrderInput: actions.updateViewTestcaseOrderInput,
+            viewSelectedTestcase: actions.viewSelectedTestcase,
+            selectTestcase: actions.selectTestcase,
+            moveTestcase: actions.moveTestcase
+          }
+        },
+        detail: {
+          model: {
+            isLoadingTestcases: isLoadingTestcases.value,
+            testcaseErrorMessage: testcaseErrorMessage.value,
+            testcaseItems: testcaseItems.value,
+            isLoadingSelectedTestcase: isLoadingSelectedTestcase.value,
+            selectedTestcaseErrorMessage: selectedTestcaseErrorMessage.value,
+            selectedTestcase: selectedTestcase.value,
+            canDeleteSelectedTestcase: canDeleteSelectedTestcase.value,
+            isDeletingSelectedTestcase: isDeletingSelectedTestcase.value,
+            busySection: busySection.value,
+            selectedTestcaseInputDraft: selectedTestcaseInputDraft.value,
+            selectedTestcaseOutputDraft: selectedTestcaseOutputDraft.value,
+            canSaveSelectedTestcase: canSaveSelectedTestcase.value,
+            isSavingSelectedTestcase: isSavingSelectedTestcase.value,
+            formatCount
+          },
+          actions: {
+            deleteSelectedTestcase: actions.deleteSelectedTestcase,
+            updateSelectedTestcaseInputDraft: actions.updateSelectedTestcaseInputDraft,
+            updateSelectedTestcaseOutputDraft: actions.updateSelectedTestcaseOutputDraft,
+            saveSelectedTestcase: actions.saveSelectedTestcase
+          },
+          metadataSection: {
+            model: {
+              selectedTestcase: selectedTestcase.value,
+              canDeleteSelectedTestcase: canDeleteSelectedTestcase.value,
+              isDeletingSelectedTestcase: isDeletingSelectedTestcase.value,
+              formatCount
+            },
+            actions: {
+              deleteSelectedTestcase: actions.deleteSelectedTestcase
+            }
+          }
+        }
+      }
+    }
+  })
+}
 
 export function useAdminProblemTestcasesPage(){
   const route = useRoute()
@@ -369,64 +570,96 @@ export function useAdminProblemTestcasesPage(){
     }
   }
 
-  return {
-    authState,
-    accessState: pageAccess.accessState,
-    accessMessage: pageAccess.accessMessage,
-    isAuthenticated,
-    canManageProblems,
+  function updateTitleSearchInput(value){
+    query.titleSearchInput.value = value
+  }
+
+  function updateProblemIdSearchInput(value){
+    query.problemIdSearchInput.value = sanitizeNumericInput(value)
+  }
+
+  const shell = computed(() => ({
+    state: pageAccess.accessState.value,
+    message: pageAccess.accessMessage.value
+  }))
+  const toolbar = computed(() => ({
+    model: {
+      statusLabel: toolbarStatusLabel.value,
+      statusTone: toolbarStatusTone.value,
+      canManageProblems: canManageProblems.value,
+      busySection: busySection.value,
+      isLoadingProblems: isLoadingProblems.value,
+      isLoadingProblem: listResource.isLoadingProblem.value,
+      isLoadingTestcases: listResource.isLoadingTestcases.value,
+      selectedProblemId: selectedProblemId.value
+    },
+    actions: {
+      refresh: refreshPage
+    }
+  }))
+  const sidebar = computed(() => ({
+    model: {
+      searchMode: query.searchMode.value,
+      titleSearchInput: query.titleSearchInput.value,
+      problemIdSearchInput: query.problemIdSearchInput.value,
+      titleSearchInputId: 'admin-testcase-problem-search',
+      problemIdSearchInputId: 'admin-testcase-problem-id-search',
+      isLoadingProblems: isLoadingProblems.value,
+      busySection: busySection.value,
+      hasAppliedSearch: query.hasAppliedSearch.value,
+      problemListCaption: query.problemListCaption.value,
+      problemCount: problemCatalogResource.problemCount.value,
+      listErrorMessage: problemCatalogResource.listErrorMessage.value,
+      emptyProblemListMessage: query.emptyProblemListMessage.value,
+      problems: problemCatalogResource.problems.value,
+      selectedProblemId: selectedProblemId.value,
+      formatCount,
+      formatProblemLimit
+    },
+    actions: {
+      updateTitleSearchInput,
+      updateProblemIdSearchInput,
+      setSearchMode: query.setSearchMode,
+      submitSearch: query.submitSearch,
+      resetSearch: query.resetSearch,
+      selectProblem
+    }
+  }))
+  const editor = createTestcaseEditorViewModel({
     selectedProblemId,
-    isLoadingProblems,
     isLoadingProblem: listResource.isLoadingProblem,
+    problemErrorMessage: listResource.problemErrorMessage,
+    problemDetail: listResource.problemDetail,
+    busySection,
+    canUploadTestcaseZip: uploadActions.canUploadTestcaseZip,
+    isUploadingTestcaseZip: uploadActions.isUploadingTestcaseZip,
+    canCreateTestcase: uploadActions.canCreateTestcase,
+    isCreatingTestcase: uploadActions.isCreatingTestcase,
+    canViewSpecificTestcase: draft.canViewSpecificTestcase,
     isLoadingTestcases: listResource.isLoadingTestcases,
     isLoadingSelectedTestcase: listResource.isLoadingSelectedTestcase,
-    listErrorMessage: problemCatalogResource.listErrorMessage,
-    problemErrorMessage: listResource.problemErrorMessage,
+    testcaseItems: listResource.testcaseItems,
     testcaseErrorMessage: listResource.testcaseErrorMessage,
     selectedTestcaseErrorMessage: listResource.selectedTestcaseErrorMessage,
-    searchMode: query.searchMode,
-    titleSearchInput: query.titleSearchInput,
-    problemIdSearchInput: query.problemIdSearchInput,
-    problems: problemCatalogResource.problems,
-    problemDetail: listResource.problemDetail,
-    testcaseItems: listResource.testcaseItems,
-    newTestcaseInput: draft.newTestcaseInput,
-    newTestcaseOutput: draft.newTestcaseOutput,
-    testcaseZipInputKey: draft.testcaseZipInputKey,
     selectedTestcaseOrder: draft.selectedTestcaseOrder,
-    selectedTestcaseInputDraft: draft.selectedTestcaseInputDraft,
-    selectedTestcaseOutputDraft: draft.selectedTestcaseOutputDraft,
-    viewTestcaseOrderInput: draft.viewTestcaseOrderInput,
-    busySection,
-    problemCount: problemCatalogResource.problemCount,
-    toolbarStatusLabel,
-    toolbarStatusTone,
-    hasAppliedSearch: query.hasAppliedSearch,
-    problemListCaption: query.problemListCaption,
-    emptyProblemListMessage: query.emptyProblemListMessage,
-    isCreatingTestcase: uploadActions.isCreatingTestcase,
-    isUploadingTestcaseZip: uploadActions.isUploadingTestcaseZip,
-    isDeletingSelectedTestcase: uploadActions.isDeletingSelectedTestcase,
-    isMovingTestcase: reorderActions.isMovingTestcase,
-    isSavingSelectedTestcase: uploadActions.isSavingSelectedTestcase,
-    selectedTestcaseZipName: draft.selectedTestcaseZipName,
     selectedTestcase: listResource.selectedTestcase,
-    canCreateTestcase: uploadActions.canCreateTestcase,
-    canUploadTestcaseZip: uploadActions.canUploadTestcaseZip,
     canDeleteSelectedTestcase: uploadActions.canDeleteSelectedTestcase,
+    isDeletingSelectedTestcase: uploadActions.isDeletingSelectedTestcase,
     canMoveTestcases: reorderActions.canMoveTestcases,
+    isMovingTestcase: reorderActions.isMovingTestcase,
     canSaveSelectedTestcase: draft.canSaveSelectedTestcase,
-    canViewSpecificTestcase: draft.canViewSpecificTestcase,
+    isSavingSelectedTestcase: uploadActions.isSavingSelectedTestcase,
     formatCount,
-    formatProblemLimit,
     describeTestcaseContent,
     isLastTestcase,
-    setSearchMode: query.setSearchMode,
-    handleProblemIdSearchInput: query.handleProblemIdSearchInput,
-    submitSearch: query.submitSearch,
-    resetSearch: query.resetSearch,
-    selectProblem,
-    refreshPage,
+    setTestcaseSummaryElement,
+    testcaseZipInputKey: draft.testcaseZipInputKey,
+    selectedTestcaseZipName: draft.selectedTestcaseZipName,
+    newTestcaseInput: draft.newTestcaseInput,
+    newTestcaseOutput: draft.newTestcaseOutput,
+    viewTestcaseOrderInput: draft.viewTestcaseOrderInput,
+    selectedTestcaseInputDraft: draft.selectedTestcaseInputDraft,
+    selectedTestcaseOutputDraft: draft.selectedTestcaseOutputDraft,
     handleTestcaseZipFileChange: draft.handleTestcaseZipFileChange,
     handleUploadTestcaseZip: uploadActions.handleUploadTestcaseZip,
     handleCreateTestcase: uploadActions.handleCreateTestcase,
@@ -434,7 +667,13 @@ export function useAdminProblemTestcasesPage(){
     handleDeleteSelectedTestcase: uploadActions.handleDeleteSelectedTestcase,
     handleMoveTestcase: reorderActions.handleMoveTestcase,
     handleSaveSelectedTestcase: uploadActions.handleSaveSelectedTestcase,
-    handleViewSelectedTestcase,
-    setTestcaseSummaryElement
+    handleViewSelectedTestcase
+  })
+
+  return {
+    shell,
+    toolbar,
+    sidebar,
+    editor
   }
 }

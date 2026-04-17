@@ -10,22 +10,22 @@
 
     <div class="admin-testcases-toolbar-actions">
       <StatusBadge
-        :label="toolbarStatusLabel"
-        :tone="toolbarStatusTone"
+        :label="toolbar.model.statusLabel"
+        :tone="toolbar.model.statusTone"
       />
       <button
-        v-if="canManageProblems"
+        v-if="toolbar.model.canManageProblems"
         type="button"
         class="ghost-button"
-        :disabled="Boolean(busySection) || isLoadingProblems || isLoadingProblem || isLoadingTestcases"
-        @click="$emit('refresh')"
+        :disabled="Boolean(toolbar.model.busySection) || toolbar.model.isLoadingProblems || toolbar.model.isLoadingProblem || toolbar.model.isLoadingTestcases"
+        @click="toolbar.actions.refresh()"
       >
         새로고침
       </button>
       <RouterLink
-        v-if="selectedProblemId > 0"
+        v-if="toolbar.model.selectedProblemId > 0"
         class="ghost-button"
-        :to="{ name: 'problem-detail', params: { problemId: selectedProblemId } }"
+        :to="{ name: 'problem-detail', params: { problemId: toolbar.model.selectedProblemId } }"
       >
         문제 보기
       </RouterLink>
@@ -37,41 +37,11 @@
 import StatusBadge from '@/components/StatusBadge.vue'
 
 defineProps({
-  toolbarStatusLabel: {
-    type: String,
-    required: true
-  },
-  toolbarStatusTone: {
-    type: String,
-    required: true
-  },
-  canManageProblems: {
-    type: Boolean,
-    required: true
-  },
-  busySection: {
-    type: String,
-    default: ''
-  },
-  isLoadingProblems: {
-    type: Boolean,
-    required: true
-  },
-  isLoadingProblem: {
-    type: Boolean,
-    required: true
-  },
-  isLoadingTestcases: {
-    type: Boolean,
-    required: true
-  },
-  selectedProblemId: {
-    type: Number,
+  toolbar: {
+    type: Object,
     required: true
   }
 })
-
-defineEmits(['refresh'])
 </script>
 
 <style scoped>

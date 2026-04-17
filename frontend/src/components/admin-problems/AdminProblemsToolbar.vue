@@ -10,15 +10,15 @@
 
     <div class="admin-problems-actions">
       <StatusBadge
-        :label="toolbarStatusLabel"
-        :tone="toolbarStatusTone"
+        :label="toolbar.model.statusLabel"
+        :tone="toolbar.model.statusTone"
       />
       <button
-        v-if="canManageProblems"
+        v-if="toolbar.model.canManageProblems"
         type="button"
         class="ghost-button"
-        :disabled="isLoadingProblems || Boolean(busySection)"
-        @click="$emit('refresh')"
+        :disabled="toolbar.model.isLoadingProblems || Boolean(toolbar.model.busySection)"
+        @click="toolbar.actions.refresh()"
       >
         새로고침
       </button>
@@ -30,29 +30,11 @@
 import StatusBadge from '@/components/StatusBadge.vue'
 
 defineProps({
-  toolbarStatusLabel: {
-    type: String,
+  toolbar: {
+    type: Object,
     required: true
-  },
-  toolbarStatusTone: {
-    type: String,
-    required: true
-  },
-  canManageProblems: {
-    type: Boolean,
-    required: true
-  },
-  isLoadingProblems: {
-    type: Boolean,
-    required: true
-  },
-  busySection: {
-    type: String,
-    default: ''
   }
 })
-
-defineEmits(['refresh'])
 </script>
 
 <style scoped>

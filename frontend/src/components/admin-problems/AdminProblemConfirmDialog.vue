@@ -1,69 +1,69 @@
 <template>
   <Teleport to="body">
     <div
-      v-if="open"
+      v-if="dialog.model.open"
       class="admin-problem-delete-backdrop"
-      @click.self="$emit('close')"
+      @click.self="dialog.actions.close()"
     >
       <section
         class="admin-problem-delete-dialog"
         role="dialog"
         aria-modal="true"
-        :aria-labelledby="titleId"
+        :aria-labelledby="dialog.model.titleId"
       >
         <div class="admin-problem-delete-header">
           <div>
-            <p class="panel-kicker">{{ kicker }}</p>
-            <h3 :id="titleId">{{ title }}</h3>
+            <p class="panel-kicker">{{ dialog.model.kicker }}</p>
+            <h3 :id="dialog.model.titleId">{{ dialog.model.title }}</h3>
             <p class="auth-dialog-copy">
-              {{ description }}
+              {{ dialog.model.description }}
             </p>
           </div>
           <button
             type="button"
             class="icon-button"
             aria-label="닫기"
-            :disabled="isBusy"
-            @click="$emit('close')"
+            :disabled="dialog.model.isBusy"
+            @click="dialog.actions.close()"
           >
             ×
           </button>
         </div>
 
-        <div v-if="summaryLabel" class="admin-problem-delete-summary">
-          <strong>{{ summaryLabel }}</strong>
+        <div v-if="dialog.model.summaryLabel" class="admin-problem-delete-summary">
+          <strong>{{ dialog.model.summaryLabel }}</strong>
           <p
-            v-if="summaryCopy"
+            v-if="dialog.model.summaryCopy"
             class="admin-problem-confirm-copy"
           >
-            {{ summaryCopy }}
+            {{ dialog.model.summaryCopy }}
           </p>
         </div>
 
         <div class="field-block">
-          <label class="field-label" :for="`${titleId}-problem-id-confirm`">문제 번호 다시 입력</label>
+          <label class="field-label" :for="`${dialog.model.titleId}-problem-id-confirm`">문제 번호 다시 입력</label>
           <input
-            :id="`${titleId}-problem-id-confirm`"
-            :value="problemIdInput"
+            :id="`${dialog.model.titleId}-problem-id-confirm`"
+            :value="dialog.model.problemIdInput"
             class="field-input"
             type="text"
             inputmode="numeric"
-            :disabled="isBusy"
-            :placeholder="problemIdPlaceholder"
-            @input="$emit('update:problemIdInput', $event.target.value)"
+            :disabled="dialog.model.isBusy"
+            :placeholder="dialog.model.problemIdPlaceholder"
+            @input="handleProblemIdInput"
           />
         </div>
 
         <div class="field-block">
-          <label class="field-label" :for="`${titleId}-problem-title-confirm`">문제 제목 다시 입력</label>
+          <label class="field-label" :for="`${dialog.model.titleId}-problem-title-confirm`">문제 제목 다시 입력</label>
           <input
-            :id="`${titleId}-problem-title-confirm`"
-            :value="titleInput"
+            :id="`${dialog.model.titleId}-problem-title-confirm`"
+            :value="dialog.model.titleInput"
             class="field-input"
             type="text"
-            :disabled="isBusy"
-            :placeholder="titlePlaceholder"
-            @input="$emit('update:titleInput', $event.target.value)"
+            :disabled="dialog.model.isBusy"
+            :placeholder="dialog.model.titlePlaceholder"
+            @input="handleTitleInput"
           />
         </div>
 
@@ -71,19 +71,19 @@
           <button
             type="button"
             class="ghost-button"
-            :disabled="isBusy"
-            @click="$emit('close')"
+            :disabled="dialog.model.isBusy"
+            @click="dialog.actions.close()"
           >
             취소
           </button>
           <button
             type="button"
             class="primary-button"
-            :class="confirmButtonClass"
-            :disabled="!canConfirm"
-            @click="$emit('confirm')"
+            :class="dialog.model.confirmButtonClass"
+            :disabled="!dialog.model.canConfirm"
+            @click="dialog.actions.confirm()"
           >
-            {{ confirmLabel }}
+            {{ dialog.model.confirmLabel }}
           </button>
         </div>
       </section>
@@ -92,75 +92,20 @@
 </template>
 
 <script setup>
-defineProps({
-  open: {
-    type: Boolean,
+const props = defineProps({
+  dialog: {
+    type: Object,
     required: true
-  },
-  titleId: {
-    type: String,
-    required: true
-  },
-  kicker: {
-    type: String,
-    required: true
-  },
-  title: {
-    type: String,
-    required: true
-  },
-  description: {
-    type: String,
-    required: true
-  },
-  summaryLabel: {
-    type: String,
-    default: ''
-  },
-  summaryCopy: {
-    type: String,
-    default: ''
-  },
-  problemIdInput: {
-    type: String,
-    default: ''
-  },
-  problemIdPlaceholder: {
-    type: String,
-    default: '예: 1000'
-  },
-  titleInput: {
-    type: String,
-    default: ''
-  },
-  titlePlaceholder: {
-    type: String,
-    default: '문제 제목'
-  },
-  isBusy: {
-    type: Boolean,
-    required: true
-  },
-  canConfirm: {
-    type: Boolean,
-    required: true
-  },
-  confirmLabel: {
-    type: String,
-    required: true
-  },
-  confirmButtonClass: {
-    type: String,
-    default: ''
   }
 })
 
-defineEmits([
-  'close',
-  'confirm',
-  'update:problemIdInput',
-  'update:titleInput'
-])
+function handleProblemIdInput(event){
+  props.dialog.actions.updateProblemIdInput(event.target.value)
+}
+
+function handleTitleInput(event){
+  props.dialog.actions.updateTitleInput(event.target.value)
+}
 </script>
 
 <style scoped>
