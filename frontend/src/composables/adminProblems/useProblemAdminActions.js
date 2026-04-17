@@ -1,7 +1,6 @@
-import { useProblemBasicsActions } from '@/composables/adminProblems/useProblemBasicsActions'
-import { useProblemCrudActions } from '@/composables/adminProblems/useProblemCrudActions'
+import { useProblemLifecycleActions } from '@/composables/adminProblems/useProblemLifecycleActions'
+import { useProblemMutationActions } from '@/composables/adminProblems/useProblemMutationActions'
 import { useProblemSampleActions } from '@/composables/adminProblems/useProblemSampleActions'
-import { useProblemStatementActions } from '@/composables/adminProblems/useProblemStatementActions'
 import { useProblemTestcaseZipActions } from '@/composables/adminProblems/useProblemTestcaseZipActions'
 
 export function useProblemAdminActions({
@@ -10,95 +9,48 @@ export function useProblemAdminActions({
   busySection,
   feedback,
   newProblemTitle,
-  selectedProblemDetail,
-  updateSelectedProblemDetail,
-  testcaseZipFile,
-  resetTestcaseZipSelection,
-  titleDraft,
-  timeLimitDraft,
-  memoryLimitDraft,
-  descriptionDraft,
-  inputFormatDraft,
-  outputFormatDraft,
-  noteDraft,
-  canSaveTitle,
-  canSaveLimits,
-  canSaveStatement,
-  canSaveSample,
-  getSampleDraft,
-  syncSampleDrafts,
-  setSelectedProblemSamples,
-  applySelectedProblemVersion,
-  mergeProblemSummary,
+  draft,
+  problemDetailResource,
+  problemCatalogResource,
   loadProblems,
   loadSelectedProblem,
   onCreatedProblem
 }){
-  const crudActions = useProblemCrudActions({
+  const lifecycleActions = useProblemLifecycleActions({
     authState,
     busySection,
     formatCount,
     newProblemTitle,
-    selectedProblemDetail,
-    canDeleteSelectedProblem: feedback.canDeleteSelectedProblem,
-    canRejudgeSelectedProblem: feedback.canRejudgeSelectedProblem,
-    setActionFeedback: feedback.setActionFeedback,
-    closeDeleteDialog: feedback.closeDeleteDialog,
-    closeRejudgeDialog: feedback.closeRejudgeDialog,
-    onCreatedProblem,
-    loadProblems
+    feedback,
+    selectedProblemDetail: problemDetailResource.selectedProblemDetail,
+    loadProblems,
+    onCreatedProblem
   })
-  const basicsActions = useProblemBasicsActions({
+  const mutationActions = useProblemMutationActions({
     authState,
     busySection,
     formatCount,
-    selectedProblemDetail,
-    updateSelectedProblemDetail,
-    titleDraft,
-    timeLimitDraft,
-    memoryLimitDraft,
-    canSaveTitle,
-    canSaveLimits,
-    applySelectedProblemVersion,
-    mergeProblemSummary,
-    setActionFeedback: feedback.setActionFeedback
-  })
-  const statementActions = useProblemStatementActions({
-    authState,
-    busySection,
-    formatCount,
-    selectedProblemDetail,
-    updateSelectedProblemDetail,
-    descriptionDraft,
-    inputFormatDraft,
-    outputFormatDraft,
-    noteDraft,
-    canSaveStatement,
-    applySelectedProblemVersion,
-    setActionFeedback: feedback.setActionFeedback
+    draft,
+    feedback,
+    problemDetailResource,
+    problemCatalogResource
   })
   const sampleActions = useProblemSampleActions({
     authState,
     busySection,
     formatCount,
-    selectedProblemDetail,
-    canSaveSample,
-    getSampleDraft,
-    syncSampleDrafts,
-    setSelectedProblemSamples,
-    applySelectedProblemVersion,
-    setActionFeedback: feedback.setActionFeedback
+    draft,
+    feedback,
+    problemDetailResource
   })
   const testcaseZipActions = useProblemTestcaseZipActions({
     authState,
     busySection,
     formatCount,
-    selectedProblemDetail,
-    testcaseZipFile,
-    resetTestcaseZipSelection,
-    applySelectedProblemVersion,
+    draft,
+    feedback,
+    problemDetailResource,
     loadSelectedProblem,
-    setActionFeedback: feedback.setActionFeedback
   })
 
   return {
@@ -110,16 +62,16 @@ export function useProblemAdminActions({
     deleteDialogOpen: feedback.deleteDialogOpen,
     deleteConfirmProblemId: feedback.deleteConfirmProblemId,
     deleteConfirmTitle: feedback.deleteConfirmTitle,
-    canCreateProblem: crudActions.canCreateProblem,
-    isCreatingProblem: crudActions.isCreatingProblem,
-    isSavingTitle: basicsActions.isSavingTitle,
-    isSavingLimits: basicsActions.isSavingLimits,
-    isSavingStatement: statementActions.isSavingStatement,
+    canCreateProblem: lifecycleActions.canCreateProblem,
+    isCreatingProblem: lifecycleActions.isCreatingProblem,
+    isSavingTitle: mutationActions.isSavingTitle,
+    isSavingLimits: mutationActions.isSavingLimits,
+    isSavingStatement: mutationActions.isSavingStatement,
     isCreatingSample: sampleActions.isCreatingSample,
     isDeletingLastSample: sampleActions.isDeletingLastSample,
     isUploadingTestcaseZip: testcaseZipActions.isUploadingTestcaseZip,
-    isRejudgingProblem: crudActions.isRejudgingProblem,
-    isDeletingProblem: crudActions.isDeletingProblem,
+    isRejudgingProblem: lifecycleActions.isRejudgingProblem,
+    isDeletingProblem: lifecycleActions.isDeletingProblem,
     canCreateSample: sampleActions.canCreateSample,
     canUploadTestcaseZip: testcaseZipActions.canUploadTestcaseZip,
     canDeleteLastSample: sampleActions.canDeleteLastSample,
@@ -128,10 +80,10 @@ export function useProblemAdminActions({
     clearActionError: feedback.clearActionError,
     setActionFeedback: feedback.setActionFeedback,
     resetActionState: feedback.resetActionState,
-    handleCreateProblem: crudActions.handleCreateProblem,
-    handleSaveTitle: basicsActions.handleSaveTitle,
-    handleSaveLimits: basicsActions.handleSaveLimits,
-    handleSaveStatement: statementActions.handleSaveStatement,
+    handleCreateProblem: lifecycleActions.handleCreateProblem,
+    handleSaveTitle: mutationActions.handleSaveTitle,
+    handleSaveLimits: mutationActions.handleSaveLimits,
+    handleSaveStatement: mutationActions.handleSaveStatement,
     handleCreateSample: sampleActions.handleCreateSample,
     handleSaveSample: sampleActions.handleSaveSample,
     handleDeleteLastSample: sampleActions.handleDeleteLastSample,
@@ -140,7 +92,7 @@ export function useProblemAdminActions({
     openRejudgeDialog: feedback.openRejudgeDialog,
     closeDeleteDialog: feedback.closeDeleteDialog,
     closeRejudgeDialog: feedback.closeRejudgeDialog,
-    handleRejudgeProblem: crudActions.handleRejudgeProblem,
-    handleDeleteProblem: crudActions.handleDeleteProblem
+    handleRejudgeProblem: lifecycleActions.handleRejudgeProblem,
+    handleDeleteProblem: lifecycleActions.handleDeleteProblem
   }
 }

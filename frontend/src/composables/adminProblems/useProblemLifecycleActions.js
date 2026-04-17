@@ -9,19 +9,15 @@ import {
 } from '@/api/problemAdminApi'
 import { formatApiError } from '@/utils/apiError'
 
-export function useProblemCrudActions({
+export function useProblemLifecycleActions({
   authState,
   busySection,
   formatCount,
   newProblemTitle,
+  feedback,
   selectedProblemDetail,
-  canDeleteSelectedProblem,
-  canRejudgeSelectedProblem,
-  setActionFeedback,
-  closeDeleteDialog,
-  closeRejudgeDialog,
-  onCreatedProblem,
-  loadProblems
+  loadProblems,
+  onCreatedProblem
 }){
   const canCreateProblem = computed(() =>
     Boolean(authState.token) &&
@@ -31,7 +27,7 @@ export function useProblemCrudActions({
   const isCreatingProblem = computed(() => busySection.value === problemBusySection.CREATE)
   const isRejudgingProblem = computed(() => busySection.value === problemBusySection.REJUDGE)
   const isDeletingProblem = computed(() => busySection.value === problemBusySection.DELETE)
-  const clearActionFeedback = () => setActionFeedback({
+  const clearActionFeedback = () => feedback.setActionFeedback({
     message: '',
     error: ''
   })
@@ -52,7 +48,7 @@ export function useProblemCrudActions({
         const createdProblemId = Number(response.problem_id ?? 0)
 
         newProblemTitle.value = ''
-        setActionFeedback({
+        feedback.setActionFeedback({
           message: `문제 #${formatCount(createdProblemId)}를 생성했습니다.`
         })
 
@@ -61,7 +57,7 @@ export function useProblemCrudActions({
         }
       },
       onError: (error) => {
-        setActionFeedback({
+        feedback.setActionFeedback({
           error: formatApiError(error, {
             fallback: '문제를 생성하지 못했습니다.'
           })
@@ -71,7 +67,7 @@ export function useProblemCrudActions({
   }
 
   async function handleRejudgeProblem(){
-    if (!authState.token || !selectedProblemDetail.value || !canRejudgeSelectedProblem.value) {
+    if (!authState.token || !selectedProblemDetail.value || !feedback.canRejudgeSelectedProblem.value) {
       return
     }
 
@@ -83,13 +79,13 @@ export function useProblemCrudActions({
       clearFeedback: clearActionFeedback,
       run: async () => {
         await rejudgeProblem(rejudgingProblemId, authState.token)
-        closeRejudgeDialog(true)
-        setActionFeedback({
+        feedback.closeRejudgeDialog(true)
+        feedback.setActionFeedback({
           message: `문제 #${formatCount(rejudgingProblemId)} 재채점을 요청했습니다.`
         })
       },
       onError: (error) => {
-        setActionFeedback({
+        feedback.setActionFeedback({
           error: formatApiError(error, {
             fallback: '문제 재채점을 요청하지 못했습니다.'
           })
@@ -99,7 +95,7 @@ export function useProblemCrudActions({
   }
 
   async function handleDeleteProblem(){
-    if (!authState.token || !selectedProblemDetail.value || !canDeleteSelectedProblem.value) {
+    if (!authState.token || !selectedProblemDetail.value || !feedback.canDeleteSelectedProblem.value) {
       return
     }
 
@@ -111,14 +107,14 @@ export function useProblemCrudActions({
       clearFeedback: clearActionFeedback,
       run: async () => {
         await deleteProblem(deletingProblemId, authState.token)
-        closeDeleteDialog(true)
-        setActionFeedback({
+        feedback.closeDeleteDialog(true)
+        feedback.setActionFeedback({
           message: `문제 #${formatCount(deletingProblemId)}를 삭제했습니다.`
         })
         await loadProblems()
       },
       onError: (error) => {
-        setActionFeedback({
+        feedback.setActionFeedback({
           error: formatApiError(error, {
             fallback: '문제를 삭제하지 못했습니다.'
           })

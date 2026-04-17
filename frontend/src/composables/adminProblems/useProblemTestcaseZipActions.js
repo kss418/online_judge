@@ -7,15 +7,14 @@ export function useProblemTestcaseZipActions({
   authState,
   busySection,
   formatCount,
-  selectedProblemDetail,
-  testcaseZipFile,
-  resetTestcaseZipSelection,
-  applySelectedProblemVersion,
+  draft,
+  feedback,
+  problemDetailResource,
   loadSelectedProblem,
-  setActionFeedback
 }){
+  const selectedProblemDetail = problemDetailResource.selectedProblemDetail
   const selectedProblemId = computed(() => Number(selectedProblemDetail.value?.problem_id ?? 0))
-  const clearActionFeedback = () => setActionFeedback({
+  const clearActionFeedback = () => feedback.setActionFeedback({
     message: '',
     error: ''
   })
@@ -25,22 +24,22 @@ export function useProblemTestcaseZipActions({
     busySection,
     uploadSection: problemBusySection.UPLOAD_TESTCASE_ZIP,
     selectedProblemId,
-    testcaseZipFile,
+    testcaseZipFile: draft.testcaseZipFile,
     clearFeedback: clearActionFeedback,
-    resetTestcaseZipSelection,
+    resetTestcaseZipSelection: draft.resetTestcaseZipSelection,
     async afterUpload(response, problemId){
-      applySelectedProblemVersion(problemId, response.version)
+      problemDetailResource.applyProblemVersion(problemId, response.version)
       await loadSelectedProblem(problemId, {
         skipTestcaseZipReset: true
       })
     },
     showSuccess(message){
-      setActionFeedback({
+      feedback.setActionFeedback({
         message
       })
     },
     showError(error){
-      setActionFeedback({
+      feedback.setActionFeedback({
         error
       })
     },

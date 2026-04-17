@@ -16,14 +16,11 @@ export function useProblemSampleActions({
   authState,
   busySection,
   formatCount,
-  selectedProblemDetail,
-  canSaveSample,
-  getSampleDraft,
-  syncSampleDrafts,
-  setSelectedProblemSamples,
-  applySelectedProblemVersion,
-  setActionFeedback
+  draft,
+  feedback,
+  problemDetailResource
 }){
+  const selectedProblemDetail = problemDetailResource.selectedProblemDetail
   const isCreatingSample = computed(() => busySection.value === problemBusySection.CREATE_SAMPLE)
   const isDeletingLastSample = computed(() => busySection.value === problemBusySection.DELETE_LAST_SAMPLE)
   const canCreateSample = computed(() =>
@@ -36,7 +33,7 @@ export function useProblemSampleActions({
     Boolean(authState.token) &&
     !busySection.value
   )
-  const clearActionFeedback = () => setActionFeedback({
+  const clearActionFeedback = () => feedback.setActionFeedback({
     message: '',
     error: ''
   })
@@ -64,15 +61,15 @@ export function useProblemSampleActions({
             sample_output: ''
           }
         ]
-        setSelectedProblemSamples(nextSamples)
-        syncSampleDrafts(nextSamples)
-        applySelectedProblemVersion(problemId, response.version)
-        setActionFeedback({
+        problemDetailResource.setSelectedProblemSamples(nextSamples)
+        draft.syncSampleDrafts(nextSamples)
+        problemDetailResource.applyProblemVersion(problemId, response.version)
+        feedback.setActionFeedback({
           message: `예제 ${formatCount(nextSampleOrder)}를 추가했습니다.`
         })
       },
       onError: (error) => {
-        setActionFeedback({
+        feedback.setActionFeedback({
           error: formatApiError(error, {
             fallback: '공개 예제를 추가하지 못했습니다.'
           })
@@ -82,12 +79,12 @@ export function useProblemSampleActions({
   }
 
   async function handleSaveSample(sampleOrder){
-    if (!authState.token || !selectedProblemDetail.value || !canSaveSample(sampleOrder)) {
+    if (!authState.token || !selectedProblemDetail.value || !draft.canSaveSample(sampleOrder)) {
       return
     }
 
     const problemId = selectedProblemDetail.value.problem_id
-    const sampleDraft = getSampleDraft(sampleOrder)
+    const sampleDraft = draft.getSampleDraft(sampleOrder)
     if (!sampleDraft) {
       return
     }
@@ -112,15 +109,15 @@ export function useProblemSampleActions({
             }
             : sample
         )
-        setSelectedProblemSamples(nextSamples)
-        syncSampleDrafts(nextSamples)
-        applySelectedProblemVersion(problemId, response.version)
-        setActionFeedback({
+        problemDetailResource.setSelectedProblemSamples(nextSamples)
+        draft.syncSampleDrafts(nextSamples)
+        problemDetailResource.applyProblemVersion(problemId, response.version)
+        feedback.setActionFeedback({
           message: `예제 ${formatCount(sampleOrder)}를 저장했습니다.`
         })
       },
       onError: (error) => {
-        setActionFeedback({
+        feedback.setActionFeedback({
           error: formatApiError(error, {
             fallback: '공개 예제를 저장하지 못했습니다.'
           })
@@ -150,15 +147,15 @@ export function useProblemSampleActions({
         const nextSamples = selectedProblemDetail.value.samples.filter(
           (sample) => sample.sample_order !== lastSample.sample_order
         )
-        setSelectedProblemSamples(nextSamples)
-        syncSampleDrafts(nextSamples)
-        applySelectedProblemVersion(problemId, response.version)
-        setActionFeedback({
+        problemDetailResource.setSelectedProblemSamples(nextSamples)
+        draft.syncSampleDrafts(nextSamples)
+        problemDetailResource.applyProblemVersion(problemId, response.version)
+        feedback.setActionFeedback({
           message: `예제 ${formatCount(lastSample.sample_order)}를 삭제했습니다.`
         })
       },
       onError: (error) => {
-        setActionFeedback({
+        feedback.setActionFeedback({
           error: formatApiError(error, {
             fallback: '공개 예제를 삭제하지 못했습니다.'
           })
