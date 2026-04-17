@@ -2,7 +2,6 @@ import { computed } from 'vue'
 
 import { useAdminProblemCatalogQuery } from '@/composables/adminShared/useAdminProblemCatalogQuery'
 import { useAdminProblemCatalogResource } from '@/composables/adminShared/useAdminProblemCatalogResource'
-import { useAdminProblemRouteCatalogReload } from '@/composables/adminShared/useAdminProblemRouteCatalogReload'
 import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
 import { useSelectedProblemDetailResource } from '@/composables/adminShared/useSelectedProblemDetailResource'
 import { parsePositiveInteger } from '@/utils/parse'
@@ -223,10 +222,16 @@ export function useAdminProblemSelectionWorkspace({
       return
     }
 
-    useAdminProblemRouteCatalogReload({
-      pageAccess,
-      query
-    })
+    pageAccess.watchWhenAllowed(
+      () => [
+        query.routeSearchMode.value,
+        query.routeTitleSearch.value,
+        query.routeProblemIdSearch.value
+      ],
+      () => {
+        void query.syncFromRouteAndReload()
+      }
+    )
 
     pageAccess.watchWhenAllowed(selectedProblemId, (problemId) => {
       void syncSelectedProblemRouteState(problemId)
