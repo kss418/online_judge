@@ -7,11 +7,9 @@ import { useTestcaseEditorDraft } from '@/composables/adminProblemTestcases/useT
 import { useTestcaseReorder } from '@/composables/adminProblemTestcases/useTestcaseReorder'
 import { useTestcaseListResource } from '@/composables/adminProblemTestcases/useTestcaseListResource'
 import { useTestcaseUploadActions } from '@/composables/adminProblemTestcases/useTestcaseUploadActions'
-import { useAdminProblemCatalogQuery } from '@/composables/adminShared/useAdminProblemCatalogQuery'
-import { useAdminProblemCatalogResource } from '@/composables/adminShared/useAdminProblemCatalogResource'
-import { useAdminProblemRouteCatalogReload } from '@/composables/adminShared/useAdminProblemRouteCatalogReload'
-import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
-import { useSelectedProblemDetailResource } from '@/composables/adminShared/useSelectedProblemDetailResource'
+import { useAdminProblemSelectionWorkspace } from '@/composables/adminShared/useAdminProblemSelectionWorkspace'
+import { useAdminProblemSidebarModel } from '@/composables/adminShared/useAdminProblemSidebarModel'
+import { useAdminProblemToolbarState } from '@/composables/adminShared/useAdminProblemToolbarState'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatCount } from '@/utils/numberFormat'
@@ -233,42 +231,73 @@ export function useAdminProblemTestcasesPage(){
   } = noticeStore
   const busySection = ref('')
   const testcaseSummaryElementMap = new Map()
-  const selectedProblemId = computed(() => parsePositiveInteger(route.params.problemId) ?? 0)
+  let pageSetupReady = false
 
-  const query = useAdminProblemCatalogQuery({
+  async function waitForPageSetup(){
+    while (!pageSetupReady) {
+      await Promise.resolve()
+    }
+  }
+
+  async function resetSelectedProblemStateForWorkspace({
+    problemDetailResource
+  }){
+    await waitForPageSetup()
+    problemDetailResource.resetSelectedProblemDetail()
+    testcaseListResource.resetTestcaseList()
+    draft.resetSelectedTestcaseState()
+    selectedTestcaseResource.clearSelectedTestcaseDetail()
+    draft.resetDraftState()
+  }
+
+  async function loadSelectedProblemDataForWorkspace({
+    problemId,
+    problemDetailResource,
+    selectedProblemId
+  }){
+    await waitForPageSetup()
+    return loadSelectedProblemData(problemId, problemDetailResource, selectedProblemId)
+  }
+
+  async function resetPageStateForWorkspace({
+    query,
+    problemCatalogResource,
+    problemDetailResource
+  }){
+    await waitForPageSetup()
+    query.resetSearchControls()
+    busySection.value = ''
+    testcaseSummaryElementMap.clear()
+    problemCatalogResource.resetProblems()
+    await resetSelectedProblemStateForWorkspace({
+      problemDetailResource
+    })
+  }
+
+  const workspace = useAdminProblemSelectionWorkspace({
     route,
     router,
-    formatCount,
-    selectedProblemId,
-    reloadProblems: async (preferredProblemId) => {
-      await loadProblems({ preferredProblemId })
-    },
+    routeName: 'admin-problem-testcases',
+    authState,
+    initializeAuth,
+    isAuthenticated,
+    canManageProblems,
     showErrorNotice,
-    buildLocation({ query: nextQuery, selectedProblemId: nextSelectedProblemId }){
-      const routeProblemId = Number.isInteger(Number(nextSelectedProblemId))
-        ? Number(nextSelectedProblemId)
-        : selectedProblemId.value
+    formatCount,
+    accessMessages: {
+      loggedOutMessage: '테스트케이스 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
+      deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
+    },
+    resetSelectedProblemState: resetSelectedProblemStateForWorkspace,
+    loadSelectedProblemData: loadSelectedProblemDataForWorkspace,
+    resetPageState: resetPageStateForWorkspace,
+    canRefresh: () => !busySection.value
+  })
 
-      return {
-        name: 'admin-problem-testcases',
-        params: routeProblemId > 0
-          ? {
-            problemId: String(routeProblemId)
-          }
-          : {},
-        query: nextQuery
-      }
-    }
-  })
-  const problemCatalogResource = useAdminProblemCatalogResource({
-    authState,
-    routeQueryState: query.routeState
-  })
-  const problemDetailResource = useSelectedProblemDetailResource({
-    authState,
-    selectedProblemId,
-    mergeProblemSummary: problemCatalogResource.mergeProblemSummary
-  })
+  const selectedProblemId = workspace.selectedProblemId
+  const problemCatalogResource = workspace.problemCatalogResource
+  const problemDetailResource = workspace.problemDetailResource
+  const pageAccess = workspace.pageAccess
   const testcaseListResource = useTestcaseListResource({
     authState,
     selectedProblemId
@@ -277,16 +306,6 @@ export function useAdminProblemTestcasesPage(){
     authState,
     selectedProblemId
   })
-
-  async function selectProblem(problemId){
-    if (problemId === selectedProblemId.value) {
-      return
-    }
-
-    await query.replaceSelectedProblem(problemId, {
-      push: true
-    })
-  }
 
   const draft = useTestcaseEditorDraft({
     authState,
@@ -312,7 +331,7 @@ export function useAdminProblemTestcasesPage(){
     selectedTestcaseOutputDraft: draft.selectedTestcaseOutputDraft,
     canSaveSelectedTestcase: draft.canSaveSelectedTestcase,
     applyProblemVersion: problemDetailResource.applyProblemVersion,
-    reloadProblems: loadProblems,
+    reloadProblems: workspace.loadProblems,
     reloadSelectedProblemData: loadSelectedProblemData,
     reloadTestcases: loadTestcases,
     updateTestcaseItems: testcaseListResource.setTestcaseItems,
@@ -335,60 +354,11 @@ export function useAdminProblemTestcasesPage(){
     }
   })
 
-  const pageAccess = useProtectedAdminPageAccess({
-    authState,
-    initializeAuth,
-    isAuthenticated,
-    hasAccess: canManageProblems,
-    onDenied: resetPageState,
-    async onAllowed(){
-      const previousSelectedProblemId = selectedProblemId.value
+  pageSetupReady = true
 
-      await query.syncFromRouteAndReload()
-
-      if (selectedProblemId.value !== previousSelectedProblemId) {
-        return
-      }
-
-      await loadSelectedProblemData()
-    },
-    loggedOutMessage: '테스트케이스 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
-    deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
-  })
-
-  useAdminProblemRouteCatalogReload({
-    pageAccess,
-    query
-  })
-
-  pageAccess.watchWhenAllowed(selectedProblemId, (problemId) => {
-    void syncSelectedProblemRouteState(problemId)
-  })
-
-  async function refreshPage(){
-    if (busySection.value) {
-      return
-    }
-
-    const previousSelectedProblemId = selectedProblemId.value
-
-    await loadProblems({
-      preferredProblemId: query.preferredProblemIdForReload.value
-    })
-
-    if (selectedProblemId.value !== previousSelectedProblemId) {
-      return
-    }
-
-    await loadSelectedProblemData()
-  }
-
-  const isLoadingProblems = computed(() =>
-    pageAccess.accessState.value === 'initializing' || problemCatalogResource.isLoadingProblems.value
-  )
   const toolbarStatusLabel = computed(() => {
     if (
-      isLoadingProblems.value ||
+      workspace.isLoadingProblems.value ||
       problemDetailResource.isLoadingDetail.value ||
       testcaseListResource.isLoadingTestcases.value
     ) {
@@ -470,45 +440,6 @@ export function useAdminProblemTestcasesPage(){
     draft.syncSelectedTestcase(preferredOrder)
   }
 
-  async function syncSelectedProblemRouteState(problemId){
-    resetSelectedProblemState()
-
-    if ((parsePositiveInteger(problemId) ?? 0) <= 0) {
-      return {
-        status: 'reset'
-      }
-    }
-
-    return loadSelectedProblemData(problemId)
-  }
-
-  async function loadProblems(options = {}){
-    const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
-    const result = await problemCatalogResource.loadProblems()
-
-    if (result.status !== 'success') {
-      return result
-    }
-
-    if (!problemCatalogResource.problems.value.length) {
-      if (selectedProblemId.value > 0) {
-        await query.replaceSelectedProblem(0)
-      } else {
-        resetSelectedProblemState()
-      }
-      return result
-    }
-
-    const nextProblemId = problemCatalogResource.problems.value.some((problem) => problem.problem_id === preferredProblemId)
-      ? preferredProblemId
-      : problemCatalogResource.problems.value[0].problem_id
-    if (nextProblemId > 0 && nextProblemId !== selectedProblemId.value) {
-      await query.replaceSelectedProblem(nextProblemId)
-    }
-
-    return result
-  }
-
   async function loadTestcases(preferredOrder){
     const result = await testcaseListResource.loadTestcases()
 
@@ -521,30 +452,26 @@ export function useAdminProblemTestcasesPage(){
     return result
   }
 
-  async function loadSelectedProblemData(problemId = selectedProblemId.value){
-    const normalizedProblemId = parsePositiveInteger(problemId)
+  async function loadSelectedProblemData(problemId = selectedProblemId.value, detailResource = problemDetailResource, currentSelectedProblemId = selectedProblemId){
+    await waitForPageSetup()
+
+    const normalizedProblemId = parsePositiveInteger(problemId ?? currentSelectedProblemId.value)
 
     if (normalizedProblemId == null) {
-      resetSelectedProblemResources()
+      detailResource.resetSelectedProblemDetail()
+      testcaseListResource.resetTestcaseList()
+      resetSelectedTestcaseState()
       return {
         status: 'reset'
       }
     }
 
     const [problemResult, testcaseResult] = await Promise.all([
-      problemDetailResource.loadProblemDetail(normalizedProblemId),
+      detailResource.loadProblemDetail(normalizedProblemId),
       loadTestcases()
     ])
 
     return problemResult?.status === 'error' ? problemResult : testcaseResult
-  }
-
-  function resetPageState(){
-    query.resetSearchControls()
-    busySection.value = ''
-    testcaseSummaryElementMap.clear()
-    problemCatalogResource.resetProblems()
-    resetSelectedProblemState()
   }
 
   function selectTestcase(testcaseOrder){
@@ -581,53 +508,27 @@ export function useAdminProblemTestcasesPage(){
     }
   }
 
-  const shell = computed(() => ({
-    state: pageAccess.accessState.value,
-    message: pageAccess.accessMessage.value
-  }))
-  const toolbar = computed(() => ({
-    model: {
-      statusLabel: toolbarStatusLabel.value,
-      statusTone: toolbarStatusTone.value,
-      canManageProblems: canManageProblems.value,
-      busySection: busySection.value,
-      isLoadingProblems: isLoadingProblems.value,
-      isLoadingProblem: problemDetailResource.isLoadingDetail.value,
-      isLoadingTestcases: testcaseListResource.isLoadingTestcases.value,
-      selectedProblemId: selectedProblemId.value
-    },
-    actions: {
-      refresh: refreshPage
+  const shell = workspace.shell
+  const toolbar = useAdminProblemToolbarState({
+    workspace,
+    canManageProblems,
+    busySection,
+    statusLabel: toolbarStatusLabel,
+    statusTone: toolbarStatusTone,
+    extraModel: {
+      isLoadingProblem: problemDetailResource.isLoadingDetail,
+      isLoadingTestcases: testcaseListResource.isLoadingTestcases,
+      selectedProblemId
     }
-  }))
-  const sidebar = computed(() => ({
-    model: {
-      searchMode: query.searchMode.value,
-      titleSearchInput: query.titleSearchInput.value,
-      problemIdSearchInput: query.problemIdSearchInput.value,
-      titleSearchInputId: 'admin-testcase-problem-search',
-      problemIdSearchInputId: 'admin-testcase-problem-id-search',
-      isLoadingProblems: isLoadingProblems.value,
-      busySection: busySection.value,
-      hasAppliedSearch: query.hasAppliedSearch.value,
-      problemListCaption: query.problemListCaption.value,
-      problemCount: problemCatalogResource.problemCount.value,
-      listErrorMessage: problemCatalogResource.listErrorMessage.value,
-      emptyProblemListMessage: query.emptyProblemListMessage.value,
-      problems: problemCatalogResource.problems.value,
-      selectedProblemId: selectedProblemId.value,
-      formatCount,
-      formatProblemLimit
-    },
-    actions: {
-      updateTitleSearchInput: query.updateTitleSearchInput,
-      updateProblemIdSearchInput: query.updateProblemIdSearchInput,
-      setSearchMode: query.setSearchMode,
-      submitSearch: query.submitSearch,
-      resetSearch: query.resetSearch,
-      selectProblem
-    }
-  }))
+  })
+  const sidebar = useAdminProblemSidebarModel({
+    workspace,
+    busySection,
+    formatCount,
+    formatProblemLimit,
+    titleSearchInputId: 'admin-testcase-problem-search',
+    problemIdSearchInputId: 'admin-testcase-problem-id-search'
+  })
   const editor = createTestcaseEditorViewModel({
     selectedProblemId,
     isLoadingProblem: problemDetailResource.isLoadingDetail,
