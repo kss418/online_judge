@@ -3,7 +3,7 @@
 #include "db_service/user_statistics_service.hpp"
 #include "http_endpoint/endpoint.hpp"
 #include "http_handler/optional_auth_spec_helper.hpp"
-#include "http_handler/path_value_spec_helper.hpp"
+#include "http_handler/user_path_spec_helper.hpp"
 #include "serializer/user_json_serializer.hpp"
 
 namespace{
