@@ -1,10 +1,12 @@
 import { computed } from 'vue'
 
+import {
+  normalizeAdminProblemId
+} from '@/composables/adminShared/adminProblemSelectionHelpers'
 import { useAdminProblemCatalogQuery } from '@/composables/adminShared/useAdminProblemCatalogQuery'
 import { useAdminProblemCatalogResource } from '@/composables/adminShared/useAdminProblemCatalogResource'
 import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
 import { useSelectedProblemDetailResource } from '@/composables/adminShared/useSelectedProblemDetailResource'
-import { parsePositiveInteger } from '@/utils/parse'
 
 function canRefreshWorkspace(canRefresh){
   if (typeof canRefresh === 'function') {
@@ -31,7 +33,7 @@ export function useAdminProblemSelectionWorkspaceCore({
   showErrorNotice,
   formatCount
 }){
-  const selectedProblemId = computed(() => parsePositiveInteger(route.params.problemId) ?? 0)
+  const selectedProblemId = computed(() => normalizeAdminProblemId(route.params.problemId))
 
   async function loadProblems(options = {}){
     if (!authState.token || !canManageProblems.value) {
@@ -40,7 +42,9 @@ export function useAdminProblemSelectionWorkspaceCore({
       }
     }
 
-    const preferredProblemId = Number(options.preferredProblemId ?? selectedProblemId.value)
+    const preferredProblemId = normalizeAdminProblemId(
+      options.preferredProblemId ?? selectedProblemId.value
+    )
     const result = await problemCatalogResource.loadProblems()
 
     if (result.status !== 'success') {
@@ -76,9 +80,9 @@ export function useAdminProblemSelectionWorkspaceCore({
     },
     showErrorNotice,
     buildLocation({ query: nextQuery, selectedProblemId: nextSelectedProblemId }){
-      const routeProblemId = Number.isInteger(Number(nextSelectedProblemId))
-        ? Number(nextSelectedProblemId)
-        : selectedProblemId.value
+      const routeProblemId = typeof nextSelectedProblemId === 'undefined'
+        ? selectedProblemId.value
+        : normalizeAdminProblemId(nextSelectedProblemId)
 
       return {
         name: routeName,
@@ -102,8 +106,8 @@ export function useAdminProblemSelectionWorkspaceCore({
   })
 
   async function selectProblem(problemId){
-    const normalizedProblemId = parsePositiveInteger(problemId)
-    if (normalizedProblemId == null || normalizedProblemId === selectedProblemId.value) {
+    const normalizedProblemId = normalizeAdminProblemId(problemId)
+    if (!normalizedProblemId || normalizedProblemId === selectedProblemId.value) {
       return
     }
 
@@ -137,7 +141,7 @@ export function useAdminProblemSelectionWorkspaceEffects({
   async function syncSelectedProblemRouteState(problemId){
     await resetSelectedProblemState()
 
-    if ((parsePositiveInteger(problemId) ?? 0) <= 0) {
+    if (!normalizeAdminProblemId(problemId)) {
       return {
         status: 'reset'
       }

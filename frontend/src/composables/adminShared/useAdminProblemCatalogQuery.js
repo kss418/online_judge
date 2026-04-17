@@ -1,12 +1,16 @@
 import { computed, readonly, ref } from 'vue'
 
+import {
+  normalizeAdminProblemId,
+  resolveAdminProblemId,
+  sanitizeNumericInputValue
+} from '@/composables/adminShared/adminProblemSelectionHelpers'
 import { useRouteQueryState } from '@/composables/useRouteQueryState'
 import {
   buildRouteQuery as buildProblemAdminSearchRouteQuery,
   normalizeSearchMode,
   parseRouteQuery as parseProblemAdminSearchRouteQuery
 } from '@/queryState/problemAdminSearch'
-import { parsePositiveInteger } from '@/utils/parse'
 
 function createSearchLocalState(){
   return {
@@ -22,21 +26,6 @@ function syncSearchLocalState(localState, state){
   localState.problemIdSearchInput.value = state.problemIdSearch != null
     ? String(state.problemIdSearch)
     : ''
-}
-
-function resolveSelectedProblemId(selectedProblemId){
-  if (selectedProblemId && typeof selectedProblemId === 'object' && 'value' in selectedProblemId) {
-    return normalizeProblemId(selectedProblemId.value)
-  }
-
-  return normalizeProblemId(selectedProblemId)
-}
-
-function normalizeProblemId(problemId){
-  const normalizedProblemId = Number(problemId)
-  return Number.isInteger(normalizedProblemId) && normalizedProblemId > 0
-    ? normalizedProblemId
-    : 0
 }
 
 export function useAdminProblemCatalogQuery({
@@ -60,6 +49,7 @@ export function useAdminProblemCatalogQuery({
 
   function buildSearchState(mode, options = {}){
     const nextMode = normalizeSearchMode(mode)
+    const nextProblemId = normalizeAdminProblemId(options.problemId)
 
     return {
       ...queryState.routeState.value,
@@ -68,7 +58,7 @@ export function useAdminProblemCatalogQuery({
         ? ''
         : String(options.title ?? '').trim(),
       problemIdSearch: nextMode === 'problem-id'
-        ? parsePositiveInteger(options.problemId)
+        ? (nextProblemId || null)
         : null
     }
   }
@@ -107,8 +97,8 @@ export function useAdminProblemCatalogQuery({
   })
   const preferredProblemIdForReload = computed(() => (
     routeSearchMode.value === 'problem-id'
-      ? (routeProblemIdSearch.value || resolveSelectedProblemId(selectedProblemId))
-      : resolveSelectedProblemId(selectedProblemId)
+      ? (routeProblemIdSearch.value || resolveAdminProblemId(selectedProblemId))
+      : resolveAdminProblemId(selectedProblemId)
   ))
 
   function setSearchMode(nextMode){
@@ -120,8 +110,7 @@ export function useAdminProblemCatalogQuery({
   }
 
   function updateProblemIdSearchInput(value){
-    const normalizedValue = String(value ?? '').replace(/\D+/g, '')
-    queryState.localState.problemIdSearchInput.value = normalizedValue
+    queryState.localState.problemIdSearchInput.value = sanitizeNumericInputValue(value)
   }
 
   function resetSearchControls(){
@@ -140,8 +129,8 @@ export function useAdminProblemCatalogQuery({
 
   function submitSearch(){
     if (queryState.localState.searchMode.value === 'problem-id') {
-      const nextProblemId = parsePositiveInteger(queryState.localState.problemIdSearchInput.value)
-      if (nextProblemId == null) {
+      const nextProblemId = normalizeAdminProblemId(queryState.localState.problemIdSearchInput.value)
+      if (!nextProblemId) {
         showErrorNotice('문제 번호를 입력하세요.')
         return
       }
@@ -154,16 +143,16 @@ export function useAdminProblemCatalogQuery({
 
     void applySearchQuery(buildSearchState('title', {
       title: queryState.localState.titleSearchInput.value
-    }), resolveSelectedProblemId(selectedProblemId))
+    }), resolveAdminProblemId(selectedProblemId))
   }
 
   function resetSearch(){
     resetSearchControls()
-    void applySearchQuery(buildSearchState('title'), resolveSelectedProblemId(selectedProblemId))
+    void applySearchQuery(buildSearchState('title'), resolveAdminProblemId(selectedProblemId))
   }
 
   async function replaceSelectedProblem(problemId, options = {}){
-    const nextSelectedProblemId = normalizeProblemId(problemId)
+    const nextSelectedProblemId = normalizeAdminProblemId(problemId)
 
     return queryState.navigate(queryState.routeState.value, {
       mode: options.push ? 'push' : 'replace',
@@ -173,7 +162,7 @@ export function useAdminProblemCatalogQuery({
   }
 
   async function selectCreatedProblem(problemId){
-    const nextSelectedProblemId = normalizeProblemId(problemId)
+    const nextSelectedProblemId = normalizeAdminProblemId(problemId)
     const nextState = buildSearchState('title')
 
     resetSearchControls()

@@ -52,7 +52,6 @@ export function useAdminProblemSelectionPageShell({
   statusTone,
   toolbarExtraModel,
   formatCount,
-  formatProblemLimit,
   titleSearchInputId,
   problemIdSearchInputId,
   sidebarCreate
@@ -69,7 +68,6 @@ export function useAdminProblemSelectionPageShell({
     workspace,
     busySection,
     formatCount,
-    formatProblemLimit,
     titleSearchInputId,
     problemIdSearchInputId,
     create: sidebarCreate

@@ -1,13 +1,7 @@
 import { getProblemDetail } from '@/api/problemQueryApi'
+import { normalizeAdminProblemId } from '@/composables/adminShared/adminProblemSelectionHelpers'
 import { useAsyncResource } from '@/composables/useAsyncResource'
 import { formatApiError } from '@/utils/apiError'
-
-function normalizeProblemId(problemId){
-  const normalizedProblemId = Number(problemId)
-  return Number.isInteger(normalizedProblemId) && normalizedProblemId > 0
-    ? normalizedProblemId
-    : 0
-}
 
 function normalizeVersion(version){
   const normalizedVersion = Number(version)
@@ -44,7 +38,7 @@ export function useSelectedProblemDetailResource({
       return
     }
 
-    const normalizedProblemId = normalizeProblemId(problemId)
+    const normalizedProblemId = normalizeAdminProblemId(problemId)
     if (!normalizedProblemId) {
       return
     }
@@ -80,7 +74,7 @@ export function useSelectedProblemDetailResource({
   }
 
   function applyProblemVersion(problemId, version){
-    const normalizedProblemId = normalizeProblemId(problemId)
+    const normalizedProblemId = normalizeAdminProblemId(problemId)
     const normalizedVersion = normalizeVersion(version)
 
     if (!normalizedProblemId || !normalizedVersion) {
@@ -106,7 +100,7 @@ export function useSelectedProblemDetailResource({
   }
 
   async function loadProblemDetail(problemId = selectedProblemId.value){
-    const normalizedProblemId = normalizeProblemId(problemId)
+    const normalizedProblemId = normalizeAdminProblemId(problemId)
     if (!normalizedProblemId) {
       resetSelectedProblemDetail()
       return {

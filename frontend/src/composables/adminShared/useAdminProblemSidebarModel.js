@@ -1,20 +1,14 @@
 import { computed, unref } from 'vue'
 
-function unwrapRecordValues(record){
-  const nextRecord = {}
-
-  Object.entries(record ?? {}).forEach(([key, value]) => {
-    nextRecord[key] = unref(value)
-  })
-
-  return nextRecord
-}
+import {
+  formatAdminProblemLimit,
+  unwrapRecordValues
+} from '@/composables/adminShared/adminProblemSelectionHelpers'
 
 export function useAdminProblemSidebarModel({
   workspace,
   busySection,
   formatCount,
-  formatProblemLimit,
   titleSearchInputId,
   problemIdSearchInputId,
   create
@@ -36,7 +30,7 @@ export function useAdminProblemSidebarModel({
       problems: workspace.problemCatalogResource.problems.value,
       selectedProblemId: workspace.selectedProblemId.value,
       formatCount,
-      formatProblemLimit
+      formatProblemLimit: formatAdminProblemLimit
     },
     actions: {
       updateTitleSearchInput: workspace.query.updateTitleSearchInput,

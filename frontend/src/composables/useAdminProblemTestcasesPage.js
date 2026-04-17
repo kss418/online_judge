@@ -5,9 +5,12 @@ import { useTestcaseDraftState } from '@/composables/adminProblemTestcases/useTe
 import { useTestcaseMutationState } from '@/composables/adminProblemTestcases/useTestcaseMutationState'
 import { useSelectedTestcaseResource } from '@/composables/adminProblemTestcases/useSelectedTestcaseResource'
 import { useTestcaseSelectionState } from '@/composables/adminProblemTestcases/useTestcaseSelectionState'
-import { formatProblemLimit } from '@/composables/adminProblemTestcases/testcaseHelpers'
 import { useTestcaseListResource } from '@/composables/adminProblemTestcases/useTestcaseListResource'
 import { useTestcaseUploadState } from '@/composables/adminProblemTestcases/useTestcaseUploadState'
+import {
+  normalizeAdminProblemId,
+  sanitizeNumericInputValue
+} from '@/composables/adminShared/adminProblemSelectionHelpers'
 import {
   resetAdminProblemSelectionPageState,
   useAdminProblemSelectionPageShell,
@@ -17,11 +20,6 @@ import { useAdminProblemSelectionWorkspaceCore } from '@/composables/adminShared
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatCount } from '@/utils/numberFormat'
-import { parsePositiveInteger } from '@/utils/parse'
-
-function sanitizeNumericInput(value){
-  return String(value ?? '').replace(/\D+/g, '')
-}
 
 function createTestcaseEditorViewModel({
   selectedProblemId,
@@ -75,7 +73,7 @@ function createTestcaseEditorViewModel({
       newTestcaseOutput.value = value
     },
     updateViewTestcaseOrderInput(value){
-      viewTestcaseOrderInput.value = sanitizeNumericInput(value)
+      viewTestcaseOrderInput.value = sanitizeNumericInputValue(value)
     },
     updateSelectedTestcaseInputDraft(value){
       selectedTestcaseInputDraft.value = value
@@ -284,9 +282,9 @@ export function useAdminProblemTestcasesPage(){
   }
 
   async function loadSelectedProblemData(problemId = selectedProblemId.value, detailResource = problemDetailResource){
-    const normalizedProblemId = parsePositiveInteger(problemId)
+    const normalizedProblemId = normalizeAdminProblemId(problemId)
 
-    if (normalizedProblemId == null) {
+    if (!normalizedProblemId) {
       detailResource.resetSelectedProblemDetail()
       testcaseListResource.resetTestcaseList()
       selectionState.resetSelectedTestcaseState()
@@ -417,7 +415,6 @@ export function useAdminProblemTestcasesPage(){
       selectedProblemId
     },
     formatCount,
-    formatProblemLimit,
     titleSearchInputId: 'admin-testcase-problem-search',
     problemIdSearchInputId: 'admin-testcase-problem-id-search'
   })

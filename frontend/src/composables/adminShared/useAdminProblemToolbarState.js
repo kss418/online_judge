@@ -1,14 +1,6 @@
 import { computed, unref } from 'vue'
 
-function unwrapRecordValues(record){
-  const nextRecord = {}
-
-  Object.entries(record ?? {}).forEach(([key, value]) => {
-    nextRecord[key] = unref(value)
-  })
-
-  return nextRecord
-}
+import { unwrapRecordValues } from '@/composables/adminShared/adminProblemSelectionHelpers'
 
 export function useAdminProblemToolbarState({
   workspace,

@@ -4,8 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useProblemActionFeedback } from '@/composables/adminProblems/useProblemActionFeedback'
 import { useProblemDetailEditorState } from '@/composables/adminProblems/useProblemDetailEditorState'
 import { useProblemLifecycleState } from '@/composables/adminProblems/useProblemLifecycleState'
-import { formatProblemLimit } from '@/composables/adminProblems/problemHelpers'
 import { useProblemSampleEditorState } from '@/composables/adminProblems/useProblemSampleEditorState'
+import { normalizeAdminProblemId } from '@/composables/adminShared/adminProblemSelectionHelpers'
 import {
   resetAdminProblemSelectionPageState,
   useAdminProblemSelectionPageShell,
@@ -15,7 +15,6 @@ import { useAdminProblemSelectionWorkspaceCore } from '@/composables/adminShared
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatCount } from '@/utils/numberFormat'
-import { parsePositiveInteger } from '@/utils/parse'
 
 function createProblemEditorViewModel({
   isLoadingDetail,
@@ -312,8 +311,8 @@ export function useAdminProblemsPage(){
   })
 
   async function loadSelectedProblem(problemId = selectedProblemId.value, options = {}, detailResource = problemDetailResource){
-    const normalizedProblemId = parsePositiveInteger(problemId)
-    if (normalizedProblemId == null) {
+    const normalizedProblemId = normalizeAdminProblemId(problemId)
+    if (!normalizedProblemId) {
       detailResource.resetSelectedProblemDetail()
       problemDetailEditorState.reset()
       problemSampleEditorState.reset()
@@ -431,7 +430,6 @@ export function useAdminProblemsPage(){
     statusLabel: toolbarStatusLabel,
     statusTone: toolbarStatusTone,
     formatCount,
-    formatProblemLimit,
     titleSearchInputId: 'admin-problem-title-search',
     problemIdSearchInputId: 'admin-problem-id-search',
     sidebarCreate: {
