@@ -4,20 +4,6 @@ import {
   parseRouteQuery as parseProblemAdminSearchRouteQuery
 } from '@/queryState/problemAdminSearch'
 
-function resolveSelectedProblemId(selectedProblemId){
-  if (selectedProblemId && typeof selectedProblemId === 'object' && 'value' in selectedProblemId) {
-    const normalizedProblemId = Number(selectedProblemId.value)
-    return Number.isInteger(normalizedProblemId) && normalizedProblemId > 0
-      ? normalizedProblemId
-      : 0
-  }
-
-  const normalizedProblemId = Number(selectedProblemId)
-  return Number.isInteger(normalizedProblemId) && normalizedProblemId > 0
-    ? normalizedProblemId
-    : 0
-}
-
 export function useAdminProblemCatalogQuery({
   route,
   router,
@@ -25,7 +11,6 @@ export function useAdminProblemCatalogQuery({
   selectedProblemId,
   reloadProblems,
   showErrorNotice,
-  includeSelectedProblemIdInQuery = false,
   buildLocation
 }){
   return useAdminProblemSelectionQueryBase({
@@ -35,25 +20,8 @@ export function useAdminProblemCatalogQuery({
     selectedProblemId,
     reloadProblems,
     showErrorNotice,
-    parseQuery(query){
-      return parseProblemAdminSearchRouteQuery(query, {
-        includeSelectedProblemId: includeSelectedProblemIdInQuery
-      })
-    },
-    buildQuery(state){
-      return buildProblemAdminSearchRouteQuery({
-        ...state,
-        selectedProblemId: includeSelectedProblemIdInQuery
-          ? resolveSelectedProblemId(
-            typeof state.selectedProblemId === 'undefined'
-              ? selectedProblemId
-              : state.selectedProblemId
-          )
-          : state.selectedProblemId
-      }, {
-        includeSelectedProblemId: includeSelectedProblemIdInQuery
-      })
-    },
+    parseQuery: parseProblemAdminSearchRouteQuery,
+    buildQuery: buildProblemAdminSearchRouteQuery,
     buildLocation
   })
 }

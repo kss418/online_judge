@@ -13,6 +13,7 @@ import { useSelectedProblemDetailResource } from '@/composables/adminShared/useS
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatCount } from '@/utils/numberFormat'
+import { parsePositiveInteger } from '@/utils/parse'
 
 function createProblemEditorViewModel({
   isLoadingDetail,
@@ -273,7 +274,7 @@ export function useAdminProblemsPage(){
 
   const busySection = ref('')
   const newProblemTitle = ref('')
-  const selectedProblemId = ref(0)
+  const selectedProblemId = computed(() => parsePositiveInteger(route.params.problemId) ?? 0)
 
   const problemQuery = useAdminProblemCatalogQuery({
     route,
@@ -284,7 +285,21 @@ export function useAdminProblemsPage(){
       await loadProblems({ preferredProblemId })
     },
     showErrorNotice,
-    includeSelectedProblemIdInQuery: true
+    buildLocation({ query: nextQuery, selectedProblemId: nextSelectedProblemId }){
+      const routeProblemId = Number.isInteger(Number(nextSelectedProblemId))
+        ? Number(nextSelectedProblemId)
+        : selectedProblemId.value
+
+      return {
+        name: 'admin-problems',
+        params: routeProblemId > 0
+          ? {
+            problemId: String(routeProblemId)
+          }
+          : {},
+        query: nextQuery
+      }
+    }
   })
   const problemListResource = useAdminProblemCatalogResource({
     authState,
@@ -348,19 +363,37 @@ export function useAdminProblemsPage(){
     }
   })
 
-  function clearSelectedProblemState(){
-    selectedProblemId.value = 0
+  function resetSelectedProblemState(){
     problemDetailResource.resetSelectedProblemDetail()
     editorDraft.resetEditorDrafts()
   }
 
-  async function loadSelectedProblem(problemId, options = {}){
-    const normalizedProblemId = Number(problemId)
-    if (!Number.isInteger(normalizedProblemId) || normalizedProblemId <= 0) {
-      return
+  function readLegacySelectedProblemId(){
+    const queryProblemId = Array.isArray(route.query.problemId)
+      ? route.query.problemId[0]
+      : route.query.problemId
+
+    return parsePositiveInteger(queryProblemId) ?? 0
+  }
+
+  async function canonicalizeLegacySelectedProblemRoute(){
+    if (!Object.prototype.hasOwnProperty.call(route.query, 'problemId')) {
+      return false
     }
 
-    selectedProblemId.value = normalizedProblemId
+    await problemQuery.replaceSelectedProblem(selectedProblemId.value || readLegacySelectedProblemId())
+    return true
+  }
+
+  async function loadSelectedProblem(problemId = selectedProblemId.value, options = {}){
+    const normalizedProblemId = parsePositiveInteger(problemId)
+    if (normalizedProblemId == null) {
+      resetSelectedProblemState()
+      return {
+        status: 'reset'
+      }
+    }
+
     problemActionFeedback.clearActionError()
     editorDraft.resetEditorDrafts({
       skipTestcaseZipReset: options.skipTestcaseZipReset === true
@@ -376,21 +409,39 @@ export function useAdminProblemsPage(){
     return result
   }
 
-  async function selectProblem(problemId, options = {}){
-    const normalizedProblemId = Number(problemId)
-    if (!Number.isInteger(normalizedProblemId) || normalizedProblemId <= 0) {
+  async function loadSelectedProblemData(problemId = selectedProblemId.value, options = {}){
+    const normalizedProblemId = parsePositiveInteger(problemId)
+    if (normalizedProblemId == null) {
+      resetSelectedProblemState()
+      return {
+        status: 'reset'
+      }
+    }
+
+    return loadSelectedProblem(normalizedProblemId, options)
+  }
+
+  async function syncSelectedProblemRouteState(problemId){
+    resetSelectedProblemState()
+
+    if ((parsePositiveInteger(problemId) ?? 0) <= 0) {
+      return {
+        status: 'reset'
+      }
+    }
+
+    return loadSelectedProblemData(problemId)
+  }
+
+  async function selectProblem(problemId){
+    const normalizedProblemId = parsePositiveInteger(problemId)
+    if (normalizedProblemId == null || normalizedProblemId === selectedProblemId.value) {
       return
     }
 
-    if (
-      !options.force &&
-      selectedProblemId.value === normalizedProblemId &&
-      problemDetailResource.selectedProblemDetail.value
-    ) {
-      return
-    }
-
-    return loadSelectedProblem(normalizedProblemId)
+    await problemQuery.replaceSelectedProblem(normalizedProblemId, {
+      push: true
+    })
   }
 
   async function loadProblems(options = {}){
@@ -405,17 +456,16 @@ export function useAdminProblemsPage(){
 
     const result = await problemListResource.loadProblems()
 
-    if (result.status === 'error') {
-      clearSelectedProblemState()
-      return result
-    }
-
     if (result.status !== 'success') {
       return result
     }
 
     if (!problemListResource.problems.value.length) {
-      clearSelectedProblemState()
+      if (selectedProblemId.value > 0) {
+        await problemQuery.replaceSelectedProblem(0)
+      } else {
+        resetSelectedProblemState()
+      }
       return result
     }
 
@@ -423,15 +473,22 @@ export function useAdminProblemsPage(){
       ? preferredProblemId
       : problemListResource.problems.value[0].problem_id
 
-    await selectProblem(nextProblemId, {
-      force: nextProblemId !== selectedProblemId.value || !problemDetailResource.selectedProblemDetail.value
-    })
+    if (nextProblemId > 0 && nextProblemId !== selectedProblemId.value) {
+      await problemQuery.replaceSelectedProblem(nextProblemId)
+    }
 
     return result
   }
 
   async function handleCreatedProblem(problemId){
-    await problemQuery.selectCreatedProblem(problemId)
+    const hadAppliedSearch = problemQuery.hasAppliedSearch.value
+    const didNavigate = await problemQuery.selectCreatedProblem(problemId)
+
+    if (didNavigate && !hadAppliedSearch) {
+      await loadProblems({
+        preferredProblemId: problemId
+      })
+    }
   }
 
   function resetPageState(){
@@ -439,7 +496,7 @@ export function useAdminProblemsPage(){
     newProblemTitle.value = ''
     busySection.value = ''
     problemListResource.resetProblems()
-    clearSelectedProblemState()
+    resetSelectedProblemState()
     problemActionFeedback.resetActionState()
   }
 
@@ -450,7 +507,17 @@ export function useAdminProblemsPage(){
     hasAccess: canManageProblems,
     onDenied: resetPageState,
     async onAllowed(){
+      await canonicalizeLegacySelectedProblemRoute()
+
+      const previousSelectedProblemId = selectedProblemId.value
+
       await problemQuery.syncFromRouteAndReload()
+
+      if (selectedProblemId.value !== previousSelectedProblemId) {
+        return
+      }
+
+      await loadSelectedProblemData()
     },
     loggedOutMessage: '문제 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
     deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
@@ -461,10 +528,22 @@ export function useAdminProblemsPage(){
     query: problemQuery
   })
 
+  pageAccess.watchWhenAllowed(selectedProblemId, (problemId) => {
+    void syncSelectedProblemRouteState(problemId)
+  })
+
   async function refreshProblems(){
+    const previousSelectedProblemId = selectedProblemId.value
+
     await loadProblems({
       preferredProblemId: problemQuery.preferredProblemIdForReload.value
     })
+
+    if (selectedProblemId.value !== previousSelectedProblemId) {
+      return
+    }
+
+    await loadSelectedProblemData()
   }
 
   function updateNewProblemTitle(value){

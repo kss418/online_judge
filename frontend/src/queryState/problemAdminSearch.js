@@ -6,30 +6,17 @@ function normalizeSearchMode(value){
 
 export { normalizeSearchMode }
 
-export function parseRouteQuery(query, options = {}){
-  const { includeSelectedProblemId = false } = options
-
+export function parseRouteQuery(query){
   return {
-    selectedProblemId: includeSelectedProblemId
-      ? (parsePositiveInteger(query.problemId) ?? 0)
-      : 0,
     searchMode: normalizeSearchMode(query.searchMode),
     titleSearch: String(query.searchTitle ?? '').trim(),
     problemIdSearch: parsePositiveInteger(query.searchProblemId)
   }
 }
 
-export function buildRouteQuery(state, options = {}){
-  const { includeSelectedProblemId = false } = options
+export function buildRouteQuery(state){
   const nextQuery = {}
   const searchMode = normalizeSearchMode(state.searchMode)
-  const selectedProblemId = includeSelectedProblemId
-    ? Number(state.selectedProblemId ?? 0)
-    : 0
-
-  if (includeSelectedProblemId && selectedProblemId > 0) {
-    nextQuery.problemId = String(selectedProblemId)
-  }
 
   if (searchMode === 'problem-id') {
     const nextProblemId = parsePositiveInteger(state.problemIdSearch)

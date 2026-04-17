@@ -103,13 +103,10 @@ export function useAdminProblemSelectionQueryBase({
 
     return '등록된 문제가 아직 없습니다.'
   })
-  const preferredProblemIdFromRoute = computed(() =>
-    parsePositiveInteger(queryState.routeState.value.selectedProblemId) ?? 0
-  )
   const preferredProblemIdForReload = computed(() => (
     routeSearchMode.value === 'problem-id'
       ? (routeProblemIdSearch.value || resolveSelectedProblemId(selectedProblemId))
-      : (preferredProblemIdFromRoute.value || resolveSelectedProblemId(selectedProblemId))
+      : resolveSelectedProblemId(selectedProblemId)
   ))
 
   function setSearchMode(nextMode){
@@ -163,18 +160,10 @@ export function useAdminProblemSelectionQueryBase({
     void applySearchQuery(buildSearchState('title'), resolveSelectedProblemId(selectedProblemId))
   }
 
-  function buildSelectionState(problemId){
-    return {
-      ...queryState.routeState.value,
-      selectedProblemId: normalizeProblemId(problemId)
-    }
-  }
-
   async function replaceSelectedProblem(problemId, options = {}){
     const nextSelectedProblemId = normalizeProblemId(problemId)
-    const nextState = buildSelectionState(nextSelectedProblemId)
 
-    return queryState.navigate(nextState, {
+    return queryState.navigate(queryState.routeState.value, {
       mode: options.push ? 'push' : 'replace',
       query: options.query,
       selectedProblemId: nextSelectedProblemId
@@ -183,10 +172,7 @@ export function useAdminProblemSelectionQueryBase({
 
   async function selectCreatedProblem(problemId){
     const nextSelectedProblemId = normalizeProblemId(problemId)
-    const nextState = {
-      ...buildSearchState('title'),
-      selectedProblemId: nextSelectedProblemId
-    }
+    const nextState = buildSearchState('title')
 
     resetSearchControls()
 
@@ -211,7 +197,6 @@ export function useAdminProblemSelectionQueryBase({
     searchMode: readonly(queryState.localState.searchMode),
     titleSearchInput: readonly(queryState.localState.titleSearchInput),
     problemIdSearchInput: readonly(queryState.localState.problemIdSearchInput),
-    preferredProblemIdFromRoute,
     routeSearchMode,
     routeTitleSearch,
     routeProblemIdSearch,

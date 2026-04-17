@@ -28,7 +28,7 @@
           class="ghost-button"
           :to="{
             name: 'admin-problems',
-            query: { problemId: String(section.model.problemDetail.problem_id) }
+            params: { problemId: section.model.problemDetail.problem_id }
           }"
         >
           문제 관리

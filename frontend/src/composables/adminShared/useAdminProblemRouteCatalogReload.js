@@ -10,8 +10,7 @@ export function useAdminProblemRouteCatalogReload({
     () => [
       query.routeSearchMode.value,
       query.routeTitleSearch.value,
-      query.routeProblemIdSearch.value,
-      query.preferredProblemIdFromRoute.value
+      query.routeProblemIdSearch.value
     ],
     () => {
       void query.syncFromRouteAndReload()

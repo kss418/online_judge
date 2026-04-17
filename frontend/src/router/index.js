@@ -74,7 +74,7 @@ const routes = [
     })
   },
   {
-    path: '/admin/problems',
+    path: '/admin/problems/:problemId?',
     name: 'admin-problems',
     component: AdminProblemsPage
   },
