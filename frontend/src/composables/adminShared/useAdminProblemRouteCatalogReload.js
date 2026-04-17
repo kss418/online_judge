@@ -1,29 +1,20 @@
-import { parsePositiveInteger } from '@/utils/parse'
-
-function normalizeProblemId(value){
-  return parsePositiveInteger(value) ?? 0
-}
-
-function resolveSourceValue(source){
-  return source?.value
-}
-
 export function useAdminProblemRouteCatalogReload({
   pageAccess,
-  sources,
-  syncFromRoute,
-  reloadCatalog,
-  getPreferredProblemId
+  query
 }){
-  if (!pageAccess || !Array.isArray(sources) || sources.length === 0) {
+  if (!pageAccess || !query) {
     return
   }
 
   pageAccess.watchWhenAllowed(
-    () => sources.map((source) => resolveSourceValue(source)),
+    () => [
+      query.routeSearchMode.value,
+      query.routeTitleSearch.value,
+      query.routeProblemIdSearch.value,
+      query.preferredProblemIdFromRoute.value
+    ],
     () => {
-      syncFromRoute()
-      void reloadCatalog(normalizeProblemId(getPreferredProblemId()))
+      void query.syncFromRouteAndReload()
     }
   )
 }

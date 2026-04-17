@@ -78,6 +78,26 @@ function areQueriesEqual(leftQuery, rightQuery){
   )
 }
 
+function normalizeLocation(location, fallbackRoute){
+  return {
+    name: Object.prototype.hasOwnProperty.call(location, 'name')
+      ? location.name
+      : fallbackRoute.name,
+    params: Object.prototype.hasOwnProperty.call(location, 'params')
+      ? normalizeQueryObject(location.params)
+      : normalizeQueryObject(fallbackRoute.params),
+    query: Object.prototype.hasOwnProperty.call(location, 'query')
+      ? normalizeQueryObject(location.query)
+      : normalizeQueryObject(fallbackRoute.query)
+  }
+}
+
+function areLocationsEqual(leftLocation, rightLocation){
+  return leftLocation.name === rightLocation.name &&
+    areQueriesEqual(leftLocation.params, rightLocation.params) &&
+    areQueriesEqual(leftLocation.query, rightLocation.query)
+}
+
 export function useRouteQueryState({
   route,
   router,
@@ -111,24 +131,43 @@ export function useRouteQueryState({
     )
   }
 
-  async function navigate(nextState, options = {}){
+  function createLocation(nextState, options = {}){
     const mode = options.mode === 'push' ? 'push' : 'replace'
-    const nextQuery = buildCanonicalQuery(nextState)
-
-    if (areQueriesEqual(normalizedRouteQuery.value, nextQuery)) {
-      return false
-    }
-
+    const nextQuery = typeof options.query === 'undefined'
+      ? buildCanonicalQuery(nextState)
+      : normalizeQueryObject(options.query)
     const location = typeof buildLocation === 'function'
-      ? buildLocation({
+      ? (buildLocation({
         mode,
         nextState,
         query: nextQuery,
-        routeState: routeState.value
-      })
+        routeState: routeState.value,
+        selectedProblemId: options.selectedProblemId
+      }) ?? {})
       : {
         query: nextQuery
       }
+
+    if (!Object.prototype.hasOwnProperty.call(location, 'query')) {
+      return {
+        ...location,
+        query: nextQuery
+      }
+    }
+
+    return location
+  }
+
+  async function navigate(nextState, options = {}){
+    const mode = options.mode === 'push' ? 'push' : 'replace'
+    const location = createLocation(nextState, options)
+
+    if (areLocationsEqual(
+      normalizeLocation(route, route),
+      normalizeLocation(location, route)
+    )) {
+      return false
+    }
 
     await router[mode](location)
     return true
@@ -142,6 +181,7 @@ export function useRouteQueryState({
     syncFromRoute,
     navigate,
     isCurrentState,
-    buildCanonicalQuery
+    buildCanonicalQuery,
+    createLocation
   }
 }

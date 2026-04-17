@@ -243,12 +243,16 @@ export function useAdminProblemTestcasesPage(){
       await loadProblems({ preferredProblemId })
     },
     showErrorNotice,
-    buildLocation({ query: nextQuery }){
+    buildLocation({ query: nextQuery, selectedProblemId: nextSelectedProblemId }){
+      const routeProblemId = Number.isInteger(Number(nextSelectedProblemId))
+        ? Number(nextSelectedProblemId)
+        : selectedProblemId.value
+
       return {
         name: 'admin-problem-testcases',
-        params: selectedProblemId.value > 0
+        params: routeProblemId > 0
           ? {
-            problemId: String(selectedProblemId.value)
+            problemId: String(routeProblemId)
           }
           : {},
         query: nextQuery
@@ -265,27 +269,12 @@ export function useAdminProblemTestcasesPage(){
     mergeProblemSummary: problemCatalogResource.mergeProblemSummary
   })
 
-  async function replaceProblemRoute(problemId, options = {}){
-    const method = options.push ? 'push' : 'replace'
-    const nextQuery = options.query ?? query.buildCanonicalQuery(query.routeState.value)
-
-    await router[method]({
-      name: 'admin-problem-testcases',
-      params: problemId > 0
-        ? {
-          problemId: String(problemId)
-        }
-        : {},
-      query: nextQuery
-    })
-  }
-
   async function selectProblem(problemId){
     if (problemId === selectedProblemId.value) {
       return
     }
 
-    await replaceProblemRoute(problemId, {
+    await query.replaceSelectedProblem(problemId, {
       push: true
     })
   }
@@ -344,10 +333,7 @@ export function useAdminProblemTestcasesPage(){
     hasAccess: canManageProblems,
     onDenied: resetPageState,
     async onAllowed(){
-      query.syncSearchControlsFromRoute()
-      await loadProblems({
-        preferredProblemId: query.preferredProblemIdForReload.value
-      })
+      await query.syncFromRouteAndReload()
       await loadSelectedProblemData()
     },
     loggedOutMessage: '테스트케이스 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
@@ -356,20 +342,7 @@ export function useAdminProblemTestcasesPage(){
 
   useAdminProblemRouteCatalogReload({
     pageAccess,
-    sources: [
-      query.routeSearchMode,
-      query.routeTitleSearch,
-      query.routeProblemIdSearch
-    ],
-    syncFromRoute: query.syncSearchControlsFromRoute,
-    reloadCatalog(preferredProblemId){
-      return loadProblems({
-        preferredProblemId
-      })
-    },
-    getPreferredProblemId(){
-      return query.preferredProblemIdForReload.value
-    }
+    query
   })
 
   useAdminProblemSelectionReload({
@@ -479,7 +452,7 @@ export function useAdminProblemTestcasesPage(){
 
     if (!problemCatalogResource.problems.value.length) {
       if (selectedProblemId.value > 0) {
-        await replaceProblemRoute(0)
+        await query.replaceSelectedProblem(0)
       } else {
         resetSelectedProblemState()
       }
@@ -490,7 +463,7 @@ export function useAdminProblemTestcasesPage(){
       ? preferredProblemId
       : problemCatalogResource.problems.value[0].problem_id
     if (nextProblemId > 0 && nextProblemId !== selectedProblemId.value) {
-      await replaceProblemRoute(nextProblemId)
+      await query.replaceSelectedProblem(nextProblemId)
     }
 
     return result
@@ -526,9 +499,7 @@ export function useAdminProblemTestcasesPage(){
   }
 
   function resetPageState(){
-    query.searchMode.value = 'title'
-    query.titleSearchInput.value = ''
-    query.problemIdSearchInput.value = ''
+    query.resetSearchControls()
     busySection.value = ''
     testcaseSummaryElementMap.clear()
     problemCatalogResource.resetProblems()
@@ -570,14 +541,6 @@ export function useAdminProblemTestcasesPage(){
     }
   }
 
-  function updateTitleSearchInput(value){
-    query.titleSearchInput.value = value
-  }
-
-  function updateProblemIdSearchInput(value){
-    query.problemIdSearchInput.value = sanitizeNumericInput(value)
-  }
-
   const shell = computed(() => ({
     state: pageAccess.accessState.value,
     message: pageAccess.accessMessage.value
@@ -617,8 +580,8 @@ export function useAdminProblemTestcasesPage(){
       formatProblemLimit
     },
     actions: {
-      updateTitleSearchInput,
-      updateProblemIdSearchInput,
+      updateTitleSearchInput: query.updateTitleSearchInput,
+      updateProblemIdSearchInput: query.updateProblemIdSearchInput,
       setSearchMode: query.setSearchMode,
       submitSearch: query.submitSearch,
       resetSearch: query.resetSearch,

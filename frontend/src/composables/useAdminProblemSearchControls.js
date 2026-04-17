@@ -45,12 +45,6 @@ export function useAdminProblemSearchControls({
 
     return '등록된 문제가 아직 없습니다.'
   })
-  const preferredProblemIdForReload = computed(() => (
-    routeSearchMode.value === 'problem-id'
-      ? routeProblemIdSearch.value || selectedProblemId.value
-      : selectedProblemId.value
-  ))
-
   function syncSearchControlsFromRoute(){
     queryState.syncFromRoute()
   }
@@ -59,9 +53,19 @@ export function useAdminProblemSearchControls({
     queryState.localState.searchMode.value = normalizeSearchMode(nextMode)
   }
 
-  function handleProblemIdSearchInput(event){
-    const normalizedValue = String(event.target?.value ?? '').replace(/\D+/g, '')
+  function updateTitleSearchInput(value){
+    queryState.localState.titleSearchInput.value = String(value ?? '')
+  }
+
+  function updateProblemIdSearchInput(value){
+    const normalizedValue = String(value ?? '').replace(/\D+/g, '')
     queryState.localState.problemIdSearchInput.value = normalizedValue
+  }
+
+  function resetSearchControls(){
+    queryState.localState.searchMode.value = 'title'
+    queryState.localState.titleSearchInput.value = ''
+    queryState.localState.problemIdSearchInput.value = ''
   }
 
   async function applySearchQuery(nextState, preferredProblemId){
@@ -92,9 +96,7 @@ export function useAdminProblemSearchControls({
   }
 
   function resetSearch(){
-    queryState.localState.searchMode.value = 'title'
-    queryState.localState.titleSearchInput.value = ''
-    queryState.localState.problemIdSearchInput.value = ''
+    resetSearchControls()
     void applySearchQuery(createSearchState('title'), selectedProblemId.value)
   }
 
@@ -105,10 +107,11 @@ export function useAdminProblemSearchControls({
     hasAppliedSearch,
     problemListCaption,
     emptyProblemListMessage,
-    preferredProblemIdForReload,
     syncSearchControlsFromRoute,
     setSearchMode,
-    handleProblemIdSearchInput,
+    updateTitleSearchInput,
+    updateProblemIdSearchInput,
+    resetSearchControls,
     submitSearch,
     resetSearch
   }

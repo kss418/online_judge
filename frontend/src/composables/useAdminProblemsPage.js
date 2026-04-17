@@ -14,10 +14,6 @@ import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatCount } from '@/utils/numberFormat'
 
-function sanitizeNumericInput(value){
-  return String(value ?? '').replace(/\D+/g, '')
-}
-
 function createProblemEditorViewModel({
   isLoadingDetail,
   detailErrorMessage,
@@ -450,24 +446,11 @@ export function useAdminProblemsPage(){
   }
 
   async function handleCreatedProblem(problemId){
-    problemQuery.searchMode.value = 'title'
-    problemQuery.titleSearchInput.value = ''
-    problemQuery.problemIdSearchInput.value = ''
-
-    await router.replace({
-      query: {
-        problemId: String(problemId ?? '')
-      }
-    })
-    await loadProblems({
-      preferredProblemId: Number(problemId ?? 0)
-    })
+    await problemQuery.selectCreatedProblem(problemId)
   }
 
   function resetPageState(){
-    problemQuery.searchMode.value = 'title'
-    problemQuery.titleSearchInput.value = ''
-    problemQuery.problemIdSearchInput.value = ''
+    problemQuery.resetSearchControls()
     newProblemTitle.value = ''
     busySection.value = ''
     problemListResource.resetProblems()
@@ -475,11 +458,6 @@ export function useAdminProblemsPage(){
     problemActionFeedback.resetActionState()
   }
 
-  const preferredProblemIdForCatalogReload = computed(() => (
-    problemQuery.routeSearchMode.value === 'problem-id'
-      ? problemQuery.preferredProblemIdForReload.value
-      : (problemQuery.preferredProblemIdFromRoute.value || selectedProblemId.value)
-  ))
   const pageAccess = useProtectedAdminPageAccess({
     authState,
     initializeAuth,
@@ -487,10 +465,7 @@ export function useAdminProblemsPage(){
     hasAccess: canManageProblems,
     onDenied: resetPageState,
     async onAllowed(){
-      problemQuery.syncSearchControlsFromRoute()
-      await loadProblems({
-        preferredProblemId: preferredProblemIdForCatalogReload.value
-      })
+      await problemQuery.syncFromRouteAndReload()
     },
     loggedOutMessage: '문제 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
     deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
@@ -498,35 +473,13 @@ export function useAdminProblemsPage(){
 
   useAdminProblemRouteCatalogReload({
     pageAccess,
-    sources: [
-      problemQuery.routeSearchMode,
-      problemQuery.routeTitleSearch,
-      problemQuery.routeProblemIdSearch,
-      problemQuery.preferredProblemIdFromRoute
-    ],
-    syncFromRoute: problemQuery.syncSearchControlsFromRoute,
-    reloadCatalog(preferredProblemId){
-      return loadProblems({
-        preferredProblemId
-      })
-    },
-    getPreferredProblemId(){
-      return preferredProblemIdForCatalogReload.value
-    }
+    query: problemQuery
   })
 
   async function refreshProblems(){
     await loadProblems({
-      preferredProblemId: preferredProblemIdForCatalogReload.value
+      preferredProblemId: problemQuery.preferredProblemIdForReload.value
     })
-  }
-
-  function updateTitleSearchInput(value){
-    problemQuery.titleSearchInput.value = value
-  }
-
-  function updateProblemIdSearchInput(value){
-    problemQuery.problemIdSearchInput.value = sanitizeNumericInput(value)
   }
 
   function updateNewProblemTitle(value){
@@ -585,8 +538,8 @@ export function useAdminProblemsPage(){
       formatProblemLimit
     },
     actions: {
-      updateTitleSearchInput,
-      updateProblemIdSearchInput,
+      updateTitleSearchInput: problemQuery.updateTitleSearchInput,
+      updateProblemIdSearchInput: problemQuery.updateProblemIdSearchInput,
       setSearchMode: problemQuery.setSearchMode,
       submitSearch: problemQuery.submitSearch,
       resetSearch: problemQuery.resetSearch,

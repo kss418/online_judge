@@ -6,10 +6,16 @@ import {
 
 function resolveSelectedProblemId(selectedProblemId){
   if (selectedProblemId && typeof selectedProblemId === 'object' && 'value' in selectedProblemId) {
-    return selectedProblemId.value
+    const normalizedProblemId = Number(selectedProblemId.value)
+    return Number.isInteger(normalizedProblemId) && normalizedProblemId > 0
+      ? normalizedProblemId
+      : 0
   }
 
-  return selectedProblemId ?? 0
+  const normalizedProblemId = Number(selectedProblemId)
+  return Number.isInteger(normalizedProblemId) && normalizedProblemId > 0
+    ? normalizedProblemId
+    : 0
 }
 
 export function useAdminProblemCatalogQuery({
@@ -38,7 +44,11 @@ export function useAdminProblemCatalogQuery({
       return buildProblemAdminSearchRouteQuery({
         ...state,
         selectedProblemId: includeSelectedProblemIdInQuery
-          ? resolveSelectedProblemId(selectedProblemId)
+          ? resolveSelectedProblemId(
+            typeof state.selectedProblemId === 'undefined'
+              ? selectedProblemId
+              : state.selectedProblemId
+          )
           : state.selectedProblemId
       }, {
         includeSelectedProblemId: includeSelectedProblemIdInQuery
