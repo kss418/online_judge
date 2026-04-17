@@ -7,11 +7,11 @@ import { useProblemEditorDraft } from '@/composables/adminProblems/useProblemEdi
 import { useProblemLifecycleActions } from '@/composables/adminProblems/useProblemLifecycleActions'
 import { formatProblemLimit } from '@/composables/adminProblems/problemHelpers'
 import {
-  useAdminProblemSelectionWorkspaceCore,
-  useAdminProblemSelectionWorkspaceEffects
-} from '@/composables/adminShared/useAdminProblemSelectionWorkspace'
-import { useAdminProblemSidebarModel } from '@/composables/adminShared/useAdminProblemSidebarModel'
-import { useAdminProblemToolbarState } from '@/composables/adminShared/useAdminProblemToolbarState'
+  resetAdminProblemSelectionPageState,
+  useAdminProblemSelectionPageShell,
+  useAdminProblemSelectionPageWorkspace
+} from '@/composables/adminShared/useAdminProblemSelectionPageState'
+import { useAdminProblemSelectionWorkspaceCore } from '@/composables/adminShared/useAdminProblemSelectionWorkspace'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
 import { formatCount } from '@/utils/numberFormat'
@@ -336,21 +336,22 @@ export function useAdminProblemsPage(){
     }
   }
 
-  async function resetSelectedProblemStateForWorkspace(){
+  async function resetSelectedProblemState(){
     problemDetailResource.resetSelectedProblemDetail()
     editorDraft.resetEditorDrafts()
   }
 
-  async function loadSelectedProblemDataForWorkspace(problemId = selectedProblemId.value){
+  async function loadSelectedProblemData(problemId = selectedProblemId.value){
     return loadSelectedProblem(problemId)
   }
 
-  async function resetPageStateForWorkspace(){
-    workspaceCore.query.resetSearchControls()
+  async function resetPageState(){
     newProblemTitle.value = ''
-    busySection.value = ''
-    problemListResource.resetProblems()
-    await resetSelectedProblemStateForWorkspace()
+    await resetAdminProblemSelectionPageState({
+      workspaceCore,
+      busySection,
+      resetSelectedProblemState
+    })
     problemActionFeedback.resetActionState()
   }
 
@@ -358,7 +359,7 @@ export function useAdminProblemsPage(){
     newProblemTitle.value = value
   }
 
-  const workspaceEffects = useAdminProblemSelectionWorkspaceEffects({
+  const workspace = useAdminProblemSelectionPageWorkspace({
     core: workspaceCore,
     authState,
     initializeAuth,
@@ -368,14 +369,10 @@ export function useAdminProblemsPage(){
       loggedOutMessage: '문제 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
       deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
     },
-    resetSelectedProblemState: resetSelectedProblemStateForWorkspace,
-    loadSelectedProblemData: loadSelectedProblemDataForWorkspace,
-    resetPageState: resetPageStateForWorkspace
+    resetSelectedProblemState,
+    loadSelectedProblemData,
+    resetPageState
   })
-  const workspace = {
-    ...workspaceCore,
-    ...workspaceEffects
-  }
   const loadProblems = workspaceCore.loadProblems
 
   const problemLifecycleActions = useProblemLifecycleActions({
@@ -424,22 +421,21 @@ export function useAdminProblemsPage(){
     problemLifecycleActions.isDeletingProblem.value ? '삭제 중...' : '삭제 확정'
   ))
 
-  const shell = workspace.shell
-  const toolbar = useAdminProblemToolbarState({
+  const {
+    shell,
+    toolbar,
+    sidebar
+  } = useAdminProblemSelectionPageShell({
     workspace,
     canManageProblems,
     busySection,
     statusLabel: toolbarStatusLabel,
-    statusTone: toolbarStatusTone
-  })
-  const sidebar = useAdminProblemSidebarModel({
-    workspace,
-    busySection,
+    statusTone: toolbarStatusTone,
     formatCount,
     formatProblemLimit,
     titleSearchInputId: 'admin-problem-title-search',
     problemIdSearchInputId: 'admin-problem-id-search',
-    create: {
+    sidebarCreate: {
       model: {
         newProblemTitle,
         canCreateProblem: problemLifecycleActions.canCreateProblem,

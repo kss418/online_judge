@@ -7,11 +7,11 @@ import { useTestcaseSelectionState } from '@/composables/adminProblemTestcases/u
 import { formatProblemLimit } from '@/composables/adminProblemTestcases/testcaseHelpers'
 import { useTestcaseListResource } from '@/composables/adminProblemTestcases/useTestcaseListResource'
 import {
-  useAdminProblemSelectionWorkspaceCore,
-  useAdminProblemSelectionWorkspaceEffects
-} from '@/composables/adminShared/useAdminProblemSelectionWorkspace'
-import { useAdminProblemSidebarModel } from '@/composables/adminShared/useAdminProblemSidebarModel'
-import { useAdminProblemToolbarState } from '@/composables/adminShared/useAdminProblemToolbarState'
+  resetAdminProblemSelectionPageState,
+  useAdminProblemSelectionPageShell,
+  useAdminProblemSelectionPageWorkspace
+} from '@/composables/adminShared/useAdminProblemSelectionPageState'
+import { useAdminProblemSelectionWorkspaceCore } from '@/composables/adminShared/useAdminProblemSelectionWorkspace'
 import { useTestcaseZipInput } from '@/composables/adminShared/useTestcaseZipInput'
 import { authStore } from '@/stores/auth/authStore'
 import { noticeStore } from '@/stores/notice/noticeStore'
@@ -302,7 +302,7 @@ export function useAdminProblemTestcasesPage(){
     )
   })
 
-  async function resetSelectedProblemStateForWorkspace(){
+  async function resetSelectedProblemState(){
     problemDetailResource.resetSelectedProblemDetail()
     testcaseListResource.resetTestcaseList()
     selectionState.resetSelectedTestcaseState()
@@ -330,18 +330,15 @@ export function useAdminProblemTestcasesPage(){
     return problemResult?.status === 'error' ? problemResult : testcaseResult
   }
 
-  async function loadSelectedProblemDataForWorkspace(problemId = selectedProblemId.value){
-    return loadSelectedProblemData(problemId)
+  async function resetPageState(){
+    await resetAdminProblemSelectionPageState({
+      workspaceCore,
+      busySection,
+      resetSelectedProblemState
+    })
   }
 
-  async function resetPageStateForWorkspace(){
-    workspaceCore.query.resetSearchControls()
-    busySection.value = ''
-    problemCatalogResource.resetProblems()
-    await resetSelectedProblemStateForWorkspace()
-  }
-
-  const workspaceEffects = useAdminProblemSelectionWorkspaceEffects({
+  const workspace = useAdminProblemSelectionPageWorkspace({
     core: workspaceCore,
     authState,
     initializeAuth,
@@ -352,14 +349,10 @@ export function useAdminProblemTestcasesPage(){
       deniedMessage: '이 페이지는 관리자만 접근할 수 있습니다.'
     },
     canRefresh: () => !busySection.value,
-    resetSelectedProblemState: resetSelectedProblemStateForWorkspace,
-    loadSelectedProblemData: loadSelectedProblemDataForWorkspace,
-    resetPageState: resetPageStateForWorkspace
+    resetSelectedProblemState,
+    loadSelectedProblemData,
+    resetPageState
   })
-  const workspace = {
-    ...workspaceCore,
-    ...workspaceEffects
-  }
   const testcaseEditorActions = useTestcaseEditorActions({
     authState,
     busySection,
@@ -437,22 +430,21 @@ export function useAdminProblemTestcasesPage(){
     ].testcase_order === testcaseOrder
   }
 
-  const shell = workspace.shell
-  const toolbar = useAdminProblemToolbarState({
+  const {
+    shell,
+    toolbar,
+    sidebar
+  } = useAdminProblemSelectionPageShell({
     workspace,
     canManageProblems,
     busySection,
     statusLabel: toolbarStatusLabel,
     statusTone: toolbarStatusTone,
-    extraModel: {
+    toolbarExtraModel: {
       isLoadingProblem: problemDetailResource.isLoadingDetail,
       isLoadingTestcases: testcaseListResource.isLoadingTestcases,
       selectedProblemId
-    }
-  })
-  const sidebar = useAdminProblemSidebarModel({
-    workspace,
-    busySection,
+    },
     formatCount,
     formatProblemLimit,
     titleSearchInputId: 'admin-testcase-problem-search',
