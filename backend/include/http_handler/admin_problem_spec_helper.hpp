@@ -9,6 +9,19 @@
 #include <utility>
 
 namespace http_handler_spec{
+    namespace detail{
+        template <typename callback_type>
+        auto with_admin_problem_path_guards(
+            std::int64_t problem_id,
+            callback_type&& callback
+        ){
+            return std::forward<callback_type>(callback)(
+                auth_guard::make_admin_guard(),
+                problem_guard::make_exists_guard(problem_dto::reference{problem_id})
+            );
+        }
+    }
+
     template <
         typename builder_type,
         typename execute_type,
@@ -77,14 +90,19 @@ namespace http_handler_spec{
         serialize_type&& serialize,
         guard_types&&... guards
     ){
-        return make_single_path_value_json_spec(
+        return detail::with_admin_problem_path_guards(
             problem_id,
-            std::forward<builder_type>(build_command),
-            std::forward<execute_type>(execute),
-            std::forward<serialize_type>(serialize),
-            auth_guard::make_admin_guard(),
-            problem_guard::make_exists_guard(problem_dto::reference{problem_id}),
-            std::forward<guard_types>(guards)...
+            [&](auto&& admin_guard, auto&& exists_guard){
+                return make_single_path_value_json_spec(
+                    problem_id,
+                    std::forward<builder_type>(build_command),
+                    std::forward<execute_type>(execute),
+                    std::forward<serialize_type>(serialize),
+                    std::forward<decltype(admin_guard)>(admin_guard),
+                    std::forward<decltype(exists_guard)>(exists_guard),
+                    std::forward<guard_types>(guards)...
+                );
+            }
         );
     }
 
@@ -103,15 +121,20 @@ namespace http_handler_spec{
         http_endpoint::spec_options<error_response_factory_type> options,
         guard_types&&... guards
     ){
-        return make_single_path_value_json_spec(
+        return detail::with_admin_problem_path_guards(
             problem_id,
-            std::forward<builder_type>(build_command),
-            std::forward<execute_type>(execute),
-            std::forward<serialize_type>(serialize),
-            std::move(options),
-            auth_guard::make_admin_guard(),
-            problem_guard::make_exists_guard(problem_dto::reference{problem_id}),
-            std::forward<guard_types>(guards)...
+            [&](auto&& admin_guard, auto&& exists_guard){
+                return make_single_path_value_json_spec(
+                    problem_id,
+                    std::forward<builder_type>(build_command),
+                    std::forward<execute_type>(execute),
+                    std::forward<serialize_type>(serialize),
+                    std::move(options),
+                    std::forward<decltype(admin_guard)>(admin_guard),
+                    std::forward<decltype(exists_guard)>(exists_guard),
+                    std::forward<guard_types>(guards)...
+                );
+            }
         );
     }
 
@@ -128,14 +151,19 @@ namespace http_handler_spec{
         serialize_type&& serialize,
         guard_types&&... guards
     ){
-        return make_single_path_value_message_spec(
+        return detail::with_admin_problem_path_guards(
             problem_id,
-            std::forward<builder_type>(build_command),
-            std::forward<execute_type>(execute),
-            std::forward<serialize_type>(serialize),
-            auth_guard::make_admin_guard(),
-            problem_guard::make_exists_guard(problem_dto::reference{problem_id}),
-            std::forward<guard_types>(guards)...
+            [&](auto&& admin_guard, auto&& exists_guard){
+                return make_single_path_value_message_spec(
+                    problem_id,
+                    std::forward<builder_type>(build_command),
+                    std::forward<execute_type>(execute),
+                    std::forward<serialize_type>(serialize),
+                    std::forward<decltype(admin_guard)>(admin_guard),
+                    std::forward<decltype(exists_guard)>(exists_guard),
+                    std::forward<guard_types>(guards)...
+                );
+            }
         );
     }
 
@@ -154,15 +182,20 @@ namespace http_handler_spec{
         http_endpoint::spec_options<error_response_factory_type> options,
         guard_types&&... guards
     ){
-        return make_single_path_value_message_spec(
+        return detail::with_admin_problem_path_guards(
             problem_id,
-            std::forward<builder_type>(build_command),
-            std::forward<execute_type>(execute),
-            std::forward<serialize_type>(serialize),
-            std::move(options),
-            auth_guard::make_admin_guard(),
-            problem_guard::make_exists_guard(problem_dto::reference{problem_id}),
-            std::forward<guard_types>(guards)...
+            [&](auto&& admin_guard, auto&& exists_guard){
+                return make_single_path_value_message_spec(
+                    problem_id,
+                    std::forward<builder_type>(build_command),
+                    std::forward<execute_type>(execute),
+                    std::forward<serialize_type>(serialize),
+                    std::move(options),
+                    std::forward<decltype(admin_guard)>(admin_guard),
+                    std::forward<decltype(exists_guard)>(exists_guard),
+                    std::forward<guard_types>(guards)...
+                );
+            }
         );
     }
 }
