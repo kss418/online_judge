@@ -342,7 +342,14 @@ export function useAdminProblemTestcasesPage(){
     hasAccess: canManageProblems,
     onDenied: resetPageState,
     async onAllowed(){
+      const previousSelectedProblemId = selectedProblemId.value
+
       await query.syncFromRouteAndReload()
+
+      if (selectedProblemId.value !== previousSelectedProblemId) {
+        return
+      }
+
       await loadSelectedProblemData()
     },
     loggedOutMessage: '테스트케이스 관리 페이지는 로그인한 관리자만 사용할 수 있습니다.',
@@ -355,11 +362,7 @@ export function useAdminProblemTestcasesPage(){
   })
 
   pageAccess.watchWhenAllowed(selectedProblemId, (problemId) => {
-    resetSelectedProblemState()
-
-    if ((parsePositiveInteger(problemId) ?? 0) > 0) {
-      void loadSelectedProblemData(problemId)
-    }
+    void syncSelectedProblemRouteState(problemId)
   })
 
   async function refreshPage(){
@@ -367,9 +370,16 @@ export function useAdminProblemTestcasesPage(){
       return
     }
 
+    const previousSelectedProblemId = selectedProblemId.value
+
     await loadProblems({
       preferredProblemId: query.preferredProblemIdForReload.value
     })
+
+    if (selectedProblemId.value !== previousSelectedProblemId) {
+      return
+    }
+
     await loadSelectedProblemData()
   }
 
@@ -441,9 +451,7 @@ export function useAdminProblemTestcasesPage(){
   }
 
   function resetSelectedProblemState(){
-    problemDetailResource.resetSelectedProblemDetail()
-    testcaseListResource.resetTestcaseList()
-    selectedTestcaseResource.clearSelectedTestcaseDetail()
+    resetSelectedProblemResources()
     draft.resetDraftState()
   }
 
@@ -452,8 +460,26 @@ export function useAdminProblemTestcasesPage(){
     selectedTestcaseResource.clearSelectedTestcaseDetail()
   }
 
+  function resetSelectedProblemResources(){
+    problemDetailResource.resetSelectedProblemDetail()
+    testcaseListResource.resetTestcaseList()
+    resetSelectedTestcaseState()
+  }
+
   function syncSelectedTestcase(preferredOrder){
     draft.syncSelectedTestcase(preferredOrder)
+  }
+
+  async function syncSelectedProblemRouteState(problemId){
+    resetSelectedProblemState()
+
+    if ((parsePositiveInteger(problemId) ?? 0) <= 0) {
+      return {
+        status: 'reset'
+      }
+    }
+
+    return loadSelectedProblemData(problemId)
   }
 
   async function loadProblems(options = {}){
@@ -495,18 +521,18 @@ export function useAdminProblemTestcasesPage(){
     return result
   }
 
-  async function loadSelectedProblemData(){
-    if (selectedProblemId.value <= 0) {
-      problemDetailResource.resetSelectedProblemDetail()
-      testcaseListResource.resetTestcaseList()
-      resetSelectedTestcaseState()
+  async function loadSelectedProblemData(problemId = selectedProblemId.value){
+    const normalizedProblemId = parsePositiveInteger(problemId)
+
+    if (normalizedProblemId == null) {
+      resetSelectedProblemResources()
       return {
         status: 'reset'
       }
     }
 
     const [problemResult, testcaseResult] = await Promise.all([
-      problemDetailResource.loadProblemDetail(),
+      problemDetailResource.loadProblemDetail(normalizedProblemId),
       loadTestcases()
     ])
 
@@ -518,10 +544,7 @@ export function useAdminProblemTestcasesPage(){
     busySection.value = ''
     testcaseSummaryElementMap.clear()
     problemCatalogResource.resetProblems()
-    problemDetailResource.resetSelectedProblemDetail()
-    testcaseListResource.resetTestcaseList()
-    selectedTestcaseResource.clearSelectedTestcaseDetail()
-    draft.resetDraftState()
+    resetSelectedProblemState()
   }
 
   function selectTestcase(testcaseOrder){

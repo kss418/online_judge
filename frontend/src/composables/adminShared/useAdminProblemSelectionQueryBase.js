@@ -204,12 +204,10 @@ export function useAdminProblemSelectionQueryBase({
 
   async function syncFromRouteAndReload(){
     queryState.syncFromRoute()
-    await reloadProblems(preferredProblemIdForReload.value)
+    return reloadProblems(preferredProblemIdForReload.value)
   }
 
   return {
-    queryState,
-    buildCanonicalQuery: queryState.buildCanonicalQuery,
     searchMode: readonly(queryState.localState.searchMode),
     titleSearchInput: readonly(queryState.localState.titleSearchInput),
     problemIdSearchInput: readonly(queryState.localState.problemIdSearchInput),
