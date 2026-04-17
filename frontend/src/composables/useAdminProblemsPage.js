@@ -2,10 +2,10 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useProblemActionFeedback } from '@/composables/adminProblems/useProblemActionFeedback'
-import { useProblemDetailEditorActions } from '@/composables/adminProblems/useProblemDetailEditorActions'
-import { useProblemEditorDraft } from '@/composables/adminProblems/useProblemEditorDraft'
-import { useProblemLifecycleActions } from '@/composables/adminProblems/useProblemLifecycleActions'
+import { useProblemDetailEditorState } from '@/composables/adminProblems/useProblemDetailEditorState'
+import { useProblemLifecycleState } from '@/composables/adminProblems/useProblemLifecycleState'
 import { formatProblemLimit } from '@/composables/adminProblems/problemHelpers'
+import { useProblemSampleEditorState } from '@/composables/adminProblems/useProblemSampleEditorState'
 import {
   resetAdminProblemSelectionPageState,
   useAdminProblemSelectionPageShell,
@@ -275,7 +275,6 @@ export function useAdminProblemsPage(){
   const router = useRouter()
 
   const busySection = ref('')
-  const newProblemTitle = ref('')
   const workspaceCore = useAdminProblemSelectionWorkspaceCore({
     route,
     router,
@@ -293,25 +292,39 @@ export function useAdminProblemsPage(){
     selectedProblemDetail: problemDetailResource.selectedProblemDetail,
     busySection
   })
-  const editorDraft = useProblemEditorDraft({
+  const problemDetailEditorState = useProblemDetailEditorState({
     authState,
     busySection,
     selectedProblemDetail: problemDetailResource.selectedProblemDetail,
-    setActionFeedback: problemActionFeedback.setActionFeedback
+    problemDetailResource,
+    problemCatalogResource: problemListResource,
+    problemActionFeedback,
+    formatCount
+  })
+  const problemSampleEditorState = useProblemSampleEditorState({
+    authState,
+    busySection,
+    formatCount,
+    selectedProblemDetail: problemDetailResource.selectedProblemDetail,
+    problemDetailResource,
+    problemActionFeedback,
+    loadSelectedProblem
   })
 
   async function loadSelectedProblem(problemId = selectedProblemId.value, options = {}, detailResource = problemDetailResource){
     const normalizedProblemId = parsePositiveInteger(problemId)
     if (normalizedProblemId == null) {
       detailResource.resetSelectedProblemDetail()
-      editorDraft.resetEditorDrafts()
+      problemDetailEditorState.reset()
+      problemSampleEditorState.reset()
       return {
         status: 'reset'
       }
     }
 
     problemActionFeedback.clearActionError()
-    editorDraft.resetEditorDrafts({
+    problemDetailEditorState.reset()
+    problemSampleEditorState.reset({
       skipTestcaseZipReset: options.skipTestcaseZipReset === true
     })
 
@@ -321,7 +334,8 @@ export function useAdminProblemsPage(){
       return result
     }
 
-    editorDraft.assignEditorDrafts(result.data)
+    problemDetailEditorState.assignFromProblemDetail(result.data)
+    problemSampleEditorState.assignSamples(result.data.samples)
     return result
   }
 
@@ -338,7 +352,8 @@ export function useAdminProblemsPage(){
 
   async function resetSelectedProblemState(){
     problemDetailResource.resetSelectedProblemDetail()
-    editorDraft.resetEditorDrafts()
+    problemDetailEditorState.reset()
+    problemSampleEditorState.reset()
   }
 
   async function loadSelectedProblemData(problemId = selectedProblemId.value){
@@ -346,7 +361,7 @@ export function useAdminProblemsPage(){
   }
 
   async function resetPageState(){
-    newProblemTitle.value = ''
+    problemLifecycleState.newProblemTitle.value = ''
     await resetAdminProblemSelectionPageState({
       workspaceCore,
       busySection,
@@ -355,9 +370,15 @@ export function useAdminProblemsPage(){
     problemActionFeedback.resetActionState()
   }
 
-  function updateNewProblemTitle(value){
-    newProblemTitle.value = value
-  }
+  const problemLifecycleState = useProblemLifecycleState({
+    authState,
+    busySection,
+    formatCount,
+    problemActionFeedback,
+    selectedProblemDetail: problemDetailResource.selectedProblemDetail,
+    loadProblems: workspaceCore.loadProblems,
+    onCreatedProblem: handleCreatedProblem
+  })
 
   const workspace = useAdminProblemSelectionPageWorkspace({
     core: workspaceCore,
@@ -372,28 +393,6 @@ export function useAdminProblemsPage(){
     resetSelectedProblemState,
     loadSelectedProblemData,
     resetPageState
-  })
-  const loadProblems = workspaceCore.loadProblems
-
-  const problemLifecycleActions = useProblemLifecycleActions({
-    authState,
-    busySection,
-    formatCount,
-    newProblemTitle,
-    feedback: problemActionFeedback,
-    selectedProblemDetail: problemDetailResource.selectedProblemDetail,
-    loadProblems,
-    onCreatedProblem: handleCreatedProblem
-  })
-  const problemDetailEditorActions = useProblemDetailEditorActions({
-    authState,
-    busySection,
-    formatCount,
-    editorDraft,
-    problemActionFeedback,
-    problemDetailResource,
-    problemCatalogResource: problemListResource,
-    loadSelectedProblem
   })
 
   watch(problemActionFeedback.actionMessage, (message) => {
@@ -415,10 +414,10 @@ export function useAdminProblemsPage(){
     problemListResource.listErrorMessage.value ? 'danger' : 'success'
   )
   const rejudgeConfirmLabel = computed(() => (
-    problemLifecycleActions.isRejudgingProblem.value ? '요청 중...' : '재채점 확정'
+    problemLifecycleState.isRejudgingProblem.value ? '요청 중...' : '재채점 확정'
   ))
   const deleteConfirmLabel = computed(() => (
-    problemLifecycleActions.isDeletingProblem.value ? '삭제 중...' : '삭제 확정'
+    problemLifecycleState.isDeletingProblem.value ? '삭제 중...' : '삭제 확정'
   ))
 
   const {
@@ -437,13 +436,13 @@ export function useAdminProblemsPage(){
     problemIdSearchInputId: 'admin-problem-id-search',
     sidebarCreate: {
       model: {
-        newProblemTitle,
-        canCreateProblem: problemLifecycleActions.canCreateProblem,
-        isCreatingProblem: problemLifecycleActions.isCreatingProblem
+        newProblemTitle: problemLifecycleState.newProblemTitle,
+        canCreateProblem: problemLifecycleState.canCreateProblem,
+        isCreatingProblem: problemLifecycleState.isCreatingProblem
       },
       actions: {
-        updateNewProblemTitle,
-        createProblem: problemLifecycleActions.handleCreateProblem
+        updateNewProblemTitle: problemLifecycleState.updateNewProblemTitle,
+        createProblem: problemLifecycleState.handleCreateProblem
       }
     }
   })
@@ -452,40 +451,40 @@ export function useAdminProblemsPage(){
     detailErrorMessage: problemDetailResource.detailErrorMessage,
     selectedProblemDetail: problemDetailResource.selectedProblemDetail,
     busySection,
-    canSaveTitle: editorDraft.canSaveTitle,
-    canSaveLimits: editorDraft.canSaveLimits,
-    canSaveStatement: editorDraft.canSaveStatement,
-    canCreateSample: problemDetailEditorActions.canCreateSample,
-    canUploadTestcaseZip: problemDetailEditorActions.canUploadTestcaseZip,
-    canDeleteLastSample: problemDetailEditorActions.canDeleteLastSample,
-    isSavingTitle: problemDetailEditorActions.isSavingTitle,
-    isSavingLimits: problemDetailEditorActions.isSavingLimits,
-    isSavingStatement: problemDetailEditorActions.isSavingStatement,
-    isCreatingSample: problemDetailEditorActions.isCreatingSample,
-    isDeletingLastSample: problemDetailEditorActions.isDeletingLastSample,
-    isUploadingTestcaseZip: problemDetailEditorActions.isUploadingTestcaseZip,
-    titleDraft: editorDraft.titleDraft,
-    timeLimitDraft: editorDraft.timeLimitDraft,
-    memoryLimitDraft: editorDraft.memoryLimitDraft,
-    descriptionDraft: editorDraft.descriptionDraft,
-    inputFormatDraft: editorDraft.inputFormatDraft,
-    outputFormatDraft: editorDraft.outputFormatDraft,
-    noteDraft: editorDraft.noteDraft,
-    sampleDrafts: editorDraft.sampleDrafts,
-    testcaseZipInputKey: editorDraft.testcaseZipInputKey,
-    selectedTestcaseZipName: editorDraft.selectedTestcaseZipName,
+    canSaveTitle: problemDetailEditorState.canSaveTitle,
+    canSaveLimits: problemDetailEditorState.canSaveLimits,
+    canSaveStatement: problemDetailEditorState.canSaveStatement,
+    canCreateSample: problemSampleEditorState.canCreateSample,
+    canUploadTestcaseZip: problemSampleEditorState.canUploadTestcaseZip,
+    canDeleteLastSample: problemSampleEditorState.canDeleteLastSample,
+    isSavingTitle: problemDetailEditorState.isSavingTitle,
+    isSavingLimits: problemDetailEditorState.isSavingLimits,
+    isSavingStatement: problemDetailEditorState.isSavingStatement,
+    isCreatingSample: problemSampleEditorState.isCreatingSample,
+    isDeletingLastSample: problemSampleEditorState.isDeletingLastSample,
+    isUploadingTestcaseZip: problemSampleEditorState.isUploadingTestcaseZip,
+    titleDraft: problemDetailEditorState.titleDraft,
+    timeLimitDraft: problemDetailEditorState.timeLimitDraft,
+    memoryLimitDraft: problemDetailEditorState.memoryLimitDraft,
+    descriptionDraft: problemDetailEditorState.descriptionDraft,
+    inputFormatDraft: problemDetailEditorState.inputFormatDraft,
+    outputFormatDraft: problemDetailEditorState.outputFormatDraft,
+    noteDraft: problemDetailEditorState.noteDraft,
+    sampleDrafts: problemSampleEditorState.sampleDrafts,
+    testcaseZipInputKey: problemSampleEditorState.testcaseZipInputKey,
+    selectedTestcaseZipName: problemSampleEditorState.selectedTestcaseZipName,
     formatCount,
-    isSavingSample: editorDraft.isSavingSample,
-    canSaveSample: editorDraft.canSaveSample,
-    isLastSample: editorDraft.isLastSample,
-    handleSaveTitle: problemDetailEditorActions.handleSaveTitle,
-    handleSaveLimits: problemDetailEditorActions.handleSaveLimits,
-    handleSaveStatement: problemDetailEditorActions.handleSaveStatement,
-    handleCreateSample: problemDetailEditorActions.handleCreateSample,
-    handleSaveSample: problemDetailEditorActions.handleSaveSample,
-    handleDeleteLastSample: problemDetailEditorActions.handleDeleteLastSample,
-    handleTestcaseZipFileChange: editorDraft.handleTestcaseZipFileChange,
-    handleUploadTestcaseZip: problemDetailEditorActions.handleUploadTestcaseZip,
+    isSavingSample: problemSampleEditorState.isSavingSample,
+    canSaveSample: problemSampleEditorState.canSaveSample,
+    isLastSample: problemSampleEditorState.isLastSample,
+    handleSaveTitle: problemDetailEditorState.handleSaveTitle,
+    handleSaveLimits: problemDetailEditorState.handleSaveLimits,
+    handleSaveStatement: problemDetailEditorState.handleSaveStatement,
+    handleCreateSample: problemSampleEditorState.handleCreateSample,
+    handleSaveSample: problemSampleEditorState.handleSaveSample,
+    handleDeleteLastSample: problemSampleEditorState.handleDeleteLastSample,
+    handleTestcaseZipFileChange: problemSampleEditorState.handleTestcaseZipFileChange,
+    handleUploadTestcaseZip: problemSampleEditorState.handleUploadTestcaseZip,
     openRejudgeDialog: problemActionFeedback.openRejudgeDialog,
     openDeleteDialog: problemActionFeedback.openDeleteDialog
   })
@@ -494,7 +493,7 @@ export function useAdminProblemsPage(){
     problemIdInput: problemActionFeedback.rejudgeConfirmProblemId,
     titleInput: problemActionFeedback.rejudgeConfirmTitle,
     selectedProblemDetail: problemDetailResource.selectedProblemDetail,
-    isBusy: problemLifecycleActions.isRejudgingProblem,
+    isBusy: problemLifecycleState.isRejudgingProblem,
     canConfirm: problemActionFeedback.canRejudgeSelectedProblem,
     confirmLabel: rejudgeConfirmLabel,
     titleId: 'admin-problem-rejudge-title',
@@ -504,14 +503,14 @@ export function useAdminProblemsPage(){
     summaryCopy: '현재 문제의 `accepted`, `wrong_answer` 제출을 다시 채점 대기열에 넣습니다.',
     confirmButtonClass: 'admin-problem-rejudge-confirm',
     close: problemActionFeedback.closeRejudgeDialog,
-    confirm: problemLifecycleActions.handleRejudgeProblem
+    confirm: problemLifecycleState.handleRejudgeProblem
   })
   const deleteDialog = createProblemConfirmDialogViewModel({
     open: problemActionFeedback.deleteDialogOpen,
     problemIdInput: problemActionFeedback.deleteConfirmProblemId,
     titleInput: problemActionFeedback.deleteConfirmTitle,
     selectedProblemDetail: problemDetailResource.selectedProblemDetail,
-    isBusy: problemLifecycleActions.isDeletingProblem,
+    isBusy: problemLifecycleState.isDeletingProblem,
     canConfirm: problemActionFeedback.canDeleteSelectedProblem,
     confirmLabel: deleteConfirmLabel,
     titleId: 'admin-problem-delete-title',
@@ -520,7 +519,7 @@ export function useAdminProblemsPage(){
     description: '아래 두 값을 모두 정확히 다시 입력해야 삭제할 수 있습니다.',
     confirmButtonClass: 'admin-problem-delete-confirm',
     close: problemActionFeedback.closeDeleteDialog,
-    confirm: problemLifecycleActions.handleDeleteProblem
+    confirm: problemLifecycleState.handleDeleteProblem
   })
   const dialogs = computed(() => ({
     rejudge: rejudgeDialog.value,

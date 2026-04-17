@@ -1,38 +1,50 @@
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import { runBusyAction } from '@/composables/adminShared/runBusyAction'
+import { useTestcaseZipInput } from '@/composables/adminShared/useTestcaseZipInput'
 import { useTestcaseZipUploadAction } from '@/composables/adminShared/useTestcaseZipUploadAction'
 import {
+  isProblemSampleBusySection,
   makeProblemSampleBusySection,
   problemBusySection
 } from '@/composables/adminProblems/problemBusySection'
+import { makeSampleDraft } from '@/composables/adminProblems/problemHelpers'
 import {
   createProblemSample,
   deleteProblemSample,
   updateProblemSample
 } from '@/api/problemSampleApi'
-import {
-  updateProblemLimits,
-  updateProblemStatement,
-  updateProblemTitle
-} from '@/api/problemAdminApi'
 import { formatApiError } from '@/utils/apiError'
-import { parsePositiveInteger } from '@/utils/parse'
 
-export function useProblemDetailEditorActions({
+export function useProblemSampleEditorState({
   authState,
   busySection,
   formatCount,
-  editorDraft,
-  problemActionFeedback,
+  selectedProblemDetail,
   problemDetailResource,
-  problemCatalogResource,
+  problemActionFeedback,
   loadSelectedProblem
 }){
-  const selectedProblemDetail = problemDetailResource.selectedProblemDetail
-  const isSavingTitle = computed(() => busySection.value === problemBusySection.SAVE_TITLE)
-  const isSavingLimits = computed(() => busySection.value === problemBusySection.SAVE_LIMITS)
-  const isSavingStatement = computed(() => busySection.value === problemBusySection.SAVE_STATEMENT)
+  const sampleDrafts = ref([])
+  const {
+    testcaseZipFile,
+    testcaseZipInputKey,
+    selectedTestcaseZipName,
+    resetTestcaseZipSelection,
+    handleTestcaseZipFileChange
+  } = useTestcaseZipInput({
+    onInvalidZip(){
+      problemActionFeedback.setActionFeedback({
+        message: '',
+        error: 'ZIP 파일만 업로드할 수 있습니다.'
+      })
+    },
+    onValidZip(){
+      problemActionFeedback.setActionFeedback({
+        error: ''
+      })
+    }
+  })
   const isCreatingSample = computed(() => busySection.value === problemBusySection.CREATE_SAMPLE)
   const isDeletingLastSample = computed(() => busySection.value === problemBusySection.DELETE_LAST_SAMPLE)
   const canCreateSample = computed(() =>
@@ -51,174 +63,59 @@ export function useProblemDetailEditorActions({
     error: ''
   })
 
-  function withSelectedProblemGuard(canRun){
-    return Boolean(authState.token) &&
-      Boolean(selectedProblemDetail.value) &&
-      Boolean(canRun)
+  function reset(options = {}){
+    sampleDrafts.value = []
+
+    if (!options.skipTestcaseZipReset) {
+      resetTestcaseZipSelection()
+    }
   }
 
-  async function runProblemMutation({
-    section,
-    canRun,
-    runRequest,
-    patchDetail,
-    patchSummary,
-    afterSuccess,
-    successMessage,
-    fallbackError
-  }){
+  function assignSamples(samples){
+    sampleDrafts.value = (Array.isArray(samples) ? samples : []).map(makeSampleDraft)
+  }
+
+  function syncSamples(samples){
+    assignSamples(samples)
+  }
+
+  function getSelectedProblemSample(sampleOrder){
+    return selectedProblemDetail.value?.samples.find((sample) => sample.sample_order === sampleOrder) || null
+  }
+
+  function getSampleDraft(sampleOrder){
+    return sampleDrafts.value.find((sample) => sample.sample_order === sampleOrder) || null
+  }
+
+  function isSavingSample(sampleOrder){
+    return isProblemSampleBusySection(busySection.value, sampleOrder)
+  }
+
+  function canSaveSample(sampleOrder){
     const problemDetail = selectedProblemDetail.value
-
-    if (!withSelectedProblemGuard(canRun) || !problemDetail) {
-      return
+    if (!problemDetail || !authState.token || busySection.value) {
+      return false
     }
 
-    const problemId = problemDetail.problem_id
-
-    return runBusyAction({
-      busySection,
-      section,
-      clearFeedback: clearActionFeedback,
-      run: async () => {
-        const response = await runRequest(problemId)
-
-        if (typeof patchDetail === 'function') {
-          problemDetailResource.setSelectedProblemDetail((currentProblemDetail) =>
-            patchDetail(currentProblemDetail, response)
-          )
-        }
-
-        if (typeof afterSuccess === 'function') {
-          afterSuccess(problemId, response)
-        }
-
-        problemDetailResource.applyProblemVersion(problemId, response.version)
-
-        if (patchSummary) {
-          problemCatalogResource.mergeProblemSummary(problemId, patchSummary)
-        }
-
-        problemActionFeedback.setActionFeedback({
-          message: successMessage(problemId, response)
-        })
-      },
-      onError: (error) => {
-        problemActionFeedback.setActionFeedback({
-          error: formatApiError(error, {
-            fallback: fallbackError
-          })
-        })
-      }
-    })
-  }
-
-  async function handleSaveTitle(){
-    const nextTitle = editorDraft.titleDraft.value.trim()
-
-    return runProblemMutation({
-      section: problemBusySection.SAVE_TITLE,
-      canRun: editorDraft.canSaveTitle.value,
-      runRequest(problemId){
-        return updateProblemTitle(problemId, {
-          title: nextTitle
-        }, authState.token)
-      },
-      patchDetail(problemDetail){
-        return problemDetail
-          ? {
-            ...problemDetail,
-            title: nextTitle
-          }
-          : problemDetail
-      },
-      patchSummary: {
-        title: nextTitle
-      },
-      afterSuccess(){
-        editorDraft.titleDraft.value = nextTitle
-      },
-      successMessage(problemId){
-        return `문제 #${formatCount(problemId)} 제목을 저장했습니다.`
-      },
-      fallbackError: '문제 제목을 저장하지 못했습니다.'
-    })
-  }
-
-  async function handleSaveLimits(){
-    const nextTimeLimit = parsePositiveInteger(editorDraft.timeLimitDraft.value)
-    const nextMemoryLimit = parsePositiveInteger(editorDraft.memoryLimitDraft.value)
-
-    if (nextTimeLimit == null || nextMemoryLimit == null) {
-      return
+    const selectedSample = getSelectedProblemSample(sampleOrder)
+    const sampleDraft = getSampleDraft(sampleOrder)
+    if (!selectedSample || !sampleDraft) {
+      return false
     }
 
-    return runProblemMutation({
-      section: problemBusySection.SAVE_LIMITS,
-      canRun: editorDraft.canSaveLimits.value,
-      runRequest(problemId){
-        return updateProblemLimits(problemId, {
-          time_limit_ms: nextTimeLimit,
-          memory_limit_mb: nextMemoryLimit
-        }, authState.token)
-      },
-      patchDetail(problemDetail){
-        return problemDetail
-          ? {
-            ...problemDetail,
-            limits: {
-              time_limit_ms: nextTimeLimit,
-              memory_limit_mb: nextMemoryLimit
-            }
-          }
-          : problemDetail
-      },
-      patchSummary: {
-        time_limit_ms: nextTimeLimit,
-        memory_limit_mb: nextMemoryLimit
-      },
-      afterSuccess(){
-        editorDraft.timeLimitDraft.value = String(nextTimeLimit)
-        editorDraft.memoryLimitDraft.value = String(nextMemoryLimit)
-      },
-      successMessage(problemId){
-        return `문제 #${formatCount(problemId)} 제한을 저장했습니다.`
-      },
-      fallbackError: '문제 제한을 저장하지 못했습니다.'
-    })
+    return (
+      sampleDraft.sample_input !== selectedSample.sample_input ||
+      sampleDraft.sample_output !== selectedSample.sample_output
+    )
   }
 
-  async function handleSaveStatement(){
-    const nextStatement = {
-      description: editorDraft.descriptionDraft.value,
-      input_format: editorDraft.inputFormatDraft.value,
-      output_format: editorDraft.outputFormatDraft.value,
-      note: editorDraft.noteDraft.value === '' ? null : editorDraft.noteDraft.value
+  function isLastSample(sampleOrder){
+    const samples = selectedProblemDetail.value?.samples || []
+    if (!samples.length) {
+      return false
     }
 
-    return runProblemMutation({
-      section: problemBusySection.SAVE_STATEMENT,
-      canRun: editorDraft.canSaveStatement.value,
-      runRequest(problemId){
-        return updateProblemStatement(problemId, nextStatement, authState.token)
-      },
-      patchDetail(problemDetail){
-        return problemDetail
-          ? {
-            ...problemDetail,
-            statement: {
-              description: editorDraft.descriptionDraft.value,
-              input_format: editorDraft.inputFormatDraft.value,
-              output_format: editorDraft.outputFormatDraft.value,
-              note: editorDraft.noteDraft.value
-            }
-          }
-          : problemDetail
-      },
-      successMessage(problemId){
-        return `문제 #${formatCount(problemId)} 설명을 저장했습니다.`
-      },
-      fallbackError: '문제 설명을 저장하지 못했습니다.'
-    })
+    return samples[samples.length - 1].sample_order === sampleOrder
   }
 
   async function handleCreateSample(){
@@ -245,7 +142,7 @@ export function useProblemDetailEditorActions({
         ]
 
         problemDetailResource.setSelectedProblemSamples(nextSamples)
-        editorDraft.syncSampleDrafts(nextSamples)
+        syncSamples(nextSamples)
         problemDetailResource.applyProblemVersion(problemId, response.version)
         problemActionFeedback.setActionFeedback({
           message: `예제 ${formatCount(nextSampleOrder)}를 추가했습니다.`
@@ -262,12 +159,12 @@ export function useProblemDetailEditorActions({
   }
 
   async function handleSaveSample(sampleOrder){
-    if (!authState.token || !selectedProblemDetail.value || !editorDraft.canSaveSample(sampleOrder)) {
+    if (!authState.token || !selectedProblemDetail.value || !canSaveSample(sampleOrder)) {
       return
     }
 
     const problemId = selectedProblemDetail.value.problem_id
-    const sampleDraft = editorDraft.getSampleDraft(sampleOrder)
+    const sampleDraft = getSampleDraft(sampleOrder)
     if (!sampleDraft) {
       return
     }
@@ -292,7 +189,7 @@ export function useProblemDetailEditorActions({
         )
 
         problemDetailResource.setSelectedProblemSamples(nextSamples)
-        editorDraft.syncSampleDrafts(nextSamples)
+        syncSamples(nextSamples)
         problemDetailResource.applyProblemVersion(problemId, response.version)
         problemActionFeedback.setActionFeedback({
           message: `예제 ${formatCount(sampleOrder)}를 저장했습니다.`
@@ -330,7 +227,7 @@ export function useProblemDetailEditorActions({
         )
 
         problemDetailResource.setSelectedProblemSamples(nextSamples)
-        editorDraft.syncSampleDrafts(nextSamples)
+        syncSamples(nextSamples)
         problemDetailResource.applyProblemVersion(problemId, response.version)
         problemActionFeedback.setActionFeedback({
           message: `예제 ${formatCount(lastSample.sample_order)}를 삭제했습니다.`
@@ -351,9 +248,9 @@ export function useProblemDetailEditorActions({
     busySection,
     uploadSection: problemBusySection.UPLOAD_TESTCASE_ZIP,
     selectedProblemId,
-    testcaseZipFile: editorDraft.testcaseZipFile,
+    testcaseZipFile,
     clearFeedback: clearActionFeedback,
-    resetTestcaseZipSelection: editorDraft.resetTestcaseZipSelection,
+    resetTestcaseZipSelection,
     async afterUpload(response, problemId){
       problemDetailResource.applyProblemVersion(problemId, response.version)
       await loadSelectedProblem(problemId, {
@@ -378,21 +275,28 @@ export function useProblemDetailEditorActions({
   })
 
   return {
-    isSavingTitle,
-    isSavingLimits,
-    isSavingStatement,
+    sampleDrafts,
+    testcaseZipFile,
+    testcaseZipInputKey,
+    selectedTestcaseZipName,
+    canCreateSample,
+    canDeleteLastSample,
+    canUploadTestcaseZip: testcaseZipUploadAction.canUploadTestcaseZip,
     isCreatingSample,
     isDeletingLastSample,
     isUploadingTestcaseZip: testcaseZipUploadAction.isUploadingTestcaseZip,
-    canCreateSample,
-    canUploadTestcaseZip: testcaseZipUploadAction.canUploadTestcaseZip,
-    canDeleteLastSample,
-    handleSaveTitle,
-    handleSaveLimits,
-    handleSaveStatement,
+    reset,
+    assignSamples,
+    syncSamples,
+    getSampleDraft,
+    isSavingSample,
+    canSaveSample,
+    isLastSample,
+    resetTestcaseZipSelection,
     handleCreateSample,
     handleSaveSample,
     handleDeleteLastSample,
+    handleTestcaseZipFileChange,
     handleUploadTestcaseZip: testcaseZipUploadAction.handleUploadTestcaseZip
   }
 }

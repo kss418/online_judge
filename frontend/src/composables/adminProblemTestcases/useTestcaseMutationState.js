@@ -7,7 +7,6 @@ import {
   updateProblemTestcase
 } from '@/api/testcaseApi'
 import { runBusyAction } from '@/composables/adminShared/runBusyAction'
-import { useTestcaseZipUploadAction } from '@/composables/adminShared/useTestcaseZipUploadAction'
 import { testcaseBusySection } from '@/composables/adminProblemTestcases/testcaseBusySection'
 import { formatApiError } from '@/utils/apiError'
 
@@ -58,24 +57,15 @@ function reorderTestcaseItems(testcaseItems, sourceTestcaseOrder, targetTestcase
   return nextTestcaseItems
 }
 
-export function useTestcaseEditorActions({
+export function useTestcaseMutationState({
   authState,
   busySection,
-  formatCount,
   selectedProblemId,
-  newTestcaseInput,
-  newTestcaseOutput,
-  selectedTestcaseInputDraft,
-  selectedTestcaseOutputDraft,
-  testcaseZipFile,
-  resetTestcaseZipSelection,
-  canSaveSelectedTestcase,
+  draftState,
   selectionState,
   testcaseListResource,
   selectedTestcaseResource,
   problemDetailResource,
-  reloadProblems,
-  reloadSelectedProblemData,
   showErrorNotice,
   showSuccessNotice
 }){
@@ -106,8 +96,8 @@ export function useTestcaseEditorActions({
       return
     }
 
-    const nextTestcaseInput = newTestcaseInput.value
-    const nextTestcaseOutput = newTestcaseOutput.value
+    const nextTestcaseInput = draftState.newTestcaseInput.value
+    const nextTestcaseOutput = draftState.newTestcaseOutput.value
 
     return runBusyAction({
       busySection,
@@ -124,8 +114,8 @@ export function useTestcaseEditorActions({
 
         problemDetailResource.applyProblemVersion(selectedProblemId.value, response.version)
         await selectionState.loadTestcases(Number(response.testcase_order ?? 0))
-        newTestcaseInput.value = ''
-        newTestcaseOutput.value = ''
+        draftState.newTestcaseInput.value = ''
+        draftState.newTestcaseOutput.value = ''
         showSuccessNotice('테스트케이스를 마지막에 추가했습니다.')
         return response
       },
@@ -138,33 +128,6 @@ export function useTestcaseEditorActions({
       }
     })
   }
-
-  const testcaseZipUploadAction = useTestcaseZipUploadAction({
-    authState,
-    busySection,
-    uploadSection: testcaseBusySection.UPLOAD_ZIP,
-    selectedProblemId,
-    testcaseZipFile,
-    resetTestcaseZipSelection,
-    async afterUpload(response, problemId){
-      problemDetailResource.applyProblemVersion(problemId, response.version)
-      await Promise.all([
-        reloadProblems(),
-        reloadSelectedProblemData()
-      ])
-    },
-    showSuccess(message){
-      showSuccessNotice(message)
-    },
-    showError(error){
-      showErrorNotice(error)
-    },
-    formatSuccessMessage(response){
-      const uploadedTestcaseCount = Number(response.testcase_count ?? 0)
-      return `테스트케이스 ${formatCount(uploadedTestcaseCount)}개를 업로드했습니다.`
-    },
-    fallbackError: '테스트케이스 ZIP을 업로드하지 못했습니다.'
-  })
 
   async function handleDeleteSelectedTestcase(){
     if (!canDeleteSelectedTestcase.value || !authState.token || !selectionState.selectedTestcaseSummary.value) {
@@ -207,13 +170,13 @@ export function useTestcaseEditorActions({
   }
 
   async function handleSaveSelectedTestcase(){
-    if (!selectedTestcaseResource.selectedTestcase.value || !canSaveSelectedTestcase.value || !authState.token) {
+    if (!selectedTestcaseResource.selectedTestcase.value || !draftState.canSaveSelectedTestcase.value || !authState.token) {
       return
     }
 
     const testcaseOrder = selectedTestcaseResource.selectedTestcase.value.testcase_order
-    const nextTestcaseInput = selectedTestcaseInputDraft.value
-    const nextTestcaseOutput = selectedTestcaseOutputDraft.value
+    const nextTestcaseInput = draftState.selectedTestcaseInputDraft.value
+    const nextTestcaseOutput = draftState.selectedTestcaseOutputDraft.value
 
     return runBusyAction({
       busySection,
@@ -302,16 +265,13 @@ export function useTestcaseEditorActions({
 
   return {
     isCreatingTestcase,
-    isUploadingTestcaseZip: testcaseZipUploadAction.isUploadingTestcaseZip,
     isDeletingSelectedTestcase,
     isSavingSelectedTestcase,
     isMovingTestcase,
     canCreateTestcase,
-    canUploadTestcaseZip: testcaseZipUploadAction.canUploadTestcaseZip,
     canDeleteSelectedTestcase,
     canMoveTestcases,
     handleCreateTestcase,
-    handleUploadTestcaseZip: testcaseZipUploadAction.handleUploadTestcaseZip,
     handleDeleteSelectedTestcase,
     handleSaveSelectedTestcase,
     handleMoveTestcase

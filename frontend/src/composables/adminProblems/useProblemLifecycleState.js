@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import { runBusyAction } from '@/composables/adminShared/runBusyAction'
 import { problemBusySection } from '@/composables/adminProblems/problemBusySection'
@@ -9,16 +9,16 @@ import {
 } from '@/api/problemAdminApi'
 import { formatApiError } from '@/utils/apiError'
 
-export function useProblemLifecycleActions({
+export function useProblemLifecycleState({
   authState,
   busySection,
   formatCount,
-  newProblemTitle,
-  feedback,
+  problemActionFeedback,
   selectedProblemDetail,
   loadProblems,
   onCreatedProblem
 }){
+  const newProblemTitle = ref('')
   const canCreateProblem = computed(() =>
     Boolean(authState.token) &&
     !busySection.value &&
@@ -27,10 +27,14 @@ export function useProblemLifecycleActions({
   const isCreatingProblem = computed(() => busySection.value === problemBusySection.CREATE)
   const isRejudgingProblem = computed(() => busySection.value === problemBusySection.REJUDGE)
   const isDeletingProblem = computed(() => busySection.value === problemBusySection.DELETE)
-  const clearActionFeedback = () => feedback.setActionFeedback({
+  const clearActionFeedback = () => problemActionFeedback.setActionFeedback({
     message: '',
     error: ''
   })
+
+  function updateNewProblemTitle(value){
+    newProblemTitle.value = value
+  }
 
   async function handleCreateProblem(){
     if (!authState.token || !canCreateProblem.value) {
@@ -48,7 +52,7 @@ export function useProblemLifecycleActions({
         const createdProblemId = Number(response.problem_id ?? 0)
 
         newProblemTitle.value = ''
-        feedback.setActionFeedback({
+        problemActionFeedback.setActionFeedback({
           message: `문제 #${formatCount(createdProblemId)}를 생성했습니다.`
         })
 
@@ -57,7 +61,7 @@ export function useProblemLifecycleActions({
         }
       },
       onError: (error) => {
-        feedback.setActionFeedback({
+        problemActionFeedback.setActionFeedback({
           error: formatApiError(error, {
             fallback: '문제를 생성하지 못했습니다.'
           })
@@ -67,7 +71,7 @@ export function useProblemLifecycleActions({
   }
 
   async function handleRejudgeProblem(){
-    if (!authState.token || !selectedProblemDetail.value || !feedback.canRejudgeSelectedProblem.value) {
+    if (!authState.token || !selectedProblemDetail.value || !problemActionFeedback.canRejudgeSelectedProblem.value) {
       return
     }
 
@@ -79,13 +83,13 @@ export function useProblemLifecycleActions({
       clearFeedback: clearActionFeedback,
       run: async () => {
         await rejudgeProblem(rejudgingProblemId, authState.token)
-        feedback.closeRejudgeDialog(true)
-        feedback.setActionFeedback({
+        problemActionFeedback.closeRejudgeDialog(true)
+        problemActionFeedback.setActionFeedback({
           message: `문제 #${formatCount(rejudgingProblemId)} 재채점을 요청했습니다.`
         })
       },
       onError: (error) => {
-        feedback.setActionFeedback({
+        problemActionFeedback.setActionFeedback({
           error: formatApiError(error, {
             fallback: '문제 재채점을 요청하지 못했습니다.'
           })
@@ -95,7 +99,7 @@ export function useProblemLifecycleActions({
   }
 
   async function handleDeleteProblem(){
-    if (!authState.token || !selectedProblemDetail.value || !feedback.canDeleteSelectedProblem.value) {
+    if (!authState.token || !selectedProblemDetail.value || !problemActionFeedback.canDeleteSelectedProblem.value) {
       return
     }
 
@@ -107,14 +111,14 @@ export function useProblemLifecycleActions({
       clearFeedback: clearActionFeedback,
       run: async () => {
         await deleteProblem(deletingProblemId, authState.token)
-        feedback.closeDeleteDialog(true)
-        feedback.setActionFeedback({
+        problemActionFeedback.closeDeleteDialog(true)
+        problemActionFeedback.setActionFeedback({
           message: `문제 #${formatCount(deletingProblemId)}를 삭제했습니다.`
         })
         await loadProblems()
       },
       onError: (error) => {
-        feedback.setActionFeedback({
+        problemActionFeedback.setActionFeedback({
           error: formatApiError(error, {
             fallback: '문제를 삭제하지 못했습니다.'
           })
@@ -124,10 +128,12 @@ export function useProblemLifecycleActions({
   }
 
   return {
+    newProblemTitle,
     canCreateProblem,
     isCreatingProblem,
     isRejudgingProblem,
     isDeletingProblem,
+    updateNewProblemTitle,
     handleCreateProblem,
     handleRejudgeProblem,
     handleDeleteProblem
