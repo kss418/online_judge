@@ -1,9 +1,9 @@
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { useTestcaseMutationActions } from '@/composables/adminProblemTestcases/useTestcaseMutationActions'
-import { useTestcaseSelectionSync } from '@/composables/adminProblemTestcases/useTestcaseSelectionSync'
+import { useTestcaseEditorActions } from '@/composables/adminProblemTestcases/useTestcaseEditorActions'
 import { useSelectedTestcaseResource } from '@/composables/adminProblemTestcases/useSelectedTestcaseResource'
+import { useTestcaseSelectionState } from '@/composables/adminProblemTestcases/useTestcaseSelectionState'
 import { formatProblemLimit } from '@/composables/adminProblemTestcases/testcaseHelpers'
 import { useTestcaseListResource } from '@/composables/adminProblemTestcases/useTestcaseListResource'
 import { useAdminProblemSelectionWorkspace } from '@/composables/adminShared/useAdminProblemSelectionWorkspace'
@@ -230,12 +230,10 @@ export function useAdminProblemTestcasesPage(){
     showSuccessNotice
   } = noticeStore
   const busySection = ref('')
-  const testcaseSummaryElementMap = new Map()
   const newTestcaseInput = ref('')
   const newTestcaseOutput = ref('')
   const selectedTestcaseInputDraft = ref('')
   const selectedTestcaseOutputDraft = ref('')
-  const viewTestcaseOrderInput = ref('')
   const {
     testcaseZipFile,
     testcaseZipInputKey,
@@ -261,7 +259,7 @@ export function useAdminProblemTestcasesPage(){
   }){
     problemDetailResource.resetSelectedProblemDetail()
     testcaseListResource.resetTestcaseList()
-    selectionSync.resetSelectedTestcaseState()
+    selectionState.resetSelectedTestcaseState()
     resetTestcaseDraftState()
   }
 
@@ -280,7 +278,6 @@ export function useAdminProblemTestcasesPage(){
   }){
     query.resetSearchControls()
     busySection.value = ''
-    testcaseSummaryElementMap.clear()
     problemCatalogResource.resetProblems()
     await resetSelectedProblemStateForWorkspace({
       problemDetailResource
@@ -316,13 +313,12 @@ export function useAdminProblemTestcasesPage(){
     authState,
     selectedProblemId
   })
-  const selectionSync = useTestcaseSelectionSync({
+  const selectionState = useTestcaseSelectionState({
     authState,
     pageAccess,
     selectedProblemId,
     testcaseListResource,
     selectedTestcaseResource,
-    viewTestcaseOrderInput,
     showErrorNotice
   })
   const canSaveSelectedTestcase = computed(() => {
@@ -335,32 +331,26 @@ export function useAdminProblemTestcasesPage(){
       selectedTestcaseOutputDraft.value !== selectedTestcaseResource.selectedTestcase.value.testcase_output
     )
   })
-  const mutationActions = useTestcaseMutationActions({
+  const testcaseEditorActions = useTestcaseEditorActions({
     authState,
     busySection,
     formatCount,
     selectedProblemId,
-    notice: {
-      showErrorNotice,
-      showSuccessNotice
-    },
-    draftState: {
-      newTestcaseInput,
-      newTestcaseOutput,
-      selectedTestcaseInputDraft,
-      selectedTestcaseOutputDraft,
-      testcaseZipFile,
-      resetTestcaseZipSelection,
-      canSaveSelectedTestcase
-    },
-    selectionSync,
+    newTestcaseInput,
+    newTestcaseOutput,
+    selectedTestcaseInputDraft,
+    selectedTestcaseOutputDraft,
+    testcaseZipFile,
+    resetTestcaseZipSelection,
+    canSaveSelectedTestcase,
+    selectionState,
     testcaseListResource,
     selectedTestcaseResource,
     problemDetailResource,
-    workspaceActions: {
-      reloadProblems: workspace.loadProblems,
-      reloadSelectedProblemData: loadSelectedProblemData
-    }
+    reloadProblems: workspace.loadProblems,
+    reloadSelectedProblemData: loadSelectedProblemData,
+    showErrorNotice,
+    showSuccessNotice
   })
 
   workspace.activate({
@@ -430,7 +420,7 @@ export function useAdminProblemTestcasesPage(){
     if (normalizedProblemId == null) {
       detailResource.resetSelectedProblemDetail()
       testcaseListResource.resetTestcaseList()
-      selectionSync.resetSelectedTestcaseState()
+      selectionState.resetSelectedTestcaseState()
       resetTestcaseDraftState()
       return {
         status: 'reset'
@@ -439,52 +429,10 @@ export function useAdminProblemTestcasesPage(){
 
     const [problemResult, testcaseResult] = await Promise.all([
       detailResource.loadProblemDetail(normalizedProblemId),
-      selectionSync.loadTestcases()
+      selectionState.loadTestcases()
     ])
 
     return problemResult?.status === 'error' ? problemResult : testcaseResult
-  }
-
-  function selectTestcase(testcaseOrder){
-    selectionSync.selectTestcase(testcaseOrder)
-    void scrollSelectedTestcaseIntoView()
-  }
-
-  function setTestcaseSummaryElement(testcaseOrder, element){
-    if (!element) {
-      testcaseSummaryElementMap.delete(testcaseOrder)
-      return
-    }
-
-    testcaseSummaryElementMap.set(testcaseOrder, element)
-  }
-
-  async function scrollSelectedTestcaseIntoView(){
-    await nextTick()
-
-    const summaryElement = testcaseSummaryElementMap.get(selectionSync.selectedTestcaseOrder.value)
-    if (!summaryElement || typeof summaryElement.scrollIntoView !== 'function') {
-      return
-    }
-
-    summaryElement.scrollIntoView({
-      block: 'nearest',
-      inline: 'nearest'
-    })
-  }
-
-  function handleViewSelectedTestcase(){
-    if (selectionSync.handleViewSelectedTestcase()) {
-      void scrollSelectedTestcaseIntoView()
-    }
-  }
-
-  async function handleMoveTestcase(moveRequest){
-    const result = await mutationActions.handleMoveTestcase(moveRequest)
-
-    if (result != null) {
-      void scrollSelectedTestcaseIntoView()
-    }
   }
 
   const shell = workspace.shell
@@ -514,43 +462,43 @@ export function useAdminProblemTestcasesPage(){
     problemErrorMessage: problemDetailResource.detailErrorMessage,
     problemDetail: problemDetailResource.selectedProblemDetail,
     busySection,
-    canUploadTestcaseZip: mutationActions.canUploadTestcaseZip,
-    isUploadingTestcaseZip: mutationActions.isUploadingTestcaseZip,
-    canCreateTestcase: mutationActions.canCreateTestcase,
-    isCreatingTestcase: mutationActions.isCreatingTestcase,
-    canViewSpecificTestcase: selectionSync.canViewSpecificTestcase,
+    canUploadTestcaseZip: testcaseEditorActions.canUploadTestcaseZip,
+    isUploadingTestcaseZip: testcaseEditorActions.isUploadingTestcaseZip,
+    canCreateTestcase: testcaseEditorActions.canCreateTestcase,
+    isCreatingTestcase: testcaseEditorActions.isCreatingTestcase,
+    canViewSpecificTestcase: selectionState.canViewSpecificTestcase,
     isLoadingTestcases: testcaseListResource.isLoadingTestcases,
     isLoadingSelectedTestcase: selectedTestcaseResource.isLoadingSelectedTestcase,
     testcaseItems: testcaseListResource.testcaseItems,
     testcaseErrorMessage: testcaseListResource.testcaseErrorMessage,
     selectedTestcaseErrorMessage: selectedTestcaseResource.selectedTestcaseErrorMessage,
-    selectedTestcaseOrder: selectionSync.selectedTestcaseOrder,
+    selectedTestcaseOrder: selectionState.selectedTestcaseOrder,
     selectedTestcase: selectedTestcaseResource.selectedTestcase,
-    canDeleteSelectedTestcase: mutationActions.canDeleteSelectedTestcase,
-    isDeletingSelectedTestcase: mutationActions.isDeletingSelectedTestcase,
-    canMoveTestcases: mutationActions.canMoveTestcases,
-    isMovingTestcase: mutationActions.isMovingTestcase,
+    canDeleteSelectedTestcase: testcaseEditorActions.canDeleteSelectedTestcase,
+    isDeletingSelectedTestcase: testcaseEditorActions.isDeletingSelectedTestcase,
+    canMoveTestcases: testcaseEditorActions.canMoveTestcases,
+    isMovingTestcase: testcaseEditorActions.isMovingTestcase,
     canSaveSelectedTestcase,
-    isSavingSelectedTestcase: mutationActions.isSavingSelectedTestcase,
+    isSavingSelectedTestcase: testcaseEditorActions.isSavingSelectedTestcase,
     formatCount,
     describeTestcaseContent,
     isLastTestcase,
-    setTestcaseSummaryElement,
+    setTestcaseSummaryElement: selectionState.setTestcaseSummaryElement,
     testcaseZipInputKey,
     selectedTestcaseZipName,
     newTestcaseInput,
     newTestcaseOutput,
-    viewTestcaseOrderInput,
+    viewTestcaseOrderInput: selectionState.viewTestcaseOrderInput,
     selectedTestcaseInputDraft,
     selectedTestcaseOutputDraft,
     handleTestcaseZipFileChange,
-    handleUploadTestcaseZip: mutationActions.handleUploadTestcaseZip,
-    handleCreateTestcase: mutationActions.handleCreateTestcase,
-    selectTestcase,
-    handleDeleteSelectedTestcase: mutationActions.handleDeleteSelectedTestcase,
-    handleMoveTestcase,
-    handleSaveSelectedTestcase: mutationActions.handleSaveSelectedTestcase,
-    handleViewSelectedTestcase
+    handleUploadTestcaseZip: testcaseEditorActions.handleUploadTestcaseZip,
+    handleCreateTestcase: testcaseEditorActions.handleCreateTestcase,
+    selectTestcase: selectionState.selectTestcase,
+    handleDeleteSelectedTestcase: testcaseEditorActions.handleDeleteSelectedTestcase,
+    handleMoveTestcase: testcaseEditorActions.handleMoveTestcase,
+    handleSaveSelectedTestcase: testcaseEditorActions.handleSaveSelectedTestcase,
+    handleViewSelectedTestcase: selectionState.handleViewSelectedTestcase
   })
 
   return {

@@ -1,17 +1,18 @@
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
 import { parsePositiveInteger } from '@/utils/parse'
 
-export function useTestcaseSelectionSync({
+export function useTestcaseSelectionState({
   authState,
   pageAccess,
   selectedProblemId,
   testcaseListResource,
   selectedTestcaseResource,
-  viewTestcaseOrderInput,
   showErrorNotice
 }){
+  const testcaseSummaryElementMap = new Map()
   const selectedTestcaseOrder = ref(0)
+  const viewTestcaseOrderInput = ref('')
   const selectedTestcaseSummary = computed(() =>
     testcaseListResource.testcaseItems.value.find(
       (testcase) => testcase.testcase_order === selectedTestcaseOrder.value
@@ -28,10 +29,25 @@ export function useTestcaseSelectionSync({
   function resetSelectedTestcaseState(){
     selectedTestcaseOrder.value = 0
     viewTestcaseOrderInput.value = ''
+    testcaseSummaryElementMap.clear()
     selectedTestcaseResource.clearSelectedTestcaseDetail()
   }
 
-  function syncSelectedTestcase(preferredOrder){
+  async function scrollSelectedTestcaseIntoView(){
+    await nextTick()
+
+    const summaryElement = testcaseSummaryElementMap.get(selectedTestcaseOrder.value)
+    if (!summaryElement || typeof summaryElement.scrollIntoView !== 'function') {
+      return
+    }
+
+    summaryElement.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest'
+    })
+  }
+
+  function syncSelectedTestcase(preferredOrder, options = {}){
     const testcaseItems = testcaseListResource.testcaseItems.value
     if (!testcaseItems.length) {
       resetSelectedTestcaseState()
@@ -54,21 +70,25 @@ export function useTestcaseSelectionSync({
 
     selectedTestcaseOrder.value = nextOrder
     viewTestcaseOrderInput.value = String(nextOrder)
+
+    if (options.scroll === true) {
+      void scrollSelectedTestcaseIntoView()
+    }
   }
 
-  function syncSelectedTestcaseById(preferredTestcaseId, fallbackOrder){
+  function syncSelectedTestcaseById(preferredTestcaseId, fallbackOrder, options = {}){
     if (preferredTestcaseId > 0) {
       const matchedTestcase = testcaseListResource.testcaseItems.value.find(
         (testcase) => testcase.testcase_id === preferredTestcaseId
       )
 
       if (matchedTestcase) {
-        syncSelectedTestcase(matchedTestcase.testcase_order)
+        syncSelectedTestcase(matchedTestcase.testcase_order, options)
         return
       }
     }
 
-    syncSelectedTestcase(fallbackOrder)
+    syncSelectedTestcase(fallbackOrder, options)
   }
 
   function selectTestcase(testcaseOrder){
@@ -79,6 +99,7 @@ export function useTestcaseSelectionSync({
 
     selectedTestcaseOrder.value = normalizedTestcaseOrder
     viewTestcaseOrderInput.value = String(normalizedTestcaseOrder)
+    void scrollSelectedTestcaseIntoView()
   }
 
   function handleViewSelectedTestcase(){
@@ -100,7 +121,7 @@ export function useTestcaseSelectionSync({
     return true
   }
 
-  async function loadTestcases(preferredOrder){
+  async function loadTestcases(preferredOrder, options = {}){
     const result = await testcaseListResource.loadTestcases()
 
     if (result.status !== 'success') {
@@ -108,8 +129,17 @@ export function useTestcaseSelectionSync({
       return result
     }
 
-    syncSelectedTestcase(preferredOrder)
+    syncSelectedTestcase(preferredOrder, options)
     return result
+  }
+
+  function setTestcaseSummaryElement(testcaseOrder, element){
+    if (!element) {
+      testcaseSummaryElementMap.delete(testcaseOrder)
+      return
+    }
+
+    testcaseSummaryElementMap.set(testcaseOrder, element)
   }
 
   pageAccess.watchWhenAllowed(selectedTestcaseSummary, (testcaseSummary) => {
@@ -122,6 +152,7 @@ export function useTestcaseSelectionSync({
   })
 
   return {
+    viewTestcaseOrderInput,
     selectedTestcaseOrder,
     selectedTestcaseSummary,
     canViewSpecificTestcase,
@@ -130,6 +161,7 @@ export function useTestcaseSelectionSync({
     syncSelectedTestcaseById,
     selectTestcase,
     handleViewSelectedTestcase,
-    loadTestcases
+    loadTestcases,
+    setTestcaseSummaryElement
   }
 }

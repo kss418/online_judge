@@ -58,18 +58,26 @@ function reorderTestcaseItems(testcaseItems, sourceTestcaseOrder, targetTestcase
   return nextTestcaseItems
 }
 
-export function useTestcaseMutationActions({
+export function useTestcaseEditorActions({
   authState,
   busySection,
   formatCount,
   selectedProblemId,
-  notice,
-  draftState,
-  selectionSync,
+  newTestcaseInput,
+  newTestcaseOutput,
+  selectedTestcaseInputDraft,
+  selectedTestcaseOutputDraft,
+  testcaseZipFile,
+  resetTestcaseZipSelection,
+  canSaveSelectedTestcase,
+  selectionState,
   testcaseListResource,
   selectedTestcaseResource,
   problemDetailResource,
-  workspaceActions
+  reloadProblems,
+  reloadSelectedProblemData,
+  showErrorNotice,
+  showSuccessNotice
 }){
   const isCreatingTestcase = computed(() => busySection.value === testcaseBusySection.CREATE)
   const isDeletingSelectedTestcase = computed(() => busySection.value === testcaseBusySection.DELETE_SELECTED)
@@ -83,7 +91,7 @@ export function useTestcaseMutationActions({
   const canDeleteSelectedTestcase = computed(() =>
     selectedProblemId.value > 0 &&
     Boolean(authState.token) &&
-    Boolean(selectionSync.selectedTestcaseSummary.value) &&
+    Boolean(selectionState.selectedTestcaseSummary.value) &&
     !busySection.value
   )
   const canMoveTestcases = computed(() =>
@@ -98,8 +106,8 @@ export function useTestcaseMutationActions({
       return
     }
 
-    const nextTestcaseInput = draftState.newTestcaseInput.value
-    const nextTestcaseOutput = draftState.newTestcaseOutput.value
+    const nextTestcaseInput = newTestcaseInput.value
+    const nextTestcaseOutput = newTestcaseOutput.value
 
     return runBusyAction({
       busySection,
@@ -115,14 +123,14 @@ export function useTestcaseMutationActions({
         )
 
         problemDetailResource.applyProblemVersion(selectedProblemId.value, response.version)
-        await selectionSync.loadTestcases(Number(response.testcase_order ?? 0))
-        draftState.newTestcaseInput.value = ''
-        draftState.newTestcaseOutput.value = ''
-        notice.showSuccessNotice('테스트케이스를 마지막에 추가했습니다.')
+        await selectionState.loadTestcases(Number(response.testcase_order ?? 0))
+        newTestcaseInput.value = ''
+        newTestcaseOutput.value = ''
+        showSuccessNotice('테스트케이스를 마지막에 추가했습니다.')
         return response
       },
       onError: (error) => {
-        notice.showErrorNotice(
+        showErrorNotice(
           formatApiError(error, {
             fallback: '테스트케이스를 추가하지 못했습니다.'
           })
@@ -136,20 +144,20 @@ export function useTestcaseMutationActions({
     busySection,
     uploadSection: testcaseBusySection.UPLOAD_ZIP,
     selectedProblemId,
-    testcaseZipFile: draftState.testcaseZipFile,
-    resetTestcaseZipSelection: draftState.resetTestcaseZipSelection,
+    testcaseZipFile,
+    resetTestcaseZipSelection,
     async afterUpload(response, problemId){
       problemDetailResource.applyProblemVersion(problemId, response.version)
       await Promise.all([
-        workspaceActions.reloadProblems(),
-        workspaceActions.reloadSelectedProblemData()
+        reloadProblems(),
+        reloadSelectedProblemData()
       ])
     },
     showSuccess(message){
-      notice.showSuccessNotice(message)
+      showSuccessNotice(message)
     },
     showError(error){
-      notice.showErrorNotice(error)
+      showErrorNotice(error)
     },
     formatSuccessMessage(response){
       const uploadedTestcaseCount = Number(response.testcase_count ?? 0)
@@ -159,11 +167,11 @@ export function useTestcaseMutationActions({
   })
 
   async function handleDeleteSelectedTestcase(){
-    if (!canDeleteSelectedTestcase.value || !authState.token || !selectionSync.selectedTestcaseSummary.value) {
+    if (!canDeleteSelectedTestcase.value || !authState.token || !selectionState.selectedTestcaseSummary.value) {
       return
     }
 
-    const deletedTestcaseOrder = selectionSync.selectedTestcaseSummary.value.testcase_order
+    const deletedTestcaseOrder = selectionState.selectedTestcaseSummary.value.testcase_order
 
     return runBusyAction({
       busySection,
@@ -184,12 +192,12 @@ export function useTestcaseMutationActions({
               ? testcase.testcase_order - 1
               : testcase.testcase_order
           })))
-        selectionSync.syncSelectedTestcase(deletedTestcaseOrder)
-        notice.showSuccessNotice(`테스트케이스 ${deletedTestcaseOrder}번을 삭제했습니다.`)
+        selectionState.syncSelectedTestcase(deletedTestcaseOrder)
+        showSuccessNotice(`테스트케이스 ${deletedTestcaseOrder}번을 삭제했습니다.`)
         return response
       },
       onError: (error) => {
-        notice.showErrorNotice(
+        showErrorNotice(
           formatApiError(error, {
             fallback: '테스트케이스를 삭제하지 못했습니다.'
           })
@@ -199,13 +207,13 @@ export function useTestcaseMutationActions({
   }
 
   async function handleSaveSelectedTestcase(){
-    if (!selectedTestcaseResource.selectedTestcase.value || !draftState.canSaveSelectedTestcase.value || !authState.token) {
+    if (!selectedTestcaseResource.selectedTestcase.value || !canSaveSelectedTestcase.value || !authState.token) {
       return
     }
 
     const testcaseOrder = selectedTestcaseResource.selectedTestcase.value.testcase_order
-    const nextTestcaseInput = draftState.selectedTestcaseInputDraft.value
-    const nextTestcaseOutput = draftState.selectedTestcaseOutputDraft.value
+    const nextTestcaseInput = selectedTestcaseInputDraft.value
+    const nextTestcaseOutput = selectedTestcaseOutputDraft.value
 
     return runBusyAction({
       busySection,
@@ -223,12 +231,12 @@ export function useTestcaseMutationActions({
 
         problemDetailResource.applyProblemVersion(selectedProblemId.value, response.version)
         selectedTestcaseResource.setSelectedTestcase(normalizeSelectedTestcaseDetail(response))
-        await selectionSync.loadTestcases(testcaseOrder)
-        notice.showSuccessNotice(`테스트케이스 ${testcaseOrder}번을 저장했습니다.`)
+        await selectionState.loadTestcases(testcaseOrder)
+        showSuccessNotice(`테스트케이스 ${testcaseOrder}번을 저장했습니다.`)
         return response
       },
       onError: (error) => {
-        notice.showErrorNotice(
+        showErrorNotice(
           formatApiError(error, {
             fallback: '테스트케이스를 저장하지 못했습니다.'
           })
@@ -255,7 +263,7 @@ export function useTestcaseMutationActions({
       return
     }
 
-    const selectedTestcaseId = Number(selectionSync.selectedTestcaseSummary.value?.testcase_id ?? 0)
+    const selectedTestcaseId = Number(selectionState.selectedTestcaseSummary.value?.testcase_id ?? 0)
 
     return runBusyAction({
       busySection,
@@ -274,14 +282,16 @@ export function useTestcaseMutationActions({
         testcaseListResource.setTestcaseItems((testcaseItems) =>
           reorderTestcaseItems(testcaseItems, normalizedSourceOrder, normalizedTargetOrder)
         )
-        selectionSync.syncSelectedTestcaseById(selectedTestcaseId, normalizedTargetOrder)
-        notice.showSuccessNotice(
+        selectionState.syncSelectedTestcaseById(selectedTestcaseId, normalizedTargetOrder, {
+          scroll: true
+        })
+        showSuccessNotice(
           `테스트케이스 ${normalizedSourceOrder}번을 ${normalizedTargetOrder}번으로 이동했습니다.`
         )
         return response
       },
       onError: (error) => {
-        notice.showErrorNotice(
+        showErrorNotice(
           formatApiError(error, {
             fallback: '테스트케이스 순서를 변경하지 못했습니다.'
           })
