@@ -10,7 +10,6 @@ import { useTestcaseUploadActions } from '@/composables/adminProblemTestcases/us
 import { useAdminProblemCatalogQuery } from '@/composables/adminShared/useAdminProblemCatalogQuery'
 import { useAdminProblemCatalogResource } from '@/composables/adminShared/useAdminProblemCatalogResource'
 import { useAdminProblemRouteCatalogReload } from '@/composables/adminShared/useAdminProblemRouteCatalogReload'
-import { useAdminProblemSelectionReload } from '@/composables/adminShared/useAdminProblemSelectionReload'
 import { useProtectedAdminPageAccess } from '@/composables/adminShared/useProtectedAdminPageAccess'
 import { useSelectedProblemDetailResource } from '@/composables/adminShared/useSelectedProblemDetailResource'
 import { authStore } from '@/stores/auth/authStore'
@@ -355,11 +354,12 @@ export function useAdminProblemTestcasesPage(){
     query
   })
 
-  useAdminProblemSelectionReload({
-    pageAccess,
-    selectedProblemId,
-    resetSelectedProblemState,
-    reloadSelectedProblemData: loadSelectedProblemData
+  pageAccess.watchWhenAllowed(selectedProblemId, (problemId) => {
+    resetSelectedProblemState()
+
+    if ((parsePositiveInteger(problemId) ?? 0) > 0) {
+      void loadSelectedProblemData(problemId)
+    }
   })
 
   async function refreshPage(){

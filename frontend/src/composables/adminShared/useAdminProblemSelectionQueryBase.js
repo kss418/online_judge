@@ -1,6 +1,5 @@
 import { computed, readonly, ref } from 'vue'
 
-import { useAdminProblemSearchControls } from '@/composables/useAdminProblemSearchControls'
 import { useRouteQueryState } from '@/composables/useRouteQueryState'
 import { normalizeSearchMode } from '@/queryState/problemAdminSearch'
 import { parsePositiveInteger } from '@/utils/parse'
@@ -72,22 +71,97 @@ export function useAdminProblemSelectionQueryBase({
     }
   }
 
-  const searchControls = useAdminProblemSearchControls({
-    queryState,
-    selectedProblemId,
-    formatCount,
-    reloadProblems,
-    showErrorNotice,
-    createSearchState: buildSearchState
+  const routeSearchMode = computed(() => queryState.routeState.value.searchMode)
+  const routeTitleSearch = computed(() => queryState.routeState.value.titleSearch)
+  const routeProblemIdSearch = computed(() => queryState.routeState.value.problemIdSearch)
+  const hasAppliedSearch = computed(() => {
+    if (routeSearchMode.value === 'problem-id') {
+      return routeProblemIdSearch.value != null
+    }
+
+    return Boolean(routeTitleSearch.value)
+  })
+  const problemListCaption = computed(() => {
+    if (routeSearchMode.value === 'problem-id' && routeProblemIdSearch.value != null) {
+      return `문제 #${formatCount(routeProblemIdSearch.value)} 검색 결과`
+    }
+
+    if (routeTitleSearch.value) {
+      return `"${routeTitleSearch.value}" 검색 결과`
+    }
+
+    return '전체 문제'
+  })
+  const emptyProblemListMessage = computed(() => {
+    if (routeSearchMode.value === 'problem-id' && routeProblemIdSearch.value != null) {
+      return `문제 #${formatCount(routeProblemIdSearch.value)}를 찾지 못했습니다.`
+    }
+
+    if (routeTitleSearch.value) {
+      return '검색 조건에 맞는 문제가 없습니다.'
+    }
+
+    return '등록된 문제가 아직 없습니다.'
   })
   const preferredProblemIdFromRoute = computed(() =>
     parsePositiveInteger(queryState.routeState.value.selectedProblemId) ?? 0
   )
   const preferredProblemIdForReload = computed(() => (
-    searchControls.routeSearchMode.value === 'problem-id'
-      ? (searchControls.routeProblemIdSearch.value || resolveSelectedProblemId(selectedProblemId))
+    routeSearchMode.value === 'problem-id'
+      ? (routeProblemIdSearch.value || resolveSelectedProblemId(selectedProblemId))
       : (preferredProblemIdFromRoute.value || resolveSelectedProblemId(selectedProblemId))
   ))
+
+  function setSearchMode(nextMode){
+    queryState.localState.searchMode.value = normalizeSearchMode(nextMode)
+  }
+
+  function updateTitleSearchInput(value){
+    queryState.localState.titleSearchInput.value = String(value ?? '')
+  }
+
+  function updateProblemIdSearchInput(value){
+    const normalizedValue = String(value ?? '').replace(/\D+/g, '')
+    queryState.localState.problemIdSearchInput.value = normalizedValue
+  }
+
+  function resetSearchControls(){
+    queryState.localState.searchMode.value = 'title'
+    queryState.localState.titleSearchInput.value = ''
+    queryState.localState.problemIdSearchInput.value = ''
+  }
+
+  async function applySearchQuery(nextState, preferredProblemId){
+    const didNavigate = await queryState.navigate(nextState)
+
+    if (!didNavigate) {
+      await reloadProblems(preferredProblemId)
+    }
+  }
+
+  function submitSearch(){
+    if (queryState.localState.searchMode.value === 'problem-id') {
+      const nextProblemId = parsePositiveInteger(queryState.localState.problemIdSearchInput.value)
+      if (nextProblemId == null) {
+        showErrorNotice('문제 번호를 입력하세요.')
+        return
+      }
+
+      void applySearchQuery(buildSearchState('problem-id', {
+        problemId: nextProblemId
+      }), nextProblemId)
+      return
+    }
+
+    void applySearchQuery(buildSearchState('title', {
+      title: queryState.localState.titleSearchInput.value
+    }), resolveSelectedProblemId(selectedProblemId))
+  }
+
+  function resetSearch(){
+    resetSearchControls()
+    void applySearchQuery(buildSearchState('title'), resolveSelectedProblemId(selectedProblemId))
+  }
 
   function buildSelectionState(problemId){
     return {
@@ -114,7 +188,7 @@ export function useAdminProblemSelectionQueryBase({
       selectedProblemId: nextSelectedProblemId
     }
 
-    searchControls.resetSearchControls()
+    resetSearchControls()
 
     const didNavigate = await queryState.navigate(nextState, {
       mode: 'replace',
@@ -129,7 +203,7 @@ export function useAdminProblemSelectionQueryBase({
   }
 
   async function syncFromRouteAndReload(){
-    searchControls.syncSearchControlsFromRoute()
+    queryState.syncFromRoute()
     await reloadProblems(preferredProblemIdForReload.value)
   }
 
@@ -140,23 +214,22 @@ export function useAdminProblemSelectionQueryBase({
     titleSearchInput: readonly(queryState.localState.titleSearchInput),
     problemIdSearchInput: readonly(queryState.localState.problemIdSearchInput),
     preferredProblemIdFromRoute,
-    routeSearchMode: searchControls.routeSearchMode,
-    routeTitleSearch: searchControls.routeTitleSearch,
-    routeProblemIdSearch: searchControls.routeProblemIdSearch,
+    routeSearchMode,
+    routeTitleSearch,
+    routeProblemIdSearch,
     routeState: queryState.routeState,
-    hasAppliedSearch: searchControls.hasAppliedSearch,
-    problemListCaption: searchControls.problemListCaption,
-    emptyProblemListMessage: searchControls.emptyProblemListMessage,
+    hasAppliedSearch,
+    problemListCaption,
+    emptyProblemListMessage,
     preferredProblemIdForReload,
-    syncSearchControlsFromRoute: searchControls.syncSearchControlsFromRoute,
     syncFromRouteAndReload,
-    setSearchMode: searchControls.setSearchMode,
-    updateTitleSearchInput: searchControls.updateTitleSearchInput,
-    updateProblemIdSearchInput: searchControls.updateProblemIdSearchInput,
-    resetSearchControls: searchControls.resetSearchControls,
+    setSearchMode,
+    updateTitleSearchInput,
+    updateProblemIdSearchInput,
+    resetSearchControls,
     replaceSelectedProblem,
     selectCreatedProblem,
-    submitSearch: searchControls.submitSearch,
-    resetSearch: searchControls.resetSearch
+    submitSearch,
+    resetSearch
   }
 }
