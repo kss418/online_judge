@@ -273,26 +273,6 @@ export function useAdminProblemsPage(){
   const busySection = ref('')
   const newProblemTitle = ref('')
 
-  function readLegacySelectedProblemId(){
-    const queryProblemId = Array.isArray(route.query.problemId)
-      ? route.query.problemId[0]
-      : route.query.problemId
-
-    return parsePositiveInteger(queryProblemId) ?? 0
-  }
-
-  async function canonicalizeLegacySelectedProblemRoute({
-    selectedProblemId,
-    query
-  }){
-    if (!Object.prototype.hasOwnProperty.call(route.query, 'problemId')) {
-      return false
-    }
-
-    await query.replaceSelectedProblem(selectedProblemId.value || readLegacySelectedProblemId())
-    return true
-  }
-
   async function resetSelectedProblemStateForWorkspace({
     problemDetailResource
   }){
@@ -410,7 +390,6 @@ export function useAdminProblemsPage(){
   })
 
   workspace.activate({
-    beforeAllowed: canonicalizeLegacySelectedProblemRoute,
     resetSelectedProblemState: resetSelectedProblemStateForWorkspace,
     loadSelectedProblemData: loadSelectedProblemDataForWorkspace,
     resetPageState: resetPageStateForWorkspace

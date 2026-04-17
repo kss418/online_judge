@@ -76,7 +76,6 @@ export function useAdminProblemSelectionWorkspace({
     mergeProblemSummary: problemCatalogResource.mergeProblemSummary
   })
   const pageCallbacks = {
-    beforeAllowed: null,
     resetSelectedProblemState: null,
     loadSelectedProblemData: null,
     resetPageState: null
@@ -180,13 +179,6 @@ export function useAdminProblemSelectionWorkspace({
       return inactiveWorkspaceResult
     }
 
-    if (typeof pageCallbacks.beforeAllowed === 'function') {
-      await pageCallbacks.beforeAllowed({
-        selectedProblemId,
-        query
-      })
-    }
-
     const previousSelectedProblemId = selectedProblemId.value
 
     await query.syncFromRouteAndReload()
@@ -254,7 +246,6 @@ export function useAdminProblemSelectionWorkspace({
   }
 
   function activate({
-    beforeAllowed,
     resetSelectedProblemState,
     loadSelectedProblemData,
     resetPageState
@@ -263,7 +254,6 @@ export function useAdminProblemSelectionWorkspace({
       return
     }
 
-    pageCallbacks.beforeAllowed = beforeAllowed
     pageCallbacks.resetSelectedProblemState = resetSelectedProblemState
     pageCallbacks.loadSelectedProblemData = loadSelectedProblemData
     pageCallbacks.resetPageState = resetPageState
