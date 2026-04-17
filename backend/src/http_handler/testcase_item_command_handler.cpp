@@ -5,6 +5,7 @@
 #include "http_endpoint/endpoint.hpp"
 #include "http_handler/admin_problem_spec_helper.hpp"
 #include "http_handler/path_value_spec_helper.hpp"
+#include "http_handler/testcase_path_spec_helper.hpp"
 #include "http_guard/auth_guard.hpp"
 #include "http_guard/request_parse_guard.hpp"
 #include "request_parser/problem_request_parser.hpp"
